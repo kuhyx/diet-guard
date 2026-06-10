@@ -1,0 +1,25 @@
+[Unit]
+Description=Diet Guard log-to-unlock gate (periodic check)
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+# DISPLAY/PYTHONPATH mirror wake-alarm.service: the gate opens a Tk window when a
+# lock is due, so without DISPLAY it would crash with "no display name and no
+# $DISPLAY" before it could even check. The command self-checks gate_is_due() and
+# exits 0 when no lock is needed, so running it every ~30 min is cheap.
+#
+# XAUTHORITY pins the X auth cookie path explicitly. It is belt-and-suspenders,
+# not the fix: when this unit fires at SESSION START (Persistent=true catch-up),
+# it can beat the display manager writing ~/.Xauthority, so the cookie is simply
+# absent yet -- pointing at it does not help. That race is handled in Python by
+# wait_for_display(), which polls the display until it is connectable before
+# opening the window (previously a session-start launch died on a "couldn't
+# connect to display" TclError and never showed). The sleep gives the session a
+# brief head start; the Python wait is what makes it reliable.
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=%h/.Xauthority
+Environment=PYTHONPATH=%h/testsAndMisc
+ExecStartPre=/bin/sleep 1
+ExecStart=/usr/bin/python -m python_pkg.diet_guard gate
+WorkingDirectory=%h/testsAndMisc

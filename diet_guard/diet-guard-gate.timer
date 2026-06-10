@@ -1,0 +1,20 @@
+[Unit]
+Description=Periodically run the Diet Guard gate check
+
+[Timer]
+# Check on a WALL-CLOCK schedule (every 30 min, on the hour and half-hour).
+# The 5-hour "log a meal" threshold and the 08:00-22:00 eating window are
+# enforced inside gate_is_due(), so the timer only needs to fire often enough to
+# notice the boundary; 30 min is plenty.
+#
+# Why OnCalendar and not OnBootSec/OnUnitActiveSec: the gate is a *blocking*
+# oneshot -- it stays up until a meal is logged -- and a monotonic schedule
+# computed no next elapse once the service had run (and none at all across a
+# reboot), leaving the timer dormant (NextElapse=infinity). OnCalendar re-arms
+# every period regardless of how long the gate stayed open, and Persistent
+# catches a run missed while the machine was suspended.
+OnCalendar=*-*-* *:00/30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
