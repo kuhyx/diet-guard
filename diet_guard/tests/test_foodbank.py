@@ -35,22 +35,6 @@ def _write_raw(bank: object) -> None:
     _foodbank.FOOD_BANK_FILE.write_text(json.dumps(bank), encoding="utf-8")
 
 
-class TestAsFloat:
-    """Field coercion with the bool rejection."""
-
-    def test_bool_is_zero(self) -> None:
-        """A bool is not a real count/macro."""
-        assert _foodbank._as_float(value=True) == 0.0
-
-    def test_number_passes(self) -> None:
-        """Ints and floats pass through."""
-        assert _foodbank._as_float(7) == 7.0
-
-    def test_other_is_zero(self) -> None:
-        """A non-numeric value defaults to 0.0."""
-        assert _foodbank._as_float("x") == 0.0
-
-
 class TestRememberAndLookup:
     """Round-tripping foods through the bank."""
 

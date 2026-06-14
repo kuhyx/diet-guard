@@ -25,6 +25,7 @@ from python_pkg.diet_guard._constants import FOOD_BANK_FILE
 from python_pkg.diet_guard._estimator import Nutrition
 from python_pkg.diet_guard._fuzzy import match_score
 from python_pkg.diet_guard._meal import MealItem, meal_total
+from python_pkg.shared.coerce import as_float
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -119,22 +120,13 @@ def _record_to_nutrition(record: BankRecord) -> Nutrition:
         The reconstructed Nutrition (source marked as the food bank).
     """
     return Nutrition(
-        kcal=_as_float(record.get("kcal")),
-        protein_g=_as_float(record.get("protein_g")),
-        carbs_g=_as_float(record.get("carbs_g")),
-        fat_g=_as_float(record.get("fat_g")),
-        grams=_as_float(record.get("grams")),
+        kcal=as_float(record.get("kcal")),
+        protein_g=as_float(record.get("protein_g")),
+        carbs_g=as_float(record.get("carbs_g")),
+        fat_g=as_float(record.get("fat_g")),
+        grams=as_float(record.get("grams")),
         source="food bank",
     )
-
-
-def _as_float(value: object) -> float:
-    """Coerce a stored field to float, defaulting to 0.0 (bools rejected)."""
-    if isinstance(value, bool):
-        return 0.0
-    if isinstance(value, (int, float)):
-        return float(value)
-    return 0.0
 
 
 def remember_food(description: str, nutrition: Nutrition) -> None:
@@ -194,7 +186,7 @@ def _upsert(
         return
     bank = _read_bank()
     previous = bank.get(key, {})
-    count = _as_float(previous.get("count")) + 1
+    count = as_float(previous.get("count")) + 1
     record: BankRecord = {
         "desc": description.strip(),
         "kcal": nutrition.kcal,
@@ -256,7 +248,7 @@ def search_foods(
         score = match_score(normalized, key)
         if score < _FUZZY_THRESHOLD:
             continue
-        count = _as_float(record.get("count"))
+        count = as_float(record.get("count"))
         scored.append(
             (score, count, _display_name(record, key), _record_to_nutrition(record)),
         )
@@ -272,7 +264,7 @@ def _ranked_all(
     """Return all banked foods ranked by use count, most-logged first."""
     ranked = sorted(
         bank.items(),
-        key=lambda item: _as_float(item[1].get("count")),
+        key=lambda item: as_float(item[1].get("count")),
         reverse=True,
     )
     return [

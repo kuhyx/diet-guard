@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 from python_pkg.diet_guard._budget import daily_budget
 from python_pkg.diet_guard._constants import BUDGET_WARN_FRACTION, FOOD_LOG_FILE
+from python_pkg.shared.coerce import as_float
 from python_pkg.shared.log_integrity import (
     compute_entry_hmac,
     verify_entry_hmac,
@@ -58,12 +59,7 @@ def _entry_float(entry: dict[str, object], key: str) -> float:
     Returns:
         The field as a float, or 0.0 when absent or not a real number.
     """
-    value = entry.get(key)
-    if isinstance(value, bool):
-        return 0.0
-    if isinstance(value, (int, float)):
-        return float(value)
-    return 0.0
+    return as_float(entry.get(key))
 
 
 def entry_kcal(entry: dict[str, object]) -> float:

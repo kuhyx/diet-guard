@@ -37,8 +37,8 @@ from python_pkg.diet_guard._gatelock import (
     MealGate,
     acquire_gate_lock,
     release_gate_lock,
-    wait_for_display,
 )
+from python_pkg.diet_guard._gatelock_support import wait_for_display
 from python_pkg.diet_guard._portions import (
     DEFAULT_ITEM_GRAMS,
     estimate_unit_grams,
