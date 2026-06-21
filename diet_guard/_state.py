@@ -15,13 +15,14 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-from python_pkg.diet_guard._budget import daily_budget
-from python_pkg.diet_guard._constants import BUDGET_WARN_FRACTION, FOOD_LOG_FILE
-from python_pkg.shared.coerce import as_float
-from python_pkg.shared.log_integrity import (
+from gatelock.log_integrity import (
     compute_entry_hmac,
     verify_entry_hmac,
 )
+
+from python_pkg.diet_guard._budget import daily_budget
+from python_pkg.diet_guard._constants import BUDGET_WARN_FRACTION, FOOD_LOG_FILE
+from python_pkg.shared.coerce import as_float
 
 if TYPE_CHECKING:
     from python_pkg.diet_guard._estimator import Nutrition

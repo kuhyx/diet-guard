@@ -292,7 +292,7 @@ class _GateMealFlow(_GateNutrition):
             lines.append(f"  protein {protein:g} / {target:g} g  ({left:g} g left)")
         return "\n".join(lines)
 
-    def _handle_callback_error(self) -> None:
+    def on_callback_error(self) -> None:
         """Surface an unexpected callback error without dropping the grab."""
         self._set_status(
             "Something went wrong. Enter the calories, then submit again.",

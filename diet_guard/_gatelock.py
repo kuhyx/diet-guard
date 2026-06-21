@@ -1,16 +1,12 @@
 """Fullscreen "log your meals to unlock" gate window for diet_guard.
 
-This reuses the proven screen-locker *mechanism* -- an ``overrideredirect``
-fullscreen window with a global input grab and disabled VT switching -- but
-hardens two latent gaps in that original so a grabbed window can never become a
-trap:
-
-* **VT switching is restored on every exit path**, not just the clean one:
-  ``atexit`` covers a crash/uncaught exception, signal handlers cover
-  SIGTERM/SIGINT, and a ``try/finally`` covers normal return.
-* **Every callback error is swallowed and surfaced**, via a
-  ``report_callback_exception`` override on the Tk root, so no exception can
-  propagate out of the grabbed event loop and leave a dead window.
+The fullscreen/grab/VT-disable/lifecycle mechanics -- an ``overrideredirect``
+window with a global input grab and disabled VT switching, hardened so a
+grabbed window can never become a trap (VT switching restored on every exit
+path, every callback error swallowed and surfaced) -- now live in the shared
+``gatelock`` package, also used by wake_alarm and screen-locker. ``MealGate``
+owns a :class:`~gatelock.LockWindow` and implements
+:class:`~gatelock.LockWindowHooks`.
 
 The window walks the user through each *missing* meal slot in turn (coming home
 at 17:00 backfills 08:00, then 12:00, then 16:00) and dismisses only once every
@@ -33,13 +29,12 @@ offline, so a dead OFF endpoint can never trap you behind the lock.
 
 Building ``MealGate`` spans several sibling modules to keep each under the
 repo's 500-line limit: :mod:`._gatelock_core` provides the shared leaf
-widget/field helpers, root window, and state (``_GateCore``, ``_GateRoot``,
-``_GateState``); :mod:`._gatelock_window` provides the fullscreen window setup,
-input grab, and exit-path lifecycle (``_GateWindow``);
+widget/field helpers and state (``_GateCore``, ``_GateState``);
 :mod:`._gatelock_nutrition` provides the reference->total nutrition maths and
 food lookup (``_GateNutrition``); and :mod:`._gatelock_mealflow` provides the
-submit/log flow and dashboard (``_GateMealFlow``).  ``MealGate`` wires these
-mixins together and owns construction, layout, and event binding.
+submit/log flow, dashboard, and callback-error handling (``_GateMealFlow``).
+``MealGate`` wires these mixins together, owns the ``gatelock.LockWindow``,
+and handles construction, layout, and event binding.
 """
 
 from __future__ import annotations
@@ -50,12 +45,18 @@ import sys
 import tkinter as tk
 from typing import TYPE_CHECKING
 
+from gatelock import GateRoot, LockConfig, LockWindow
+
 from python_pkg.diet_guard._constants import GATE_LOCK_FILE
 from python_pkg.diet_guard._gate import due_slots
-from python_pkg.diet_guard._gatelock_core import _GateRoot, _GateState
+from python_pkg.diet_guard._gatelock_core import _GateState
 from python_pkg.diet_guard._gatelock_mealflow import _GateMealFlow
-from python_pkg.diet_guard._gatelock_ui import GateCallbacks, build_layout, make_vars
-from python_pkg.diet_guard._gatelock_window import _GateWindow
+from python_pkg.diet_guard._gatelock_ui import (
+    BG,
+    GateCallbacks,
+    build_layout,
+    make_vars,
+)
 from python_pkg.diet_guard._slots import current_slot, day_slots
 from python_pkg.diet_guard._state import now_local
 
@@ -121,7 +122,7 @@ def _pending_slots(*, demo_mode: bool) -> list[int]:
     return []
 
 
-class MealGate(_GateWindow, _GateMealFlow):
+class MealGate(_GateMealFlow):
     """A fullscreen lock that dismisses only once every missing slot is logged."""
 
     def __init__(self, *, demo_mode: bool = True) -> None:
@@ -134,20 +135,21 @@ class MealGate(_GateWindow, _GateMealFlow):
         """
         _assert_not_under_pytest()
         self.demo_mode = demo_mode
-        self._vt_disabled = False
         self._pending = _pending_slots(demo_mode=demo_mode)
         # All mutable logical state (provenance, suggestions, meal-in-progress)
         # lives in one bundle; see _GateState for the per-field rationale.
         self._state = _GateState()
-        self.root = _GateRoot()
-        self.root.on_callback_error = self._handle_callback_error
+        self.root = GateRoot()
+        self.root.on_callback_error = self.on_callback_error
         self.root.title("Diet Gate" + (" [DEMO]" if demo_mode else ""))
+        config = LockConfig(mode="soft" if demo_mode else "hard", bg=BG)
+        self._lock = LockWindow(self.root, config, hooks=self)
         self._vars = make_vars(self.root)
         self._build()
 
     def _build(self) -> None:
         """Lay out the UI, wire events, seed the first prompt, and grab input."""
-        self._setup_window()
+        self._lock.setup()
         callbacks = GateCallbacks(
             on_unit_change=self._on_unit_change,
             on_submit=self._on_submit,
@@ -165,8 +167,23 @@ class MealGate(_GateWindow, _GateMealFlow):
         self._refresh_slot_header()
         self._refresh_dashboard()
         self._refresh_projection()
-        self._grab_input()
+        self._lock.grab_input()
         self._widgets.desc_text.focus_set()
+
+    def on_focus_ready(self) -> None:
+        """Put keyboard focus on the description entry once it is mapped."""
+        self._widgets.desc_text.focus_force()
+
+    def on_close(self) -> None:
+        """No hardware/state to release; meal-log writes already happened."""
+
+    def close(self) -> None:
+        """Restore VT switching and destroy the window (no process exit)."""
+        self._lock.close()
+
+    def run(self) -> None:
+        """Run the Tk loop, restoring VT switching on every exit path."""
+        self._lock.run()
 
     def _wire_events(self) -> None:
         """Bind the live per-keystroke events to the freshly built widgets.

@@ -1,10 +1,11 @@
-"""Shared base class, root window, and state for the MealGate gate.
+"""Shared base class and state for the MealGate gate.
 
 Split out of :mod:`._gatelock` to keep that module under the repo's 500-line
 limit.  ``_GateCore`` holds the leaf widget/field helpers that every other
-gatelock mixin (`_gatelock_window`, `_gatelock_nutrition`,
-`_gatelock_mealflow`) derives from, plus the small dataclass (`_GateState`)
-and Tk root subclass (`_GateRoot`) that :mod:`._gatelock` itself depends on.
+gatelock mixin (`_gatelock_nutrition`, `_gatelock_mealflow`) derives from,
+plus the small dataclass (`_GateState`) that :mod:`._gatelock` itself depends
+on. The window/lock mechanics and the ``GateRoot`` Tk root subclass that used
+to live here now come from the shared ``gatelock`` package.
 """
 
 from __future__ import annotations
@@ -27,7 +28,8 @@ from python_pkg.diet_guard._slots import slot_label
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from types import TracebackType
+
+    from gatelock import GateRoot
 
     from python_pkg.diet_guard._estimator import Nutrition
     from python_pkg.diet_guard._meal import MealItem
@@ -43,28 +45,6 @@ def _safe_float(raw: str) -> float | None:
         return float(raw)
     except ValueError:
         return None
-
-
-class _GateRoot(tk.Tk):
-    """Tk root that routes callback errors to a handler instead of crashing.
-
-    Overriding ``report_callback_exception`` is the idiomatic, blind-except-free
-    way to guarantee that no exception raised inside a Tk callback escapes the
-    event loop -- essential while a global input grab is held.
-    """
-
-    on_callback_error: Callable[[], None] | None = None
-
-    def report_callback_exception(
-        self,
-        exc: type[BaseException],
-        val: BaseException,
-        tb: TracebackType | None,
-    ) -> None:
-        """Log a callback error and notify the handler; never re-raise."""
-        _logger.error("gate callback error", exc_info=(exc, val, tb))
-        if self.on_callback_error is not None:
-            self.on_callback_error()
 
 
 @dataclass
@@ -100,9 +80,8 @@ class _GateCore:
     no-member check.
     """
 
-    root: _GateRoot
+    root: GateRoot
     demo_mode: bool
-    _vt_disabled: bool
     _pending: list[int]
     _state: _GateState
     _vars: GateVars

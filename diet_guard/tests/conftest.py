@@ -1,12 +1,15 @@
 """Shared fixtures for diet_guard tests.
 
-Two safety nets run for every test:
+Three safety nets run for every test:
 
 * ``_isolate_state`` redirects the food log, sealed budget, and gate lock into
   ``tmp_path`` so a test can never read or clobber the real ``~/.local/share``.
-* ``_block_real_tk`` swaps ``tk`` and the ``_GateRoot`` window class inside
+* ``_block_real_tk`` swaps ``tk`` and the ``GateRoot`` window class inside
   ``_gatelock`` for mocks, so no test can open a real fullscreen window or grab
   the keyboard even if it forgets to.
+* ``_block_real_vt`` makes ``gatelock``'s VT-switch disable a no-op, so a
+  prod-mode (``demo_mode=False``) gate built in a test never runs a real
+  ``setxkbmap`` against the live X session.
 
 The ``gate`` fixture and its supporting fakes (``FakeEntry``, ``_FAKE_TK``, ...)
 build a demo :class:`~python_pkg.diet_guard._gatelock.MealGate` whose widgets
@@ -29,7 +32,6 @@ from python_pkg.diet_guard import (
     _gatelock_mealflow,
     _gatelock_nutrition,
     _gatelock_ui,
-    _gatelock_window,
 )
 from python_pkg.diet_guard._estimator import Nutrition
 from python_pkg.diet_guard._gatelock import MealGate
@@ -68,8 +70,21 @@ def _block_real_tk() -> Iterator[None]:
     """Replace tk + the window class in _gatelock so no real window can open."""
     with (
         patch("python_pkg.diet_guard._gatelock.tk", MagicMock()),
-        patch("python_pkg.diet_guard._gatelock._GateRoot", MagicMock()),
+        patch("python_pkg.diet_guard._gatelock.GateRoot", MagicMock()),
     ):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _block_real_vt() -> Iterator[None]:
+    """Make gatelock's VT-switch disable a no-op for every test.
+
+    Belt-and-suspenders alongside ``_block_real_tk``: VT-disable now lives in
+    ``gatelock``, independent of the (mocked) root, so a test that builds a
+    real prod-mode (``demo_mode=False``) gate would otherwise run a genuine
+    ``setxkbmap`` against whatever X session the test happens to run under.
+    """
+    with patch("gatelock._vt.shutil.which", return_value=None):
         yield
 
 
@@ -83,7 +98,7 @@ def _hmac_key(tmp_path: Path) -> Iterator[None]:
     """
     key = tmp_path / "hmac.key"
     key.write_bytes(b"diet-guard-test-key-0123456789ab")
-    with patch("python_pkg.shared.log_integrity.HMAC_KEY_FILE", key):
+    with patch("gatelock.log_integrity.DEFAULT_HMAC_KEY_FILE", key):
         yield
 
 
@@ -224,7 +239,6 @@ _FAKE_TK = SimpleNamespace(
 _GATE_TK_MODULES = (
     _gatelock,
     _gatelock_core,
-    _gatelock_window,
     _gatelock_nutrition,
     _gatelock_mealflow,
     _gatelock_ui,

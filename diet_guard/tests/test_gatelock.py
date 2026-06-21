@@ -1,6 +1,8 @@
 """Tests for _gatelock.py — the fullscreen log-to-unlock gate window.
 
-Window mechanics, construction, and the shared module-level helpers.  The
+Construction, MealGate's gatelock wiring (LockConfig choice, hooks), and the
+shared module-level helpers.  The fullscreen/grab/VT-disable mechanics
+themselves are tested in the ``gatelock`` package, not here.  The
 nutrition/meal-flow tests live in :mod:`test_gatelock_mealflow`; the
 functional fake ``tk`` widgets and the ``gate`` fixture live in
 ``conftest.py`` and are shared by both files.
@@ -17,7 +19,6 @@ from python_pkg.diet_guard import (
     _gatelock,
     _gatelock_support,
     _gatelock_ui,
-    _gatelock_window,
 )
 from python_pkg.diet_guard._budget import seal_budget
 from python_pkg.diet_guard._gatelock import (
@@ -30,14 +31,8 @@ from python_pkg.diet_guard._gatelock_core import _safe_float
 from python_pkg.diet_guard._gatelock_nutrition import _format_preview
 from python_pkg.diet_guard._gatelock_support import wait_for_display
 from python_pkg.diet_guard._gatelock_ui import DEFAULT_PER_GRAMS
-from python_pkg.diet_guard._gatelock_window import _GRAB_LOG_EVERY
 from python_pkg.diet_guard._portions import DEFAULT_ITEM_GRAMS
 from python_pkg.diet_guard.tests.conftest import _FAKE_TK, _FakeTclError, _nutrition
-
-# Captured before any autouse fixture patches the module attribute, so the real
-# class (not the conftest MagicMock) is available for its callback-error test.
-_REAL_GATE_ROOT = _gatelock._GateRoot
-
 
 # --------------------------------------------------------------------------
 # Module-level helpers
@@ -109,27 +104,6 @@ class TestAssertNotUnderPytest:
             _gatelock._assert_not_under_pytest()
 
 
-class TestGateRootCallback:
-    """The root's callback-exception routing."""
-
-    def test_routes_to_handler(self) -> None:
-        """A set handler is invoked on a callback error."""
-        root = _REAL_GATE_ROOT.__new__(_REAL_GATE_ROOT)
-        root.on_callback_error = MagicMock()
-        _REAL_GATE_ROOT.report_callback_exception(
-            root, ValueError, ValueError("x"), None
-        )
-        root.on_callback_error.assert_called_once()
-
-    def test_no_handler_is_safe(self) -> None:
-        """With no handler set, the error is just logged."""
-        root = _REAL_GATE_ROOT.__new__(_REAL_GATE_ROOT)
-        root.on_callback_error = None
-        _REAL_GATE_ROOT.report_callback_exception(
-            root, ValueError, ValueError("x"), None
-        )
-
-
 # --------------------------------------------------------------------------
 # Construction
 # --------------------------------------------------------------------------
@@ -139,18 +113,17 @@ class TestConstruction:
     """Building the window in both modes."""
 
     def test_demo_builds(self, gate: MealGate) -> None:
-        """A demo gate constructs with a pending slot and grams basis."""
+        """A demo gate constructs with a pending slot, grams basis, and a soft lock."""
         assert gate.demo_mode is True
         assert gate._vars.unit.get() == "grams"
+        assert gate._lock._config.mode == "soft"
 
     def test_production_builds(self) -> None:
-        """A production gate disables VT switching and grabs input."""
-        with (
-            patch.object(_gatelock, "tk", _FAKE_TK),
-            patch.object(_gatelock_window.shutil, "which", return_value=None),
-        ):
+        """A production gate builds with a hard lock config."""
+        with patch.object(_gatelock, "tk", _FAKE_TK):
             gate = MealGate(demo_mode=False)
         assert gate.demo_mode is False
+        assert gate._lock._config.mode == "hard"
 
 
 # --------------------------------------------------------------------------
@@ -258,93 +231,35 @@ class TestBasisAndAmount:
         assert gate._widgets.amount_entry.get() == "50"
 
 
-class TestWindowMechanics:
-    """VT switching, grabbing, signals, and teardown."""
+class TestLockDelegation:
+    """MealGate's gatelock wiring: hooks delegate, run()/close() delegate."""
 
-    def test_disable_vt_no_tool(self, gate: MealGate) -> None:
-        """A missing setxkbmap leaves VT switching enabled."""
-        with patch.object(_gatelock_window.shutil, "which", return_value=None):
-            gate._disable_vt_switching()
-        assert gate._vt_disabled is False
+    def test_on_focus_ready_focuses_desc_text(self, gate: MealGate) -> None:
+        """on_focus_ready puts keyboard focus on the description box."""
+        gate._widgets.desc_text.focus_force = MagicMock()
+        gate.on_focus_ready()
+        gate._widgets.desc_text.focus_force.assert_called_once()
 
-    def test_disable_and_restore_vt(self, gate: MealGate) -> None:
-        """With the tool present, VT switching toggles off then back on."""
-        with (
-            patch.object(_gatelock_window.shutil, "which", return_value="/x/setxkbmap"),
-            patch.object(_gatelock_window.subprocess, "run") as run,
-        ):
-            gate._disable_vt_switching()
-            assert gate._vt_disabled is True
-            gate._restore_vt_switching()
-            assert gate._vt_disabled is False
-        assert run.call_count == 2
-
-    def test_restore_when_not_disabled(self, gate: MealGate) -> None:
-        """Restoring when never disabled is a no-op."""
-        gate._vt_disabled = False
-        gate._restore_vt_switching()
-
-    def test_grab_success(self, gate: MealGate) -> None:
-        """A successful grab focuses the first field."""
-        gate.root.grab_set_global = MagicMock()
-        gate._acquire_global_grab(attempt=1)
-
-    def test_grab_retries_on_conflict(self, gate: MealGate) -> None:
-        """A held grab reschedules another attempt instead of giving up."""
-        gate.root.grab_set_global = MagicMock(side_effect=_FakeTclError)
-        gate.root.after = MagicMock()
-        gate._acquire_global_grab(attempt=_GRAB_LOG_EVERY)
-        gate.root.after.assert_called_once()
-
-    def test_focus_first_field(self, gate: MealGate) -> None:
-        """Focusing the first field is safe."""
-        gate._focus_first_field()
-
-    def test_keepalive_rearms(self, gate: MealGate) -> None:
-        """The keepalive reschedules itself."""
-        gate.root.after = MagicMock()
-        gate._keepalive()
-        gate.root.after.assert_called_once()
-
-    def test_signal_restores_and_exits(self, gate: MealGate) -> None:
-        """A termination signal restores VT switching and exits."""
-        with pytest.raises(SystemExit):
-            gate._on_signal(15, None)
-
-    def test_run_installs_and_loops(self, gate: MealGate) -> None:
-        """run wires handlers, starts the loop, and restores on exit."""
-        gate.root.mainloop = MagicMock()
-        with (
-            patch.object(_gatelock_window.signal, "signal"),
-            patch.object(_gatelock_window.atexit, "register"),
-        ):
-            gate.run()
-        gate.root.mainloop.assert_called_once()
-
-    def test_close(self, gate: MealGate) -> None:
-        """Close restores VT switching and destroys the window."""
-        gate.root.destroy = MagicMock()
-        gate.close()
-        gate.root.destroy.assert_called_once()
+    def test_on_close_is_a_noop(self, gate: MealGate) -> None:
+        """on_close has no hardware/state to release; must not raise."""
+        gate.on_close()
 
     def test_callback_error_status(self, gate: MealGate) -> None:
         """An unexpected callback error surfaces a recoverable message."""
-        gate._handle_callback_error()
+        gate.on_callback_error()
         assert "went wrong" in gate._vars.status.get()
 
-    def test_restore_vt_without_tool(self, gate: MealGate) -> None:
-        """Restoring when the tool has since vanished still clears the flag."""
-        gate._vt_disabled = True
-        with patch.object(_gatelock_window.shutil, "which", return_value=None):
-            gate._restore_vt_switching()
-        assert gate._vt_disabled is False
+    def test_run_delegates_to_lock(self, gate: MealGate) -> None:
+        """run() hands off to the owned LockWindow."""
+        with patch.object(gate._lock, "run") as mock_run:
+            gate.run()
+        mock_run.assert_called_once_with()
 
-    def test_grab_retry_without_log(self, gate: MealGate) -> None:
-        """An early blocked attempt reschedules without logging."""
-        gate.root.grab_set_global = MagicMock(side_effect=_FakeTclError)
-        gate.root.after = MagicMock()
-        gate._acquire_global_grab(attempt=1)
-        gate.root.after.assert_called_once()
+    def test_close_delegates_to_lock(self, gate: MealGate) -> None:
+        """close() hands off to the owned LockWindow."""
+        with patch.object(gate._lock, "close") as mock_close:
+            gate.close()
+        mock_close.assert_called_once_with()
 
 
 class TestDisplayReadiness:

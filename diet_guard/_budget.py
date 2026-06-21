@@ -30,8 +30,9 @@ import hmac
 import json
 import logging
 
+from gatelock.log_integrity import compute_entry_hmac
+
 from python_pkg.diet_guard._constants import BUDGET_FILE
-from python_pkg.shared.log_integrity import compute_entry_hmac
 
 _logger = logging.getLogger(__name__)
 
