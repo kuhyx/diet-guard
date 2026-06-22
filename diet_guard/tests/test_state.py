@@ -225,15 +225,51 @@ class TestBudgetViews:
         assert consumption_band() == "OVER BUDGET"
 
 
+class TestIdAndComponents:
+    """New per-entry fields the companion phone app's sync relies on."""
+
+    def test_entry_has_id(self) -> None:
+        """Every logged entry carries a UUID id."""
+        entry = log_meal("toast", _nut(150), slot=8)
+        assert isinstance(entry["id"], str)
+        assert entry["id"]
+
+    def test_ids_are_unique(self) -> None:
+        """Two entries never collide on id."""
+        first = log_meal("a", _nut(1), slot=8)
+        second = log_meal("b", _nut(1), slot=12)
+        assert first["id"] != second["id"]
+
+    def test_components_omitted_by_default(self) -> None:
+        """A single-food entry carries no components field."""
+        entry = log_meal("toast", _nut(150), slot=8)
+        assert "components" not in entry
+
+    def test_components_carried_through(self) -> None:
+        """A composite meal's component macros are stored on the entry."""
+        parts = [
+            {
+                "name": "chicken",
+                "kcal": 165.0,
+                "protein_g": 31.0,
+                "carbs_g": 0.0,
+                "fat_g": 3.6,
+                "grams": 100.0,
+            }
+        ]
+        entry = log_meal("dinner", _nut(165), slot=20, components=parts)
+        assert entry["components"] == parts
+
+
 class TestUndo:
-    """Removing the most recent entry."""
+    """Tombstoning the most recent entry."""
 
     def test_nothing_to_undo(self) -> None:
         """An empty day undoes to None."""
         assert undo_last_today() is None
 
     def test_undo_leaves_earlier_entries(self) -> None:
-        """Undo removes only the last entry when others remain."""
+        """Undo tombstones only the last entry when others remain."""
         log_meal("a", _nut(100), slot=8)
         log_meal("b", _nut(200), slot=12)
         removed = undo_last_today()
@@ -241,8 +277,61 @@ class TestUndo:
         assert removed["desc"] == "b"
         assert today_total_kcal() == 100.0
 
-    def test_undo_last_entry_clears_day(self) -> None:
-        """Undoing the only entry removes the day from the log."""
+    def test_undo_tombstones_in_place(self) -> None:
+        """Undoing the only entry keeps it on disk, marked deleted."""
         log_meal("a", _nut(100), slot=8)
         undo_last_today()
-        assert _state._read_raw_log() == {}
+        raw = _raw()
+        day = next(iter(raw))
+        assert len(raw[day]) == 1
+        assert raw[day][0]["deleted"] is True
+
+    def test_undo_tombstone_excluded_from_reads(self) -> None:
+        """A tombstoned entry no longer counts toward totals or slots."""
+        log_meal("a", _nut(100), slot=8)
+        undo_last_today()
+        assert today_total_kcal() == 0.0
+        assert today_entries() == []
+        assert logged_slots_today() == set()
+
+    def test_undo_re_signs_the_tombstone(self) -> None:
+        """The mutated (tombstoned) entry still carries a valid signature."""
+        log_meal("a", _nut(100), slot=8)
+        undo_last_today()
+        raw = _raw()
+        day = next(iter(raw))
+        assert "hmac" in raw[day][0]
+
+    def test_undo_unsigned_when_no_key(self) -> None:
+        """Re-signing a tombstone with no key available leaves it unsigned."""
+        log_meal("a", _nut(100), slot=8)
+        with patch.object(_state, "compute_entry_hmac", return_value=None):
+            undo_last_today()
+        raw = _raw()
+        day = next(iter(raw))
+        assert "hmac" not in raw[day][0]
+
+    def test_undo_skips_already_tombstoned(self) -> None:
+        """Undoing twice tombstones the prior entry, not the same one again."""
+        log_meal("a", _nut(100), slot=8)
+        log_meal("b", _nut(200), slot=12)
+        undo_last_today()
+        second = undo_last_today()
+        assert second is not None
+        assert second["desc"] == "a"
+
+    def test_undo_nothing_left_once_all_tombstoned(self) -> None:
+        """Once every entry today is tombstoned, undo returns None."""
+        log_meal("a", _nut(100), slot=8)
+        undo_last_today()
+        assert undo_last_today() is None
+
+
+class TestLoadLogSkipsTombstones:
+    """``load_log`` filters out deleted entries the same way as invalid ones."""
+
+    def test_day_with_only_a_tombstone_is_omitted(self) -> None:
+        """A day whose sole entry is tombstoned is dropped entirely."""
+        log_meal("a", _nut(100), slot=8)
+        undo_last_today()
+        assert load_log() == {}

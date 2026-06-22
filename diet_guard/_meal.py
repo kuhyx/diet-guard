@@ -63,3 +63,31 @@ def meal_total(items: Sequence[MealItem]) -> Nutrition:
         grams=round(sum((item.nutrition.grams for item in items), 0.0), 1),
         source=MEAL_SOURCE,
     )
+
+
+def item_to_component(item: MealItem) -> dict[str, object]:
+    """Return a composite meal's per-component log record for ``item``.
+
+    The food bank's own ``components`` field (see
+    :func:`diet_guard._foodbank.remember_meal`) stores only component
+    *names* -- it is rebuilt from the log, not the other way round. This
+    record carries the component's full macros so a bank rebuilt purely by
+    replaying the log (the companion phone app's sync model) can recover
+    each component's standalone nutrition, not just the composite's summed
+    total.
+
+    Args:
+        item: One component of a composite meal.
+
+    Returns:
+        A plain dict of the component's name and macros, suitable for the
+        ``components`` list passed to :func:`diet_guard._state.log_meal`.
+    """
+    return {
+        "name": item.name,
+        "kcal": item.nutrition.kcal,
+        "protein_g": item.nutrition.protein_g,
+        "carbs_g": item.nutrition.carbs_g,
+        "fat_g": item.nutrition.fat_g,
+        "grams": item.nutrition.grams,
+    }

@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import json
 import logging
 from typing import TYPE_CHECKING
+import uuid
 
 from gatelock.log_integrity import (
     compute_entry_hmac,
@@ -116,6 +117,8 @@ def log_meal(
     description: str,
     nutrition: Nutrition,
     slot: int | None = None,
+    *,
+    components: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     """Append a signed entry for ``description`` to today's log.
 
@@ -125,11 +128,17 @@ def log_meal(
         slot: The meal-slot hour this entry satisfies (e.g. ``12`` for the
             12:00 checkpoint).  When None the entry still counts toward the
             day's calories but does not mark any slot as logged.
+        components: For a composite (multi-item) meal, each component's own
+            name and macros.  Carried on the log entry itself -- not just the
+            food bank -- so a bank rebuilt purely by replaying the log (the
+            companion phone app's sync model) can recover every component's
+            standalone nutrition, not just the composite's summed total.
 
     Returns:
         The stored entry dict (carrying an ``hmac`` field when a key exists).
     """
     entry: dict[str, object] = {
+        "id": str(uuid.uuid4()),
         "time": now_local().isoformat(timespec="seconds"),
         "desc": description,
         "grams": nutrition.grams,
@@ -141,6 +150,8 @@ def log_meal(
     }
     if slot is not None:
         entry["slot"] = slot
+    if components is not None:
+        entry["components"] = list(components)
     signature = compute_entry_hmac(entry)
     if signature is not None:
         entry["hmac"] = signature
@@ -154,11 +165,21 @@ def log_meal(
 
 
 def load_log() -> DayLog:
-    """Return the log with only valid (untampered) entries retained."""
+    """Return the log with only valid, non-deleted entries retained.
+
+    A "deleted" entry is a tombstone left by :func:`undo_last_today`, not a
+    removal: it is kept on disk (and re-signed) rather than popped, so a sync
+    merge with another device can see the tombstone and not resurrect a
+    stale copy of the same entry.  Readers simply filter it out here.
+    """
     raw = _read_raw_log()
     verified: DayLog = {}
     for day, entries in raw.items():
-        kept = [entry for entry in entries if _entry_is_valid(entry)]
+        kept = [
+            entry
+            for entry in entries
+            if _entry_is_valid(entry) and not entry.get("deleted")
+        ]
         if kept:
             verified[day] = kept
     return verified
@@ -246,23 +267,34 @@ def consumption_band() -> str:
 
 
 def undo_last_today() -> dict[str, object] | None:
-    """Remove and return today's most recently logged entry, if any.
+    """Tombstone today's most recently logged, not-yet-undone entry.
 
-    Operates on the raw log so a mistaken entry can always be removed, even one
-    that would not pass verification.
+    Marks the entry ``deleted`` in place and re-signs it, rather than
+    physically removing it: a sync merge with another device only ever
+    *adds* entries it hasn't seen before, so a physical delete here would be
+    silently resurrected the next time that device's stale copy is pulled
+    back in.  The tombstone travels with the entry instead, and every reader
+    (:func:`load_log`, the food-bank rebuild) already skips it.
+
+    Operates on the raw log so a mistaken entry can always be undone, even
+    one that would not pass verification.
 
     Returns:
-        The removed entry, or None if nothing was logged today.
+        The tombstoned entry, or None if nothing undoable was logged today.
     """
     log = _read_raw_log()
     today = _today()
     entries = log.get(today)
     if not entries:
         return None
-    removed = entries.pop()
-    if entries:
-        log[today] = entries
-    else:
-        del log[today]
-    _write_log(log)
-    return removed
+    for entry in reversed(entries):
+        if entry.get("deleted"):
+            continue
+        entry["deleted"] = True
+        entry.pop("hmac", None)
+        signature = compute_entry_hmac(entry)
+        if signature is not None:
+            entry["hmac"] = signature
+        _write_log(log)
+        return entry
+    return None

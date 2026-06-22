@@ -17,7 +17,7 @@ from diet_guard._budget import BudgetError, daily_budget, protein_target_g
 from diet_guard._foodbank import remember_food, remember_meal
 from diet_guard._gatelock_nutrition import _GateNutrition
 from diet_guard._gatelock_ui import ERR, FG, UNIT_GRAMS
-from diet_guard._meal import MealItem, meal_total
+from diet_guard._meal import MealItem, item_to_component, meal_total
 from diet_guard._resolve import lookup_candidates
 from diet_guard._slots import slot_label
 from diet_guard._state import (
@@ -220,7 +220,12 @@ class _GateMealFlow(_GateNutrition):
         name = self._meal_name() or _DEFAULT_MEAL_NAME
         count = len(self._state.meal_items)
         total = remember_meal(name, list(self._state.meal_items))
-        log_meal(name, total, self._slot_for_log())
+        log_meal(
+            name,
+            total,
+            self._slot_for_log(),
+            components=[item_to_component(item) for item in self._state.meal_items],
+        )
         self._state.meal_items = []
         self._finish_slot(f"{name}: {total.kcal:g} kcal ({count} items)")
 
