@@ -22,11 +22,14 @@ from diet_guard._state import (
     log_meal,
     logged_slots_today,
     now_local,
+    read_raw_log,
     remaining_budget,
+    resign_entry,
     today_entries,
     today_total_kcal,
     today_total_macros,
     undo_last_today,
+    write_raw_log,
 )
 
 
@@ -335,3 +338,42 @@ class TestLoadLogSkipsTombstones:
         log_meal("a", _nut(100), slot=8)
         undo_last_today()
         assert load_log() == {}
+
+
+class TestRawLogAccess:
+    """Public raw read/write, used by the sync orchestration."""
+
+    def test_read_raw_log_includes_tombstones(self) -> None:
+        """Unlike load_log, read_raw_log keeps a tombstoned entry."""
+        log_meal("a", _nut(100), slot=8)
+        undo_last_today()
+        raw = read_raw_log()
+        day = next(iter(raw))
+        assert raw[day][0]["deleted"] is True
+
+    def test_write_raw_log_roundtrips(self) -> None:
+        """write_raw_log persists exactly what read_raw_log later returns."""
+        log = {"2026-06-22": [{"id": "x", "time": "2026-06-22T08:00:00+02:00"}]}
+        write_raw_log(log)
+        assert read_raw_log() == log
+
+
+class TestResignEntry:
+    """resign_entry recomputes the hmac so a merged entry validates again."""
+
+    def test_strips_and_recomputes_signature(self) -> None:
+        """A re-signed entry's hmac changes but verifies against the key."""
+        entry = log_meal("a", _nut(100), slot=8)
+        tampered = dict(entry, kcal=999.0)
+        resigned = resign_entry(tampered)
+        assert resigned["hmac"] != entry["hmac"]
+        write_raw_log({"2026-06-22": [resigned]})
+        with patch.object(_state, "_today", return_value="2026-06-22"):
+            assert today_entries() == [resigned]
+
+    def test_no_op_signature_wise_when_no_key_available(self) -> None:
+        """Without an HMAC key, resign_entry produces no hmac field."""
+        entry = log_meal("a", _nut(100), slot=8)
+        with patch.object(_state, "compute_entry_hmac", return_value=None):
+            resigned = resign_entry(entry)
+        assert "hmac" not in resigned

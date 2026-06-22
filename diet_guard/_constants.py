@@ -63,3 +63,17 @@ GATE_SLOT_INTERVAL_HOURS: int = 4  # slots at 08:00, 12:00, 16:00, 20:00
 GATE_EATING_END_HOUR: int = 22  # exclusive (22:00)
 # flock single-instance guard: stops a timer from stacking lock windows.
 GATE_LOCK_FILE: Path = DATA_DIR / ".gate.lock"
+
+# --- Sync (cross-device log merge) ------------------------------------------
+# GitHub is used purely as dumb file storage via the REST Contents API (not a
+# git clone) -- mirrors ~/todo's sync transport. Each device pushes its own
+# full current log as one file under devices/<id>/food_log.json; merging
+# happens client-side (see _sync_merge.py), never via git.
+SYNC_REPO_OWNER: str = "kuhyx"
+SYNC_REPO_NAME: str = "diet-guard-sync"
+SYNC_DEVICE_ID: str = "pc"
+# A fine-grained GitHub PAT, scoped to just SYNC_REPO_NAME's contents.  The
+# user creates this once via github.com (see CLAUDE.md) and saves it here,
+# mode 600.  Never committed -- this path is outside the repo entirely.
+SYNC_TOKEN_FILE: Path = Path.home() / ".config" / "diet_guard" / "sync_token"
+SYNC_TIMEOUT_SECONDS: float = 10.0

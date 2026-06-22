@@ -266,6 +266,51 @@ def consumption_band() -> str:
     return "on track"
 
 
+def read_raw_log() -> DayLog:
+    """Return the log exactly as stored, including tombstoned/invalid entries.
+
+    Public counterpart of :func:`_read_raw_log`, for the sync orchestration
+    (:mod:`diet_guard._sync`), which must see tombstones to merge them (the
+    filtered :func:`load_log` drops them) and must not discard an entry that
+    fails verification just because a phone-origin copy was never signed.
+    """
+    return _read_raw_log()
+
+
+def write_raw_log(log: DayLog) -> None:
+    """Persist ``log`` verbatim, overwriting the file on disk.
+
+    Public counterpart of :func:`_write_log`, for :mod:`diet_guard._sync` to
+    write back a merged log after re-signing it.
+    """
+    _write_log(log)
+
+
+def resign_entry(entry: dict[str, object]) -> dict[str, object]:
+    """Return a copy of ``entry`` with a freshly computed ``hmac``.
+
+    Strips any existing signature first, mirroring :func:`undo_last_today`:
+    a signature computed on another device (or none, if the phone -- which
+    never holds the shared key -- produced this entry) cannot be trusted
+    as-is, and recomputing is the only way :func:`_entry_is_valid` will
+    accept it back on the next read.  A no-op (signature-wise) when no HMAC
+    key is available locally, matching :func:`log_meal`'s degrade-gracefully
+    behavior.
+
+    Args:
+        entry: A log entry, signed or not.
+
+    Returns:
+        A new dict equal to ``entry`` except for its ``hmac`` field.
+    """
+    resigned = dict(entry)
+    resigned.pop("hmac", None)
+    signature = compute_entry_hmac(resigned)
+    if signature is not None:
+        resigned["hmac"] = signature
+    return resigned
+
+
 def undo_last_today() -> dict[str, object] | None:
     """Tombstone today's most recently logged, not-yet-undone entry.
 

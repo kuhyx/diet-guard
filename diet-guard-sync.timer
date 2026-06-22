@@ -1,0 +1,14 @@
+[Unit]
+Description=Periodically sync the Diet Guard log with other devices
+
+[Timer]
+# Every 15 minutes -- matches the phone app's WorkManager periodic sync (15
+# min is also Android's WorkManager periodic floor), so both sides converge
+# on roughly the same cadence. Persistent catches a run missed while the
+# machine was suspended; OnCalendar re-arms every period regardless (see
+# diet-guard-gate.timer's comment for why OnCalendar over OnBootSec here too).
+OnCalendar=*-*-* *:00/15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

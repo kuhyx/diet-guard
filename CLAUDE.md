@@ -29,6 +29,34 @@ catch-up run at session start can beat the display manager writing
 `~/.Xauthority`) and why a real fix lives in Python (`wait_for_display()`)
 rather than in the unit file.
 
+## Cross-device sync
+
+`diet-guard-sync.timer` fires `python -m diet_guard sync` every ~15 minutes
+(headless, no `DISPLAY` needed — separate from the gate timer on purpose, see
+the unit file's comment for why). It pulls every other device's pushed log
+from the private `kuhyx/diet-guard-sync` GitHub repo (used as dumb file
+storage via the REST Contents API, not a git clone), merges with the local
+log (`_sync_merge.merge_logs`: union by `id`, tombstone wins, legacy
+`(time, desc)` dedup for pre-`id` entries), **re-signs every persisted entry**
+regardless of origin, rebuilds the food bank, then pushes this device's own
+merged log back up.
+
+Re-signing on every merge (not just phone-origin entries) is the
+non-negotiable step: `_entry_is_valid()` drops any unsigned entry once a
+machine has the shared HMAC key, and the phone never holds that key, so
+skipping the re-sign would silently lose every phone-logged meal on the very
+next read.
+
+Requires a one-time manual setup `install.sh` does **not** automate: create a
+fine-grained GitHub PAT scoped to `diet-guard-sync`'s contents (read/write),
+then save it to `~/.config/diet_guard/sync_token`, mode 600. Until that file
+exists, every sync tick is a harmless no-op that logs `sync not configured`.
+
+The food bank stays *derived*, never synced: only `food_log.json` round-trips
+through GitHub, and each device rebuilds its own `food_bank.json` locally by
+replaying the merged log (`_foodbank.rebuild_food_bank`) — this is what avoids
+needing CRDT counter-merge logic for a food's `count`.
+
 ## Production dependency installation — read this before adding any dependency
 
 `diet-guard-gate.service` runs `/usr/bin/python` directly — **not** a venv.
@@ -61,7 +89,7 @@ silently does **not** reach the running service.
 ## Operational gotchas
 
 - **The budget file is sealed immutable.** `~/.local/share/diet_guard/.budget`
-  gets `chattr +i` after `init` (see `install.sh` step 5). This is the actual
+  gets `chattr +i` after `init` (see `install.sh` step 6). This is the actual
   tamper-resistance mechanism — the budget can't be casually edited to "make
   room" once locked. To intentionally change it: `sudo chattr -i` the file,
   re-run `python -m diet_guard init`, then re-lock.
@@ -71,13 +99,16 @@ silently does **not** reach the running service.
 - **State lives entirely under `~/.local/share/diet_guard/`** — no
   cross-repo file coupling (unlike wake_alarm, which reads
   `~/screen-locker/screen_locker/workout_log.json`). Safe to reason about in
-  isolation.
+  isolation, with one exception: `diet-guard-sync.timer` reads/writes the
+  private `kuhyx/diet-guard-sync` GitHub repo (see "Cross-device sync" above)
+  and `~/.config/diet_guard/sync_token`.
 
 ## Commands
 
 - Run tests: `python -m pytest diet_guard/tests/ --cov=diet_guard --cov-branch --cov-fail-under=100`
 - Lint: `pre-commit run --all-files`
 - Test the lock manually (safe, closeable): `python -m diet_guard gate --demo`
+- Run one sync tick manually: `python -m diet_guard sync`
 - Install for production: `bash install.sh`
 
 ## Do NOT

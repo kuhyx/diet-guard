@@ -2,8 +2,9 @@
 
 Three safety nets run for every test:
 
-* ``_isolate_state`` redirects the food log, sealed budget, and gate lock into
-  ``tmp_path`` so a test can never read or clobber the real ``~/.local/share``.
+* ``_isolate_state`` redirects the food log, sealed budget, gate lock, and
+  sync token into ``tmp_path`` so a test can never read or clobber the real
+  ``~/.local/share`` or ``~/.config/diet_guard``.
 * ``_block_real_tk`` swaps ``tk`` and the ``GateRoot`` window class inside
   ``_gatelock`` for mocks, so no test can open a real fullscreen window or grab
   the keyboard even if it forgets to.
@@ -60,6 +61,10 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
         patch(
             "diet_guard._gatelock.GATE_LOCK_FILE",
             tmp_path / ".gate.lock",
+        ),
+        patch(
+            "diet_guard._sync.SYNC_TOKEN_FILE",
+            tmp_path / "sync_token",
         ),
     ):
         yield

@@ -1,0 +1,13 @@
+[Unit]
+Description=Diet Guard cross-device log sync (GitHub-backed)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Headless: no DISPLAY/XAUTHORITY needed, unlike diet-guard-gate.service.
+# Deliberately a separate unit from the gate, not piggybacked on its tick:
+# the gate is a *blocking* oneshot that holds the lock open until a meal is
+# logged, so running sync on the same schedule would mean sync silently
+# stalls for as long as a lock is showing.
+ExecStart=/usr/bin/python -m diet_guard sync

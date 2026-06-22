@@ -31,14 +31,10 @@ from diet_guard._budget import (
     seal_budget,
     unlock_command,
 )
+from diet_guard._cli_gate import cmd_gate
+from diet_guard._cli_sync import cmd_sync, register_sync_subparser
 from diet_guard._foodbank import remember_food
-from diet_guard._gate import due_slots, gate_is_due
-from diet_guard._gatelock import (
-    MealGate,
-    acquire_gate_lock,
-    release_gate_lock,
-)
-from diet_guard._gatelock_support import wait_for_display
+from diet_guard._gate import due_slots
 from diet_guard._portions import (
     DEFAULT_ITEM_GRAMS,
     estimate_unit_grams,
@@ -180,6 +176,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 
     sub.add_parser("status", help="Show today's calories and budget band.")
     sub.add_parser("undo", help="Remove today's most recent entry.")
+    register_sync_subparser(sub)
 
     gate = sub.add_parser(
         "gate",
@@ -425,46 +422,6 @@ def _cmd_undo() -> int:
     return 0
 
 
-def _cmd_gate(*, check: bool, demo: bool) -> int:
-    """Run the log-to-unlock gate.
-
-    Three modes: ``--check`` is a headless decision (no window) whose exit code
-    a timer reads; ``--demo`` always shows a safe demo window; bare ``gate``
-    shows the real lock only when one is due.  A flock guard stops a second
-    window from stacking on top of the first, and a window-opening mode first
-    waits for the X display so a session-start launch never crashes unshown.
-
-    Args:
-        check: Headless mode -- print and return an exit code, open no window.
-        demo: Use safe demo mode (local grab + close button) for the window.
-
-    Returns:
-        For ``--check``: 0 if not due, 1 if a lock is due.  Otherwise 0.
-    """
-    if check:
-        due = gate_is_due()
-        _emit("due (a lock is warranted)" if due else "ok (no lock needed)")
-        return 1 if due else 0
-    if not demo and not gate_is_due():
-        _emit("ok - no lock needed right now.")
-        return 0
-    handle = acquire_gate_lock()
-    if handle is None:
-        _emit("the gate is already running.")
-        return 0
-    try:
-        # At session start the timer can fire before the X display/auth cookie
-        # is ready; wait it out so the window opens instead of crashing on a
-        # "couldn't connect to display" TclError (see _gatelock.wait_for_display).
-        if not wait_for_display():
-            _emit("display not ready yet; will retry on the next timer tick.")
-            return 0
-        MealGate(demo_mode=demo).run()
-    finally:
-        release_gate_lock(handle)
-    return 0
-
-
 def main(argv: list[str] | None = None) -> int:
     """Dispatch a diet_guard subcommand.
 
@@ -492,6 +449,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_ate(args.description, portion, macros)
     if args.command == "status":
         return _cmd_status()
+    if args.command == "sync":
+        return cmd_sync(_emit)
     if args.command == "gate":
-        return _cmd_gate(check=args.check, demo=args.demo)
+        return cmd_gate(_emit, check=args.check, demo=args.demo)
     return _cmd_undo()

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import io
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from diet_guard import _cli
 from diet_guard._budget import (
@@ -209,73 +209,26 @@ class TestUndo:
 
 
 class TestGate:
-    """The gate subcommand's three modes."""
+    """Dispatch wiring for the gate subcommand.
 
-    def test_check_due(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """--check exits 1 and announces a due lock."""
-        with patch.object(_cli, "gate_is_due", return_value=True):
-            assert main(["gate", "--check"]) == 1
-        assert "due" in capsys.readouterr().out
+    cmd_gate()'s own branches are tested directly in test_cli_gate.py,
+    where it lives after the 500-line split.
+    """
 
-    def test_check_not_due(self) -> None:
-        """--check exits 0 when no lock is needed."""
-        with patch.object(_cli, "gate_is_due", return_value=False):
-            assert main(["gate", "--check"]) == 0
-
-    def test_demo_opens_window(self) -> None:
-        """--demo always builds and runs the gate window."""
-        gate = MagicMock()
-        with (
-            patch.object(_cli, "MealGate", return_value=gate) as factory,
-            patch.object(_cli, "acquire_gate_lock", return_value=MagicMock()),
-            patch.object(_cli, "release_gate_lock"),
-            patch.object(_cli, "wait_for_display", return_value=True),
-        ):
+    def test_dispatches_to_cmd_gate(self) -> None:
+        with patch.object(_cli, "cmd_gate", return_value=0) as mock_cmd_gate:
             assert main(["gate", "--demo"]) == 0
-        factory.assert_called_once_with(demo_mode=True)
-        gate.run.assert_called_once()
+        mock_cmd_gate.assert_called_once_with(_cli._emit, check=False, demo=True)
 
-    def test_bare_gate_not_due(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """A bare gate with nothing due just reports and exits."""
-        with patch.object(_cli, "gate_is_due", return_value=False):
-            assert main(["gate"]) == 0
-        assert "no lock needed" in capsys.readouterr().out
 
-    def test_bare_gate_due_opens_window(self) -> None:
-        """A bare gate that is due opens the real window."""
-        gate = MagicMock()
-        with (
-            patch.object(_cli, "gate_is_due", return_value=True),
-            patch.object(_cli, "MealGate", return_value=gate),
-            patch.object(_cli, "acquire_gate_lock", return_value=MagicMock()),
-            patch.object(_cli, "release_gate_lock"),
-            patch.object(_cli, "wait_for_display", return_value=True),
-        ):
-            assert main(["gate"]) == 0
-        gate.run.assert_called_once()
+class TestSync:
+    """Dispatch wiring for the sync subcommand.
 
-    def test_gate_already_running(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """A held single-instance lock means a second window is not opened."""
-        with (
-            patch.object(_cli, "gate_is_due", return_value=True),
-            patch.object(_cli, "acquire_gate_lock", return_value=None),
-            patch.object(_cli, "MealGate") as factory,
-        ):
-            assert main(["gate"]) == 0
-        factory.assert_not_called()
-        assert "already running" in capsys.readouterr().out
+    cmd_sync()'s own branches (success/SyncError/GitHubSyncError) are tested
+    directly in test_cli_sync.py, where it lives after the 500-line split.
+    """
 
-    def test_gate_due_but_display_not_ready_defers(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A due gate whose display never comes up defers without a window."""
-        with (
-            patch.object(_cli, "gate_is_due", return_value=True),
-            patch.object(_cli, "acquire_gate_lock", return_value=MagicMock()),
-            patch.object(_cli, "release_gate_lock"),
-            patch.object(_cli, "wait_for_display", return_value=False),
-            patch.object(_cli, "MealGate") as factory,
-        ):
-            assert main(["gate"]) == 0
-        factory.assert_not_called()
-        assert "display not ready" in capsys.readouterr().out
+    def test_dispatches_to_cmd_sync(self) -> None:
+        with patch.object(_cli, "cmd_sync", return_value=0) as mock_cmd_sync:
+            assert main(["sync"]) == 0
+        mock_cmd_sync.assert_called_once_with(_cli._emit)

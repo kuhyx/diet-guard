@@ -164,19 +164,22 @@ def remember_meal(name: str, items: Sequence[MealItem]) -> Nutrition:
     return total
 
 
-def _upsert(
+def _apply_upsert(
+    bank: dict[str, BankRecord],
     description: str,
     nutrition: Nutrition,
     *,
     components: list[str] | None,
 ) -> None:
-    """Insert or refresh one bank record, bumping its use count.
+    """Insert or refresh one record in ``bank`` in place, bumping its count.
 
-    Shared by :func:`remember_food` (a single food) and :func:`remember_meal`
-    (a composite, which additionally records its ``components``).  A blank
+    Pure (no I/O), so it is shared by the disk-backed :func:`_upsert` and by
+    :func:`rebuild_food_bank`, which replays a whole log into a fresh
+    in-memory bank without a read/write round trip per entry.  A blank
     description is ignored, so an unnamed entry is never stored.
 
     Args:
+        bank: The in-memory bank to update.
         description: The food or meal name (its normalized form is the key).
         nutrition: The macros to store.
         components: Component names for a composite meal, or None for a food.
@@ -184,7 +187,6 @@ def _upsert(
     key = _normalize(description)
     if not key:
         return
-    bank = _read_bank()
     previous = bank.get(key, {})
     count = as_float(previous.get("count")) + 1
     record: BankRecord = {
@@ -199,7 +201,95 @@ def _upsert(
     if components is not None:
         record["components"] = list(components)
     bank[key] = record
+
+
+def _upsert(
+    description: str,
+    nutrition: Nutrition,
+    *,
+    components: list[str] | None,
+) -> None:
+    """Insert or refresh one bank record on disk, bumping its use count.
+
+    Shared by :func:`remember_food` (a single food) and :func:`remember_meal`
+    (a composite, which additionally records its ``components``).
+
+    Args:
+        description: The food or meal name (its normalized form is the key).
+        nutrition: The macros to store.
+        components: Component names for a composite meal, or None for a food.
+    """
+    bank = _read_bank()
+    _apply_upsert(bank, description, nutrition, components=components)
     _write_bank(bank)
+
+
+def _entry_nutrition(entry: dict[str, object], *, source: str) -> Nutrition:
+    """Build a :class:`Nutrition` from a raw log entry's macro fields."""
+    return Nutrition(
+        kcal=as_float(entry.get("kcal")),
+        protein_g=as_float(entry.get("protein_g")),
+        carbs_g=as_float(entry.get("carbs_g")),
+        fat_g=as_float(entry.get("fat_g")),
+        grams=as_float(entry.get("grams")),
+        source=source,
+    )
+
+
+def rebuild_food_bank(log: dict[str, list[dict[str, object]]]) -> dict[str, BankRecord]:
+    """Rebuild the bank from scratch by replaying ``log``'s entries, then persist it.
+
+    Replays in a fixed, device-independent order (by ``time`` then ``id``),
+    so two devices that converge on the same merged log also converge on the
+    same bank -- this is what lets the food bank stay *derived*, never
+    synced, with no counter-merge (CRDT) logic needed for ``count``.  Mirrors
+    the Dart port's ``FoodBankService.rebuild`` exactly, including the
+    composite-meal branch (banks each component, then the composite itself).
+
+    Deleted (tombstoned) entries are skipped entirely, same as
+    :func:`diet_guard._state.load_log`.
+
+    Args:
+        log: A full log keyed by date, e.g. from
+            :func:`diet_guard._state.read_raw_log` after a sync merge.
+
+    Returns:
+        The freshly rebuilt bank (also written to disk).
+    """
+    entries = sorted(
+        (
+            entry
+            for day_entries in log.values()
+            for entry in day_entries
+            if not entry.get("deleted")
+        ),
+        key=lambda entry: (str(entry.get("time", "")), str(entry.get("id", ""))),
+    )
+    bank: dict[str, BankRecord] = {}
+    for entry in entries:
+        components = entry.get("components")
+        component_names: list[str] | None = None
+        if isinstance(components, list):
+            component_names = []
+            for component in components:
+                if not isinstance(component, dict):
+                    continue
+                name = str(component.get("name", ""))
+                component_names.append(name)
+                _apply_upsert(
+                    bank,
+                    name,
+                    _entry_nutrition(component, source="food bank"),
+                    components=None,
+                )
+        _apply_upsert(
+            bank,
+            str(entry.get("desc", "")),
+            _entry_nutrition(entry, source=str(entry.get("source", "manual"))),
+            components=component_names,
+        )
+    _write_bank(bank)
+    return bank
 
 
 def lookup_food(description: str) -> Nutrition | None:
