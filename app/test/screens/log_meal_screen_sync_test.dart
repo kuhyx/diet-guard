@@ -1,0 +1,131 @@
+// Covers LogMealScreen's auto-sync: triggered on launch and on every
+// AppLifecycleState change, best-effort/silent regardless of outcome.
+
+import 'dart:io';
+
+import 'package:diet_guard_app/screens/log_meal_screen.dart';
+import 'package:diet_guard_app/services/foodbank_service.dart';
+import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../fake_secure_storage.dart';
+
+void main() {
+  late Directory tempDir;
+
+  setUp(() async {
+    tempDir = await Directory.systemTemp.createTemp('diet_guard_autosync_');
+    LogStorageService.resetForTesting(testDir: tempDir);
+    FoodBankService.resetForTesting(testDir: tempDir);
+  });
+
+  tearDown(() async {
+    LogStorageService.resetForTesting();
+    FoodBankService.resetForTesting();
+    await tempDir.delete(recursive: true);
+  });
+
+  Future<void> settle(WidgetTester tester) async {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+    'does not push when sync is unconfigured (defaults to off)',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      installFakeSecureStorage();
+      var puts = 0;
+      final mock = MockClient((req) async {
+        if (req.method == 'PUT') puts++;
+        return http.Response('', 404);
+      });
+
+      await tester.runAsync(() async {
+        await tester.pumpWidget(
+          MaterialApp(home: LogMealScreen(httpClient: mock)),
+        );
+        await settle(tester);
+
+        expect(puts, 0);
+      });
+    },
+  );
+
+  testWidgets('pushes on launch when sync is configured', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'sync.owner': 'o',
+      'sync.repo': 'r',
+    });
+    installFakeSecureStorage(initial: {'sync.token': 't'});
+    var puts = 0;
+    final mock = MockClient((req) async {
+      if (req.method == 'PUT') puts++;
+      return http.Response('', 404);
+    });
+
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        MaterialApp(home: LogMealScreen(httpClient: mock)),
+      );
+      await settle(tester);
+
+      expect(puts, 1);
+    });
+  });
+
+  testWidgets('pushes again when the app is paused', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'sync.owner': 'o',
+      'sync.repo': 'r',
+    });
+    installFakeSecureStorage(initial: {'sync.token': 't'});
+    var puts = 0;
+    final mock = MockClient((req) async {
+      if (req.method == 'PUT') puts++;
+      return http.Response('', 404);
+    });
+
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        MaterialApp(home: LogMealScreen(httpClient: mock)),
+      );
+      await settle(tester);
+      expect(puts, 1); // launch
+
+      // Flutter's AppLifecycleListener enforces a strict transition graph
+      // (resumed -> inactive -> hidden -> paused -> ...); jumping straight
+      // from resumed to paused is the one direct transition it allows.
+      WidgetsBinding.instance.handleAppLifecycleStateChanged(
+        AppLifecycleState.paused,
+      );
+      await settle(tester);
+      expect(puts, 2);
+    });
+  });
+
+  testWidgets('swallows a sync failure without crashing the screen', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'sync.owner': 'o',
+      'sync.repo': 'r',
+    });
+    installFakeSecureStorage(initial: {'sync.token': 't'});
+    final mock = MockClient((_) async => http.Response('boom', 500));
+
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        MaterialApp(home: LogMealScreen(httpClient: mock)),
+      );
+      await settle(tester);
+
+      expect(find.byType(LogMealScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+}

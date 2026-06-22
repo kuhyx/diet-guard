@@ -4,6 +4,7 @@ import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/screens/photo_viewer_screen.dart';
+import 'package:diet_guard_app/screens/settings_screen.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/photo_attach_service.dart';
@@ -140,6 +141,24 @@ void main() {
       await settle(tester);
 
       expect(find.byType(HistoryScreen), findsOneWidget);
+    });
+  });
+
+  testWidgets('the settings icon navigates to SettingsScreen', (tester) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+      await settle(tester);
+
+      // SettingsScreen briefly shows a perpetually-animating
+      // CircularProgressIndicator while its settings load; pumpAndSettle
+      // never settles against that, so pump explicit frames instead (see
+      // history_screen_test.dart's note on the same pitfall).
+      await tester.tap(find.byIcon(Icons.settings));
+      await tester.pump();
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await tester.pump();
+
+      expect(find.byType(SettingsScreen), findsOneWidget);
     });
   });
 
