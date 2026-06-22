@@ -229,6 +229,7 @@ class TestGate:
             patch.object(_cli, "MealGate", return_value=gate) as factory,
             patch.object(_cli, "acquire_gate_lock", return_value=MagicMock()),
             patch.object(_cli, "release_gate_lock"),
+            patch.object(_cli, "wait_for_display", return_value=True),
         ):
             assert main(["gate", "--demo"]) == 0
         factory.assert_called_once_with(demo_mode=True)
@@ -248,6 +249,7 @@ class TestGate:
             patch.object(_cli, "MealGate", return_value=gate),
             patch.object(_cli, "acquire_gate_lock", return_value=MagicMock()),
             patch.object(_cli, "release_gate_lock"),
+            patch.object(_cli, "wait_for_display", return_value=True),
         ):
             assert main(["gate"]) == 0
         gate.run.assert_called_once()
