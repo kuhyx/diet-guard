@@ -2,23 +2,118 @@ import 'dart:io';
 
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
+import 'package:diet_guard_app/screens/history_screen.dart';
+import 'package:diet_guard_app/screens/photo_viewer_screen.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/photo_attach_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
+
+/// Returns a fixed [XFile] without touching any real platform channel.
+class _FakeImagePickerPlatform extends ImagePickerPlatform {
+  _FakeImagePickerPlatform(this._result);
+
+  final XFile? _result;
+
+  @override
+  Future<XFile?> getImageFromSource({
+    required ImageSource source,
+    ImagePickerOptions options = const ImagePickerOptions(),
+  }) async => _result;
+}
+
+/// A minimal valid 1x1 transparent PNG, so the thumbnail preview can decode
+/// it as a real image instead of throwing on bogus bytes.
+const List<int> _onePixelPng = [
+  0x89,
+  0x50,
+  0x4E,
+  0x47,
+  0x0D,
+  0x0A,
+  0x1A,
+  0x0A,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x48,
+  0x44,
+  0x52,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x08,
+  0x06,
+  0x00,
+  0x00,
+  0x00,
+  0x1F,
+  0x15,
+  0xC4,
+  0x89,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x44,
+  0x41,
+  0x54,
+  0x78,
+  0x9C,
+  0x62,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x05,
+  0x00,
+  0x01,
+  0x0D,
+  0x0A,
+  0x2D,
+  0xB4,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x49,
+  0x45,
+  0x4E,
+  0x44,
+  0xAE,
+  0x42,
+  0x60,
+  0x82,
+];
 
 void main() {
   late Directory tempDir;
+  late ImagePickerPlatform originalImagePickerPlatform;
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_screen_');
     LogStorageService.resetForTesting(testDir: tempDir);
     FoodBankService.resetForTesting(testDir: tempDir);
+    PhotoAttachService.resetForTesting(testDir: tempDir);
+    originalImagePickerPlatform = ImagePickerPlatform.instance;
   });
 
   tearDown(() async {
     LogStorageService.resetForTesting();
     FoodBankService.resetForTesting();
+    PhotoAttachService.resetForTesting();
+    ImagePickerPlatform.instance = originalImagePickerPlatform;
     await tempDir.delete(recursive: true);
   });
 
@@ -36,8 +131,21 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('logging a manually-typed meal persists it as source manual',
-      (tester) async {
+  testWidgets('the history icon navigates to HistoryScreen', (tester) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+      await settle(tester);
+
+      await tester.tap(find.byIcon(Icons.history));
+      await settle(tester);
+
+      expect(find.byType(HistoryScreen), findsOneWidget);
+    });
+  });
+
+  testWidgets('logging a manually-typed meal persists it as source manual', (
+    tester,
+  ) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
       await settle(tester);
@@ -50,6 +158,7 @@ void main() {
       await tester.enterText(find.byType(TextField).at(5), '3');
       await settle(tester);
 
+      await tester.ensureVisible(logMealButton);
       await tester.tap(logMealButton);
       await settle(tester);
 
@@ -65,6 +174,7 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
       await settle(tester);
 
+      await tester.ensureVisible(logMealButton);
       await tester.tap(logMealButton);
       await settle(tester);
 
@@ -90,11 +200,11 @@ void main() {
         await tester.enterText(find.byType(TextField).at(6), '150');
         await settle(tester);
 
+        await tester.ensureVisible(logMealButton);
         await tester.tap(logMealButton);
         await settle(tester);
 
-        final entry =
-            (await LogStorageService.instance.todayEntries()).single;
+        final entry = (await LogStorageService.instance.todayEntries()).single;
         expect(entry.kcal, 300);
         expect(entry.proteinG, 15);
         expect(entry.carbsG, 30);
@@ -130,6 +240,7 @@ void main() {
         // The empty-query suggestion list shows the only banked food.
         await tester.tap(find.text('seeded food'));
         await settle(tester);
+        await tester.ensureVisible(logMealButton);
         await tester.tap(logMealButton);
         await settle(tester);
 
@@ -142,6 +253,7 @@ void main() {
         await settle(tester);
         await tester.enterText(find.byType(TextField).at(1), '999');
         await settle(tester);
+        await tester.ensureVisible(logMealButton);
         await tester.tap(logMealButton);
         await settle(tester);
 
@@ -152,4 +264,85 @@ void main() {
       });
     },
   );
+
+  testWidgets(
+    'attaching a photo persists its path on the logged entry, and removing '
+    'it before logging clears it again',
+    (tester) async {
+      await tester.runAsync(() async {
+        // A real (1x1, transparent) PNG, not an arbitrary byte sequence --
+        // the thumbnail preview decodes this file as an actual image, and a
+        // bogus payload throws inside the image codec rather than failing
+        // cleanly.
+        final source = File('${tempDir.path}/source.jpg')
+          ..writeAsBytesSync(_onePixelPng);
+        ImagePickerPlatform.instance = _FakeImagePickerPlatform(
+          XFile(source.path),
+        );
+
+        await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+        await settle(tester);
+
+        await tester.enterText(find.byType(TextField).at(0), 'snack');
+        await settle(tester);
+
+        await tester.tap(find.text('Attach photo'));
+        await settle(tester);
+        await tester.tap(find.text('Choose from gallery'));
+        await settle(tester);
+
+        expect(find.text('Remove photo'), findsOneWidget);
+
+        await tester.ensureVisible(logMealButton);
+        await tester.tap(logMealButton);
+        await settle(tester);
+
+        final entry = (await LogStorageService.instance.todayEntries()).single;
+        expect(entry.imagePath, isNotNull);
+        expect(entry.imagePath, startsWith('${tempDir.path}/images/'));
+        expect(File(entry.imagePath!).readAsBytesSync(), _onePixelPng);
+
+        await tester.enterText(find.byType(TextField).at(0), 'snack two');
+        await settle(tester);
+        await tester.tap(find.text('Attach photo'));
+        await settle(tester);
+        await tester.tap(find.text('Choose from gallery'));
+        await settle(tester);
+        await tester.tap(find.text('Remove photo'));
+        await settle(tester);
+        await tester.ensureVisible(logMealButton);
+        await tester.tap(logMealButton);
+        await settle(tester);
+
+        final secondEntry =
+            (await LogStorageService.instance.todayEntries()).last;
+        expect(secondEntry.imagePath, isNull);
+      });
+    },
+  );
+
+  testWidgets('tapping the attached-photo thumbnail opens the full viewer', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      final source = File('${tempDir.path}/source.jpg')
+        ..writeAsBytesSync(_onePixelPng);
+      ImagePickerPlatform.instance = _FakeImagePickerPlatform(
+        XFile(source.path),
+      );
+
+      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+      await settle(tester);
+
+      await tester.tap(find.text('Attach photo'));
+      await settle(tester);
+      await tester.tap(find.text('Choose from gallery'));
+      await settle(tester);
+
+      await tester.tap(find.byType(Image));
+      await settle(tester);
+
+      expect(find.byType(PhotoViewerScreen), findsOneWidget);
+    });
+  });
 }

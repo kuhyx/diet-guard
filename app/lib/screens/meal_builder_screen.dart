@@ -8,6 +8,7 @@ import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
+import 'package:diet_guard_app/widgets/photo_attach_field.dart';
 import 'package:flutter/material.dart';
 
 /// A screen for building and logging a multi-item meal as one composite
@@ -26,6 +27,7 @@ class _MealBuilderScreenState extends State<MealBuilderScreen> {
   final MacroControllers _macros = MacroControllers();
   final List<MealItem> _items = [];
   String? _status;
+  String? _imagePath;
 
   @override
   void dispose() {
@@ -77,6 +79,7 @@ class _MealBuilderScreenState extends State<MealBuilderScreen> {
       total,
       slot: slot,
       components: components,
+      imagePath: _imagePath,
     );
     final log = await LogStorageService.instance.readLog();
     await FoodBankService.instance.rebuildAndPersist(log);
@@ -118,6 +121,11 @@ class _MealBuilderScreenState extends State<MealBuilderScreen> {
             ),
             const SizedBox(height: 8),
             MacroInputRow(controllers: _macros),
+            const SizedBox(height: 12),
+            PhotoAttachField(
+              imagePath: _imagePath,
+              onChanged: (path) => setState(() => _imagePath = path),
+            ),
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,

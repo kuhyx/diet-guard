@@ -159,6 +159,24 @@ class LogStorageService {
     return entries.where((e) => !e.deleted).toList();
   }
 
+  /// Returns every non-tombstoned entry across all days, newest first.
+  ///
+  /// Backs the history screen -- the only place that needs to see more than
+  /// "today".
+  Future<List<FoodEntry>> allEntriesNewestFirst() async {
+    final log = await readLog();
+    final entries = [
+      for (final dayEntries in log.values)
+        ...dayEntries.where((e) => !e.deleted),
+    ]..sort((a, b) {
+      final aTime = DateTime.tryParse(a.time);
+      final bTime = DateTime.tryParse(b.time);
+      if (aTime == null || bTime == null) return 0;
+      return bTime.compareTo(aTime);
+    });
+    return entries;
+  }
+
   /// Returns today's total calories, mirrors `_state.today_total_kcal`.
   Future<double> todayTotalKcal() async {
     final entries = await todayEntries();

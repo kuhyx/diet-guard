@@ -174,4 +174,58 @@ void main() {
       expect(await LogStorageService.instance.loggedSlotsToday(), {8});
     });
   });
+
+  group('allEntriesNewestFirst', () {
+    const oldest = FoodEntry(
+      id: 'oldest',
+      time: '2026-06-01T08:00:00+02:00',
+      desc: 'oldest',
+      grams: 100,
+      kcal: 100,
+      proteinG: 5,
+      carbsG: 10,
+      fatG: 2,
+      source: 'manual',
+    );
+    const newest = FoodEntry(
+      id: 'newest',
+      time: '2026-06-22T20:00:00+02:00',
+      desc: 'newest',
+      grams: 100,
+      kcal: 200,
+      proteinG: 10,
+      carbsG: 20,
+      fatG: 4,
+      source: 'manual',
+    );
+    const tombstoned = FoodEntry(
+      id: 'gone',
+      time: '2026-06-15T12:00:00+02:00',
+      desc: 'undone',
+      grams: 100,
+      kcal: 300,
+      proteinG: 1,
+      carbsG: 1,
+      fatG: 1,
+      source: 'manual',
+      deleted: true,
+    );
+
+    test('sorts entries across days newest-first and drops tombstones',
+        () async {
+      await LogStorageService.instance.writeLog({
+        '2026-06-01': [oldest],
+        '2026-06-15': [tombstoned],
+        '2026-06-22': [newest],
+      });
+
+      final result = await LogStorageService.instance.allEntriesNewestFirst();
+
+      expect(result.map((e) => e.id), ['newest', 'oldest']);
+    });
+
+    test('returns empty for an empty log', () async {
+      expect(await LogStorageService.instance.allEntriesNewestFirst(), isEmpty);
+    });
+  });
 }

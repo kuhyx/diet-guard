@@ -3,21 +3,42 @@ import 'dart:io';
 import 'package:diet_guard_app/screens/meal_builder_screen.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/photo_attach_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
+
+/// Returns a fixed [XFile] without touching any real platform channel.
+class _FakeImagePickerPlatform extends ImagePickerPlatform {
+  _FakeImagePickerPlatform(this._result);
+
+  final XFile? _result;
+
+  @override
+  Future<XFile?> getImageFromSource({
+    required ImageSource source,
+    ImagePickerOptions options = const ImagePickerOptions(),
+  }) async => _result;
+}
 
 void main() {
   late Directory tempDir;
+  late ImagePickerPlatform originalImagePickerPlatform;
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_builder_');
     LogStorageService.resetForTesting(testDir: tempDir);
     FoodBankService.resetForTesting(testDir: tempDir);
+    PhotoAttachService.resetForTesting(testDir: tempDir);
+    originalImagePickerPlatform = ImagePickerPlatform.instance;
   });
 
   tearDown(() async {
     LogStorageService.resetForTesting();
     FoodBankService.resetForTesting();
+    PhotoAttachService.resetForTesting();
+    ImagePickerPlatform.instance = originalImagePickerPlatform;
     await tempDir.delete(recursive: true);
   });
 
@@ -93,6 +114,46 @@ void main() {
         expect(rice.carbsG, 66);
         expect(rice.fatG, 1.5);
         expect(rice.grams, 150);
+      });
+    },
+  );
+
+  testWidgets(
+    'attaching a photo to a composite meal persists its path on the logged '
+    'entry',
+    (tester) async {
+      await tester.runAsync(() async {
+        final source = File('${tempDir.path}/source.jpg')
+          ..writeAsBytesSync([1, 2, 3]);
+        ImagePickerPlatform.instance = _FakeImagePickerPlatform(
+          XFile(source.path),
+        );
+
+        await tester.pumpWidget(
+          const MaterialApp(home: MealBuilderScreen()),
+        );
+        await settle(tester);
+
+        await tester.enterText(find.byType(TextField).at(1), 'soup');
+        await tester.enterText(find.byType(TextField).at(2), '120');
+        await settle(tester);
+        await tester.tap(addItemButton);
+        await settle(tester);
+
+        await tester.ensureVisible(find.text('Attach photo'));
+        await tester.tap(find.text('Attach photo'));
+        await settle(tester);
+        await tester.tap(find.text('Choose from gallery'));
+        await settle(tester);
+
+        await tester.ensureVisible(logMealButton);
+        await tester.tap(logMealButton);
+        await settle(tester);
+
+        final entry =
+            (await LogStorageService.instance.todayEntries()).single;
+        expect(entry.imagePath, isNotNull);
+        expect(entry.imagePath, startsWith('${tempDir.path}/images/'));
       });
     },
   );

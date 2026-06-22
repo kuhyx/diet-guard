@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- image_picker's camera source delegates to the device's camera app via
+         intent, but declaring this avoids picker failures on OEMs that check
+         for it before honoring the intent. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
     <application
         android:label="diet_guard_app"
         android:name="${applicationName}"

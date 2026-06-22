@@ -7,11 +7,13 @@ import 'dart:async';
 import 'package:diet_guard_app/models/food_suggestion.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/models/slot.dart';
+import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/screens/meal_builder_screen.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/widgets/autocomplete_suggestion_list.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
+import 'package:diet_guard_app/widgets/photo_attach_field.dart';
 import 'package:diet_guard_app/widgets/slot_status_bar.dart';
 import 'package:flutter/material.dart';
 
@@ -33,6 +35,7 @@ class _LogMealScreenState extends State<LogMealScreen> {
   Set<int> _loggedSlots = {};
   String _source = 'manual';
   String? _status;
+  String? _imagePath;
 
   @override
   void initState() {
@@ -112,13 +115,21 @@ class _LogMealScreenState extends State<LogMealScreen> {
       source: _source,
     );
     final slot = currentSlot(DateTime.now());
-    await LogStorageService.instance.logMeal(desc, nutrition, slot: slot);
+    await LogStorageService.instance.logMeal(
+      desc,
+      nutrition,
+      slot: slot,
+      imagePath: _imagePath,
+    );
     final log = await LogStorageService.instance.readLog();
     await FoodBankService.instance.rebuildAndPersist(log);
     if (!mounted) return;
     _descController.clear();
     _macros.clear();
-    setState(() => _source = 'manual');
+    setState(() {
+      _source = 'manual';
+      _imagePath = null;
+    });
     await _refreshSlots();
     if (!mounted) return;
     setState(() => _status = 'Logged "$desc".');
@@ -131,10 +142,27 @@ class _LogMealScreenState extends State<LogMealScreen> {
     await _refreshSlots();
   }
 
+  void _onOpenHistory() {
+    unawaited(
+      Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => const HistoryScreen()),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Diet Guard')),
+      appBar: AppBar(
+        title: const Text('Diet Guard'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'History',
+            onPressed: _onOpenHistory,
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -152,6 +180,11 @@ class _LogMealScreenState extends State<LogMealScreen> {
             ),
             const SizedBox(height: 12),
             MacroInputRow(controllers: _macros),
+            const SizedBox(height: 12),
+            PhotoAttachField(
+              imagePath: _imagePath,
+              onChanged: (path) => setState(() => _imagePath = path),
+            ),
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
