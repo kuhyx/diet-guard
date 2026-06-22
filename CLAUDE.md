@@ -48,6 +48,16 @@ added but only `pip install`-ed into `.venv`. Always verify against
 `/usr/bin/python3 -c "import <new_dep>"`, not just the dev venv, before
 considering a dependency change done.
 
+**Always run `install.sh` (or `pip install -e`) from a durable clone, not a
+scratch directory.** `install.sh` does `pip install -e "$REPO_DIR"` —
+editable, so a later `git pull` in that same clone updates the running
+production code with no reinstall needed. The clone must live somewhere
+permanent (this repo's convention: `~/diet-guard`, mirroring `~/screen-locker`
+for the screen-locker package) — if you `pip install -e` from `/tmp/...` or
+run `pip install "diet_guard @ git+https://..."` as a one-off, you get a
+non-editable snapshot frozen at that commit, and the next `git push` here
+silently does **not** reach the running service.
+
 ## Operational gotchas
 
 - **The budget file is sealed immutable.** `~/.local/share/diet_guard/.budget`
