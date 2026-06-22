@@ -15,7 +15,7 @@ import logging
 import tkinter as tk
 from typing import TYPE_CHECKING
 
-from python_pkg.diet_guard._gatelock_ui import (
+from diet_guard._gatelock_ui import (
     BASIS_PREFIX_GRAMS,
     BASIS_PREFIX_ITEMS,
     DEFAULT_PER_GRAMS,
@@ -23,16 +23,16 @@ from python_pkg.diet_guard._gatelock_ui import (
     GateVars,
     GateWidgets,
 )
-from python_pkg.diet_guard._portions import DEFAULT_ITEM_GRAMS, estimate_unit_grams
-from python_pkg.diet_guard._slots import slot_label
+from diet_guard._portions import DEFAULT_ITEM_GRAMS, estimate_unit_grams
+from diet_guard._slots import slot_label
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from gatelock import GateRoot
 
-    from python_pkg.diet_guard._estimator import Nutrition
-    from python_pkg.diet_guard._meal import MealItem
+    from diet_guard._estimator import Nutrition
+    from diet_guard._meal import MealItem
 
 _logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class _GateCore:
     """Leaf widget/field helpers shared by every MealGate mixin.
 
     Declares the attributes that
-    :class:`~python_pkg.diet_guard._gatelock.MealGate` sets up in ``__init__``
+    :class:`~diet_guard._gatelock.MealGate` sets up in ``__init__``
     and ``_build`` so subclasses can reference them without tripping pylint's
     no-member check.
     """

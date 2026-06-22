@@ -10,9 +10,9 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
-from python_pkg.diet_guard import _estimator
-from python_pkg.diet_guard._constants import DEFAULT_PORTION_GRAMS
-from python_pkg.diet_guard._estimator import (
+from diet_guard import _estimator
+from diet_guard._constants import DEFAULT_PORTION_GRAMS
+from diet_guard._estimator import (
     Nutrition,
     estimate,
     estimate_off,

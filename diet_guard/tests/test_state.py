@@ -12,10 +12,10 @@ from unittest.mock import patch
 
 import pytest
 
-from python_pkg.diet_guard import _state
-from python_pkg.diet_guard._budget import BudgetNotInitializedError, seal_budget
-from python_pkg.diet_guard._estimator import Nutrition
-from python_pkg.diet_guard._state import (
+from diet_guard import _state
+from diet_guard._budget import BudgetNotInitializedError, seal_budget
+from diet_guard._estimator import Nutrition
+from diet_guard._state import (
     consumption_band,
     entry_kcal,
     load_log,

@@ -10,12 +10,12 @@ import importlib
 
 
 def test_main_module_imports() -> None:
-    """The ``python -m python_pkg.diet_guard`` entry module imports cleanly."""
-    module = importlib.import_module("python_pkg.diet_guard.__main__")
+    """The ``python -m diet_guard`` entry module imports cleanly."""
+    module = importlib.import_module("diet_guard.__main__")
     assert hasattr(module, "main")
 
 
 def test_package_imports() -> None:
     """The package itself imports without side effects."""
-    package = importlib.import_module("python_pkg.diet_guard")
+    package = importlib.import_module("diet_guard")
     assert package is not None

@@ -10,15 +10,15 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-from python_pkg.diet_guard import _foodbank
-from python_pkg.diet_guard._estimator import Nutrition
-from python_pkg.diet_guard._foodbank import (
+from diet_guard import _foodbank
+from diet_guard._estimator import Nutrition
+from diet_guard._foodbank import (
     lookup_food,
     remember_food,
     remember_meal,
     search_foods,
 )
-from python_pkg.diet_guard._meal import MealItem
+from diet_guard._meal import MealItem
 
 _NUT = Nutrition(
     kcal=250,

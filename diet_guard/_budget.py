@@ -32,7 +32,7 @@ import logging
 
 from gatelock.log_integrity import compute_entry_hmac
 
-from python_pkg.diet_guard._constants import BUDGET_FILE
+from diet_guard._constants import BUDGET_FILE
 
 _logger = logging.getLogger(__name__)
 

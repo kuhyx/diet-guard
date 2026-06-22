@@ -2,7 +2,7 @@
 
 Split out of :mod:`._gatelock` to keep that module under the repo's 500-line
 limit.  ``_GateMealFlow`` extends
-:class:`~python_pkg.diet_guard._gatelock_nutrition._GateNutrition` with the
+:class:`~diet_guard._gatelock_nutrition._GateNutrition` with the
 submit/lookup/log flow for single foods and multi-item meals, the per-slot
 input reset, and the running calorie/macro dashboard.
 """
@@ -13,14 +13,14 @@ import contextlib
 import tkinter as tk
 from typing import TYPE_CHECKING
 
-from python_pkg.diet_guard._budget import BudgetError, daily_budget, protein_target_g
-from python_pkg.diet_guard._foodbank import remember_food, remember_meal
-from python_pkg.diet_guard._gatelock_nutrition import _GateNutrition
-from python_pkg.diet_guard._gatelock_ui import ERR, FG, UNIT_GRAMS
-from python_pkg.diet_guard._meal import MealItem, meal_total
-from python_pkg.diet_guard._resolve import lookup_candidates
-from python_pkg.diet_guard._slots import slot_label
-from python_pkg.diet_guard._state import (
+from diet_guard._budget import BudgetError, daily_budget, protein_target_g
+from diet_guard._foodbank import remember_food, remember_meal
+from diet_guard._gatelock_nutrition import _GateNutrition
+from diet_guard._gatelock_ui import ERR, FG, UNIT_GRAMS
+from diet_guard._meal import MealItem, meal_total
+from diet_guard._resolve import lookup_candidates
+from diet_guard._slots import slot_label
+from diet_guard._state import (
     entry_kcal,
     log_meal,
     today_entries,
@@ -29,7 +29,7 @@ from python_pkg.diet_guard._state import (
 )
 
 if TYPE_CHECKING:
-    from python_pkg.diet_guard._estimator import Nutrition
+    from diet_guard._estimator import Nutrition
 
 # How long the "unlocking..." confirmation lingers before the window tears down.
 _UNLOCK_DELAY_MS = 1200
@@ -214,7 +214,7 @@ class _GateMealFlow(_GateNutrition):
         """Log the accumulated multi-item meal for the current slot and advance.
 
         Each component and the summed composite are banked (see
-        :func:`python_pkg.diet_guard._foodbank.remember_meal`), and the slot is
+        :func:`diet_guard._foodbank.remember_meal`), and the slot is
         satisfied by the summed total under the meal's name.
         """
         name = self._meal_name() or _DEFAULT_MEAL_NAME

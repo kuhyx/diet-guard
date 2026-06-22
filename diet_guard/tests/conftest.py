@@ -12,7 +12,7 @@ Three safety nets run for every test:
   ``setxkbmap`` against the live X session.
 
 The ``gate`` fixture and its supporting fakes (``FakeEntry``, ``_FAKE_TK``, ...)
-build a demo :class:`~python_pkg.diet_guard._gatelock.MealGate` whose widgets
+build a demo :class:`~diet_guard._gatelock.MealGate` whose widgets
 are functional in-memory stand-ins, shared by ``test_gatelock.py`` and
 ``test_gatelock_mealflow.py``.
 """
@@ -26,15 +26,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from python_pkg.diet_guard import (
+from diet_guard import (
     _gatelock,
     _gatelock_core,
     _gatelock_mealflow,
     _gatelock_nutrition,
     _gatelock_ui,
 )
-from python_pkg.diet_guard._estimator import Nutrition
-from python_pkg.diet_guard._gatelock import MealGate
+from diet_guard._estimator import Nutrition
+from diet_guard._gatelock import MealGate
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -46,19 +46,19 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
     """Redirect all on-disk diet_guard state into a temp dir."""
     with (
         patch(
-            "python_pkg.diet_guard._budget.BUDGET_FILE",
+            "diet_guard._budget.BUDGET_FILE",
             tmp_path / ".budget",
         ),
         patch(
-            "python_pkg.diet_guard._state.FOOD_LOG_FILE",
+            "diet_guard._state.FOOD_LOG_FILE",
             tmp_path / "food_log.json",
         ),
         patch(
-            "python_pkg.diet_guard._foodbank.FOOD_BANK_FILE",
+            "diet_guard._foodbank.FOOD_BANK_FILE",
             tmp_path / "food_bank.json",
         ),
         patch(
-            "python_pkg.diet_guard._gatelock.GATE_LOCK_FILE",
+            "diet_guard._gatelock.GATE_LOCK_FILE",
             tmp_path / ".gate.lock",
         ),
     ):
@@ -69,8 +69,8 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
 def _block_real_tk() -> Iterator[None]:
     """Replace tk + the window class in _gatelock so no real window can open."""
     with (
-        patch("python_pkg.diet_guard._gatelock.tk", MagicMock()),
-        patch("python_pkg.diet_guard._gatelock.GateRoot", MagicMock()),
+        patch("diet_guard._gatelock.tk", MagicMock()),
+        patch("diet_guard._gatelock.GateRoot", MagicMock()),
     ):
         yield
 

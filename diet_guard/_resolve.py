@@ -19,15 +19,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from python_pkg.diet_guard._estimator import (
+from diet_guard._estimator import (
     Nutrition,
     estimate_off,
     manual,
     off_candidates,
     scale_nutrition,
 )
-from python_pkg.diet_guard._foodbank import lookup_food, search_foods
-from python_pkg.diet_guard._portions import staple_nutrition, suggest_staples
+from diet_guard._foodbank import lookup_food, search_foods
+from diet_guard._portions import staple_nutrition, suggest_staples
 
 
 @dataclass(frozen=True)

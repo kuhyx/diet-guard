@@ -10,7 +10,7 @@ Two problems this solves, both seen in real use:
 
 So this module gives diet_guard, for each common countable food, the typical
 mass of one piece and its macros per 100 g.  It is consulted *before* Open Food
-Facts (see :mod:`python_pkg.diet_guard._resolve`), so a bare staple resolves
+Facts (see :mod:`diet_guard._resolve`), so a bare staple resolves
 locally and sensibly, and a count multiplies cleanly into grams.
 
 The numbers are deliberately round "good enough" averages (USDA ballpark); the
@@ -22,8 +22,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from python_pkg.diet_guard._estimator import Nutrition
-from python_pkg.diet_guard._fuzzy import match_score
+from diet_guard._estimator import Nutrition
+from diet_guard._fuzzy import match_score
 
 # Same close-match bar the food bank uses, so matching feels consistent.
 _MATCH_THRESHOLD = 0.6
@@ -130,7 +130,7 @@ def staple_nutrition(description: str) -> Nutrition | None:
 
     The grams are fixed at 100 so the result is a clean reference basis the
     caller can rescale to the actual amount eaten via
-    :func:`python_pkg.diet_guard._estimator.scale_nutrition`.
+    :func:`diet_guard._estimator.scale_nutrition`.
 
     Args:
         description: Free-text food name.

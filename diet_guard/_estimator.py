@@ -18,7 +18,7 @@ import logging
 
 import requests
 
-from python_pkg.diet_guard._constants import (
+from diet_guard._constants import (
     DEFAULT_PORTION_GRAMS,
     OFF_PAGE_SIZE,
     OFF_SEARCH_URL,

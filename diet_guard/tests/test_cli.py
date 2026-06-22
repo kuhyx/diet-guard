@@ -11,15 +11,15 @@ import io
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
-from python_pkg.diet_guard import _cli
-from python_pkg.diet_guard._budget import (
+from diet_guard import _cli
+from diet_guard._budget import (
     BudgetLockedError,
     BudgetNotInitializedError,
     BudgetSealBrokenError,
     seal_budget,
 )
-from python_pkg.diet_guard._cli import _eaten_grams, _Portion, main
-from python_pkg.diet_guard._estimator import Nutrition
+from diet_guard._cli import _eaten_grams, _Portion, main
+from diet_guard._estimator import Nutrition
 
 if TYPE_CHECKING:
     import pytest

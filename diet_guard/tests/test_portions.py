@@ -6,7 +6,7 @@ Nutrition / suggestion builders.
 
 from __future__ import annotations
 
-from python_pkg.diet_guard._portions import (
+from diet_guard._portions import (
     estimate_unit_grams,
     staple_nutrition,
     suggest_staples,

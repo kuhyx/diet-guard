@@ -2,7 +2,7 @@
 
 Every food the user logs is remembered here with its full macros, keyed by a
 normalized name.  The gate's autocomplete searches *only* this corpus -- never
-Open Food Facts.  OFF (in :mod:`python_pkg.diet_guard._estimator`) is used only
+Open Food Facts.  OFF (in :mod:`diet_guard._estimator`) is used only
 to *fill in* the macros of a brand-new food the first time it is entered; from
 then on the food is served from the bank, so search quality improves with use
 and works fully offline.
@@ -21,11 +21,11 @@ import logging
 import time
 from typing import TYPE_CHECKING
 
-from python_pkg.diet_guard._constants import FOOD_BANK_FILE
-from python_pkg.diet_guard._estimator import Nutrition
-from python_pkg.diet_guard._fuzzy import match_score
-from python_pkg.diet_guard._meal import MealItem, meal_total
-from python_pkg.shared.coerce import as_float
+from diet_guard._coerce import as_float
+from diet_guard._constants import FOOD_BANK_FILE
+from diet_guard._estimator import Nutrition
+from diet_guard._fuzzy import match_score
+from diet_guard._meal import MealItem, meal_total
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from python_pkg.diet_guard._slots import (
+from diet_guard._slots import (
     current_slot,
     day_slots,
     elapsed_slots,

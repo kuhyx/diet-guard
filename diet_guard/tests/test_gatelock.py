@@ -15,24 +15,24 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from python_pkg.diet_guard import (
+from diet_guard import (
     _gatelock,
     _gatelock_support,
     _gatelock_ui,
 )
-from python_pkg.diet_guard._budget import seal_budget
-from python_pkg.diet_guard._gatelock import (
+from diet_guard._budget import seal_budget
+from diet_guard._gatelock import (
     MealGate,
     _pending_slots,
     acquire_gate_lock,
     release_gate_lock,
 )
-from python_pkg.diet_guard._gatelock_core import _safe_float
-from python_pkg.diet_guard._gatelock_nutrition import _format_preview
-from python_pkg.diet_guard._gatelock_support import wait_for_display
-from python_pkg.diet_guard._gatelock_ui import DEFAULT_PER_GRAMS
-from python_pkg.diet_guard._portions import DEFAULT_ITEM_GRAMS
-from python_pkg.diet_guard.tests.conftest import _FAKE_TK, _FakeTclError, _nutrition
+from diet_guard._gatelock_core import _safe_float
+from diet_guard._gatelock_nutrition import _format_preview
+from diet_guard._gatelock_support import wait_for_display
+from diet_guard._gatelock_ui import DEFAULT_PER_GRAMS
+from diet_guard._portions import DEFAULT_ITEM_GRAMS
+from diet_guard.tests.conftest import _FAKE_TK, _FakeTclError, _nutrition
 
 # --------------------------------------------------------------------------
 # Module-level helpers

@@ -3,8 +3,8 @@
 This module is GUI-free and side-effect-free so the lock/no-lock decision can
 be verified headlessly: the fullscreen window in ``_gatelock.py`` is only a
 thin shell around :func:`gate_is_due` and :func:`due_slots`.  It composes the
-pure slot arithmetic in :mod:`python_pkg.diet_guard._slots` with the logged-slot
-state in :mod:`python_pkg.diet_guard._state`; ``now`` is injectable so the
+pure slot arithmetic in :mod:`diet_guard._slots` with the logged-slot
+state in :mod:`diet_guard._state`; ``now`` is injectable so the
 time-of-day rules stay deterministically testable.
 
 The gate fires when any *elapsed* meal slot for today carries no logged meal.
@@ -17,8 +17,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from python_pkg.diet_guard._slots import missing_slots, slot_label
-from python_pkg.diet_guard._state import logged_slots_today, now_local
+from diet_guard._slots import missing_slots, slot_label
+from diet_guard._state import logged_slots_today, now_local
 
 if TYPE_CHECKING:
     from datetime import datetime

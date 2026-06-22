@@ -6,7 +6,7 @@ the degenerate empty-input branch that falls back to a whole-string ratio.
 
 from __future__ import annotations
 
-from python_pkg.diet_guard._fuzzy import match_score, token_score
+from diet_guard._fuzzy import match_score, token_score
 
 
 class TestTokenScore:

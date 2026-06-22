@@ -5,8 +5,8 @@ function of its ``now`` argument and the configured slot constants, so the
 fiddly time-of-day edges (07:59 vs 08:00, the 20:00->22:00 tail, the midnight
 reset) are exhaustively unit-testable without mocking the filesystem or the
 wall clock.  The stateful "which slots have I actually logged?" question lives
-in :mod:`python_pkg.diet_guard._state`; the two are composed in
-:mod:`python_pkg.diet_guard._gate`.
+in :mod:`diet_guard._state`; the two are composed in
+:mod:`diet_guard._gate`.
 
 A "slot" is simply the integer hour at which a meal checkpoint opens (08, 12,
 16, 20).  A slot is *elapsed* once its hour has arrived and we are still inside
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from python_pkg.diet_guard._constants import (
+from diet_guard._constants import (
     GATE_DAY_START_HOUR,
     GATE_EATING_END_HOUR,
     GATE_SLOT_INTERVAL_HOURS,

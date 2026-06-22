@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from python_pkg.diet_guard._estimator import Nutrition
-from python_pkg.diet_guard._foodbank import remember_food
-from python_pkg.diet_guard._resolve import (
+from diet_guard._estimator import Nutrition
+from diet_guard._foodbank import remember_food
+from diet_guard._resolve import (
     ManualMacros,
     lookup_candidates,
     resolve_nutrition,
@@ -82,7 +82,7 @@ class TestResolveBankAndStaple:
     def test_off_fallback(self) -> None:
         """An unknown, non-staple food falls through to Open Food Facts."""
         with patch(
-            "python_pkg.diet_guard._resolve.estimate_off",
+            "diet_guard._resolve.estimate_off",
             return_value=_OFF,
         ):
             result = resolve_nutrition("exotic dish")
@@ -117,7 +117,7 @@ class TestLookupCandidates:
     def test_off_candidates(self) -> None:
         """An unknown food returns the OFF alternatives, labelled by source."""
         with patch(
-            "python_pkg.diet_guard._resolve.off_candidates",
+            "diet_guard._resolve.off_candidates",
             return_value=[_OFF],
         ):
             candidates = lookup_candidates("exotic dish")

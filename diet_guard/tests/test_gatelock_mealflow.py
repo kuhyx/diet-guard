@@ -12,14 +12,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-from python_pkg.diet_guard import _gatelock_mealflow
-from python_pkg.diet_guard._budget import seal_budget
-from python_pkg.diet_guard._meal import MealItem
-from python_pkg.diet_guard._state import log_meal
-from python_pkg.diet_guard.tests.conftest import _nutrition
+from diet_guard import _gatelock_mealflow
+from diet_guard._budget import seal_budget
+from diet_guard._meal import MealItem
+from diet_guard._state import log_meal
+from diet_guard.tests.conftest import _nutrition
 
 if TYPE_CHECKING:
-    from python_pkg.diet_guard._gatelock import MealGate
+    from diet_guard._gatelock import MealGate
 
 
 class TestReferenceModel:

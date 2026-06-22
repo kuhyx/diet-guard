@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from python_pkg.diet_guard._estimator import Nutrition
-from python_pkg.diet_guard._meal import MEAL_SOURCE, MealItem, meal_total
+from diet_guard._estimator import Nutrition
+from diet_guard._meal import MEAL_SOURCE, MealItem, meal_total
 
 
 def _item(

@@ -4,7 +4,7 @@ A meal is a named group of individually-macroed items -- e.g. a dinner of
 salad + chicken + rice, each entered with its own calories and macros.  The
 meal's nutrition is the sum of its items.  Both the individual items and the
 composite meal are saved to the food bank (see
-:func:`python_pkg.diet_guard._foodbank.remember_meal`), so next time each item
+:func:`diet_guard._foodbank.remember_meal`), so next time each item
 autocompletes on its own and the whole meal can be picked as one summed entry.
 
 This module is deliberately pure (no I/O): the sum is a total function of its
@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from python_pkg.diet_guard._estimator import Nutrition
+from diet_guard._estimator import Nutrition
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -52,7 +52,7 @@ def meal_total(items: Sequence[MealItem]) -> Nutrition:
         items: The meal's components.
 
     Returns:
-        A :class:`~python_pkg.diet_guard._estimator.Nutrition` whose fields are
+        A :class:`~diet_guard._estimator.Nutrition` whose fields are
         the per-item sums.
     """
     return Nutrition(

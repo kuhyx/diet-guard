@@ -1,12 +1,12 @@
 """Command-line interface for diet_guard.
 
 Examples:
-    python -m python_pkg.diet_guard init
-    python -m python_pkg.diet_guard ate "big mac"
-    python -m python_pkg.diet_guard ate "two slices of pizza" --grams 240
-    python -m python_pkg.diet_guard ate "protein shake" --kcal 180
-    python -m python_pkg.diet_guard status
-    python -m python_pkg.diet_guard undo
+    python -m diet_guard init
+    python -m diet_guard ate "big mac"
+    python -m diet_guard ate "two slices of pizza" --grams 240
+    python -m diet_guard ate "protein shake" --kcal 180
+    python -m diet_guard status
+    python -m diet_guard undo
 
 The daily budget lives outside the repo (so it is never exposed online) but is
 shown freely on this machine: ``status`` and each log print how many calories
@@ -19,7 +19,7 @@ import argparse
 from dataclasses import dataclass
 import sys
 
-from python_pkg.diet_guard._budget import (
+from diet_guard._budget import (
     Biometrics,
     BudgetLockedError,
     BudgetNotInitializedError,
@@ -31,21 +31,21 @@ from python_pkg.diet_guard._budget import (
     seal_budget,
     unlock_command,
 )
-from python_pkg.diet_guard._foodbank import remember_food
-from python_pkg.diet_guard._gate import due_slots, gate_is_due
-from python_pkg.diet_guard._gatelock import (
+from diet_guard._foodbank import remember_food
+from diet_guard._gate import due_slots, gate_is_due
+from diet_guard._gatelock import (
     MealGate,
     acquire_gate_lock,
     release_gate_lock,
 )
-from python_pkg.diet_guard._gatelock_support import wait_for_display
-from python_pkg.diet_guard._portions import (
+from diet_guard._gatelock_support import wait_for_display
+from diet_guard._portions import (
     DEFAULT_ITEM_GRAMS,
     estimate_unit_grams,
 )
-from python_pkg.diet_guard._resolve import ManualMacros, resolve_nutrition
-from python_pkg.diet_guard._slots import current_slot, day_slots, slot_label
-from python_pkg.diet_guard._state import (
+from diet_guard._resolve import ManualMacros, resolve_nutrition
+from diet_guard._slots import current_slot, day_slots, slot_label
+from diet_guard._state import (
     entry_kcal,
     log_meal,
     logged_slots_today,
@@ -210,8 +210,7 @@ def _print_summary() -> None:
         budget = daily_budget()
     except BudgetNotInitializedError:
         _emit(
-            f"today: {total:g} kcal  "
-            "(budget not set - run: python -m python_pkg.diet_guard init)",
+            f"today: {total:g} kcal  (budget not set - run: python -m diet_guard init)",
         )
         return
     except BudgetSealBrokenError:

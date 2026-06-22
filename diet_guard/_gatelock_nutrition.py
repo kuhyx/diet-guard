@@ -2,7 +2,7 @@
 
 Split out of :mod:`._gatelock` to keep that module under the repo's 500-line
 limit.  ``_GateNutrition`` extends
-:class:`~python_pkg.diet_guard._gatelock_core._GateCore` with the
+:class:`~diet_guard._gatelock_core._GateCore` with the
 "reference -> total" nutrition maths -- the label macros describe one basis
 (per 100 g or per item), and how much was eaten scales that reference into
 what gets logged -- plus the live preview/projection and the
@@ -14,17 +14,17 @@ from __future__ import annotations
 
 import tkinter as tk
 
-from python_pkg.diet_guard._budget import BudgetError, daily_budget
-from python_pkg.diet_guard._estimator import Nutrition, scale_nutrition
-from python_pkg.diet_guard._gatelock_core import _GateCore
-from python_pkg.diet_guard._gatelock_ui import (
+from diet_guard._budget import BudgetError, daily_budget
+from diet_guard._estimator import Nutrition, scale_nutrition
+from diet_guard._gatelock_core import _GateCore
+from diet_guard._gatelock_ui import (
     DEFAULT_PER_GRAMS,
     SUGGESTION_ROWS,
     UNIT_ITEMS,
 )
-from python_pkg.diet_guard._portions import DEFAULT_ITEM_GRAMS, estimate_unit_grams
-from python_pkg.diet_guard._resolve import suggest_foods
-from python_pkg.diet_guard._state import today_total_kcal
+from diet_guard._portions import DEFAULT_ITEM_GRAMS, estimate_unit_grams
+from diet_guard._resolve import suggest_foods
+from diet_guard._state import today_total_kcal
 
 
 def _format_preview(nutrition: Nutrition) -> str:

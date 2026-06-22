@@ -9,7 +9,7 @@ from pathlib import Path
 # phone_focus_mode (which live only in the git-ignored config_secrets.sh on the
 # device, never in committed source), the real budget is computed once from
 # biometrics at ``init`` time and sealed into BUDGET_FILE below.  It is read via
-# python_pkg.diet_guard._budget.daily_budget() for over/under decisions only and
+# diet_guard._budget.daily_budget() for over/under decisions only and
 # is never printed -- see _budget.py for the full threat model.
 #
 # Fraction of the budget at which status flips from "on track" to "approaching

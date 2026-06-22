@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 import pytest
 
-from python_pkg.diet_guard import _budget
-from python_pkg.diet_guard._budget import (
+from diet_guard import _budget
+from diet_guard._budget import (
     Biometrics,
     BudgetLockedError,
     BudgetNotInitializedError,

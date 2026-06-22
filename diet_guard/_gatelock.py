@@ -47,18 +47,18 @@ from typing import TYPE_CHECKING
 
 from gatelock import GateRoot, LockConfig, LockWindow
 
-from python_pkg.diet_guard._constants import GATE_LOCK_FILE
-from python_pkg.diet_guard._gate import due_slots
-from python_pkg.diet_guard._gatelock_core import _GateState
-from python_pkg.diet_guard._gatelock_mealflow import _GateMealFlow
-from python_pkg.diet_guard._gatelock_ui import (
+from diet_guard._constants import GATE_LOCK_FILE
+from diet_guard._gate import due_slots
+from diet_guard._gatelock_core import _GateState
+from diet_guard._gatelock_mealflow import _GateMealFlow
+from diet_guard._gatelock_ui import (
     BG,
     GateCallbacks,
     build_layout,
     make_vars,
 )
-from python_pkg.diet_guard._slots import current_slot, day_slots
-from python_pkg.diet_guard._state import now_local
+from diet_guard._slots import current_slot, day_slots
+from diet_guard._state import now_local
 
 if TYPE_CHECKING:
     from typing import TextIO

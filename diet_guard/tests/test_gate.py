@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import patch
 
-from python_pkg.diet_guard._gate import due_slots, gate_is_due, gate_message
+from diet_guard._gate import due_slots, gate_is_due, gate_message
 
 
 def _at(hour: int) -> datetime:
@@ -20,7 +20,7 @@ def _at(hour: int) -> datetime:
 def _logged(slots: set[int]) -> object:
     """Patch the logged-slots source so the decision is deterministic."""
     return patch(
-        "python_pkg.diet_guard._gate.logged_slots_today",
+        "diet_guard._gate.logged_slots_today",
         return_value=slots,
     )
 
@@ -38,7 +38,7 @@ class TestDueSlots:
         with (
             _logged(set()),
             patch(
-                "python_pkg.diet_guard._gate.now_local",
+                "diet_guard._gate.now_local",
                 return_value=_at(9),
             ),
         ):
