@@ -33,14 +33,12 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
-            // AGP 9 defaults release minification (and resource shrinking,
-            // which requires it) to true. R8 then strips
-            // WorkDatabase_Impl's reflection-only no-arg constructor (no
-            // keep rule covers it), crashing every release launch with
-            // NoSuchMethodException. Disable both until proper
-            // Room/WorkManager keep rules are added.
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
