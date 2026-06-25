@@ -18,6 +18,7 @@ void main() {
       expect(s.owner, 'kuhyx');
       expect(s.repo, 'diet-guard-sync');
       expect(s.token, '');
+      expect(s.clientId, SyncSettings.defaultClientId);
     },
   );
 
@@ -105,17 +106,54 @@ void main() {
     );
   });
 
+  test('canUseDeviceFlow is true only when a client id is set', () {
+    expect(
+      const SyncSettings(owner: 'o', repo: 'r', token: '').canUseDeviceFlow,
+      isFalse,
+    );
+    expect(
+      const SyncSettings(
+        owner: 'o',
+        repo: 'r',
+        token: '',
+        clientId: 'cid',
+      ).canUseDeviceFlow,
+      isTrue,
+    );
+  });
+
+  test('save persists the client id and load reads it back', () async {
+    SharedPreferences.setMockInitialValues({});
+    installFakeSecureStorage();
+    await const SyncSettings(
+      owner: 'o',
+      repo: 'r',
+      token: '',
+      clientId: 'cid123',
+    ).save();
+
+    final s = await SyncSettings.load();
+    expect(s.clientId, 'cid123');
+  });
+
   test('copyWith overrides only the given fields', () {
-    const base = SyncSettings(owner: 'o', repo: 'r', token: 't');
+    const base = SyncSettings(
+      owner: 'o',
+      repo: 'r',
+      token: 't',
+      clientId: 'cid',
+    );
     final next = base.copyWith(token: 'new');
     expect(next.owner, 'o');
     expect(next.repo, 'r');
     expect(next.token, 'new');
+    expect(next.clientId, 'cid');
 
     // No-arg copy exercises the `?? this.x` fallback on every field.
     final clone = base.copyWith();
     expect(clone.owner, 'o');
     expect(clone.repo, 'r');
     expect(clone.token, 't');
+    expect(clone.clientId, 'cid');
   });
 }

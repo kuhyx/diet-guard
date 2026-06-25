@@ -3,6 +3,26 @@
          intent, but declaring this avoids picker failures on OEMs that check
          for it before honoring the intent. -->
     <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- Sync (github_client.dart) needs raw socket access. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Android 13+ requires runtime opt-in to post notifications; requested
+         at launch via NotificationService.requestPermission(). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- WorkManager needs this to keep the CPU awake long enough to finish
+         a periodic due-slot check. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <!-- Lets WorkManager re-register the periodic task after a reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- Needed for the "Disable battery optimization" button in settings
+         (permission_handler's ignoreBatteryOptimizations) to actually show
+         the system dialog instead of silently returning denied. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <!-- Deliberately NOT requesting SCHEDULE_EXACT_ALARM: the background
+         check is a 15-minute WorkManager periodic task, not exact alarms
+         (more robust against OEM background-kill; +/-15 min is accepted, see
+         background_check_service.dart). Don't add this permission to "fix"
+         perceived lateness, which trades robustness for precision we don't
+         need. -->
     <application
         android:label="diet_guard_app"
         android:name="${applicationName}"
