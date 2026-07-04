@@ -58,7 +58,7 @@ class GitHubClient {
     // formal; assign it explicitly.
     // ignore: prefer_initializing_formals
     : _token = token,
-      _http = httpClient ?? http.Client();
+       _http = httpClient ?? http.Client();
 
   /// The repo owner/org (e.g. `"kuhyx"`).
   final String owner;

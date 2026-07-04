@@ -41,7 +41,12 @@ void main() {
       (_) async => http.Response(
         jsonEncode([
           {'type': 'dir', 'name': 'pc', 'path': 'devices/pc', 'sha': 's1'},
-          {'type': 'dir', 'name': 'phone', 'path': 'devices/phone', 'sha': 's2'},
+          {
+            'type': 'dir',
+            'name': 'phone',
+            'path': 'devices/phone',
+            'sha': 's2',
+          },
         ]),
         200,
       ),

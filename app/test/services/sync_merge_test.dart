@@ -39,9 +39,14 @@ void main() {
 
     test('same id in both logs is not duplicated', () {
       final shared = _entry(id: 'shared');
-      final merged = mergeLogs({
-        '2026-06-22': [shared],
-      }, {'2026-06-22': [shared]});
+      final merged = mergeLogs(
+        {
+          '2026-06-22': [shared],
+        },
+        {
+          '2026-06-22': [shared],
+        },
+      );
       expect(merged['2026-06-22'], hasLength(1));
     });
 
@@ -56,9 +61,14 @@ void main() {
         time: '2026-06-20T08:00:00',
         desc: 'toast',
       );
-      final merged = mergeLogs({
-        '2026-06-20': [legacyA],
-      }, {'2026-06-20': [legacyB]});
+      final merged = mergeLogs(
+        {
+          '2026-06-20': [legacyA],
+        },
+        {
+          '2026-06-20': [legacyB],
+        },
+      );
       expect(merged['2026-06-20'], hasLength(1));
     });
 
@@ -69,9 +79,14 @@ void main() {
         desc: 'toast',
       );
       final withId = _entry(id: 'x', time: '2026-06-20T09:00:00', desc: 'eggs');
-      final merged = mergeLogs({
-        '2026-06-20': [legacy],
-      }, {'2026-06-20': [withId]});
+      final merged = mergeLogs(
+        {
+          '2026-06-20': [legacy],
+        },
+        {
+          '2026-06-20': [withId],
+        },
+      );
       expect(merged['2026-06-20'], hasLength(2));
     });
   });
@@ -81,12 +96,22 @@ void main() {
       final normal = _entry(id: 'x');
       final tombstoned = _entry(id: 'x', deleted: true);
 
-      final forward = mergeLogs({
-        '2026-06-22': [normal],
-      }, {'2026-06-22': [tombstoned]});
-      final backward = mergeLogs({
-        '2026-06-22': [tombstoned],
-      }, {'2026-06-22': [normal]});
+      final forward = mergeLogs(
+        {
+          '2026-06-22': [normal],
+        },
+        {
+          '2026-06-22': [tombstoned],
+        },
+      );
+      final backward = mergeLogs(
+        {
+          '2026-06-22': [tombstoned],
+        },
+        {
+          '2026-06-22': [normal],
+        },
+      );
 
       expect(forward['2026-06-22']!.single.deleted, isTrue);
       expect(backward['2026-06-22']!.single.deleted, isTrue);
@@ -94,9 +119,14 @@ void main() {
 
     test('two tombstoned copies stay tombstoned', () {
       final tombstoned = _entry(id: 'x', deleted: true);
-      final merged = mergeLogs({
-        '2026-06-22': [tombstoned],
-      }, {'2026-06-22': [_entry(id: 'x', deleted: true)]});
+      final merged = mergeLogs(
+        {
+          '2026-06-22': [tombstoned],
+        },
+        {
+          '2026-06-22': [_entry(id: 'x', deleted: true)],
+        },
+      );
       expect(merged['2026-06-22']!.single.deleted, isTrue);
     });
   });
@@ -106,7 +136,9 @@ void main() {
       "entry is filed under its own time's date, not the arrival bucket",
       () {
         final misfiled = _entry(id: 'x', time: '2026-06-21T23:00:00');
-        final merged = mergeLogs({'2026-06-22': [misfiled]}, {});
+        final merged = mergeLogs({
+          '2026-06-22': [misfiled],
+        }, {});
         expect(merged.keys, ['2026-06-21']);
         expect(merged['2026-06-21']!.single.id, 'x');
       },
@@ -119,7 +151,9 @@ void main() {
         // Dart's substring throws past the string length, unlike Python's
         // forgiving slice -- this only matters for malformed/legacy data.
         final short = _entry(id: 'x', time: '2026');
-        final merged = mergeLogs({'2026-06-22': [short]}, {});
+        final merged = mergeLogs({
+          '2026-06-22': [short],
+        }, {});
         expect(merged.keys, ['2026']);
       },
     );
@@ -127,9 +161,14 @@ void main() {
     test("a day's entries are sorted oldest-first", () {
       final late = _entry(id: 'late', time: '2026-06-22T20:00:00');
       final early = _entry(id: 'early', time: '2026-06-22T08:00:00');
-      final merged = mergeLogs({
-        '2026-06-22': [late],
-      }, {'2026-06-22': [early]});
+      final merged = mergeLogs(
+        {
+          '2026-06-22': [late],
+        },
+        {
+          '2026-06-22': [early],
+        },
+      );
       expect(merged['2026-06-22']!.map((e) => e.id).toList(), [
         'early',
         'late',
@@ -139,7 +178,9 @@ void main() {
 
   group('algebraic properties', () {
     test('merge is commutative', () {
-      final a = {'2026-06-22': [_entry(id: 'a')]};
+      final a = {
+        '2026-06-22': [_entry(id: 'a')],
+      };
       final b = {
         '2026-06-22': [_entry(id: 'b', time: '2026-06-22T09:00:00')],
       };
@@ -152,13 +193,17 @@ void main() {
     });
 
     test('merge is idempotent', () {
-      final canonical = {'2026-06-22': [_entry(id: 'a')]};
+      final canonical = {
+        '2026-06-22': [_entry(id: 'a')],
+      };
       final merged = mergeLogs(canonical, canonical);
       expect(merged['2026-06-22']!.map((e) => e.id).toList(), ['a']);
     });
 
     test('merging with an empty log is a no-op', () {
-      final log = {'2026-06-22': [_entry(id: 'a')]};
+      final log = {
+        '2026-06-22': [_entry(id: 'a')],
+      };
       expect(mergeLogs(log, {}).keys, log.keys);
       expect(mergeLogs({}, log).keys, log.keys);
     });

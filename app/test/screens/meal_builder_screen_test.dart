@@ -75,11 +75,11 @@ void main() {
         );
         await settle(tester);
 
-        // Field order: [0] meal name, [1] item name, [2] kcal,
-        // [3] per (g), [4] protein, [5] carbs, [6] fat, [7] ate (g).
+        // Field order: [0] meal name, [1] item name, [2] per (g),
+        // [3] kcal, [4] protein, [5] carbs, [6] fat, [7] ate (g).
         await tester.enterText(find.byType(TextField).at(1), 'rice');
-        await tester.enterText(find.byType(TextField).at(2), '200');
-        await tester.enterText(find.byType(TextField).at(3), '100');
+        await tester.enterText(find.byType(TextField).at(2), '100');
+        await tester.enterText(find.byType(TextField).at(3), '200');
         await tester.enterText(find.byType(TextField).at(4), '4');
         await tester.enterText(find.byType(TextField).at(5), '44');
         await tester.enterText(find.byType(TextField).at(6), '1');
@@ -92,7 +92,7 @@ void main() {
         expect(find.textContaining('300 kcal'), findsOneWidget);
 
         await tester.enterText(find.byType(TextField).at(1), 'chicken');
-        await tester.enterText(find.byType(TextField).at(2), '165');
+        await tester.enterText(find.byType(TextField).at(3), '165');
         await tester.enterText(find.byType(TextField).at(4), '31');
         await tester.enterText(find.byType(TextField).at(5), '0');
         await tester.enterText(find.byType(TextField).at(6), '4');
@@ -103,8 +103,7 @@ void main() {
         await tester.tap(logMealButton);
         await settle(tester);
 
-        final entry =
-            (await LogStorageService.instance.todayEntries()).single;
+        final entry = (await LogStorageService.instance.todayEntries()).single;
         expect(entry.source, 'meal');
         expect(entry.kcal, 465); // 300 (scaled rice) + 165 (chicken)
         expect(entry.components, hasLength(2));
@@ -135,7 +134,7 @@ void main() {
         await settle(tester);
 
         await tester.enterText(find.byType(TextField).at(1), 'soup');
-        await tester.enterText(find.byType(TextField).at(2), '120');
+        await tester.enterText(find.byType(TextField).at(3), '120');
         await settle(tester);
         await tester.tap(addItemButton);
         await settle(tester);
@@ -150,10 +149,114 @@ void main() {
         await tester.tap(logMealButton);
         await settle(tester);
 
-        final entry =
-            (await LogStorageService.instance.todayEntries()).single;
+        final entry = (await LogStorageService.instance.todayEntries()).single;
         expect(entry.imagePath, isNotNull);
         expect(entry.imagePath, startsWith('${tempDir.path}/images/'));
+      });
+    },
+  );
+
+  testWidgets(
+    'logged meal uses provided name when name field is non-empty (line 73)',
+    (tester) async {
+      await tester.runAsync(() async {
+        await tester.pumpWidget(const MaterialApp(home: MealBuilderScreen()));
+        await settle(tester);
+
+        // Enter a meal name in field at(0), item in at(1), kcal in at(3).
+        await tester.enterText(find.byType(TextField).at(0), 'Sunday dinner');
+        await tester.enterText(find.byType(TextField).at(1), 'pasta');
+        await tester.enterText(find.byType(TextField).at(3), '400');
+        await settle(tester);
+        await tester.tap(addItemButton);
+        await settle(tester);
+
+        await tester.ensureVisible(logMealButton);
+        await tester.tap(logMealButton);
+        await settle(tester);
+
+        final entry = (await LogStorageService.instance.todayEntries()).single;
+        expect(entry.desc, equals('Sunday dinner'));
+      });
+    },
+  );
+
+  testWidgets(
+    'Add item with empty description shows error status (line 46)',
+    (tester) async {
+      await tester.runAsync(() async {
+        await tester.pumpWidget(const MaterialApp(home: MealBuilderScreen()));
+        await settle(tester);
+
+        // Tap "Add item" without entering any description.
+        await tester.tap(addItemButton);
+        await settle(tester);
+
+        expect(
+          find.text('Type the item first, then add it.'),
+          findsOneWidget,
+        );
+      });
+    },
+  );
+
+  testWidgets(
+    'logging a meal with empty name field defaults name to "meal" (line 73)',
+    (tester) async {
+      await tester.runAsync(() async {
+        await tester.pumpWidget(const MaterialApp(home: MealBuilderScreen()));
+        await settle(tester);
+
+        // Add one item (name field intentionally left empty).
+        await tester.enterText(find.byType(TextField).at(1), 'rice');
+        await tester.enterText(find.byType(TextField).at(3), '200');
+        await settle(tester);
+        await tester.tap(addItemButton);
+        await settle(tester);
+
+        // Leave meal name field empty, then log — name defaults to 'meal'.
+        await tester.ensureVisible(logMealButton);
+        await tester.tap(logMealButton);
+        await settle(tester);
+
+        final entry = (await LogStorageService.instance.todayEntries()).single;
+        expect(entry.desc, equals('meal'));
+      });
+    },
+  );
+
+  testWidgets(
+    'photo attach sheet "Take a photo" choice covers camera onTap (lines 42-43)',
+    (tester) async {
+      await tester.runAsync(() async {
+        final fakePhoto = File('${tempDir.path}/fake_camera.jpg')
+          ..createSync()
+          ..writeAsBytesSync([0xFF, 0xD8, 0xFF]);
+        ImagePickerPlatform.instance = _FakeImagePickerPlatform(
+          XFile(fakePhoto.path),
+        );
+        await tester.pumpWidget(const MaterialApp(home: MealBuilderScreen()));
+        await settle(tester);
+
+        await tester.enterText(find.byType(TextField).at(1), 'salad');
+        await tester.enterText(find.byType(TextField).at(3), '100');
+        await settle(tester);
+        await tester.tap(addItemButton);
+        await settle(tester);
+
+        await tester.ensureVisible(find.text('Attach photo'));
+        await tester.tap(find.text('Attach photo'));
+        await settle(tester);
+        // Tap "Take a photo" → triggers camera onTap (lines 42-43).
+        await tester.tap(find.text('Take a photo'));
+        await settle(tester);
+
+        await tester.ensureVisible(logMealButton);
+        await tester.tap(logMealButton);
+        await settle(tester);
+
+        final entry = (await LogStorageService.instance.todayEntries()).single;
+        expect(entry.imagePath, isNotNull);
       });
     },
   );

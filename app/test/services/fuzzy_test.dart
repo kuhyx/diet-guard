@@ -13,10 +13,12 @@ void main() {
       expect(substring, greaterThan(typo));
     });
 
-    test('scores an empty query against a name as the fallback token score',
-        () {
-      expect(matchScore('', 'banana'), greaterThanOrEqualTo(0));
-    });
+    test(
+      'scores an empty query against a name as the fallback token score',
+      () {
+        expect(matchScore('', 'banana'), greaterThanOrEqualTo(0));
+      },
+    );
 
     test('scores a clear mismatch low', () {
       expect(matchScore('xyz', 'banana'), lessThan(0.6));

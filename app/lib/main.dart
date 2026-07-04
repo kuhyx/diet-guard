@@ -5,6 +5,7 @@ library;
 import 'dart:io';
 
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
+import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/background_check_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
@@ -15,6 +16,7 @@ import 'package:workmanager/workmanager.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LogStorageService.init();
+  await AppSettingsService.init();
   await FoodBankService.init();
   final notifications = await NotificationService.init();
   await notifications.requestPermission();

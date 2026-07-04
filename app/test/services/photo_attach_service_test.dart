@@ -35,22 +35,25 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  test('copies the picked file into <documents>/images with a new name', () async {
-    final source = File('${tempDir.path}/source.jpg')
-      ..writeAsBytesSync([1, 2, 3, 4]);
-    ImagePickerPlatform.instance = _FakeImagePickerPlatform(
-      XFile(source.path),
-    );
+  test(
+    'copies the picked file into <documents>/images with a new name',
+    () async {
+      final source = File('${tempDir.path}/source.jpg')
+        ..writeAsBytesSync([1, 2, 3, 4]);
+      ImagePickerPlatform.instance = _FakeImagePickerPlatform(
+        XFile(source.path),
+      );
 
-    final result = await PhotoAttachService.instance.pickAndStore(
-      ImageSource.gallery,
-    );
+      final result = await PhotoAttachService.instance.pickAndStore(
+        ImageSource.gallery,
+      );
 
-    expect(result, isNotNull);
-    expect(result, startsWith('${tempDir.path}/images/'));
-    expect(result, endsWith('.jpg'));
-    expect(File(result!).readAsBytesSync(), [1, 2, 3, 4]);
-  });
+      expect(result, isNotNull);
+      expect(result, startsWith('${tempDir.path}/images/'));
+      expect(result, endsWith('.jpg'));
+      expect(File(result!).readAsBytesSync(), [1, 2, 3, 4]);
+    },
+  );
 
   test('returns null when the picker is cancelled', () async {
     ImagePickerPlatform.instance = _FakeImagePickerPlatform(null);

@@ -132,7 +132,9 @@ void main() {
         fatG: 3,
         source: 'manual',
       );
-      await LogStorageService.instance.writeLog({yesterdayKey: [yesterday]});
+      await LogStorageService.instance.writeLog({
+        yesterdayKey: [yesterday],
+      });
       await LogStorageService.instance.logMeal('today', _manual);
 
       expect(await LogStorageService.instance.undoLastToday(), isNotNull);
@@ -141,15 +143,20 @@ void main() {
       expect(log[yesterdayKey]!.single.deleted, isFalse);
     });
 
-    test('skips an already-tombstoned entry and undoes the one before it',
-        () async {
-      final first = await LogStorageService.instance.logMeal('first', _manual);
-      await LogStorageService.instance.logMeal('second', _manual);
-      await LogStorageService.instance.undoLastToday();
-      final undoneAgain = await LogStorageService.instance.undoLastToday();
-      expect(undoneAgain!.id, first.id);
-      expect(await LogStorageService.instance.undoLastToday(), isNull);
-    });
+    test(
+      'skips an already-tombstoned entry and undoes the one before it',
+      () async {
+        final first = await LogStorageService.instance.logMeal(
+          'first',
+          _manual,
+        );
+        await LogStorageService.instance.logMeal('second', _manual);
+        await LogStorageService.instance.undoLastToday();
+        final undoneAgain = await LogStorageService.instance.undoLastToday();
+        expect(undoneAgain!.id, first.id);
+        expect(await LogStorageService.instance.undoLastToday(), isNull);
+      },
+    );
   });
 
   group('todayTotalKcal', () {
@@ -211,21 +218,167 @@ void main() {
       deleted: true,
     );
 
-    test('sorts entries across days newest-first and drops tombstones',
-        () async {
-      await LogStorageService.instance.writeLog({
-        '2026-06-01': [oldest],
-        '2026-06-15': [tombstoned],
-        '2026-06-22': [newest],
-      });
+    test(
+      'sorts entries across days newest-first and drops tombstones',
+      () async {
+        await LogStorageService.instance.writeLog({
+          '2026-06-01': [oldest],
+          '2026-06-15': [tombstoned],
+          '2026-06-22': [newest],
+        });
 
-      final result = await LogStorageService.instance.allEntriesNewestFirst();
+        final result = await LogStorageService.instance.allEntriesNewestFirst();
 
-      expect(result.map((e) => e.id), ['newest', 'oldest']);
-    });
+        expect(result.map((e) => e.id), ['newest', 'oldest']);
+      },
+    );
 
     test('returns empty for an empty log', () async {
       expect(await LogStorageService.instance.allEntriesNewestFirst(), isEmpty);
+    });
+  });
+
+  group('deleteEntry', () {
+    const entry = FoodEntry(
+      id: 'del-1',
+      time: '2026-06-22T12:00:00+02:00',
+      desc: 'to delete',
+      grams: 100,
+      kcal: 300,
+      proteinG: 10,
+      carbsG: 30,
+      fatG: 5,
+      source: 'manual',
+    );
+
+    test('tombstones the matching entry', () async {
+      await LogStorageService.instance.writeLog({
+        '2026-06-22': [entry],
+      });
+      await LogStorageService.instance.deleteEntry('del-1');
+      final log = await LogStorageService.instance.readLog();
+      expect(log['2026-06-22']!.first.deleted, isTrue);
+    });
+
+    test('silently ignores an unknown id', () async {
+      await LogStorageService.instance.writeLog({
+        '2026-06-22': [entry],
+      });
+      await LogStorageService.instance.deleteEntry('no-such-id');
+      final log = await LogStorageService.instance.readLog();
+      expect(log['2026-06-22']!.first.deleted, isFalse);
+    });
+
+    test('does not re-tombstone an already-deleted entry', () async {
+      const deleted = FoodEntry(
+        id: 'del-1',
+        time: '2026-06-22T12:00:00+02:00',
+        desc: 'to delete',
+        grams: 100,
+        kcal: 300,
+        proteinG: 10,
+        carbsG: 30,
+        fatG: 5,
+        source: 'manual',
+        deleted: true,
+      );
+      await LogStorageService.instance.writeLog({
+        '2026-06-22': [deleted],
+      });
+      await LogStorageService.instance.deleteEntry('del-1');
+      // Still deleted, no error thrown.
+      final log = await LogStorageService.instance.readLog();
+      expect(log['2026-06-22']!.first.deleted, isTrue);
+    });
+  });
+
+  group('updateEntry', () {
+    const original = FoodEntry(
+      id: 'upd-1',
+      time: '2026-06-22T12:00:00+02:00',
+      desc: 'original desc',
+      grams: 100,
+      kcal: 300,
+      proteinG: 10,
+      carbsG: 30,
+      fatG: 5,
+      source: 'manual',
+    );
+
+    const updated = FoodEntry(
+      id: 'upd-1',
+      time: '2026-06-22T12:00:00+02:00',
+      desc: 'edited desc',
+      grams: 200,
+      kcal: 600,
+      proteinG: 20,
+      carbsG: 60,
+      fatG: 10,
+      source: 'manual',
+    );
+
+    test('replaces the entry by id', () async {
+      await LogStorageService.instance.writeLog({
+        '2026-06-22': [original],
+      });
+      await LogStorageService.instance.updateEntry(original, updated);
+      final log = await LogStorageService.instance.readLog();
+      final e = log['2026-06-22']!.first;
+      expect(e.desc, 'edited desc');
+      expect(e.kcal, 600);
+      expect(e.proteinG, 20);
+    });
+
+    test('replaces legacy null-id entry by time+desc', () async {
+      const legacy = FoodEntry(
+        time: '2026-06-22T12:00:00+02:00',
+        desc: 'legacy entry',
+        grams: 100,
+        kcal: 300,
+        proteinG: 10,
+        carbsG: 30,
+        fatG: 5,
+        source: 'food bank',
+      );
+      const legacyUpdated = FoodEntry(
+        id: 'new-uuid',
+        time: '2026-06-22T12:00:00+02:00',
+        desc: 'legacy entry',
+        grams: 150,
+        kcal: 450,
+        proteinG: 15,
+        carbsG: 45,
+        fatG: 8,
+        source: 'food bank',
+      );
+      await LogStorageService.instance.writeLog({
+        '2026-06-22': [legacy],
+      });
+      await LogStorageService.instance.updateEntry(legacy, legacyUpdated);
+      final log = await LogStorageService.instance.readLog();
+      final e = log['2026-06-22']!.first;
+      expect(e.id, 'new-uuid');
+      expect(e.kcal, 450);
+    });
+
+    test('silently does nothing when no match is found', () async {
+      await LogStorageService.instance.writeLog({
+        '2026-06-22': [original],
+      });
+      const ghost = FoodEntry(
+        id: 'ghost',
+        time: '2026-06-22T12:00:00+02:00',
+        desc: 'ghost',
+        grams: 0,
+        kcal: 0,
+        proteinG: 0,
+        carbsG: 0,
+        fatG: 0,
+        source: 'manual',
+      );
+      await LogStorageService.instance.updateEntry(ghost, updated);
+      final log = await LogStorageService.instance.readLog();
+      expect(log['2026-06-22']!.first.desc, 'original desc');
     });
   });
 }

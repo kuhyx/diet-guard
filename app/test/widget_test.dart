@@ -20,8 +20,9 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  testWidgets('app launches straight into the meal-logging screen',
-      (tester) async {
+  testWidgets('app launches straight into the meal-logging screen', (
+    tester,
+  ) async {
     // LogMealScreen's initState does real dart:io file I/O; pumpAndSettle()
     // alone never lets that resolve (see log_meal_screen_test.dart).
     await tester.runAsync(() async {

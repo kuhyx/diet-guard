@@ -23,8 +23,11 @@ const int gateEatingEndHour = 22;
 /// Mirrors `_slots.day_slots`.
 List<int> daySlots() {
   final slots = <int>[];
-  for (var hour = gateDayStartHour; hour < gateEatingEndHour;
-      hour += gateSlotIntervalHours) {
+  for (
+    var hour = gateDayStartHour;
+    hour < gateEatingEndHour;
+    hour += gateSlotIntervalHours
+  ) {
     slots.add(hour);
   }
   return slots;

@@ -111,14 +111,15 @@ class FoodBankService {
   /// `_foodbank.remember_food`/`remember_meal`'s upsert semantics: latest
   /// macros win per normalized name, `count` increments per occurrence.
   static Map<String, FoodBankRecord> rebuild(DayLog log) {
-    final entries = log.values
-        .expand((entries) => entries)
-        .where((entry) => !entry.deleted)
-        .toList()
-      ..sort((a, b) {
-        final byTime = a.time.compareTo(b.time);
-        return byTime != 0 ? byTime : (a.id ?? '').compareTo(b.id ?? '');
-      });
+    final entries =
+        log.values
+            .expand((entries) => entries)
+            .where((entry) => !entry.deleted)
+            .toList()
+          ..sort((a, b) {
+            final byTime = a.time.compareTo(b.time);
+            return byTime != 0 ? byTime : (a.id ?? '').compareTo(b.id ?? '');
+          });
     final bank = <String, FoodBankRecord>{};
     for (final entry in entries) {
       final components = entry.components;
@@ -199,15 +200,86 @@ class FoodBankService {
     return bank;
   }
 
+  // ---------------------------------------------------------------------------
+  // Manual bank (food items added directly without logging them as eaten)
+  // ---------------------------------------------------------------------------
+
+  File get _manualFile =>
+      File(p.join(_file.parent.path, 'food_bank_manual.json'));
+
+  Future<Map<String, FoodBankRecord>> _readManualBank() async {
+    final file = _manualFile;
+    if (!file.existsSync()) return {};
+    String raw;
+    try {
+      raw = await file.readAsString();
+    } on FileSystemException {
+      return {};
+    }
+    Object? data;
+    try {
+      data = jsonDecode(raw);
+    } on FormatException {
+      return {};
+    }
+    if (data is! Map) return {};
+    final result = <String, FoodBankRecord>{};
+    for (final entry in data.entries) {
+      final key = entry.key;
+      final value = entry.value;
+      if (key is String && value is Map) {
+        result[key] = FoodBankRecord.fromJson(value.cast<String, dynamic>());
+      }
+    }
+    return result;
+  }
+
+  Future<void> _writeManualBank(Map<String, FoodBankRecord> bank) async {
+    final file = _manualFile;
+    await file.parent.create(recursive: true);
+    final encoded = <String, Object?>{
+      for (final entry in bank.entries) entry.key: entry.value.toJson(),
+    };
+    await file.writeAsString(jsonEncode(encoded));
+  }
+
+  /// Adds or updates [record] in the manually-curated bank without logging it
+  /// as eaten. A repeated call with the same normalized name overwrites the
+  /// previous entry.
+  Future<void> addManualEntry(FoodBankRecord record) async {
+    final bank = await _readManualBank();
+    bank[_normalize(record.desc)] = record;
+    await _writeManualBank(bank);
+  }
+
+  /// All known food records: log-derived entries merged with manually-added
+  /// ones, sorted by count descending.
+  ///
+  /// Log-derived records (from [readBank]) take precedence over manual records
+  /// with the same normalized name.
+  Future<List<FoodBankRecord>> mergedEntries() async {
+    final logBank = await readBank();
+    final manualBank = await _readManualBank();
+    final merged = <String, FoodBankRecord>{...manualBank, ...logBank};
+    return merged.values.toList()..sort((a, b) => b.count.compareTo(a.count));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Search
+  // ---------------------------------------------------------------------------
+
   /// Returns banked foods matching [query], best match first.
   ///
   /// An empty query returns the most-logged foods. Mirrors
-  /// `_foodbank.search_foods`.
+  /// `_foodbank.search_foods`. Searches both log-derived and manually-added
+  /// entries; log-derived entries win on name collision.
   Future<List<FoodSuggestion>> search(
     String query, {
     int limit = defaultSuggestions,
   }) async {
-    final bank = await readBank();
+    final logBank = await readBank();
+    final manualBank = await _readManualBank();
+    final bank = <String, FoodBankRecord>{...manualBank, ...logBank};
     final normalized = _normalize(query);
     if (normalized.isEmpty) return _rankedAll(bank, limit);
 

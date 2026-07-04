@@ -9,6 +9,7 @@ library;
 import 'dart:async';
 
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
+import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/github_client.dart';
 import 'package:diet_guard_app/services/github_device_auth.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
@@ -41,6 +42,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final _kcalGoalController = TextEditingController();
   final _ownerController = TextEditingController();
   final _repoController = TextEditingController();
   final _tokenController = TextEditingController();
@@ -66,6 +68,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       settings = const SyncSettings(owner: '', repo: '', token: '');
     }
     if (!mounted) return;
+    _kcalGoalController.text = AppSettingsService.dailyKcalGoal.toString();
     _ownerController.text = settings.owner;
     _repoController.text = settings.repo;
     _tokenController.text = settings.token;
@@ -75,6 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    _kcalGoalController.dispose();
     _ownerController.dispose();
     _repoController.dispose();
     _tokenController.dispose();
@@ -227,10 +231,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Sync settings')),
+      appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Text('Nutrition', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _kcalGoalController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(
+              labelText: 'Daily kcal goal',
+              helperText: 'Shown in the history day summary',
+              suffixText: 'kcal',
+            ),
+            onChanged: (v) {
+              final n = int.tryParse(v);
+              if (n != null && n > 0) {
+                unawaited(AppSettingsService.instance.saveDailyKcalGoal(n));
+              }
+            },
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 8),
           Text(
             'Authorize in your browser — no token to paste. Syncs to '
             'kuhyx/diet-guard-sync by default.',

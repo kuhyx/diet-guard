@@ -165,15 +165,16 @@ class LogStorageService {
   /// "today".
   Future<List<FoodEntry>> allEntriesNewestFirst() async {
     final log = await readLog();
-    final entries = [
-      for (final dayEntries in log.values)
-        ...dayEntries.where((e) => !e.deleted),
-    ]..sort((a, b) {
-      final aTime = DateTime.tryParse(a.time);
-      final bTime = DateTime.tryParse(b.time);
-      if (aTime == null || bTime == null) return 0;
-      return bTime.compareTo(aTime);
-    });
+    final entries =
+        [
+          for (final dayEntries in log.values)
+            ...dayEntries.where((e) => !e.deleted),
+        ]..sort((a, b) {
+          final aTime = DateTime.tryParse(a.time);
+          final bTime = DateTime.tryParse(b.time);
+          if (aTime == null || bTime == null) return 0;
+          return bTime.compareTo(aTime);
+        });
     return entries;
   }
 
@@ -187,13 +188,49 @@ class LogStorageService {
     return double.parse(total.toStringAsFixed(1));
   }
 
+  /// Tombstones the entry with [id] wherever it appears in the log.
+  ///
+  /// Silently does nothing when the id is not found or the entry is already
+  /// deleted — covers both legacy null-id entries and double-delete races.
+  Future<void> deleteEntry(String id) async {
+    final log = await readLog();
+    for (final entries in log.values) {
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i].id == id && !entries[i].deleted) {
+          entries[i] = entries[i].copyWithDeleted();
+          await writeLog(log);
+          return;
+        }
+      }
+    }
+  }
+
+  /// Replaces the stored entry matching [original] with [updated].
+  ///
+  /// Matches by [FoodEntry.id] when present; falls back to
+  /// `time + desc` for legacy entries that predate UUID support.
+  /// Silently does nothing when no match is found.
+  Future<void> updateEntry(FoodEntry original, FoodEntry updated) async {
+    final log = await readLog();
+    for (final entries in log.values) {
+      for (var i = 0; i < entries.length; i++) {
+        final e = entries[i];
+        final matches = original.id != null
+            ? e.id == original.id
+            : e.time == original.time && e.desc == original.desc;
+        if (matches) {
+          entries[i] = updated;
+          await writeLog(log);
+          return;
+        }
+      }
+    }
+  }
+
   /// Returns the slot hours already satisfied today, mirrors
   /// `_state.logged_slots_today`.
   Future<Set<int>> loggedSlotsToday() async {
     final entries = await todayEntries();
-    return entries
-        .where((e) => e.slot != null)
-        .map((e) => e.slot!)
-        .toSet();
+    return entries.where((e) => e.slot != null).map((e) => e.slot!).toSet();
   }
 }

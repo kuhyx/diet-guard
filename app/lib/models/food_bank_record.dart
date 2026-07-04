@@ -23,17 +23,16 @@ class FoodBankRecord {
   });
 
   /// Builds a [FoodBankRecord] from its JSON map representation.
-  factory FoodBankRecord.fromJson(Map<String, dynamic> json) =>
-      FoodBankRecord(
-        desc: json['desc'] as String? ?? '',
-        kcal: (json['kcal'] as num?)?.toDouble() ?? 0,
-        proteinG: (json['protein_g'] as num?)?.toDouble() ?? 0,
-        carbsG: (json['carbs_g'] as num?)?.toDouble() ?? 0,
-        fatG: (json['fat_g'] as num?)?.toDouble() ?? 0,
-        grams: (json['grams'] as num?)?.toDouble() ?? 0,
-        count: (json['count'] as num?)?.toDouble() ?? 0,
-        components: (json['components'] as List?)?.cast<String>(),
-      );
+  factory FoodBankRecord.fromJson(Map<String, dynamic> json) => FoodBankRecord(
+    desc: json['desc'] as String? ?? '',
+    kcal: (json['kcal'] as num?)?.toDouble() ?? 0,
+    proteinG: (json['protein_g'] as num?)?.toDouble() ?? 0,
+    carbsG: (json['carbs_g'] as num?)?.toDouble() ?? 0,
+    fatG: (json['fat_g'] as num?)?.toDouble() ?? 0,
+    grams: (json['grams'] as num?)?.toDouble() ?? 0,
+    count: (json['count'] as num?)?.toDouble() ?? 0,
+    components: (json['components'] as List?)?.cast<String>(),
+  );
 
   /// The food or meal's display name, as the user typed it.
   final String desc;

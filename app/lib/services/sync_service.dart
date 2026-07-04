@@ -26,7 +26,8 @@ const _devicesDir = 'devices';
 /// phone is the only other device in this design.
 const phoneDeviceId = 'phone';
 
-String _deviceLogPath(String deviceId) => '$_devicesDir/$deviceId/food_log.json';
+String _deviceLogPath(String deviceId) =>
+    '$_devicesDir/$deviceId/food_log.json';
 
 /// Runs one full sync tick: pull, merge, preserve photos, persist, push.
 ///
