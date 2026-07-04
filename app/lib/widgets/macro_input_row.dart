@@ -61,29 +61,64 @@ class MacroControllers {
 
 /// A labeled row of number-entry fields for calories, macros, and the
 /// optional reference-weight-vs-eaten-weight split.
+///
+/// Layout mirrors the Python gate's macro section: the reference weight
+/// (`per (g)`) sits on the same line as `kcal` so the user can see at a
+/// glance which portion size the calories describe.
 class MacroInputRow extends StatelessWidget {
   /// Creates a [MacroInputRow] bound to [controllers].
-  const MacroInputRow({required this.controllers, super.key});
+  ///
+  /// When [compact] is true, all six fields render in a single row with
+  /// abbreviated labels instead of the default three stacked rows.
+  const MacroInputRow({
+    required this.controllers,
+    this.compact = false,
+    super.key,
+  });
 
   /// The text controllers this row reads from and writes to.
   final MacroControllers controllers;
 
+  /// Whether to render all fields in one row with abbreviated labels.
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
+    if (compact) {
+      return Row(
+        children: [
+          Expanded(child: _macroField('per', controllers.perGrams)),
+          const SizedBox(width: 4),
+          Expanded(child: _macroField('kcal', controllers.kcal)),
+          const SizedBox(width: 4),
+          Expanded(child: _macroField('P', controllers.protein)),
+          const SizedBox(width: 4),
+          Expanded(child: _macroField('C', controllers.carbs)),
+          const SizedBox(width: 4),
+          Expanded(child: _macroField('F', controllers.fat)),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Tooltip(
+              message: "blank = same as 'per (g)'",
+              child: _macroField('eaten', controllers.grams),
+            ),
+          ),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // per-gram reference weight and kcal on the same line.
         Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Expanded(child: _macroField('kcal', controllers.kcal)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _macroField(
-                'macros per (g)',
-                controllers.perGrams,
-                helperText: 'e.g. 100 for a per-100g label',
-              ),
+            SizedBox(
+              width: 72,
+              child: _macroField('per (g)', controllers.perGrams),
             ),
+            const SizedBox(width: 8),
+            Expanded(child: _macroField('kcal', controllers.kcal)),
           ],
         ),
         const SizedBox(height: 8),
@@ -98,9 +133,9 @@ class MacroInputRow extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _macroField(
-          'amount eaten (g)',
+          'eaten (g)',
           controllers.grams,
-          helperText: "blank = same as 'macros per'",
+          helperText: "blank = same as 'per (g)'",
         ),
       ],
     );

@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:diet_guard_app/models/food_entry.dart';
+import 'package:diet_guard_app/screens/food_bank_screen.dart';
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
+import 'package:diet_guard_app/screens/meal_builder_screen.dart';
 import 'package:diet_guard_app/screens/photo_viewer_screen.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
@@ -118,7 +120,7 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  final logMealButton = find.widgetWithText(ElevatedButton, 'Log meal');
+  final logMealButton = find.byTooltip('Log meal');
 
   // The screen's button handlers and description-field listener trigger
   // real `dart:io` file I/O as fire-and-forget Futures that Flutter's frame
@@ -171,7 +173,7 @@ void main() {
 
       await tester.enterText(find.byType(TextField).at(0), 'toast');
       await settle(tester);
-      await tester.enterText(find.byType(TextField).at(1), '150');
+      await tester.enterText(find.byType(TextField).at(2), '150');
       await tester.enterText(find.byType(TextField).at(3), '5');
       await tester.enterText(find.byType(TextField).at(4), '20');
       await tester.enterText(find.byType(TextField).at(5), '3');
@@ -211,8 +213,8 @@ void main() {
 
         await tester.enterText(find.byType(TextField).at(0), 'label food');
         await settle(tester);
-        await tester.enterText(find.byType(TextField).at(1), '200');
-        await tester.enterText(find.byType(TextField).at(2), '100');
+        await tester.enterText(find.byType(TextField).at(1), '100');
+        await tester.enterText(find.byType(TextField).at(2), '200');
         await tester.enterText(find.byType(TextField).at(3), '10');
         await tester.enterText(find.byType(TextField).at(4), '20');
         await tester.enterText(find.byType(TextField).at(5), '5');
@@ -257,7 +259,7 @@ void main() {
         await settle(tester);
 
         // The empty-query suggestion list shows the only banked food.
-        await tester.tap(find.text('seeded food'));
+        await tester.tap(find.text('seeded food · 250 kcal'));
         await settle(tester);
         await tester.ensureVisible(logMealButton);
         await tester.tap(logMealButton);
@@ -268,9 +270,9 @@ void main() {
         expect(firstEntry.source, 'food bank');
         expect(firstEntry.kcal, 250);
 
-        await tester.tap(find.text('seeded food'));
+        await tester.tap(find.text('seeded food · 250 kcal'));
         await settle(tester);
-        await tester.enterText(find.byType(TextField).at(1), '999');
+        await tester.enterText(find.byType(TextField).at(2), '999');
         await settle(tester);
         await tester.ensureVisible(logMealButton);
         await tester.tap(logMealButton);
@@ -305,12 +307,12 @@ void main() {
         await tester.enterText(find.byType(TextField).at(0), 'snack');
         await settle(tester);
 
-        await tester.tap(find.text('Attach photo'));
+        await tester.tap(find.byTooltip('Attach photo'));
         await settle(tester);
         await tester.tap(find.text('Choose from gallery'));
         await settle(tester);
 
-        expect(find.text('Remove photo'), findsOneWidget);
+        expect(find.byTooltip('Remove photo'), findsOneWidget);
 
         await tester.ensureVisible(logMealButton);
         await tester.tap(logMealButton);
@@ -323,11 +325,11 @@ void main() {
 
         await tester.enterText(find.byType(TextField).at(0), 'snack two');
         await settle(tester);
-        await tester.tap(find.text('Attach photo'));
+        await tester.tap(find.byTooltip('Attach photo'));
         await settle(tester);
         await tester.tap(find.text('Choose from gallery'));
         await settle(tester);
-        await tester.tap(find.text('Remove photo'));
+        await tester.tap(find.byTooltip('Remove photo'));
         await settle(tester);
         await tester.ensureVisible(logMealButton);
         await tester.tap(logMealButton);
@@ -353,7 +355,7 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
       await settle(tester);
 
-      await tester.tap(find.text('Attach photo'));
+      await tester.tap(find.byTooltip('Attach photo'));
       await settle(tester);
       await tester.tap(find.text('Choose from gallery'));
       await settle(tester);
@@ -362,6 +364,108 @@ void main() {
       await settle(tester);
 
       expect(find.byType(PhotoViewerScreen), findsOneWidget);
+    });
+  });
+
+  testWidgets('food bank icon navigates to FoodBankScreen', (tester) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+      await settle(tester);
+
+      await tester.tap(find.byIcon(Icons.restaurant_menu));
+      await settle(tester);
+
+      expect(find.byType(FoodBankScreen), findsOneWidget);
+    });
+  });
+
+  testWidgets('build meal button navigates to MealBuilderScreen', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+      await settle(tester);
+
+      await tester.ensureVisible(find.byTooltip('Build a multi-item meal'));
+      await tester.tap(find.byTooltip('Build a multi-item meal'));
+      await settle(tester);
+
+      expect(find.byType(MealBuilderScreen), findsOneWidget);
+    });
+  });
+
+  testWidgets('logged slot chip renders check-icon avatar', (tester) async {
+    await tester.runAsync(() async {
+      final now = DateTime.now();
+      final dateKey =
+          '${now.year.toString().padLeft(4, '0')}-'
+          '${now.month.toString().padLeft(2, '0')}-'
+          '${now.day.toString().padLeft(2, '0')}';
+      final at8 = DateTime(now.year, now.month, now.day, 8);
+
+      await LogStorageService.instance.writeLog({
+        dateKey: [
+          FoodEntry(
+            id: 'slot-seed',
+            time: at8.toIso8601String(),
+            desc: 'breakfast',
+            grams: 100,
+            kcal: 300,
+            proteinG: 10,
+            carbsG: 40,
+            fatG: 5,
+            source: 'manual',
+            slot: 8,
+          ),
+        ],
+      });
+
+      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+      await settle(tester);
+
+      // The 08:00 slot is logged — its ChoiceChip has a check-icon avatar.
+      expect(find.byIcon(Icons.check), findsWidgets);
+    });
+  });
+
+  testWidgets('tapping a slot chip selects it', (tester) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+      await settle(tester);
+
+      // Tap the 08:00 chip to force _selectedSlot = 8.
+      await tester.tap(find.text('08:00'));
+      await settle(tester);
+
+      final chip = tester.widget<ChoiceChip>(
+        find.ancestor(
+          of: find.text('08:00'),
+          matching: find.byType(ChoiceChip),
+        ),
+      );
+      expect(chip.selected, isTrue);
+    });
+  });
+
+  testWidgets('navigating to MealBuilderScreen and back refreshes slots', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+      await settle(tester);
+
+      // Open MealBuilderScreen.
+      await tester.ensureVisible(find.byTooltip('Build a multi-item meal'));
+      await tester.tap(find.byTooltip('Build a multi-item meal'));
+      await settle(tester);
+
+      expect(find.byType(MealBuilderScreen), findsOneWidget);
+
+      // Pop back — triggers _onBuildMeal's await _refreshSlots() (line 213).
+      await tester.tap(find.byTooltip('Back'));
+      await settle(tester);
+
+      expect(find.byType(LogMealScreen), findsOneWidget);
     });
   });
 }

@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:diet_guard_app/models/food_suggestion.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/models/slot.dart';
+import 'package:diet_guard_app/screens/food_bank_screen.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/screens/meal_builder_screen.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
@@ -18,7 +19,7 @@ import 'package:diet_guard_app/services/sync_settings.dart';
 import 'package:diet_guard_app/widgets/autocomplete_suggestion_list.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
 import 'package:diet_guard_app/widgets/photo_attach_field.dart';
-import 'package:diet_guard_app/widgets/slot_status_bar.dart';
+import 'package:diet_guard_app/widgets/slot_selector_row.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -43,6 +44,7 @@ class _LogMealScreenState extends State<LogMealScreen>
   final MacroControllers _macros = MacroControllers();
   List<FoodSuggestion> _suggestions = const [];
   Set<int> _loggedSlots = {};
+  int? _selectedSlot;
   String _source = 'manual';
   String? _status;
   String? _imagePath;
@@ -65,6 +67,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     ]) {
       controller.addListener(_onMacroEdited);
     }
+    _selectedSlot = currentSlot(DateTime.now());
     unawaited(_refreshSlots());
     unawaited(_onDescChanged());
     unawaited(_autoSync());
@@ -182,11 +185,10 @@ class _LogMealScreenState extends State<LogMealScreen>
       ateGrams: _parse(_macros.grams),
       source: _source,
     );
-    final slot = currentSlot(DateTime.now());
     await LogStorageService.instance.logMeal(
       desc,
       nutrition,
-      slot: slot,
+      slot: _selectedSlot,
       imagePath: _imagePath,
     );
     final log = await LogStorageService.instance.readLog();
@@ -197,6 +199,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     setState(() {
       _source = 'manual';
       _imagePath = null;
+      _selectedSlot = currentSlot(DateTime.now());
     });
     await _refreshSlots();
     if (!mounted) return;
@@ -218,6 +221,14 @@ class _LogMealScreenState extends State<LogMealScreen>
     );
   }
 
+  void _onOpenFoodBank() {
+    unawaited(
+      Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => const FoodBankScreen()),
+      ),
+    );
+  }
+
   void _onOpenSettings() {
     unawaited(
       Navigator.of(context).push<void>(
@@ -235,6 +246,11 @@ class _LogMealScreenState extends State<LogMealScreen>
         title: const Text('Diet Guard'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.restaurant_menu),
+            tooltip: 'Food bank',
+            onPressed: _onOpenFoodBank,
+          ),
+          IconButton(
             icon: const Icon(Icons.history),
             tooltip: 'History',
             onPressed: _onOpenHistory,
@@ -251,8 +267,13 @@ class _LogMealScreenState extends State<LogMealScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SlotStatusBar(now: DateTime.now(), loggedSlots: _loggedSlots),
-            const SizedBox(height: 16),
+            SlotSelectorRow(
+              now: DateTime.now(),
+              loggedSlots: _loggedSlots,
+              selectedSlot: _selectedSlot,
+              onSlotSelected: (slot) => setState(() => _selectedSlot = slot),
+            ),
+            const SizedBox(height: 8),
             TextField(
               controller: _descController,
               decoration: const InputDecoration(labelText: 'What did you eat?'),
@@ -260,25 +281,33 @@ class _LogMealScreenState extends State<LogMealScreen>
             AutocompleteSuggestionList(
               suggestions: _suggestions,
               onSelected: _onSuggestionSelected,
+              compact: true,
             ),
-            const SizedBox(height: 12),
-            MacroInputRow(controllers: _macros),
-            const SizedBox(height: 12),
-            PhotoAttachField(
-              imagePath: _imagePath,
-              onChanged: (path) => setState(() => _imagePath = path),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
+            const SizedBox(height: 8),
+            MacroInputRow(controllers: _macros, compact: true),
+            const SizedBox(height: 8),
+            Row(
               children: [
-                ElevatedButton(
-                  onPressed: _onLogMeal,
-                  child: const Text('Log meal'),
+                PhotoAttachField(
+                  imagePath: _imagePath,
+                  onChanged: (path) => setState(() => _imagePath = path),
+                  compact: true,
                 ),
-                OutlinedButton(
-                  onPressed: _onBuildMeal,
-                  child: const Text('Build a multi-item meal'),
+                const Spacer(),
+                Tooltip(
+                  message: 'Build a multi-item meal',
+                  child: OutlinedButton(
+                    onPressed: _onBuildMeal,
+                    child: const Icon(Icons.playlist_add),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Log meal',
+                  child: FilledButton(
+                    onPressed: _onLogMeal,
+                    child: const Icon(Icons.check_circle),
+                  ),
                 ),
               ],
             ),

@@ -19,6 +19,7 @@ class PhotoAttachField extends StatelessWidget {
   const PhotoAttachField({
     required this.imagePath,
     required this.onChanged,
+    this.compact = false,
     super.key,
   });
 
@@ -28,6 +29,10 @@ class PhotoAttachField extends StatelessWidget {
   /// Called with the new path after a successful pick, or null after the
   /// user removes the current photo.
   final ValueChanged<String?> onChanged;
+
+  /// Whether to render an icon-only button and a small thumbnail badge
+  /// instead of the default text button and 64x64 preview.
+  final bool compact;
 
   Future<void> _attach(BuildContext context) async {
     final source = await showModalBottomSheet<ImageSource>(
@@ -39,14 +44,12 @@ class PhotoAttachField extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.photo_camera),
               title: const Text('Take a photo'),
-              onTap: () =>
-                  Navigator.of(sheetContext).pop(ImageSource.camera),
+              onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
               title: const Text('Choose from gallery'),
-              onTap: () =>
-                  Navigator.of(sheetContext).pop(ImageSource.gallery),
+              onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
             ),
           ],
         ),
@@ -61,33 +64,67 @@ class PhotoAttachField extends StatelessWidget {
   Widget build(BuildContext context) {
     final path = imagePath;
     if (path == null) {
+      if (compact) {
+        return Tooltip(
+          message: 'Attach photo',
+          child: IconButton(
+            onPressed: () => _attach(context),
+            icon: const Icon(Icons.add_a_photo),
+          ),
+        );
+      }
       return OutlinedButton.icon(
         onPressed: () => _attach(context),
         icon: const Icon(Icons.add_a_photo),
         label: const Text('Attach photo'),
       );
     }
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () => Navigator.of(context).push<void>(
-            MaterialPageRoute(builder: (_) => PhotoViewerScreen(path: path)),
+    final thumbnailSize = compact ? 32.0 : 64.0;
+    final thumbnail = GestureDetector(
+      onTap: () => Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => PhotoViewerScreen(path: path)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.file(
+          File(path),
+          width: thumbnailSize,
+          height: thumbnailSize,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => SizedBox(
+            width: thumbnailSize,
+            height: thumbnailSize,
+            child: const Icon(Icons.broken_image),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.file(
-              File(path),
-              width: 64,
-              height: 64,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => const SizedBox(
-                width: 64,
-                height: 64,
-                child: Icon(Icons.broken_image),
+        ),
+      ),
+    );
+    if (compact) {
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          thumbnail,
+          Positioned(
+            top: -6,
+            right: -6,
+            child: Tooltip(
+              message: 'Remove photo',
+              child: InkWell(
+                onTap: () => onChanged(null),
+                customBorder: const CircleBorder(),
+                child: const CircleAvatar(
+                  radius: 9,
+                  child: Icon(Icons.close, size: 12),
+                ),
               ),
             ),
           ),
-        ),
+        ],
+      );
+    }
+    return Row(
+      children: [
+        thumbnail,
         const SizedBox(width: 8),
         TextButton(
           onPressed: () => onChanged(null),
