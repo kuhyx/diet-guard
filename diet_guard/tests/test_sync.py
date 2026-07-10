@@ -43,7 +43,7 @@ def _mock_client(
     client = MagicMock()
     client.list_directory.return_value = list(devices)
     resolved_files = files or {}
-    client.get_file_text.side_effect = lambda path: resolved_files.get(path)
+    client.get_file_text.side_effect = resolved_files.get
     return client
 
 
@@ -81,18 +81,23 @@ class TestRunSync:
         assert sum(len(entries) for entries in merged.values()) == 1
         client.put_file_text.assert_called_once()
         pushed_path = client.put_file_text.call_args.args[0]
-        assert pushed_path == "devices/pc/food_log.json"
+        assert pushed_path == "diet-guard-sync/devices/pc/food_log.json"
+        pushed_json = client.put_file_text.call_args.args[1]
+        pushed = json.loads(pushed_json)
+        (record,) = pushed.values()
+        assert "fields" in record
+        assert "id" in record
 
     def test_skips_its_own_device_id_when_listing(self) -> None:
         _write_token()
         client = _mock_client(
             devices=("pc", "phone"),
-            files={"devices/phone/food_log.json": "{}"},
+            files={"diet-guard-sync/devices/phone/food_log.json": "{}"},
         )
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         client.get_file_text.assert_called_once_with(
-            "devices/phone/food_log.json",
+            "diet-guard-sync/devices/phone/food_log.json",
         )
 
     def test_skips_a_device_with_no_pushed_file_yet(self) -> None:
@@ -106,7 +111,7 @@ class TestRunSync:
         _write_token()
         client = _mock_client(
             devices=("phone",),
-            files={"devices/phone/food_log.json": "[]"},
+            files={"diet-guard-sync/devices/phone/food_log.json": "[]"},
         )
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             merged = _sync.run_sync()
@@ -119,7 +124,7 @@ class TestRunSync:
         _write_token()
         client = _mock_client(
             devices=("phone",),
-            files={"devices/phone/food_log.json": "{not valid json"},
+            files={"diet-guard-sync/devices/phone/food_log.json": "{not valid json"},
         )
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             merged = _sync.run_sync()
@@ -146,7 +151,7 @@ class TestRunSync:
         )
         client = _mock_client(
             devices=("phone",),
-            files={"devices/phone/food_log.json": remote_log_json},
+            files={"diet-guard-sync/devices/phone/food_log.json": remote_log_json},
         )
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             merged = _sync.run_sync()
@@ -181,7 +186,7 @@ class TestRunSync:
         )
         client = _mock_client(
             devices=("phone",),
-            files={"devices/phone/food_log.json": remote_log_json},
+            files={"diet-guard-sync/devices/phone/food_log.json": remote_log_json},
         )
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             _sync.run_sync()

@@ -5,6 +5,7 @@ description = "Tkinter/systemd log-to-unlock meal gate with calorie/macro budget
 requires-python = ">=3.10"
 dependencies = [
     "gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.1.0#subdirectory=gatelock",
+    "crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.1.0#subdirectory=crdt-sync",
     "requests>=2.31.0",
 ]
 
@@ -39,8 +40,8 @@ fixable = ["ALL"]
 unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**/*.py" = ["ARG", "D", "PLC0415", "PLR2004", "S101", "SLF001"]
-"**/test_*.py" = ["ARG", "D", "PLC0415", "PLR2004", "S101", "SLF001"]
+"**/tests/**/*.py" = ["ARG", "D", "PLC0415", "PLR2004", "S101", "S107", "SLF001"]
+"**/test_*.py" = ["ARG", "D", "PLC0415", "PLR2004", "S101", "S107", "SLF001"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

@@ -4,6 +4,7 @@ library;
 
 import 'dart:async';
 
+import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_suggestion.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/models/slot.dart';
@@ -12,7 +13,6 @@ import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/screens/meal_builder_screen.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
-import 'package:diet_guard_app/services/github_client.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';

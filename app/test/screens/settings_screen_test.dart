@@ -150,6 +150,13 @@ void main() {
   ) async {
     final mock = MockClient((req) async {
       if (req.method == 'PUT') return http.Response('{}', 200);
+      // A bare `/repos/<owner>/<repo>` GET is crdt_sync's GitHubClient
+      // probing whether the repo itself exists (vs. a content path just
+      // being unused) -- must succeed so an empty repo isn't mistaken for
+      // a missing one.
+      if (req.method == 'GET' && req.url.pathSegments.length == 3) {
+        return http.Response('{}', 200);
+      }
       return http.Response('', 404);
     });
     await tester.runAsync(() async {
@@ -327,6 +334,13 @@ void main() {
         return http.Response(jsonEncode({'access_token': 'gho_test'}), 200);
       }
       if (req.method == 'PUT') return http.Response('{}', 200);
+      // A bare `/repos/<owner>/<repo>` GET is crdt_sync's GitHubClient
+      // probing whether the repo itself exists (vs. a content path just
+      // being unused) -- must succeed so an empty repo isn't mistaken for
+      // a missing one.
+      if (req.method == 'GET' && req.url.pathSegments.length == 3) {
+        return http.Response('{}', 200);
+      }
       return http.Response('', 404); // sync's pull-side list/read calls
     });
 

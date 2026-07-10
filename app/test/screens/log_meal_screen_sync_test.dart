@@ -65,6 +65,13 @@ void main() {
     var puts = 0;
     final mock = MockClient((req) async {
       if (req.method == 'PUT') puts++;
+      // A bare `/repos/<owner>/<repo>` GET is crdt_sync's GitHubClient
+      // probing whether the repo itself exists (vs. a content path just
+      // being unused) -- must succeed so an empty/unconfigured repo isn't
+      // mistaken for a missing one.
+      if (req.method == 'GET' && req.url.pathSegments.length == 3) {
+        return http.Response('{}', 200);
+      }
       return http.Response('', 404);
     });
 
@@ -87,6 +94,13 @@ void main() {
     var puts = 0;
     final mock = MockClient((req) async {
       if (req.method == 'PUT') puts++;
+      // A bare `/repos/<owner>/<repo>` GET is crdt_sync's GitHubClient
+      // probing whether the repo itself exists (vs. a content path just
+      // being unused) -- must succeed so an empty/unconfigured repo isn't
+      // mistaken for a missing one.
+      if (req.method == 'GET' && req.url.pathSegments.length == 3) {
+        return http.Response('{}', 200);
+      }
       return http.Response('', 404);
     });
 

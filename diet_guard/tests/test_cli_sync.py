@@ -6,9 +6,10 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+from crdt_sync import GitHubSyncError
+
 from diet_guard import _cli_sync
 from diet_guard._sync import SyncError
-from diet_guard._sync_github import GitHubSyncError
 
 
 class TestCmdSync:

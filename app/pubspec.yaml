@@ -8,6 +8,12 @@ environment:
   sdk: ^3.12.2
 
 dependencies:
+  crdt_sync:
+    git:
+      url: https://github.com/kuhyx/utils
+      ref: crdt_sync_dart-v0.1.0
+      path: crdt_sync_dart
+  crypto: ^3.0.6
   flutter:
     sdk: flutter
   flutter_local_notifications: ^22.0.1

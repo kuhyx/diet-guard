@@ -10,8 +10,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from crdt_sync import GitHubSyncError
+
 from diet_guard._sync import SyncError, run_sync
-from diet_guard._sync_github import GitHubSyncError
 
 if TYPE_CHECKING:
     import argparse

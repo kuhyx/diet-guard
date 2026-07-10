@@ -1,9 +1,11 @@
 """Cross-device log sync orchestration for diet_guard.
 
 Pulls every other device's pushed log from GitHub-backed dumb storage
-(:mod:`diet_guard._sync_github`), merges with the local log
-(:mod:`diet_guard._sync_merge`), re-signs every persisted entry, rebuilds the
-food bank, and pushes this device's own merged log back up.
+(``crdt_sync.GitHubSyncClient``), merges with the local log via
+``crdt_sync``'s shared CRDT scheme (:mod:`diet_guard._sync_merge` adapts
+diet_guard's entries to/from ``crdt_sync.Record``), re-signs every persisted
+entry, rebuilds the food bank, and pushes this device's own merged log back
+up in the new Record-based wire format.
 """
 
 from __future__ import annotations
@@ -11,16 +13,18 @@ from __future__ import annotations
 import json
 import logging
 
+from crdt_sync import GitHubSyncClient, Log, merge_logs
+
 from diet_guard._constants import (
     SYNC_DEVICE_ID,
     SYNC_REPO_NAME,
     SYNC_REPO_OWNER,
+    SYNC_TIMEOUT_SECONDS,
     SYNC_TOKEN_FILE,
 )
 from diet_guard._foodbank import rebuild_food_bank
 from diet_guard._state import DayLog, read_raw_log, resign_entry, write_raw_log
-from diet_guard._sync_github import GitHubSyncClient
-from diet_guard._sync_merge import merge_logs
+from diet_guard._sync_merge import daylog_to_log, log_to_daylog, parse_remote_log
 
 _logger = logging.getLogger(__name__)
 
@@ -57,15 +61,16 @@ def _read_token() -> str:
     return token
 
 
-def _pull_remote_logs(client: GitHubSyncClient) -> list[DayLog]:
+def _pull_remote_logs(client: GitHubSyncClient) -> list[Log]:
     """Return every other device's last-pushed log, skipping this one.
 
-    A device whose pushed file is corrupt or truncated (e.g. an interrupted
-    push) is logged and skipped, same as one that has never pushed at all --
-    GitHub is an external system boundary, and one bad device's file must
-    not stall merging in every other device's.
+    A device whose pushed file is corrupt, truncated, or otherwise
+    unparsable (new or old wire format) is logged and skipped, same as one
+    that has never pushed at all -- GitHub is an external system boundary,
+    and one bad device's file must not stall merging in every other
+    device's.
     """
-    remote_logs: list[DayLog] = []
+    remote_logs: list[Log] = []
     for device_id in client.list_directory(_DEVICES_DIR):
         if device_id == SYNC_DEVICE_ID:
             continue
@@ -73,12 +78,9 @@ def _pull_remote_logs(client: GitHubSyncClient) -> list[DayLog]:
         if text is None:
             continue
         try:
-            remote_log = json.loads(text)
-        except json.JSONDecodeError:
+            remote_logs.append(parse_remote_log(text))
+        except (TypeError, KeyError, ValueError, json.JSONDecodeError):
             _logger.warning("Unparsable log pushed by device %r, skipping", device_id)
-            continue
-        if isinstance(remote_log, dict):
-            remote_logs.append(remote_log)
     return remote_logs
 
 
@@ -96,27 +98,35 @@ def run_sync() -> DayLog:
 
     Raises:
         SyncError: If the local PAT is missing or empty.
-        diet_guard._sync_github.GitHubSyncError: Propagated from the GitHub
-            client for any transport failure -- the caller (CLI/timer)
-            decides how to report it.
+        crdt_sync.GitHubSyncError: Propagated from the GitHub client for any
+            transport failure -- the caller (CLI/timer) decides how to
+            report it.
     """
     token = _read_token()
-    client = GitHubSyncClient(SYNC_REPO_OWNER, SYNC_REPO_NAME, token)
+    client = GitHubSyncClient(
+        SYNC_REPO_OWNER, SYNC_REPO_NAME, token, timeout_seconds=SYNC_TIMEOUT_SECONDS
+    )
 
-    merged = read_raw_log()
+    merged = daylog_to_log(read_raw_log())
     for remote_log in _pull_remote_logs(client):
         merged = merge_logs(merged, remote_log)
 
+    merged_daylog = log_to_daylog(merged)
     resigned: DayLog = {
         day: [resign_entry(entry) for entry in entries]
-        for day, entries in merged.items()
+        for day, entries in merged_daylog.items()
     }
     write_raw_log(resigned)
     rebuild_food_bank(resigned)
 
+    push_log = daylog_to_log(resigned)
+    push_json = json.dumps(
+        {record_id: record.to_dict() for record_id, record in push_log.items()},
+        indent=2,
+    )
     client.put_file_text(
         _device_log_path(SYNC_DEVICE_ID),
-        json.dumps(resigned, indent=2),
+        push_json,
         message="diet_guard sync",
     )
     return resigned

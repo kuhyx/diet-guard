@@ -8,6 +8,7 @@ library;
 
 import 'dart:async';
 
+import 'package:crdt_sync/crdt_sync.dart' as crdt_sync;
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/github_client.dart';
@@ -141,7 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// to work immediately, with clear confirmation either way.
   Future<void> _syncAfterConnect() async {
     final settings = _currentSettings();
-    final client = GitHubClient(
+    final client = crdt_sync.GitHubClient(
       owner: settings.owner,
       repo: settings.repo,
       token: settings.token,
@@ -189,7 +190,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _busy = true);
     final settings = _currentSettings();
     await settings.save();
-    final client = GitHubClient(
+    final client = crdt_sync.GitHubClient(
       owner: settings.owner,
       repo: settings.repo,
       token: settings.token,

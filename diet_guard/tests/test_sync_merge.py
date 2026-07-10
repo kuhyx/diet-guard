@@ -1,8 +1,28 @@
-"""Tests for the pure cross-device log-merge logic."""
+"""Tests for diet_guard's entry <-> crdt_sync.Record adapters.
+
+``TestUnionById`` through ``TestAlgebraicProperties`` are the exact same
+behavioral assertions the pre-migration ``_sync_merge.merge_logs`` had --
+routed through ``daylog_to_log -> crdt_sync.merge_logs -> log_to_daylog``
+instead, to prove the migration preserves diet_guard's merge semantics
+exactly, not just "some CRDT library now does something similar."
+"""
 
 from __future__ import annotations
 
-from diet_guard._sync_merge import merge_logs
+import json
+
+from crdt_sync import merge_logs
+import pytest
+
+from diet_guard._sync_merge import (
+    _entry_hlc,
+    _legacy_entry_id,
+    daylog_to_log,
+    entry_to_record,
+    log_to_daylog,
+    parse_remote_log,
+    record_to_entry,
+)
 
 
 def _entry(**overrides: object) -> dict[str, object]:
@@ -22,30 +42,35 @@ def _entry(**overrides: object) -> dict[str, object]:
     return entry
 
 
+def _merge_daylogs(a: dict, b: dict) -> dict:
+    """Merge two DayLogs through the new crdt_sync-backed pipeline."""
+    return log_to_daylog(merge_logs(daylog_to_log(a), daylog_to_log(b)))
+
+
 class TestUnionById:
     def test_disjoint_logs_union_into_one(self) -> None:
         a = {"2026-06-22": [_entry(id="a", time="2026-06-22T08:00:00+02:00")]}
         b = {"2026-06-22": [_entry(id="b", time="2026-06-22T12:00:00+02:00")]}
-        merged = merge_logs(a, b)
+        merged = _merge_daylogs(a, b)
         assert {e["id"] for e in merged["2026-06-22"]} == {"a", "b"}
 
     def test_same_id_in_both_logs_is_not_duplicated(self) -> None:
         shared = _entry(id="shared")
-        merged = merge_logs({"2026-06-22": [shared]}, {"2026-06-22": [shared]})
+        merged = _merge_daylogs({"2026-06-22": [shared]}, {"2026-06-22": [shared]})
         assert len(merged["2026-06-22"]) == 1
 
     def test_legacy_entries_without_id_dedup_by_time_and_desc(self) -> None:
         legacy_a = _entry(id=None, time="2026-06-20T08:00:00+02:00", desc="toast")
         legacy_a.pop("id")
         legacy_b = dict(legacy_a)
-        merged = merge_logs({"2026-06-20": [legacy_a]}, {"2026-06-20": [legacy_b]})
+        merged = _merge_daylogs({"2026-06-20": [legacy_a]}, {"2026-06-20": [legacy_b]})
         assert len(merged["2026-06-20"]) == 1
 
     def test_legacy_and_id_entries_with_different_keys_both_survive(self) -> None:
         legacy = _entry(time="2026-06-20T08:00:00+02:00", desc="toast")
         legacy.pop("id")
         with_id = _entry(id="x", time="2026-06-20T09:00:00+02:00", desc="eggs")
-        merged = merge_logs({"2026-06-20": [legacy]}, {"2026-06-20": [with_id]})
+        merged = _merge_daylogs({"2026-06-20": [legacy]}, {"2026-06-20": [with_id]})
         assert len(merged["2026-06-20"]) == 2
 
 
@@ -54,11 +79,11 @@ class TestTombstoneWins:
         normal = _entry(id="x", deleted=False)
         tombstoned = _entry(id="x", deleted=True)
 
-        forward = merge_logs(
+        forward = _merge_daylogs(
             {"2026-06-22": [normal]},
             {"2026-06-22": [tombstoned]},
         )
-        backward = merge_logs(
+        backward = _merge_daylogs(
             {"2026-06-22": [tombstoned]},
             {"2026-06-22": [normal]},
         )
@@ -68,7 +93,7 @@ class TestTombstoneWins:
 
     def test_two_tombstoned_copies_stay_tombstoned(self) -> None:
         tombstoned = _entry(id="x", deleted=True)
-        merged = merge_logs(
+        merged = _merge_daylogs(
             {"2026-06-22": [tombstoned]},
             {"2026-06-22": [dict(tombstoned)]},
         )
@@ -80,13 +105,13 @@ class TestRebucketingAndOrdering:
         self,
     ) -> None:
         misfiled = _entry(id="x", time="2026-06-21T23:00:00+02:00")
-        merged = merge_logs({"2026-06-22": [misfiled]}, {})
+        merged = _merge_daylogs({"2026-06-22": [misfiled]}, {})
         assert merged == {"2026-06-21": [misfiled]}
 
     def test_a_days_entries_are_sorted_oldest_first(self) -> None:
         late = _entry(id="late", time="2026-06-22T20:00:00+02:00")
         early = _entry(id="early", time="2026-06-22T08:00:00+02:00")
-        merged = merge_logs({"2026-06-22": [late]}, {"2026-06-22": [early]})
+        merged = _merge_daylogs({"2026-06-22": [late]}, {"2026-06-22": [early]})
         assert [e["id"] for e in merged["2026-06-22"]] == ["early", "late"]
 
 
@@ -94,16 +119,96 @@ class TestAlgebraicProperties:
     def test_merge_is_commutative(self) -> None:
         a = {"2026-06-22": [_entry(id="a")]}
         b = {"2026-06-22": [_entry(id="b", time="2026-06-22T09:00:00+02:00")]}
-        assert merge_logs(a, b) == merge_logs(b, a)
+        assert _merge_daylogs(a, b) == _merge_daylogs(b, a)
 
     def test_merge_is_idempotent(self) -> None:
         canonical = {"2026-06-22": [_entry(id="a")]}
-        assert merge_logs(canonical, canonical) == canonical
+        assert _merge_daylogs(canonical, canonical) == canonical
 
     def test_merging_with_an_empty_log_is_a_no_op(self) -> None:
         log = {"2026-06-22": [_entry(id="a")]}
-        assert merge_logs(log, {}) == log
-        assert merge_logs({}, log) == log
+        assert _merge_daylogs(log, {}) == log
+        assert _merge_daylogs({}, log) == log
 
     def test_merging_two_empty_logs_is_empty(self) -> None:
-        assert merge_logs({}, {}) == {}
+        assert _merge_daylogs({}, {}) == {}
+
+
+class TestEntryHlc:
+    def test_same_entry_always_yields_the_same_hlc(self) -> None:
+        entry = _entry()
+        assert _entry_hlc(entry) == _entry_hlc(dict(entry))
+
+    def test_malformed_time_still_yields_a_valid_hlc(self) -> None:
+        entry = _entry(time="not-a-timestamp")
+        assert _entry_hlc(entry).wall_time_ms == 0
+
+    def test_missing_time_still_yields_a_valid_hlc(self) -> None:
+        entry = _entry()
+        del entry["time"]
+        assert _entry_hlc(entry).wall_time_ms == 0
+
+
+class TestLegacyEntryId:
+    def test_same_time_and_desc_yields_the_same_id(self) -> None:
+        a = _entry(time="2026-06-20T08:00:00+02:00", desc="toast")
+        b = _entry(time="2026-06-20T08:00:00+02:00", desc="toast", kcal=999.0)
+        assert _legacy_entry_id(a) == _legacy_entry_id(b)
+
+    def test_different_desc_yields_a_different_id(self) -> None:
+        a = _entry(time="2026-06-20T08:00:00+02:00", desc="toast")
+        b = _entry(time="2026-06-20T08:00:00+02:00", desc="eggs")
+        assert _legacy_entry_id(a) != _legacy_entry_id(b)
+
+
+class TestEntryRecordRoundTrip:
+    def test_round_trip_preserves_all_fields(self) -> None:
+        entry = _entry(id="x")
+        assert record_to_entry(entry_to_record(entry)) == entry
+
+    def test_round_trip_of_a_deleted_entry_preserves_the_tombstone(self) -> None:
+        entry = _entry(id="x", deleted=True)
+        assert record_to_entry(entry_to_record(entry))["deleted"] is True
+
+    def test_legacy_entry_gets_a_derived_id_on_round_trip(self) -> None:
+        entry = _entry(time="2026-06-20T08:00:00+02:00", desc="toast")
+        entry.pop("id")
+        round_tripped = record_to_entry(entry_to_record(entry))
+        assert round_tripped["id"] == _legacy_entry_id(entry)
+
+
+class TestParseRemoteLog:
+    def test_parses_new_format_wire_content(self) -> None:
+        entry = _entry(id="x")
+        pushed = {"x": entry_to_record(entry).to_dict()}
+        log = parse_remote_log(_dumps(pushed))
+        assert log["x"].id == "x"
+
+    def test_parses_old_daylog_format_for_backward_compatibility(self) -> None:
+        entry = _entry(id="x")
+        old_format = {"2026-06-22": [entry]}
+        log = parse_remote_log(_dumps(old_format))
+        assert log["x"].id == "x"
+
+    def test_empty_object_parses_as_empty_log(self) -> None:
+        assert parse_remote_log("{}") == {}
+
+    def test_non_object_top_level_raises_type_error(self) -> None:
+        with pytest.raises(TypeError):
+            parse_remote_log("[1, 2, 3]")
+
+    def test_old_format_day_not_a_list_raises_type_error(self) -> None:
+        with pytest.raises(TypeError):
+            parse_remote_log(_dumps({"2026-06-22": "not-a-list"}))
+
+    def test_old_format_entry_not_an_object_raises_type_error(self) -> None:
+        with pytest.raises(TypeError):
+            parse_remote_log(_dumps({"2026-06-22": ["not-a-dict"]}))
+
+    def test_invalid_json_raises(self) -> None:
+        with pytest.raises(json.JSONDecodeError):
+            parse_remote_log("not json{{{")
+
+
+def _dumps(data: object) -> str:
+    return json.dumps(data)

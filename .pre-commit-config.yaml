@@ -93,6 +93,7 @@ repos:
           - pytest
           - requests
           - gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.1.0#subdirectory=gatelock
+          - crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.1.0#subdirectory=crdt-sync
         # Test suites intentionally use patterns (protected-access, magic-value
         # comparisons) that don't belong in the source-code 10/10 gate.
         exclude: ^(\.venv/)|(^|/)(tests/|conftest\.py)
