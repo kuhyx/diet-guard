@@ -976,7 +976,7 @@ void main() {
   );
 
   testWidgets(
-    '_formatDay falls back to raw key for an unparseable date (line 245)',
+    '_formatDay falls back to raw key for an unparsable date (line 245)',
     (tester) async {
       await tester.runAsync(() async {
         // The day key is e.time.substring(0, 10). Writing an entry whose

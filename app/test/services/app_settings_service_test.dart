@@ -82,7 +82,7 @@ void main() {
       expect(AppSettingsService.dailyKcalGoal, 2200);
     });
 
-    test('keeps default 2200 on unparseable JSON', () async {
+    test('keeps default 2200 on unparsable JSON', () async {
       await File(
         '${tempDir.path}/app_settings.json',
       ).writeAsString('not json at all');
