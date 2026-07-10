@@ -70,7 +70,7 @@ GATE_LOCK_FILE: Path = DATA_DIR / ".gate.lock"
 # full current log as one file under devices/<id>/food_log.json; merging
 # happens client-side (see _sync_merge.py), never via git.
 SYNC_REPO_OWNER: str = "kuhyx"
-SYNC_REPO_NAME: str = "diet-guard-sync"
+SYNC_REPO_NAME: str = "syncs"
 SYNC_DEVICE_ID: str = "pc"
 # A fine-grained GitHub PAT, scoped to just SYNC_REPO_NAME's contents.  The
 # user creates this once via github.com (see CLAUDE.md) and saves it here,

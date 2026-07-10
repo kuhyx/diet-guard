@@ -63,7 +63,7 @@ class GitHubClient {
   /// The repo owner/org (e.g. `"kuhyx"`).
   final String owner;
 
-  /// The repo name (e.g. `"diet-guard-sync"`).
+  /// The repo name (e.g. `"syncs"`).
   final String repo;
 
   /// The branch to read/write against.

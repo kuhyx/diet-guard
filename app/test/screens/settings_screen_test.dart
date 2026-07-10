@@ -83,7 +83,7 @@ void main() {
     }
   }
 
-  testWidgets('shows the kuhyx/diet-guard-sync defaults on a fresh install', (
+  testWidgets('shows the kuhyx/syncs defaults on a fresh install', (
     tester,
   ) async {
     await tester.runAsync(() async {
@@ -91,7 +91,7 @@ void main() {
       await settle(tester);
 
       expect(find.widgetWithText(TextField, 'kuhyx'), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'diet-guard-sync'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'syncs'), findsOneWidget);
     });
   });
 

@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "Tkinter/systemd log-to-unlock meal gate with calorie/macro budget tracking"
 requires-python = ">=3.10"
 dependencies = [
-    "gatelock @ git+https://github.com/kuhyx/gatelock@v0.1.0",
+    "gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.1.0#subdirectory=gatelock",
     "requests>=2.31.0",
 ]
 

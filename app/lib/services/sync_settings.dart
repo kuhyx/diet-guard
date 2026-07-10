@@ -26,7 +26,7 @@ class SyncSettings {
   /// The repo owner/org (e.g. `"kuhyx"`).
   final String owner;
 
-  /// The repo name (e.g. `"diet-guard-sync"`).
+  /// The repo name (e.g. `"syncs"`).
   final String repo;
 
   /// A GitHub PAT with contents read/write on [owner]/[repo].
@@ -66,15 +66,25 @@ class SyncSettings {
   /// path on Android and use libsecret on Linux.
   static const _secure = FlutterSecureStorage();
 
-  /// Loads settings, defaulting the owner/repo to `kuhyx/diet-guard-sync`
+  /// Loads settings, defaulting the owner/repo to `kuhyx/syncs`
   /// (matching the PC's `SYNC_REPO_OWNER`/`SYNC_REPO_NAME` constants) and the
   /// client id to the baked-in [defaultClientId], so a fresh install needs
   /// only "Connect GitHub" (once an OAuth App is registered) or a pasted PAT.
+  ///
+  /// A device that already persisted the old standalone `diet-guard-sync`
+  /// repo name (before it was folded into the shared `syncs` monorepo) is
+  /// migrated to `syncs` here and the corrected value is written straight
+  /// back to prefs, so this only ever runs once per device.
   static Future<SyncSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
+    var repo = prefs.getString(_kRepo) ?? 'syncs';
+    if (repo == 'diet-guard-sync') {
+      repo = 'syncs';
+      await prefs.setString(_kRepo, repo);
+    }
     return SyncSettings(
       owner: prefs.getString(_kOwner) ?? 'kuhyx',
-      repo: prefs.getString(_kRepo) ?? 'diet-guard-sync',
+      repo: repo,
       token: await _loadToken(prefs),
       clientId: prefs.getString(_kClientId) ?? defaultClientId,
     );

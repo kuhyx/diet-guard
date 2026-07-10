@@ -24,7 +24,7 @@ from diet_guard._sync_merge import merge_logs
 
 _logger = logging.getLogger(__name__)
 
-_DEVICES_DIR = "devices"
+_DEVICES_DIR = "diet-guard-sync/devices"
 
 
 class SyncError(Exception):
@@ -46,7 +46,7 @@ def _read_token() -> str:
     if not SYNC_TOKEN_FILE.exists():
         message = (
             f"no sync token at {SYNC_TOKEN_FILE} -- create a fine-grained "
-            "GitHub PAT scoped to the diet-guard-sync repo's contents and "
+            "GitHub PAT scoped to the syncs repo's contents and "
             f"save it there (mode 600), then re-run sync"
         )
         raise SyncError(message)

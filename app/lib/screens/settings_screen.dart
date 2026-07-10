@@ -258,7 +258,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           Text(
             'Authorize in your browser — no token to paste. Syncs to '
-            'kuhyx/diet-guard-sync by default.',
+            'kuhyx/syncs by default.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 12),
@@ -395,7 +395,7 @@ class _ClientIdSetupDialogState extends State<_ClientIdSetupDialog> {
             const SizedBox(height: 12),
             const Text(
               'When you connect below, log in with the GitHub account that '
-              'has write access to kuhyx/diet-guard-sync.',
+              'has write access to kuhyx/syncs.',
             ),
             const SizedBox(height: 16),
             TextField(

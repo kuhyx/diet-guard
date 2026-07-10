@@ -34,7 +34,7 @@ rather than in the unit file.
 `diet-guard-sync.timer` fires `python -m diet_guard sync` every ~15 minutes
 (headless, no `DISPLAY` needed — separate from the gate timer on purpose, see
 the unit file's comment for why). It pulls every other device's pushed log
-from the private `kuhyx/diet-guard-sync` GitHub repo (used as dumb file
+from the private `kuhyx/syncs` GitHub repo (under `diet-guard-sync/`, used as dumb file
 storage via the REST Contents API, not a git clone), merges with the local
 log (`_sync_merge.merge_logs`: union by `id`, tombstone wins, legacy
 `(time, desc)` dedup for pre-`id` entries), **re-signs every persisted entry**
@@ -48,7 +48,7 @@ skipping the re-sign would silently lose every phone-logged meal on the very
 next read.
 
 Requires a one-time manual setup `install.sh` does **not** automate: create a
-fine-grained GitHub PAT scoped to `diet-guard-sync`'s contents (read/write),
+fine-grained GitHub PAT scoped to `syncs`'s contents (read/write),
 then save it to `~/.config/diet_guard/sync_token`, mode 600. Until that file
 exists, every sync tick is a harmless no-op that logs `sync not configured`.
 
@@ -100,7 +100,7 @@ silently does **not** reach the running service.
   cross-repo file coupling (unlike wake_alarm, which reads
   `~/screen-locker/screen_locker/workout_log.json`). Safe to reason about in
   isolation, with one exception: `diet-guard-sync.timer` reads/writes the
-  private `kuhyx/diet-guard-sync` GitHub repo (see "Cross-device sync" above)
+  private `kuhyx/syncs` GitHub repo (see "Cross-device sync" above)
   and `~/.config/diet_guard/sync_token`.
 
 ## Commands

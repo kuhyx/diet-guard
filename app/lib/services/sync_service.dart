@@ -19,11 +19,12 @@ import 'package:diet_guard_app/services/github_client.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_merge.dart';
 
-const _devicesDir = 'devices';
+const _devicesDir = 'diet-guard-sync/devices';
 
-/// This device's id in the `devices/<id>/food_log.json` layout. The PC
-/// pushes under `pc` (`SYNC_DEVICE_ID` in `diet_guard/_constants.py`); the
-/// phone is the only other device in this design.
+/// This device's id in the `diet-guard-sync/devices/<id>/food_log.json`
+/// layout. The PC pushes under `pc` (`SYNC_DEVICE_ID` in
+/// `diet_guard/_constants.py`); the phone is the only other device in this
+/// design.
 const phoneDeviceId = 'phone';
 
 String _deviceLogPath(String deviceId) =>

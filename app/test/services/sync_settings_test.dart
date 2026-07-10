@@ -10,15 +10,28 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
-    'load returns the kuhyx/diet-guard-sync defaults on a fresh install',
+    'load returns the kuhyx/syncs defaults on a fresh install',
     () async {
       SharedPreferences.setMockInitialValues({});
       installFakeSecureStorage();
       final s = await SyncSettings.load();
       expect(s.owner, 'kuhyx');
-      expect(s.repo, 'diet-guard-sync');
+      expect(s.repo, 'syncs');
       expect(s.token, '');
       expect(s.clientId, SyncSettings.defaultClientId);
+    },
+  );
+
+  test(
+    'load migrates a persisted old diet-guard-sync repo value to syncs',
+    () async {
+      SharedPreferences.setMockInitialValues({'sync.repo': 'diet-guard-sync'});
+      installFakeSecureStorage();
+      final s = await SyncSettings.load();
+      expect(s.repo, 'syncs');
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('sync.repo'), 'syncs');
     },
   );
 
