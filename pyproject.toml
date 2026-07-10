@@ -8,6 +8,14 @@ dependencies = [
     "requests>=2.31.0",
 ]
 
+# Optional extras. The `mcp` group is ONLY needed by the MCP server
+# (diet_guard._mcp), which Claude Code spawns via a dedicated venv (see
+# scripts/setup_mcp.sh / .mcp.json). It is deliberately NOT a core dependency
+# so the systemd/CLI system-python path stays dependency-light and never has
+# to import the MCP SDK.
+[project.optional-dependencies]
+mcp = ["mcp>=1.9"]
+
 # Without this, setuptools' flat-layout auto-discovery treats the Flutter
 # app/ directory as a second top-level package and refuses to build.
 [tool.setuptools.packages.find]

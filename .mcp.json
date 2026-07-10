@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "diet-guard": {
+      "type": "stdio",
+      "command": "${HOME}/.venvs/diet-guard-mcp/bin/python",
+      "args": ["-m", "diet_guard._mcp"],
+      "env": {}
+    }
+  }
+}
