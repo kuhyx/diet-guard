@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from diet_guard import _cli_gate
-from diet_guard._cli_gate import _is_due, cmd_gate
+from diet_guard._cli_gate import _should_lock, cmd_gate
 from diet_guard._estimator import Nutrition
 from diet_guard._gate import gate_is_due
 from diet_guard._state import log_meal
@@ -109,7 +109,7 @@ class TestCmdGate:
         assert "display not ready" in lines[0]
 
 
-class TestIsDue:
+class TestShouldLock:
     """The decision helper only pays the network cost when a lock is due."""
 
     def test_not_due_skips_sync(self) -> None:
@@ -119,7 +119,7 @@ class TestIsDue:
             patch.object(_cli_gate, "gate_is_due", return_value=False),
             patch.object(_cli_gate, "pull_shared_log", pull),
         ):
-            assert _is_due([].append) is False
+            assert _should_lock([].append) is False
         pull.assert_not_called()
 
     def test_due_then_cleared_by_sync(self) -> None:
@@ -129,7 +129,7 @@ class TestIsDue:
             patch.object(_cli_gate, "gate_is_due", side_effect=[True, False]),
             patch.object(_cli_gate, "pull_shared_log", pull),
         ):
-            assert _is_due([].append) is False
+            assert _should_lock([].append) is False
         pull.assert_called_once()
 
     def test_due_and_still_due_after_sync(self) -> None:
@@ -139,7 +139,7 @@ class TestIsDue:
             patch.object(_cli_gate, "gate_is_due", side_effect=[True, True]),
             patch.object(_cli_gate, "pull_shared_log", pull),
         ):
-            assert _is_due([].append) is True
+            assert _should_lock([].append) is True
         pull.assert_called_once()
 
     def test_pull_failure_is_reported(self) -> None:
@@ -151,7 +151,7 @@ class TestIsDue:
                 _cli_gate, "pull_shared_log", return_value="sync unavailable (x)"
             ),
         ):
-            assert _is_due(lines.append) is True
+            assert _should_lock(lines.append) is True
         assert "sync unavailable (x)" in lines[0]
 
 

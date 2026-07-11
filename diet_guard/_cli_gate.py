@@ -19,12 +19,15 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-def _is_due(emit: Callable[[str], None]) -> bool:
-    """Return the gate decision, refreshing from sync only when a lock is due.
+def _should_lock(emit: Callable[[str], None]) -> bool:
+    """Decide whether to lock, pulling from sync first if a lock looks due.
 
-    The cheap local check runs first; the network pull happens solely on the
-    rare tick a lock would otherwise fire (via :func:`pull_shared_log`, which
-    fails closed), then the decision is re-read from the freshly written log.
+    This wraps the pure, local :func:`~diet_guard._gate.gate_is_due` predicate
+    with one network step: the cheap local check runs first, and only when it
+    says a lock is due do we pull the shared log (via :func:`pull_shared_log`,
+    which fails closed) and re-read the freshly written log.  So a meal just
+    logged on the phone can clear the lock, while a not-due tick never touches
+    the network at all.
     """
     if not gate_is_due():
         return False
@@ -40,8 +43,8 @@ def cmd_gate(emit: Callable[[str], None], *, check: bool, demo: bool) -> int:
     Three modes: ``--check`` is a headless decision (no window) whose exit code
     a timer reads; ``--demo`` always shows a safe demo window; bare ``gate``
     shows the real lock only when one is due.  Both real modes route through
-    :func:`_is_due`, which -- only when a lock is otherwise due -- pulls the
-    shared log first (see :func:`_refresh_from_sync`) so a meal just logged on
+    :func:`_should_lock`, which -- only when a lock is otherwise due -- pulls
+    the shared log first (via :func:`pull_shared_log`) so a meal just logged on
     the phone unlocks without a manual re-entry.  A flock guard stops a second
     window from stacking on top of the first, and a window-opening mode first
     waits for the X display so a session-start launch never crashes unshown.
@@ -56,10 +59,10 @@ def cmd_gate(emit: Callable[[str], None], *, check: bool, demo: bool) -> int:
         For ``--check``: 0 if not due, 1 if a lock is due.  Otherwise 0.
     """
     if check:
-        due = _is_due(emit)
+        due = _should_lock(emit)
         emit("due (a lock is warranted)" if due else "ok (no lock needed)")
         return 1 if due else 0
-    if not demo and not _is_due(emit):
+    if not demo and not _should_lock(emit):
         emit("ok - no lock needed right now.")
         return 0
     handle = acquire_gate_lock()

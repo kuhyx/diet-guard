@@ -213,9 +213,17 @@ class TestPullSharedLog:
             assert _sync.pull_shared_log() is None
         run_sync.assert_called_once_with()
 
-    def test_returns_reason_on_any_failure(self) -> None:
-        """Any run_sync error becomes a reason string, never an exception."""
-        with patch.object(_sync, "run_sync", side_effect=RuntimeError("boom")):
+    def test_returns_reason_on_expected_failure(self) -> None:
+        """A real sync failure (here a network error) becomes a reason string."""
+        with patch.object(_sync, "run_sync", side_effect=_sync.GitHubSyncError("boom")):
             reason = _sync.pull_shared_log()
         assert reason is not None
         assert "boom" in reason
+
+    def test_unexpected_error_is_not_swallowed(self) -> None:
+        """A bug outside the known failure surface surfaces, not hidden."""
+        with (
+            patch.object(_sync, "run_sync", side_effect=KeyError("bug")),
+            pytest.raises(KeyError),
+        ):
+            _sync.pull_shared_log()

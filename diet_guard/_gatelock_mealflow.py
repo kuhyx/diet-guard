@@ -283,9 +283,9 @@ class _GateMealFlow(_GateNutrition):
     def _reconcile_after_fetch(self) -> None:
         """Drop pending slots a freshly pulled meal now covers; unlock if none."""
         still_due = set(due_slots())
-        satisfied = [slot for slot in self._pending if slot not in still_due]
+        satisfied_slots = [slot for slot in self._pending if slot not in still_due]
         self._refresh_dashboard()
-        if not satisfied:
+        if not satisfied_slots:
             self._set_status("No new meals found in sync.")
             return
         self._pending = [slot for slot in self._pending if slot in still_due]
@@ -294,7 +294,7 @@ class _GateMealFlow(_GateNutrition):
             return
         self._clear_inputs()
         self._refresh_slot_header()
-        count = len(satisfied)
+        count = len(satisfied_slots)
         meal_word = "meal" if count == 1 else "meals"
         self._set_status(f"Pulled {count} {meal_word} — next meal, please.")
         self._widgets.desc_text.focus_set()

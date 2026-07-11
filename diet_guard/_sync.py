@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import logging
 
-from crdt_sync import GitHubSyncClient, Log, merge_logs
+from crdt_sync import GitHubSyncClient, GitHubSyncError, Log, merge_logs
 
 from diet_guard._constants import (
     SYNC_DEVICE_ID,
@@ -138,12 +138,18 @@ def pull_shared_log() -> str | None:
     A thin wrapper over :func:`run_sync` for callers that must never crash on a
     sync error: the gate's automatic pre-lock refresh and the lock screen's
     manual "Fetch from sync" button.  Returns ``None`` on success, or a short
-    human-readable reason when the pull could not complete (no token, network
-    down, a disk error writing the merged log back), so the caller keeps its
-    own lock decision rather than failing open.
+    human-readable reason when the pull could not complete, so the caller keeps
+    its own lock decision rather than failing open.
+
+    The three caught types are the whole realistic failure surface of a run:
+    :class:`SyncError` (no/empty token), :class:`~crdt_sync.GitHubSyncError`
+    (the client wraps every ``requests`` transport error in this), and
+    :class:`OSError` (reading the token or writing the merged log back). A bug
+    outside these is deliberately *not* swallowed -- it should surface, not be
+    silently reported as a sync outage.
     """
     try:
         run_sync()
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except (SyncError, GitHubSyncError, OSError) as exc:
         return f"sync unavailable ({exc})"
     return None
