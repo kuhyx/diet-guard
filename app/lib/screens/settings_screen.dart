@@ -11,7 +11,6 @@ import 'dart:async';
 import 'package:crdt_sync/crdt_sync.dart' as crdt_sync;
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
-import 'package:diet_guard_app/services/github_client.dart';
 import 'package:diet_guard_app/services/github_device_auth.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
@@ -169,7 +168,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _testConnection() async {
     setState(() => _busy = true);
     final settings = _currentSettings();
-    final client = GitHubClient(
+    final client = crdt_sync.GitHubClient(
       owner: settings.owner,
       repo: settings.repo,
       token: settings.token,
