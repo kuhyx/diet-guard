@@ -3,6 +3,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_suggestion.dart';
@@ -12,6 +13,7 @@ import 'package:diet_guard_app/screens/food_bank_screen.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/screens/meal_builder_screen.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
+import 'package:diet_guard_app/services/background_sync_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
@@ -22,6 +24,7 @@ import 'package:diet_guard_app/widgets/photo_attach_field.dart';
 import 'package:diet_guard_app/widgets/slot_selector_row.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:workmanager/workmanager.dart';
 
 /// Lets the user log one food item, with food-bank autocomplete and
 /// today's slot status, or hop into [MealBuilderScreen] for a composite
@@ -133,6 +136,27 @@ class _LogMealScreenState extends State<LogMealScreen>
     }
   }
 
+  /// Queues a connectivity-gated WorkManager push so a meal logged while
+  /// offline still uploads on reconnect, without the app being reopened. The
+  /// in-process [_autoSync] covers the online case; this is the backstop.
+  /// [ExistingWorkPolicy.replace] coalesces a burst of logs into one pending
+  /// job, and backoff retries a push that fails once connectivity returns.
+  /// No-op off mobile (WorkManager ships only on Android/iOS).
+  // coverage:ignore-start
+  Future<void> _enqueueSyncBackstop() async {
+    if (!Platform.isAndroid && !Platform.isIOS) return;
+    await Workmanager().registerOneOffTask(
+      syncPushTaskName,
+      syncPushTaskName,
+      constraints: Constraints(networkType: NetworkType.connected),
+      existingWorkPolicy: ExistingWorkPolicy.replace,
+      backoffPolicy: BackoffPolicy.linear,
+      backoffPolicyDelay: const Duration(minutes: 1),
+    );
+  }
+
+  // coverage:ignore-end
+
   Future<void> _refreshSlots() async {
     final logged = await LogStorageService.instance.loggedSlotsToday();
     if (!mounted) return;
@@ -197,6 +221,9 @@ class _LogMealScreenState extends State<LogMealScreen>
     // so the PC gate can see it in seconds. Fire-and-forget and best-effort:
     // _autoSync is single-flight and swallows offline/transient failures.
     unawaited(_autoSync());
+    // Offline backstop: if the push above fails (no connectivity), a
+    // connectivity-gated WorkManager task uploads the meal on reconnect.
+    unawaited(_enqueueSyncBackstop());
     if (!mounted) return;
     _descController.clear();
     _macros.clear();
@@ -215,8 +242,10 @@ class _LogMealScreenState extends State<LogMealScreen>
       MaterialPageRoute(builder: (_) => const MealBuilderScreen()),
     );
     await _refreshSlots();
-    // A meal built and logged in the builder should push right away too.
+    // A meal built and logged in the builder should push right away too,
+    // with the same offline backstop.
     unawaited(_autoSync());
+    unawaited(_enqueueSyncBackstop());
   }
 
   void _onOpenHistory() {

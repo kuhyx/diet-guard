@@ -95,7 +95,14 @@ class LogStorageService {
       for (final mapEntry in log.entries)
         mapEntry.key: mapEntry.value.map((e) => e.toLocalJson()).toList(),
     };
-    await _file.writeAsString(jsonEncode(encoded));
+    // Write to a per-process temp file then atomically rename it over the
+    // real one, so a concurrent reader never sees a half-written file. The
+    // connectivity-gated background push (see background_sync_service.dart)
+    // can `runSync` -> writeLog in a separate isolate while the foreground
+    // app also writes; the pid in the temp name keeps the two from colliding.
+    final tmp = File('${_file.path}.$pid.tmp');
+    await tmp.writeAsString(jsonEncode(encoded));
+    await tmp.rename(_file.path);
   }
 
   /// Appends a signed-on-PC-eventually entry for [desc] to today's log.

@@ -9,6 +9,7 @@
 library;
 
 import 'package:diet_guard_app/models/slot.dart';
+import 'package:diet_guard_app/services/background_sync_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/notification_service.dart';
 import 'package:workmanager/workmanager.dart';
@@ -42,6 +43,11 @@ Future<void> checkAndNotify({DateTime? now}) async {
 @pragma('vm:entry-point')
 void backgroundCheckCallbackDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
+    if (taskName == syncPushTaskName) {
+      // Return the push's own success flag so a still-offline / failed push
+      // is retried with backoff rather than silently dropped.
+      return backgroundSyncPush();
+    }
     if (taskName == backgroundCheckTaskName) {
       await checkAndNotify();
     }
