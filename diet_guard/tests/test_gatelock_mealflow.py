@@ -423,3 +423,75 @@ class TestMealFlow:
         with patch.object(gate, "_unlock") as unlock:
             gate._finish_slot("done")
         unlock.assert_called_once()
+
+
+class TestFetchFromSync:
+    """The manual "Fetch from sync" button on the lock screen."""
+
+    def test_demo_mode_does_not_sync(self, gate: MealGate) -> None:
+        """In demo the button is inert and never touches the network."""
+        with patch.object(_gatelock_mealflow, "pull_shared_log") as pull:
+            gate._on_fetch_sync()
+        pull.assert_not_called()
+        assert "only available on the real lock" in gate._vars.status.get()
+
+    def test_pull_failure_keeps_lock(self, gate: MealGate) -> None:
+        """A failed pull shows the reason and leaves pending slots intact."""
+        gate.demo_mode = False
+        gate._pending = [8, 12]
+        with patch.object(
+            _gatelock_mealflow,
+            "pull_shared_log",
+            return_value="sync unavailable (x)",
+        ):
+            gate._on_fetch_sync()
+        assert gate._pending == [8, 12]
+        assert "still locked" in gate._vars.status.get()
+
+    def test_no_new_meals_keeps_all_slots(self, gate: MealGate) -> None:
+        """A clean pull that satisfies nothing reports so and keeps the slots."""
+        gate.demo_mode = False
+        gate._pending = [8, 12]
+        with (
+            patch.object(_gatelock_mealflow, "pull_shared_log", return_value=None),
+            patch.object(_gatelock_mealflow, "due_slots", return_value=(8, 12)),
+        ):
+            gate._on_fetch_sync()
+        assert gate._pending == [8, 12]
+        assert "No new meals" in gate._vars.status.get()
+
+    def test_partial_advances_to_next_slot(self, gate: MealGate) -> None:
+        """One slot pulled in leaves the rest; the window advances (singular)."""
+        gate.demo_mode = False
+        gate._pending = [8, 12]
+        with (
+            patch.object(_gatelock_mealflow, "pull_shared_log", return_value=None),
+            patch.object(_gatelock_mealflow, "due_slots", return_value=(12,)),
+        ):
+            gate._on_fetch_sync()
+        assert gate._pending == [12]
+        assert "Pulled 1 meal " in gate._vars.status.get()
+
+    def test_partial_plural_wording(self, gate: MealGate) -> None:
+        """Two slots pulled in uses the plural 'meals'."""
+        gate.demo_mode = False
+        gate._pending = [8, 12, 16]
+        with (
+            patch.object(_gatelock_mealflow, "pull_shared_log", return_value=None),
+            patch.object(_gatelock_mealflow, "due_slots", return_value=(16,)),
+        ):
+            gate._on_fetch_sync()
+        assert gate._pending == [16]
+        assert "Pulled 2 meals" in gate._vars.status.get()
+
+    def test_all_satisfied_unlocks(self, gate: MealGate) -> None:
+        """When the pull satisfies every pending slot, the gate unlocks."""
+        gate.demo_mode = False
+        gate._pending = [8, 12]
+        with (
+            patch.object(_gatelock_mealflow, "pull_shared_log", return_value=None),
+            patch.object(_gatelock_mealflow, "due_slots", return_value=()),
+        ):
+            gate._on_fetch_sync()
+        assert gate._pending == []
+        assert "unlocking" in gate._vars.status.get()

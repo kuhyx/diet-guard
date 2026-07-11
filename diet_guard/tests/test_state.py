@@ -357,6 +357,27 @@ class TestRawLogAccess:
         write_raw_log(log)
         assert read_raw_log() == log
 
+    def test_write_leaves_no_temp_file(self) -> None:
+        """A successful atomic write cleans up its temp file."""
+        write_raw_log({"2026-06-22": [{"id": "x"}]})
+        assert list(_state.FOOD_LOG_FILE.parent.glob("*.tmp")) == []
+
+    def test_write_failure_preserves_prior_log(self) -> None:
+        """A failed replace leaves the old log intact and no temp behind.
+
+        This is the point of the atomic write: a concurrent reader (the gate
+        now syncs while the timer may also write) never sees a torn or empty
+        log just because a write was interrupted.
+        """
+        write_raw_log({"2026-06-22": [{"id": "original"}]})
+        with (
+            patch("pathlib.Path.replace", side_effect=OSError("no space")),
+            pytest.raises(OSError, match="no space"),
+        ):
+            write_raw_log({"2026-06-22": [{"id": "clobbered"}]})
+        assert read_raw_log() == {"2026-06-22": [{"id": "original"}]}
+        assert list(_state.FOOD_LOG_FILE.parent.glob("*.tmp")) == []
+
 
 class TestResignEntry:
     """resign_entry recomputes the hmac so a merged entry validates again."""

@@ -93,6 +93,7 @@ class GateCallbacks:
     on_submit: Callable[[], None]
     on_close: Callable[[], None]
     on_add_item: Callable[[], None]
+    on_fetch_sync: Callable[[], None]
 
 
 def make_vars(root: tk.Misc) -> GateVars:
@@ -421,6 +422,19 @@ def build_layout(
         cursor="hand2",
         command=callbacks.on_submit,
     ).pack(pady=(4, 6))
+
+    # Manual pull for a meal already logged on another device (the phone) but
+    # not yet propagated to this machine -- saves re-typing it to unlock.
+    tk.Button(
+        frame,
+        text="⟳ Fetch from sync",
+        font=("Arial", 12),
+        bg="#334455",
+        fg="white",
+        activebackground="#445566",
+        cursor="hand2",
+        command=callbacks.on_fetch_sync,
+    ).pack(pady=(0, 6))
 
     status_label = tk.Label(
         frame,

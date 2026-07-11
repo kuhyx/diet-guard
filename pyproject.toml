@@ -42,6 +42,10 @@ unfixable = []
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**/*.py" = ["ARG", "D", "PLC0415", "PLR2004", "S101", "S107", "SLF001"]
 "**/test_*.py" = ["ARG", "D", "PLC0415", "PLR2004", "S101", "S107", "SLF001"]
+# pull_shared_log must fail closed: any run_sync error (no token, network, disk
+# write-back) is returned as a reason string so the gate keeps locking rather
+# than failing open. A deliberately broad catch, so BLE001 does not apply here.
+"**/_sync.py" = ["BLE001"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

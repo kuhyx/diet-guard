@@ -13,6 +13,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import json
 import logging
+import os
 from typing import TYPE_CHECKING
 import uuid
 
@@ -89,10 +90,21 @@ def _read_raw_log() -> DayLog:
 
 
 def _write_log(log: DayLog) -> None:
-    """Persist the full log to disk, creating the data directory if needed."""
+    """Persist the full log to disk, creating the data directory if needed.
+
+    Written atomically -- a temp file in the same directory, then
+    :func:`os.replace` -- so a concurrent reader (the gate now syncs while the
+    15-min timer may also be writing) never sees a half-written file and
+    mistakes a torn read for an empty log.
+    """
     FOOD_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with FOOD_LOG_FILE.open("w") as handle:
-        json.dump(log, handle, indent=2)
+    tmp_path = FOOD_LOG_FILE.with_name(f"{FOOD_LOG_FILE.name}.{os.getpid()}.tmp")
+    try:
+        with tmp_path.open("w") as handle:
+            json.dump(log, handle, indent=2)
+        tmp_path.replace(FOOD_LOG_FILE)
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
 
 def _hmac_key_available() -> bool:

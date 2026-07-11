@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from diet_guard._budget import BudgetError, daily_budget, protein_target_g
 from diet_guard._foodbank import remember_food, remember_meal
+from diet_guard._gate import due_slots
 from diet_guard._gatelock_nutrition import _GateNutrition
 from diet_guard._gatelock_ui import ERR, FG, UNIT_GRAMS
 from diet_guard._meal import MealItem, item_to_component, meal_total
@@ -27,6 +28,7 @@ from diet_guard._state import (
     today_total_kcal,
     today_total_macros,
 )
+from diet_guard._sync import pull_shared_log
 
 if TYPE_CHECKING:
     from diet_guard._estimator import Nutrition
@@ -256,6 +258,46 @@ class _GateMealFlow(_GateNutrition):
         """
         self._set_status(f"{logged} — all meals logged, unlocking…")
         self.root.after(_UNLOCK_DELAY_MS, self.close)
+
+    # -- manual sync ------------------------------------------------------------
+
+    def _on_fetch_sync(self) -> None:
+        """Pull the shared log on demand and unlock any slots it now satisfies.
+
+        For a meal already logged on another device (typically the phone) that
+        has not yet propagated here: rather than re-entering it to unlock, the
+        user pulls it in.  The pull blocks the window briefly (bounded by the
+        sync timeout) and fails closed -- a failure leaves the lock untouched.
+        """
+        if self.demo_mode:
+            self._set_status("Fetch from sync is only available on the real lock.")
+            return
+        self._set_status("Fetching from sync…")
+        self.root.update_idletasks()
+        reason = pull_shared_log()
+        if reason is not None:
+            self._set_status(f"{reason} — still locked.", error=True)
+            return
+        self._reconcile_after_fetch()
+
+    def _reconcile_after_fetch(self) -> None:
+        """Drop pending slots a freshly pulled meal now covers; unlock if none."""
+        still_due = set(due_slots())
+        satisfied = [slot for slot in self._pending if slot not in still_due]
+        self._refresh_dashboard()
+        if not satisfied:
+            self._set_status("No new meals found in sync.")
+            return
+        self._pending = [slot for slot in self._pending if slot in still_due]
+        if not self._pending:
+            self._unlock("Synced from another device")
+            return
+        self._clear_inputs()
+        self._refresh_slot_header()
+        count = len(satisfied)
+        meal_word = "meal" if count == 1 else "meals"
+        self._set_status(f"Pulled {count} {meal_word} — next meal, please.")
+        self._widgets.desc_text.focus_set()
 
     # -- dashboard --------------------------------------------------------------
 

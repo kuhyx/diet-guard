@@ -202,3 +202,20 @@ class TestRunSync:
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         assert lookup_food("oatmeal") is not None
+
+
+class TestPullSharedLog:
+    """The fail-closed wrapper the gate and the lock-screen button share."""
+
+    def test_returns_none_on_success(self) -> None:
+        """A clean pull returns None (no reason to report)."""
+        with patch.object(_sync, "run_sync") as run_sync:
+            assert _sync.pull_shared_log() is None
+        run_sync.assert_called_once_with()
+
+    def test_returns_reason_on_any_failure(self) -> None:
+        """Any run_sync error becomes a reason string, never an exception."""
+        with patch.object(_sync, "run_sync", side_effect=RuntimeError("boom")):
+            reason = _sync.pull_shared_log()
+        assert reason is not None
+        assert "boom" in reason

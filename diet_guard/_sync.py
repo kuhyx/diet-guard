@@ -130,3 +130,20 @@ def run_sync() -> DayLog:
         message="diet_guard sync",
     )
     return resigned
+
+
+def pull_shared_log() -> str | None:
+    """Run a sync tick, failing closed instead of raising.
+
+    A thin wrapper over :func:`run_sync` for callers that must never crash on a
+    sync error: the gate's automatic pre-lock refresh and the lock screen's
+    manual "Fetch from sync" button.  Returns ``None`` on success, or a short
+    human-readable reason when the pull could not complete (no token, network
+    down, a disk error writing the merged log back), so the caller keeps its
+    own lock decision rather than failing open.
+    """
+    try:
+        run_sync()
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        return f"sync unavailable ({exc})"
+    return None

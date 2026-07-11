@@ -155,6 +155,7 @@ class MealGate(_GateMealFlow):
             on_submit=self._on_submit,
             on_close=self.close,
             on_add_item=self._on_add_item,
+            on_fetch_sync=self._on_fetch_sync,
         )
         self._widgets = build_layout(
             self.root,
