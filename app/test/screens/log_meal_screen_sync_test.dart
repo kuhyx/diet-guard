@@ -142,4 +142,36 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+
+  testWidgets('pushes immediately after a meal is logged', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'sync.owner': 'o',
+      'sync.repo': 'r',
+    });
+    installFakeSecureStorage(initial: {'sync.token': 't'});
+    var puts = 0;
+    final mock = MockClient((req) async {
+      if (req.method == 'PUT') puts++;
+      if (req.method == 'GET' && req.url.pathSegments.length == 3) {
+        return http.Response('{}', 200);
+      }
+      return http.Response('', 404);
+    });
+
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        MaterialApp(home: LogMealScreen(httpClient: mock)),
+      );
+      await settle(tester);
+      expect(puts, 1); // launch push
+
+      await tester.enterText(find.byType(TextField).at(0), 'push-on-log');
+      await tester.pump();
+      await tester.tap(find.byTooltip('Log meal'));
+      await settle(tester);
+
+      // The new meal is pushed right away, not left for a lifecycle event.
+      expect(puts, 2);
+    });
+  });
 }

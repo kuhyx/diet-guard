@@ -193,6 +193,10 @@ class _LogMealScreenState extends State<LogMealScreen>
     );
     final log = await LogStorageService.instance.readLog();
     await FoodBankService.instance.rebuildAndPersist(log);
+    // Push the new meal now instead of waiting for the next lifecycle event,
+    // so the PC gate can see it in seconds. Fire-and-forget and best-effort:
+    // _autoSync is single-flight and swallows offline/transient failures.
+    unawaited(_autoSync());
     if (!mounted) return;
     _descController.clear();
     _macros.clear();
@@ -211,6 +215,8 @@ class _LogMealScreenState extends State<LogMealScreen>
       MaterialPageRoute(builder: (_) => const MealBuilderScreen()),
     );
     await _refreshSlots();
+    // A meal built and logged in the builder should push right away too.
+    unawaited(_autoSync());
   }
 
   void _onOpenHistory() {
