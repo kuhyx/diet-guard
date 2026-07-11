@@ -14,3 +14,6 @@ coverage.lcov
 htmlcov/
 *.log
 .DS_Store
+
+# ci_mirror.sh cached requirements.txt venv (rebuilt on demand)
+.ci-mirror-venv/

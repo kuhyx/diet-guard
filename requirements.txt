@@ -8,6 +8,7 @@ gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.1.0#subdirectory=gatel
 mcp>=1.9
 mypy>=1.8.0
 pre-commit>=3.6.0
+pydantic>=2
 pylint>=3.0.0
 pytest>=8.0.0
 pytest-cov>=4.1.0
