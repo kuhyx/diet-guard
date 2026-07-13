@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:diet_guard_app/models/food_entry.dart';
+import 'package:diet_guard_app/screens/calendar_screen.dart';
 import 'package:diet_guard_app/screens/food_bank_screen.dart';
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
@@ -143,6 +144,20 @@ void main() {
       await settle(tester);
 
       expect(find.byType(HistoryScreen), findsOneWidget);
+    });
+  });
+
+  testWidgets('the calendar icon navigates to CalendarScreen', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+      await settle(tester);
+
+      await tester.tap(find.byIcon(Icons.calendar_month));
+      await settle(tester);
+
+      expect(find.byType(CalendarScreen), findsOneWidget);
     });
   });
 

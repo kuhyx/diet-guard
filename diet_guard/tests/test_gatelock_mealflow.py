@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from diet_guard import _gatelock_mealflow
-from diet_guard._budget import seal_budget
+from diet_guard._budget import write_budget
 from diet_guard._meal import MealItem
 from diet_guard._state import log_meal
 from diet_guard.tests.conftest import _nutrition
@@ -235,7 +235,7 @@ class TestDashboard:
 
     def test_headline_with_budget(self, gate: MealGate) -> None:
         """A sealed budget shows consumed/target/remaining."""
-        seal_budget(2000)
+        write_budget(2000)
         gate._refresh_dashboard()
         assert "left" in gate._vars.cal_headline.get()
 
@@ -246,7 +246,7 @@ class TestDashboard:
 
     def test_dashboard_lists_entries(self, gate: MealGate) -> None:
         """Logged entries appear in the detail panel."""
-        seal_budget(2000, weight_kg=80)
+        write_budget(2000, weight_kg=80)
         log_meal("apple", _nutrition(95, 100), 8)
         gate._refresh_dashboard()
         text = gate._vars.dashboard.get()
@@ -272,7 +272,7 @@ class TestDashboard:
 
     def test_projection_with_budget(self, gate: MealGate) -> None:
         """The projection shows the after-this-item remaining when priced."""
-        seal_budget(2000)
+        write_budget(2000)
         gate._widgets.macros.kcal.insert(0, "300")
         gate._refresh_projection()
         assert "after this item" in gate._vars.projection.get()

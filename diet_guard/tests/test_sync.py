@@ -13,9 +13,20 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from diet_guard import _sync
+from diet_guard._budget import daily_budget, write_budget
 from diet_guard._estimator import Nutrition
 from diet_guard._foodbank import lookup_food
 from diet_guard._state import load_log, log_meal
+from diet_guard._sync_merge import budget_to_log
+
+
+def _remote_budget_json(*, kcal: int, t: str, weight_kg: float | None = None) -> str:
+    """Build the wire text a remote device would push for a given budget edit."""
+    record: dict[str, object] = {"v": 2, "b": kcal, "t": t}
+    if weight_kg is not None:
+        record["w"] = weight_kg
+    log = budget_to_log(record)
+    return json.dumps({rid: rec.to_dict() for rid, rec in log.items()}, indent=2)
 
 
 def _nutrition(kcal: float = 200.0) -> Nutrition:
@@ -96,9 +107,13 @@ class TestRunSync:
         )
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
-        client.get_file_text.assert_called_once_with(
+        # Both the food-log and budget pulls skip "pc" (this device) and
+        # only ever read "phone"'s files -- never "pc"'s.
+        requested_paths = [call.args[0] for call in client.get_file_text.call_args_list]
+        assert requested_paths == [
             "diet-guard-sync/devices/phone/food_log.json",
-        )
+            "diet-guard-sync/devices/phone/budget.json",
+        ]
 
     def test_skips_a_device_with_no_pushed_file_yet(self) -> None:
         _write_token()
@@ -202,6 +217,83 @@ class TestRunSync:
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         assert lookup_food("oatmeal") is not None
+
+
+class TestSyncBudget:
+    """The daily budget's last-writer-wins sync, folded into run_sync()."""
+
+    def test_pushes_local_budget_when_no_other_devices_have_synced(self) -> None:
+        _write_token()
+        write_budget(2000)
+        client = _mock_client(devices=())
+        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+            _sync.run_sync()
+        pushed_paths = {call.args[0] for call in client.put_file_text.call_args_list}
+        assert "diet-guard-sync/devices/pc/budget.json" in pushed_paths
+
+    def test_nothing_pushed_when_no_budget_ever_set(self) -> None:
+        """An uninitialized device contributes nothing -- no push, no crash."""
+        _write_token()
+        client = _mock_client(devices=())
+        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+            _sync.run_sync()
+        pushed_paths = {call.args[0] for call in client.put_file_text.call_args_list}
+        assert "diet-guard-sync/devices/pc/budget.json" not in pushed_paths
+
+    def test_remote_only_budget_is_adopted_locally(self) -> None:
+        """Only the phone has ever set a budget -- the PC adopts it."""
+        _write_token()
+        remote_json = _remote_budget_json(kcal=1800, t="2026-01-01T09:00:00")
+        client = _mock_client(
+            devices=("phone",),
+            files={"diet-guard-sync/devices/phone/budget.json": remote_json},
+        )
+        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+            _sync.run_sync()
+        assert daily_budget() == 1800
+
+    def test_local_edit_later_than_remote_wins(self) -> None:
+        """A fresh local write beats a much older remote edit."""
+        _write_token()
+        write_budget(1500)  # stamped with "now"
+        remote_json = _remote_budget_json(kcal=1800, t="2020-01-01T09:00:00")
+        client = _mock_client(
+            devices=("phone",),
+            files={"diet-guard-sync/devices/phone/budget.json": remote_json},
+        )
+        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+            _sync.run_sync()
+        assert daily_budget() == 1500
+
+    def test_remote_edit_later_than_local_wins(self) -> None:
+        """A remote edit far in the future beats a stale local write.
+
+        Confirms this is genuinely edit-time (not sync-time or push-order)
+        LWW: whichever side has the later ``t`` wins regardless of which
+        device happens to run its sync tick first.
+        """
+        _write_token()
+        write_budget(1500)  # stamped with "now"
+        remote_json = _remote_budget_json(kcal=1800, t="2999-01-01T09:00:00")
+        client = _mock_client(
+            devices=("phone",),
+            files={"diet-guard-sync/devices/phone/budget.json": remote_json},
+        )
+        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+            _sync.run_sync()
+        assert daily_budget() == 1800
+
+    def test_malformed_remote_budget_is_skipped(self) -> None:
+        """A corrupt remote budget.json is skipped, not a crash."""
+        _write_token()
+        write_budget(2000)
+        client = _mock_client(
+            devices=("phone",),
+            files={"diet-guard-sync/devices/phone/budget.json": "{not valid json"},
+        )
+        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+            _sync.run_sync()
+        assert daily_budget() == 2000
 
 
 class TestPullSharedLog:

@@ -9,10 +9,16 @@
 /// entry never carries `imagePath` (stripped before push, meaningless on
 /// another device), so it must not null out a local photo attachment for
 /// the same `id` (plan decision 10).
+///
+/// The daily budget syncs alongside the food log in the same tick (see
+/// [_syncBudget]): a sibling `budget.json` per device, merged
+/// last-writer-wins by edit time rather than union-of-immutable-entries,
+/// since a budget (unlike a food-log entry) can be edited repeatedly.
 library;
 
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
+import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_merge.dart';
@@ -51,7 +57,47 @@ Future<DayLog> runSync(GitHubClient client) async {
 
   await logService.writeLog(merged);
   await FoodBankService.instance.rebuildAndPersist(merged);
+  await _syncBudget(client);
   return merged;
+}
+
+/// Pulls other devices' budgets, merges, applies the winner locally, pushes.
+///
+/// Reuses [syncLog] (it always pushes the merged result, even an empty
+/// one -- harmless and consistent with the food-log sync above). This
+/// device contributes nothing to the merge until the goal has been
+/// explicitly set at least once (see
+/// [AppSettingsService.dailyKcalGoalUpdatedAt]), so a fresh install's
+/// unset 2200 default can never spuriously outrank a real budget synced
+/// from elsewhere.
+Future<void> _syncBudget(GitHubClient client) async {
+  final updatedAt = AppSettingsService.dailyKcalGoalUpdatedAt;
+  final localRecord = updatedAt == null
+      ? null
+      : <String, dynamic>{
+          'v': 2,
+          'b': AppSettingsService.dailyKcalGoal,
+          't': updatedAt.toIso8601String(),
+        };
+
+  final mergedBudgetLog = await syncLog(
+    client: client,
+    deviceId: phoneDeviceId,
+    pathPrefix: _devicesDir,
+    localLog: budgetToLog(localRecord),
+    encode: encodeBudgetForPush,
+    decode: parseRemoteBudget,
+    filename: 'budget.json',
+    commitMessage: 'diet_guard_app sync',
+  );
+
+  final merged = logToBudget(mergedBudgetLog);
+  final mergedKcal = merged?['b'];
+  if (merged == null || mergedKcal is! int) return;
+  await AppSettingsService.instance.applySyncedBudget(
+    mergedKcal,
+    updatedAt: DateTime.tryParse(merged['t'] as String? ?? ''),
+  );
 }
 
 Map<String, String> _imagePathsById(DayLog log) {

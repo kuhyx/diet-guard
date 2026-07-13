@@ -9,6 +9,7 @@ import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_suggestion.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/models/slot.dart';
+import 'package:diet_guard_app/screens/calendar_screen.dart';
 import 'package:diet_guard_app/screens/food_bank_screen.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/screens/meal_builder_screen.dart';
@@ -256,6 +257,14 @@ class _LogMealScreenState extends State<LogMealScreen>
     );
   }
 
+  void _onOpenCalendar() {
+    unawaited(
+      Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => const CalendarScreen()),
+      ),
+    );
+  }
+
   void _onOpenFoodBank() {
     unawaited(
       Navigator.of(context).push<void>(
@@ -289,6 +298,11 @@ class _LogMealScreenState extends State<LogMealScreen>
             icon: const Icon(Icons.history),
             tooltip: 'History',
             onPressed: _onOpenHistory,
+          ),
+          IconButton(
+            icon: const Icon(Icons.calendar_month),
+            tooltip: 'Calendar',
+            onPressed: _onOpenCalendar,
           ),
           IconButton(
             icon: const Icon(Icons.settings),

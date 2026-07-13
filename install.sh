@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================================
-# Diet Guard installer: hidden budget + log-to-unlock gate.
+# Diet Guard installer: log-to-unlock gate with a freely-editable budget.
 #
 # Usage: bash install.sh
 #
@@ -14,8 +14,8 @@
 #   4. Installs + enables the systemd user timer that syncs the log every ~15m
 #      (the sync itself stays unconfigured -- and a no-op -- until you create
 #      a sync token; see the reminder this step prints)
-#   5. Seals your daily budget from biometrics (only if not already sealed)
-#   6. Locks the budget file immutable with `chattr +i` (the real tamper gate)
+#   5. Sets your initial daily budget from biometrics (only if not already set;
+#      it stays freely editable afterward from the gate or the phone app)
 # ============================================================================
 
 set -euo pipefail
@@ -36,7 +36,7 @@ readonly SYNC_TOKEN_FILE="$HOME/.config/diet_guard/sync_token"
 echo "=== Diet Guard Installer ==="
 
 # 1. System dependencies ------------------------------------------------------
-echo "[1/6] Checking system dependencies..."
+echo "[1/5] Checking system dependencies..."
 if ! command -v setxkbmap &>/dev/null; then
     echo "  Installing xorg-setxkbmap (gate disables VT switching while locked)..."
     sudo pacman -S --noconfirm xorg-setxkbmap
@@ -45,14 +45,14 @@ else
 fi
 
 # 2. Install this package + its dependencies into system Python -------------
-echo "[2/6] Installing diet_guard + dependencies for /usr/bin/python..."
+echo "[2/5] Installing diet_guard + dependencies for /usr/bin/python..."
 /usr/bin/python3 -m pip install --user --break-system-packages -e "$REPO_DIR"
 echo "  Installed. Verifying import..."
 /usr/bin/python3 -c "import diet_guard; import gatelock" \
     && echo "  diet_guard and gatelock import cleanly from the system interpreter."
 
 # 3. systemd user timer + service (gate) -------------------------------------
-echo "[3/6] Installing the gate's systemd user timer + service..."
+echo "[3/5] Installing the gate's systemd user timer + service..."
 mkdir -p "$SYSTEMD_USER_DIR"
 cp "$SERVICE_SRC" "$SYSTEMD_USER_DIR/diet-guard-gate.service"
 cp "$TIMER_SRC" "$SYSTEMD_USER_DIR/diet-guard-gate.timer"
@@ -61,7 +61,7 @@ systemctl --user enable --now diet-guard-gate.timer
 echo "  Timer enabled and started (fires the gate every ~30 min)."
 
 # 4. systemd user timer + service (sync) -------------------------------------
-echo "[4/6] Installing the sync's systemd user timer + service..."
+echo "[4/5] Installing the sync's systemd user timer + service..."
 cp "$SYNC_SERVICE_SRC" "$SYSTEMD_USER_DIR/diet-guard-sync.service"
 cp "$SYNC_TIMER_SRC" "$SYSTEMD_USER_DIR/diet-guard-sync.timer"
 systemctl --user daemon-reload
@@ -76,23 +76,16 @@ else
     echo "  mode 600: chmod 600 \"$SYNC_TOKEN_FILE\""
 fi
 
-# 5. Seal the daily budget (hidden) ------------------------------------------
-echo "[5/6] Sealing your daily budget..."
+# 5. Set the initial daily budget ---------------------------------------------
+echo "[5/5] Setting your initial daily budget..."
 if [[ -e "$BUDGET_FILE" ]]; then
-    echo "  Budget already sealed at $BUDGET_FILE - skipping init."
+    echo "  Budget already set at $BUDGET_FILE - skipping init."
+    echo "  Edit it any time from the gate's calendar tab or the phone app."
 else
-    echo "  Enter your biometrics (used once then discarded; the value is hidden):"
+    echo "  Enter your biometrics (used once then discarded to compute a"
+    echo "  starting value; you can change the number itself any time from"
+    echo "  the gate's calendar tab or the phone app):"
     python -m diet_guard init
-fi
-
-# 6. Lock the budget immutable (the real tamper friction) --------------------
-echo "[6/6] Locking the budget file (chattr +i)..."
-read -r attrs _ <<<"$(lsattr -d "$BUDGET_FILE" 2>/dev/null || true)"
-if [[ "$attrs" == *i* ]]; then
-    echo "  Already immutable."
-else
-    sudo chattr +i "$BUDGET_FILE"
-    echo "  Locked. To change it later: sudo chattr -i '$BUDGET_FILE'; re-run init; re-lock."
 fi
 
 echo "=== Installation complete ==="

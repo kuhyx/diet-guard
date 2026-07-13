@@ -16,11 +16,13 @@ Safety invariants (do not break when adding tools):
     calls must never write to stdout. All logging is routed to STDERR below,
     and tools call only stdout-free leaf helpers (never the ``_cmd_*`` /
     ``main`` CLI handlers, which write to stdout, read stdin, and ``sys.exit``).
-  * **The daily budget number never leaves.** No tool returns the raw budget,
-    the remaining-budget number, the stored body weight, the protein target, or
-    the sealed ``.budget`` file: those would let a caller back out the
-    deliberately-hidden budget. Read tools expose only today's *consumed* kcal /
-    macros and the qualitative :func:`consumption_band` string.
+  * **The daily budget number never leaves via this interface.** No tool
+    returns the raw budget, the remaining-budget number, the stored body
+    weight, the protein target, or the ``.budget`` file: an automated caller
+    should not be handed the exact number to reason about or help game,
+    even though the number itself is freely visible to the human via the
+    CLI/GUI and the phone app. Read tools expose only today's *consumed*
+    kcal / macros and the qualitative :func:`consumption_band` string.
   * **No secret ever leaves.** There is no tool that reads the shared HMAC key,
     the sync token, or any file under ``/etc``.
   * **Writes are gated.** The write tool defaults to a dry-run preview and
@@ -102,7 +104,7 @@ def get_status() -> dict[str, Any]:
 
     Reports the calories and macros *consumed* so far, the qualitative
     :func:`consumption_band` (``"on track"`` / ``"approaching limit"`` /
-    ``"OVER BUDGET"``, or ``None`` when no budget is sealed yet), and the
+    ``"OVER BUDGET"``, or ``None`` when no budget has been set yet), and the
     meal-slot picture (which slots are due, which are already logged, and the
     current slot). The raw budget number is intentionally withheld -- only the
     band is exposed, mirroring how the CLI status shows a label to an automated
@@ -111,7 +113,7 @@ def get_status() -> dict[str, Any]:
     try:
         band: str | None = consumption_band()
     except BudgetError:
-        # No budget sealed (or a broken seal): surface the absence, not a number.
+        # No budget set (or a corrupt file): surface the absence, not a number.
         band = None
     return {
         "consumed_kcal": today_total_kcal(),

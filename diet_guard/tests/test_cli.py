@@ -13,10 +13,9 @@ from unittest.mock import patch
 
 from diet_guard import _cli
 from diet_guard._budget import (
-    BudgetLockedError,
+    BudgetFileCorruptError,
     BudgetNotInitializedError,
-    BudgetSealBrokenError,
-    seal_budget,
+    write_budget,
 )
 from diet_guard._cli import _eaten_grams, _Portion, main
 from diet_guard._estimator import Nutrition
@@ -60,15 +59,15 @@ class TestEatenGrams:
 
 
 class TestInit:
-    """The budget-sealing init command."""
+    """The budget-setting init command."""
 
     def test_valid_male(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Valid inputs seal a budget and print the lock hint, not the number."""
+        """Valid inputs write a budget and print the computed value."""
         _feed(monkeypatch, _VALID_INIT)
         assert main(["init"]) == 0
-        assert "sealed" in capsys.readouterr().out
+        assert "computed" in capsys.readouterr().out
 
     def test_valid_female(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """The female sex branch is accepted."""
@@ -76,23 +75,14 @@ class TestInit:
         assert main(["init"]) == 0
 
     def test_non_number_aborts(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """A non-numeric input seals nothing and returns the error code."""
+        """A non-numeric input sets nothing and returns the error code."""
         _feed(monkeypatch, "heavy\n")
         assert main(["init"]) == 2
 
     def test_bad_sex_aborts(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """An unrecognised sex answer seals nothing."""
+        """An unrecognised sex answer sets nothing."""
         _feed(monkeypatch, "80\n169\n26\nx\n1.375\n180\n")
         assert main(["init"]) == 2
-
-    def test_locked_budget(
-        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """A locked file surfaces the unlock instructions and a failure code."""
-        _feed(monkeypatch, _VALID_INIT)
-        with patch.object(_cli, "seal_budget", side_effect=BudgetLockedError):
-            assert main(["init"]) == 1
-        assert "locked" in capsys.readouterr().out
 
 
 class TestSummary:
@@ -104,15 +94,15 @@ class TestSummary:
             _cli._print_summary()
         assert "budget not set" in capsys.readouterr().out
 
-    def test_seal_broken(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """A broken seal is reported plainly."""
-        with patch.object(_cli, "daily_budget", side_effect=BudgetSealBrokenError):
+    def test_file_corrupt(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """A corrupt budget file is reported plainly."""
+        with patch.object(_cli, "daily_budget", side_effect=BudgetFileCorruptError):
             _cli._print_summary()
-        assert "seal broken" in capsys.readouterr().out
+        assert "corrupt" in capsys.readouterr().out
 
     def test_remaining_shown(self, capsys: pytest.CaptureFixture[str]) -> None:
         """A valid budget prints how much is left."""
-        seal_budget(2000)
+        write_budget(2000)
         _cli._print_summary()
         assert "left" in capsys.readouterr().out
 
@@ -122,7 +112,7 @@ class TestAte:
 
     def test_logs_and_summarizes(self, capsys: pytest.CaptureFixture[str]) -> None:
         """A resolved meal is logged, banked, and summarized."""
-        seal_budget(2000)
+        write_budget(2000)
         with patch.object(_cli, "resolve_nutrition", return_value=_NUT):
             assert main(["ate", "big mac"]) == 0
         assert "logged:" in capsys.readouterr().out
@@ -131,7 +121,7 @@ class TestAte:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """An assumed per-item weight prints its caveat."""
-        seal_budget(2000)
+        write_budget(2000)
         with patch.object(_cli, "resolve_nutrition", return_value=_NUT):
             main(["ate", "mystery", "--count", "3"])
         assert "assumed" in capsys.readouterr().out
@@ -148,7 +138,7 @@ class TestStatus:
 
     def test_status_with_entries(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Logged entries, slots, summary, and macros all print."""
-        seal_budget(2000)
+        write_budget(2000)
         main(["ate", "lunch", "--kcal", "500"])
         capsys.readouterr()
         assert main(["status"]) == 0
@@ -158,7 +148,7 @@ class TestStatus:
 
     def test_status_empty(self, capsys: pytest.CaptureFixture[str]) -> None:
         """With nothing logged, status still prints the slot/summary lines."""
-        seal_budget(2000)
+        write_budget(2000)
         assert main(["status"]) == 0
         assert "slots:" in capsys.readouterr().out
 
@@ -201,7 +191,7 @@ class TestUndo:
 
     def test_undo_removes_entry(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Undo removes and reports the last entry."""
-        seal_budget(2000)
+        write_budget(2000)
         main(["ate", "snack", "--kcal", "100"])
         capsys.readouterr()
         assert main(["undo"]) == 0

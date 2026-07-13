@@ -20,6 +20,14 @@
 /// tries the new Record-based wire format first and falls back to the old
 /// plain-DayLog format, converting old-format entries through the same
 /// adapter used for the local log.
+///
+/// The budget adapters at the bottom of this file ([budgetToLog] etc.)
+/// follow the same Record/Log shape, but a budget record is edited
+/// repeatedly (not immutable-after-creation like a food-log entry), so its
+/// [Hlc] is derived from a `t` edit timestamp
+/// (`AppSettingsService.dailyKcalGoalUpdatedAt`) rather than a birth time
+/// that never changes -- mirrors `diet_guard/_sync_merge.py`'s budget
+/// adapters field-for-field.
 library;
 
 import 'dart:convert';
@@ -172,6 +180,89 @@ Log parseRemoteLog(String text) {
 
 /// Serializes a merged [Log] for push, in the new Record-based wire format.
 String encodeLogForPush(Log log) {
+  final encoded = <String, dynamic>{
+    for (final entry in log.entries) entry.key: entry.value.toJson(),
+  };
+  return jsonEncode(encoded);
+}
+
+/// Stable id: exactly one budget record per device-pushed `budget.json`.
+const budgetRecordId = 'budget';
+
+/// Derives a deterministic [Hlc] for a raw budget record from its `t` field.
+///
+/// Mirrors [entryHlc]'s determinism -- the same unedited record always
+/// yields the same Hlc, so re-syncing an unchanged budget is a no-op -- but
+/// reads `t` (bumped on every explicit edit) rather than a fixed birth
+/// time, since a budget can be edited repeatedly and the *edit* time is
+/// what last-writer-wins must compare.
+Hlc budgetHlc(Map<String, dynamic> record) {
+  final wallTimeMs =
+      DateTime.tryParse(
+        record['t'] as String? ?? '',
+      )?.toUtc().millisecondsSinceEpoch ??
+      0;
+  return Hlc.newTick(_syncDeviceId, wallTimeMsOverride: wallTimeMs);
+}
+
+/// Converts a raw local/remote budget record into a single-record [Log].
+///
+/// Returns an empty [Log] when [record] is null (this device has never
+/// explicitly set a budget), so it contributes nothing to the merge rather
+/// than clobbering another device's real value with the unset default.
+Log budgetToLog(Map<String, dynamic>? record) {
+  if (record == null) return {};
+  final hlc = budgetHlc(record);
+  final value = Map<String, dynamic>.from(record)..remove('t');
+  return {
+    budgetRecordId: Record(id: budgetRecordId, fields: {'value': (value, hlc)}),
+  };
+}
+
+/// Converts a merged budget [Log] back into a raw budget record.
+///
+/// Returns null when the log has no budget record at all (neither device
+/// has ever set one yet) -- callers treat that as "nothing to apply
+/// locally", not an error.
+Map<String, dynamic>? logToBudget(Log log) {
+  final record = log[budgetRecordId];
+  if (record == null) return null;
+  final field = record.fields['value'];
+  final value = field?.$1;
+  final result = value is Map
+      ? Map<String, dynamic>.from(value.cast<String, dynamic>())
+      : <String, dynamic>{};
+  final hlc = field?.$2;
+  if (hlc != null) {
+    result['t'] = DateTime.fromMillisecondsSinceEpoch(
+      hlc.wallTimeMs,
+      isUtc: true,
+    ).toLocal().toIso8601String();
+  }
+  return result;
+}
+
+/// Parses one device's pushed `budget.json` text into a crdt_sync [Log].
+///
+/// Throwing [FormatException] or [TypeError] is treated as unparsable by
+/// the caller (`syncLog`'s `decode` callback), matching [parseRemoteLog]'s
+/// tolerance for a corrupt/truncated push. There is no legacy plain-format
+/// fallback here -- `budget.json` is a brand-new sync payload.
+Log parseRemoteBudget(String text) {
+  final raw = jsonDecode(text);
+  if (raw is! Map) {
+    throw const FormatException(
+      'top-level budget payload is not a JSON object',
+    );
+  }
+  final rawMap = raw.cast<String, dynamic>();
+  return rawMap.map(
+    (id, data) => MapEntry(id, Record.fromJson(data as Map<String, dynamic>)),
+  );
+}
+
+/// Serializes a merged budget [Log] for push.
+String encodeBudgetForPush(Log log) {
   final encoded = <String, dynamic>{
     for (final entry in log.entries) entry.key: entry.value.toJson(),
   };

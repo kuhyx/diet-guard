@@ -6,6 +6,7 @@
 library;
 
 import 'package:crdt_sync/crdt_sync.dart';
+import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
@@ -26,9 +27,13 @@ const String syncPushTaskName = 'diet_guard.sync_push';
 /// reason. The service singletons are (re)initialised here because a fresh
 /// background isolate has none; [LogStorageService.init] is idempotent, so
 /// this is a no-op when a test has already pointed it at a temp dir.
+/// [AppSettingsService.init] must run too: [runSync] now also syncs the
+/// budget, and applies a merge winner via `AppSettingsService.instance`,
+/// which throws if the singleton was never initialised in this isolate.
 Future<bool> backgroundSyncPush({http.Client? httpClient}) async {
   await LogStorageService.init();
   await FoodBankService.init();
+  await AppSettingsService.init();
   final SyncSettings settings;
   try {
     settings = await SyncSettings.load();

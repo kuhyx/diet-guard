@@ -20,7 +20,7 @@ from diet_guard import (
     _gatelock_support,
     _gatelock_ui,
 )
-from diet_guard._budget import seal_budget
+from diet_guard._budget import write_budget
 from diet_guard._gatelock import (
     MealGate,
     _pending_slots,
@@ -206,7 +206,7 @@ class TestBasisAndAmount:
 
     def test_projection_else_without_item(self, gate: MealGate) -> None:
         """With a budget but no priced item, no after-this-item is shown."""
-        seal_budget(2000)
+        write_budget(2000)
         gate._refresh_projection()
         text = gate._vars.projection.get()
         assert "left" in text

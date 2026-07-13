@@ -1,7 +1,8 @@
-// Mirrors `test_sync.py`'s `TestRunSync` cases (own-id-skip, no-prior-push,
-// non-object payload, corrupt JSON, remote merge, food bank rebuild), plus
-// one Dart-specific case for the phone's `imagePath`-preserve-by-id step
-// (plan decision 10) that has no PC-side equivalent.
+// Mirrors `test_sync.py`'s `TestRunSync` and `TestSyncBudget` cases
+// (own-id-skip, no-prior-push, non-object payload, corrupt JSON, remote
+// merge, food bank rebuild, budget last-writer-wins), plus one Dart-specific
+// case for the phone's `imagePath`-preserve-by-id step (plan decision 10)
+// that has no PC-side equivalent.
 
 import 'dart:convert';
 import 'dart:io';
@@ -9,12 +10,23 @@ import 'dart:io';
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
+import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/sync_merge.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+
+/// Builds the wire text a remote device would push for a given budget edit.
+String _remoteBudgetJson({required int kcal, required String t}) {
+  final record = <String, dynamic>{'v': 2, 'b': kcal, 't': t};
+  final log = budgetToLog(record);
+  return jsonEncode({
+    for (final entry in log.entries) entry.key: entry.value.toJson(),
+  });
+}
 
 const _manual = Nutrition(
   kcal: 200,
@@ -44,6 +56,11 @@ class _FakeGitHub {
   /// Every PUT this fake received, decoded.
   final List<Map<String, dynamic>> puts = [];
 
+  /// Same PUTs, keyed by the repo-relative path they targeted -- lets a
+  /// test pick out the food-log push from the budget push, now that a
+  /// sync tick does both.
+  final Map<String, Map<String, dynamic>> putsByPath = {};
+
   GitHubClient buildClient() => GitHubClient(
     owner: 'o',
     repo: 'r',
@@ -60,7 +77,9 @@ class _FakeGitHub {
     }
     final path = req.url.path.replaceFirst('/repos/o/r/contents/', '');
     if (req.method == 'PUT') {
-      puts.add(jsonDecode(req.body) as Map<String, dynamic>);
+      final body = jsonDecode(req.body) as Map<String, dynamic>;
+      puts.add(body);
+      putsByPath[path] = body;
       return http.Response('{}', 200);
     }
     if (path == 'diet-guard-sync/devices') {
@@ -104,11 +123,13 @@ void main() {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_sync_test_');
     LogStorageService.resetForTesting(testDir: tempDir);
     FoodBankService.resetForTesting(testDir: tempDir);
+    await AppSettingsService.initForTesting(tempDir);
   });
 
   tearDown(() async {
     LogStorageService.resetForTesting();
     FoodBankService.resetForTesting();
+    AppSettingsService.resetForTesting();
     await tempDir.delete(recursive: true);
   });
 
@@ -118,16 +139,26 @@ void main() {
     final merged = await runSync(fake.buildClient());
 
     expect(merged.values.expand((e) => e).length, 1);
-    expect(fake.puts, hasLength(1));
+    // One food_log.json push, plus one budget.json push (syncLog always
+    // pushes, even an empty merged budget when nothing's been set yet).
+    expect(fake.puts, hasLength(2));
   });
 
   test("skips its own device id ('phone') when listing", () async {
     final fake = _FakeGitHub(
       deviceDirs: const ['pc', 'phone'],
-      files: const {'diet-guard-sync/devices/pc/food_log.json': '{}'},
+      files: const {
+        'diet-guard-sync/devices/pc/food_log.json': '{}',
+        'diet-guard-sync/devices/pc/budget.json': '{}',
+      },
     );
     await runSync(fake.buildClient());
-    expect(fake.fileGets, ['diet-guard-sync/devices/pc/food_log.json']);
+    // Both the food-log and budget pulls skip "phone" (this device) and
+    // only ever read "pc"'s files.
+    expect(fake.fileGets, [
+      'diet-guard-sync/devices/pc/food_log.json',
+      'diet-guard-sync/devices/pc/budget.json',
+    ]);
   });
 
   test('skips a device with no pushed file yet', () async {
@@ -237,7 +268,8 @@ void main() {
     final fake = _FakeGitHub();
     await runSync(fake.buildClient());
 
-    final pushed = fake.puts.single;
+    final pushed =
+        fake.putsByPath['diet-guard-sync/devices/phone/food_log.json']!;
     final pushedText = utf8.decode(base64.decode(pushed['content'] as String));
     expect(pushedText, isNot(contains('imagePath')));
     expect(pushedText, isNot(contains('hmac')));
@@ -248,7 +280,8 @@ void main() {
     final fake = _FakeGitHub();
     await runSync(fake.buildClient());
 
-    final pushed = fake.puts.single;
+    final pushed =
+        fake.putsByPath['diet-guard-sync/devices/phone/food_log.json']!;
     final pushedText = utf8.decode(base64.decode(pushed['content'] as String));
     final decoded = jsonDecode(pushedText) as Map<String, dynamic>;
     final record = decoded.values.single as Map<String, dynamic>;
@@ -261,7 +294,10 @@ void main() {
       files: const {'diet-guard-sync/devices/phone/food_log.json': '{}'},
     );
     await runSync(fake.buildClient());
-    expect(fake.puts.single['sha'], 'f-phone');
+    expect(
+      fake.putsByPath['diet-guard-sync/devices/phone/food_log.json']!['sha'],
+      'f-phone',
+    );
   });
 
   test(
@@ -310,4 +346,91 @@ void main() {
       expect(entry.imagePath, '/local/photo.jpg');
     },
   );
+
+  group('budget sync', () {
+    test(
+      'pushes the local budget when no other devices have synced',
+      () async {
+        await AppSettingsService.instance.saveDailyKcalGoal(2000);
+        final fake = _FakeGitHub();
+        await runSync(fake.buildClient());
+
+        expect(
+          fake.putsByPath.containsKey(
+            'diet-guard-sync/devices/phone/budget.json',
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test('remote-only budget is adopted locally', () async {
+      final remoteJson = _remoteBudgetJson(
+        kcal: 1800,
+        t: '2026-01-01T09:00:00',
+      );
+      final fake = _FakeGitHub(
+        deviceDirs: const ['pc'],
+        files: {'diet-guard-sync/devices/pc/budget.json': remoteJson},
+      );
+      await runSync(fake.buildClient());
+      expect(AppSettingsService.dailyKcalGoal, 1800);
+    });
+
+    test('a local edit later than a remote edit wins', () async {
+      await AppSettingsService.instance.saveDailyKcalGoal(1500); // now
+      final remoteJson = _remoteBudgetJson(
+        kcal: 1800,
+        t: '2020-01-01T09:00:00',
+      );
+      final fake = _FakeGitHub(
+        deviceDirs: const ['pc'],
+        files: {'diet-guard-sync/devices/pc/budget.json': remoteJson},
+      );
+      await runSync(fake.buildClient());
+      expect(AppSettingsService.dailyKcalGoal, 1500);
+    });
+
+    test('a remote edit later than a local edit wins', () async {
+      await AppSettingsService.instance.saveDailyKcalGoal(1500); // now
+      final remoteJson = _remoteBudgetJson(
+        kcal: 1800,
+        t: '2999-01-01T09:00:00',
+      );
+      final fake = _FakeGitHub(
+        deviceDirs: const ['pc'],
+        files: {'diet-guard-sync/devices/pc/budget.json': remoteJson},
+      );
+      await runSync(fake.buildClient());
+      expect(AppSettingsService.dailyKcalGoal, 1800);
+    });
+
+    test('a malformed remote budget is skipped, not a crash', () async {
+      await AppSettingsService.instance.saveDailyKcalGoal(2000);
+      final fake = _FakeGitHub(
+        deviceDirs: const ['pc'],
+        files: const {
+          'diet-guard-sync/devices/pc/budget.json': '{not valid json',
+        },
+      );
+      await runSync(fake.buildClient());
+      expect(AppSettingsService.dailyKcalGoal, 2000);
+    });
+
+    test(
+      'a fresh install with no budget ever set contributes nothing',
+      () async {
+        final fake = _FakeGitHub();
+        await runSync(fake.buildClient());
+
+        final pushed =
+            fake.putsByPath['diet-guard-sync/devices/phone/budget.json']!;
+        final pushedText = utf8.decode(
+          base64.decode(pushed['content'] as String),
+        );
+        expect(jsonDecode(pushedText), isEmpty);
+        expect(AppSettingsService.dailyKcalGoal, 2200);
+      },
+    );
+  });
 }

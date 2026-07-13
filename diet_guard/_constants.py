@@ -5,15 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 
 # --- Daily target -----------------------------------------------------------
-# There is deliberately NO budget number here.  Like the home GPS coordinates in
-# phone_focus_mode (which live only in the git-ignored config_secrets.sh on the
-# device, never in committed source), the real budget is computed once from
-# biometrics at ``init`` time and sealed into BUDGET_FILE below.  It is read via
-# diet_guard._budget.daily_budget() for over/under decisions only and
-# is never printed -- see _budget.py for the full threat model.
+# There is deliberately NO budget number here.  It is computed once from
+# biometrics at ``init`` time, written to BUDGET_FILE below, and freely
+# editable and synced afterward from either device -- see _budget.py and
+# _sync.py.  Read via diet_guard._budget.daily_budget() for over/under
+# decisions; freely shown in local CLI/GUI/app output.
 #
 # Fraction of the budget at which status flips from "on track" to "approaching
-# limit".  Surfaced as a label, so the threshold leaks only by boundary-probing.
+# limit".  Also mirrored above 100% as the day-status yellow/red boundary for
+# the calendar -- see _daystatus.py.
 BUDGET_WARN_FRACTION: float = 0.80
 
 # --- Storage ----------------------------------------------------------------
@@ -26,10 +26,11 @@ FOOD_LOG_FILE: Path = DATA_DIR / "food_log.json"
 # searches -- Open Food Facts is used to *fill* a new food's macros, never to
 # search.  Local-only, git-ignored.
 FOOD_BANK_FILE: Path = DATA_DIR / "food_bank.json"
-# The sealed budget: a dotfile alongside the log, base64-wrapped + HMAC-signed,
-# made immutable with ``chattr +i``.  Git-ignored, never committed.  "Hidden"
-# here means never-online (it lives outside the repo) -- the number is still
-# shown freely in local CLI/GUI output; the seal only makes *cheating* hard.
+# The budget: a plain JSON dotfile alongside the log, freely editable on this
+# device or the phone app and synced between them (see _sync.py).
+# Git-ignored, never committed.  "Hidden" here means never-online (it lives
+# outside the repo) -- the number itself is shown freely in local CLI/GUI/app
+# output.
 BUDGET_FILE: Path = DATA_DIR / ".budget"
 
 # --- Estimator (Open Food Facts) -------------------------------------------

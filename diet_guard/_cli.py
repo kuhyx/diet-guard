@@ -21,15 +21,12 @@ import sys
 
 from diet_guard._budget import (
     Biometrics,
-    BudgetLockedError,
+    BudgetFileCorruptError,
     BudgetNotInitializedError,
-    BudgetSealBrokenError,
     compute_target_budget,
     daily_budget,
-    lock_command,
     protein_target_g,
-    seal_budget,
-    unlock_command,
+    write_budget,
 )
 from diet_guard._cli_gate import cmd_gate
 from diet_guard._cli_sync import cmd_sync, register_sync_subparser
@@ -124,7 +121,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 
     sub.add_parser(
         "init",
-        help="Compute your daily budget from biometrics and seal it (hidden).",
+        help="Compute your starting daily budget from biometrics.",
     )
 
     ate = sub.add_parser("ate", help="Log a meal you just ate.")
@@ -210,8 +207,8 @@ def _print_summary() -> None:
             f"today: {total:g} kcal  (budget not set - run: python -m diet_guard init)",
         )
         return
-    except BudgetSealBrokenError:
-        _emit(f"today: {total:g} kcal  (budget seal broken - re-run init)")
+    except BudgetFileCorruptError:
+        _emit(f"today: {total:g} kcal  (budget file corrupt - re-run init)")
         return
     remaining = round(budget - total, 1)
     _emit(f"today: {total:g} kcal  -  {remaining:g} kcal left of {budget:g}")
@@ -232,7 +229,7 @@ def _read_init_inputs() -> tuple[Biometrics, float, float] | None:
     """Prompt for biometrics on stdin; return (bio, activity, deficit) or None.
 
     Returns None (after printing why) on any unparsable or out-of-range input,
-    so a typo never seals a wrong budget.
+    so a typo never sets a wrong budget.
     """
     try:
         weight = float(_ask("weight in kg:"))
@@ -247,7 +244,7 @@ def _read_init_inputs() -> tuple[Biometrics, float, float] | None:
         )
         deficit = float(_ask("daily deficit in kcal (e.g. 200):"))
     except ValueError:
-        _emit("that was not a number; nothing was sealed.")
+        _emit("that was not a number; nothing was set.")
         return None
 
     if sex_raw in _MALE_ANSWERS:
@@ -255,7 +252,7 @@ def _read_init_inputs() -> tuple[Biometrics, float, float] | None:
     elif sex_raw in _FEMALE_ANSWERS:
         is_male = False
     else:
-        _emit('sex must be "m" or "f"; nothing was sealed.')
+        _emit('sex must be "m" or "f"; nothing was set.')
         return None
 
     bio = Biometrics(
@@ -268,7 +265,7 @@ def _read_init_inputs() -> tuple[Biometrics, float, float] | None:
 
 
 def _cmd_init() -> int:
-    """Compute the budget from biometrics and seal it, printing no number."""
+    """Compute the starting budget from biometrics and write it."""
     inputs = _read_init_inputs()
     if inputs is None:
         return 2
@@ -278,15 +275,9 @@ def _cmd_init() -> int:
         activity_factor=activity,
         deficit_kcal=deficit,
     )
-    try:
-        seal_budget(budget, weight_kg=bio.weight_kg)
-    except BudgetLockedError:
-        _emit("the budget is locked; unlock it first, then re-run init:")
-        _emit(f"  {unlock_command()}")
-        return 1
-    _emit("budget computed from your biometrics and sealed - the number is")
-    _emit("intentionally not shown.")
-    _emit(f"to lock it against casual edits, run:  {lock_command()}")
+    write_budget(budget, weight_kg=bio.weight_kg)
+    _emit(f"budget computed from your biometrics: {budget:g} kcal/day.")
+    _emit("edit it any time from the gate's calendar tab or the phone app.")
     return 0
 
 

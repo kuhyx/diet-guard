@@ -12,7 +12,11 @@ import 'package:path_provider/path_provider.dart';
 ///
 /// The static [dailyKcalGoal] getter returns the default (2200) when the
 /// singleton has not been initialised — safe to read in widget tests that
-/// never call [init].
+/// never call [init]. [dailyKcalGoalUpdatedAt] is null until the goal has
+/// been explicitly set (by the user or a sync merge) at least once on this
+/// device -- that null is what tells the sync layer this device has
+/// nothing of its own to contribute yet, rather than silently syncing the
+/// unset default.
 class AppSettingsService {
   AppSettingsService._(this._file);
 
@@ -23,9 +27,14 @@ class AppSettingsService {
 
   final File _file;
   int _dailyKcalGoal = 2200;
+  DateTime? _dailyKcalGoalUpdatedAt;
 
   /// Returns the configured daily kcal goal, or 2200 when uninitialised.
   static int get dailyKcalGoal => _instance?._dailyKcalGoal ?? 2200;
+
+  /// Returns when the goal was last set on this device, or null if never.
+  static DateTime? get dailyKcalGoalUpdatedAt =>
+      _instance?._dailyKcalGoalUpdatedAt;
 
   /// Initialises the singleton, pointing at the app's documents directory.
   static Future<AppSettingsService> init() async {
@@ -73,15 +82,40 @@ class AppSettingsService {
       if (data is Map && data['daily_kcal_goal'] is int) {
         _dailyKcalGoal = data['daily_kcal_goal'] as int;
       }
+      if (data is Map && data['daily_kcal_goal_updated_at'] is String) {
+        _dailyKcalGoalUpdatedAt = DateTime.tryParse(
+          data['daily_kcal_goal_updated_at'] as String,
+        );
+      }
     } on Exception {
-      // Ignore parse errors and keep default.
+      // Ignore parse errors and keep defaults.
     }
   }
 
-  /// Updates the in-memory value and persists [goal] to disk.
-  Future<void> saveDailyKcalGoal(int goal) async {
+  /// Updates the in-memory value and persists [goal] to disk, stamping the
+  /// edit with the current time -- the timestamp a sync merge compares
+  /// against another device's edit to resolve last-writer-wins.
+  Future<void> saveDailyKcalGoal(int goal) => _persist(goal, DateTime.now());
+
+  /// Applies a synced budget value without stamping a fresh edit time.
+  ///
+  /// Used only by the sync layer to write back a merge's winning value: it
+  /// persists [updatedAt] verbatim (the winning side's real edit time), not
+  /// "now", so re-syncing an unchanged value stays idempotent instead of
+  /// making this device's copy look newer than it actually is on every
+  /// tick.
+  Future<void> applySyncedBudget(int goal, {DateTime? updatedAt}) =>
+      _persist(goal, updatedAt);
+
+  Future<void> _persist(int goal, DateTime? updatedAt) async {
     _dailyKcalGoal = goal;
+    _dailyKcalGoalUpdatedAt = updatedAt;
     await _file.parent.create(recursive: true);
-    await _file.writeAsString(jsonEncode({'daily_kcal_goal': goal}));
+    await _file.writeAsString(
+      jsonEncode({
+        'daily_kcal_goal': goal,
+        'daily_kcal_goal_updated_at': updatedAt?.toIso8601String(),
+      }),
+    );
   }
 }

@@ -7,8 +7,14 @@ A log-to-unlock gate: every ~30 minutes, `diet-guard-gate.timer` runs
 16:00, 20:00) has elapsed without a logged meal. If so, it opens a fullscreen
 Tk window that blocks the desktop until the user logs what they ate (with
 autocomplete from a local food-name "bank", optionally seeded from Open Food
-Facts via `requests`). It also tracks a daily calorie/macro budget, sealed at
-init time and tamper-resistant via `chattr +i`.
+Facts via `requests`). It also tracks a daily calorie/macro budget, seeded
+from biometrics at `init` time but freely editable afterward on either
+device (PC gate or phone app), synced last-edit-wins like the food log (see
+"Cross-device sync"). A second tab in the gate window ("History", built by
+`_gatelock_calendar.py`) and a matching screen in the phone app show a
+budget-adherence calendar, logging/adherence streaks, and a year-to-date
+tally, both derived from the same day-status classification
+(`_daystatus.py` / `day_status_service.dart`).
 
 See `docs/design.md` for the original feature spec (meal-slot timing logic,
 the Tue/Wed/Thu "filled most of the day" catch-up rule, multi-item meals).
@@ -88,11 +94,15 @@ silently does **not** reach the running service.
 
 ## Operational gotchas
 
-- **The budget file is sealed immutable.** `~/.local/share/diet_guard/.budget`
-  gets `chattr +i` after `init` (see `install.sh` step 6). This is the actual
-  tamper-resistance mechanism — the budget can't be casually edited to "make
-  room" once locked. To intentionally change it: `sudo chattr -i` the file,
-  re-run `python -m diet_guard init`, then re-lock.
+- **The budget is a plain, freely-editable synced file, by design.**
+  `~/.local/share/diet_guard/.budget` (`diet_guard/_budget.py`) has no seal
+  or signing — this replaces a previous `chattr +i` anti-impulse-editing
+  mechanism, removed deliberately so the same value can be edited from
+  either device. Edit it from the gate's History tab, the phone app's
+  Calendar screen, or `settings_screen.dart`; every write stamps an edit
+  timestamp so `diet-guard-sync.timer`'s `budget.json` sync (mirroring the
+  food-log sync) resolves concurrent edits last-writer-wins. Do not
+  reintroduce the seal as a "fix" — the removal is the feature.
 - **Biometrics are used once and discarded.** `init` asks for biometrics to
   compute the daily budget, then the only persisted output is the computed
   budget number — never the biometrics themselves.
@@ -118,8 +128,9 @@ silently does **not** reach the running service.
   not accidental complexity.
 - Don't add a dependency without doing the production install-path check
   above.
-- Don't remove the `chattr +i` step from `install.sh` — it's the actual
-  enforcement mechanism, not a formality.
+- Don't reintroduce a seal/lock/`chattr +i` on the budget file as a "fix" —
+  it was deliberately removed so the budget is freely editable and synced
+  between devices; see "Operational gotchas" above.
 
 ## Flutter/Dart AI rules
 

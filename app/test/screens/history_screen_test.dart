@@ -129,6 +129,58 @@ void main() {
     });
   });
 
+  testWidgets(
+    'initialDateRange pre-filters to just that day, matching a Calendar '
+    'screen day tap',
+    (tester) async {
+      await tester.runAsync(() async {
+        await LogStorageService.instance.writeLog({
+          '2026-06-01': [
+            const FoodEntry(
+              id: 'other-day',
+              time: '2026-06-01T08:00:00+02:00',
+              desc: 'other day breakfast',
+              grams: 100,
+              kcal: 100,
+              proteinG: 5,
+              carbsG: 10,
+              fatG: 2,
+              source: 'manual',
+            ),
+          ],
+          '2026-06-22': [
+            const FoodEntry(
+              id: 'target-day',
+              time: '2026-06-22T20:00:00+02:00',
+              desc: 'target day dinner',
+              grams: 100,
+              kcal: 200,
+              proteinG: 10,
+              carbsG: 20,
+              fatG: 4,
+              source: 'manual',
+            ),
+          ],
+        });
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: HistoryScreen(
+              initialDateRange: DateTimeRange(
+                start: DateTime(2026, 6, 22),
+                end: DateTime(2026, 6, 22),
+              ),
+            ),
+          ),
+        );
+        await settle(tester);
+
+        expect(find.text('target day dinner'), findsOneWidget);
+        expect(find.text('other day breakfast'), findsNothing);
+      });
+    },
+  );
+
   // ---------------------------------------------------------------------------
   // applyHistoryFilter — pure function tests (no widget required)
   // ---------------------------------------------------------------------------

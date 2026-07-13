@@ -63,6 +63,52 @@ void main() {
       final data = jsonDecode(raw) as Map;
       expect(data['daily_kcal_goal'], 1800);
     });
+
+    test('stamps a fresh dailyKcalGoalUpdatedAt', () async {
+      AppSettingsService.resetForTesting(testDir: tempDir);
+      final before = DateTime.now();
+      await AppSettingsService.instance.saveDailyKcalGoal(1800);
+      final after = DateTime.now();
+
+      final updatedAt = AppSettingsService.dailyKcalGoalUpdatedAt;
+      expect(updatedAt, isNotNull);
+      expect(updatedAt!.isBefore(before), isFalse);
+      expect(updatedAt.isAfter(after), isFalse);
+    });
+  });
+
+  group('applySyncedBudget', () {
+    test(
+      'persists the given value and updatedAt verbatim, not "now"',
+      () async {
+        AppSettingsService.resetForTesting(testDir: tempDir);
+        final winningEdit = DateTime.utc(2020);
+
+        await AppSettingsService.instance.applySyncedBudget(
+          1700,
+          updatedAt: winningEdit,
+        );
+
+        expect(AppSettingsService.dailyKcalGoal, 1700);
+        expect(AppSettingsService.dailyKcalGoalUpdatedAt, winningEdit);
+
+        final raw = await File(
+          '${tempDir.path}/app_settings.json',
+        ).readAsString();
+        final data = jsonDecode(raw) as Map;
+        expect(data['daily_kcal_goal'], 1700);
+        expect(
+          data['daily_kcal_goal_updated_at'],
+          winningEdit.toIso8601String(),
+        );
+      },
+    );
+
+    test('a null updatedAt is accepted and persisted as null', () async {
+      AppSettingsService.resetForTesting(testDir: tempDir);
+      await AppSettingsService.instance.applySyncedBudget(1700);
+      expect(AppSettingsService.dailyKcalGoalUpdatedAt, isNull);
+    });
   });
 
   group('initForTesting (_load paths)', () {
@@ -111,5 +157,50 @@ void main() {
 
       expect(AppSettingsService.dailyKcalGoal, 2200);
     });
+
+    test('loads daily_kcal_goal_updated_at from an existing file', () async {
+      await File('${tempDir.path}/app_settings.json').writeAsString(
+        jsonEncode({
+          'daily_kcal_goal': 1600,
+          'daily_kcal_goal_updated_at': '2026-01-01T00:00:00.000Z',
+        }),
+      );
+
+      await AppSettingsService.initForTesting(tempDir);
+
+      expect(
+        AppSettingsService.dailyKcalGoalUpdatedAt,
+        DateTime.parse('2026-01-01T00:00:00.000Z'),
+      );
+    });
+
+    test(
+      'dailyKcalGoalUpdatedAt stays null when file has no such key',
+      () async {
+        await File(
+          '${tempDir.path}/app_settings.json',
+        ).writeAsString(jsonEncode({'daily_kcal_goal': 1600}));
+
+        await AppSettingsService.initForTesting(tempDir);
+
+        expect(AppSettingsService.dailyKcalGoalUpdatedAt, isNull);
+      },
+    );
+
+    test(
+      'dailyKcalGoalUpdatedAt stays null when the field is not a string',
+      () async {
+        await File('${tempDir.path}/app_settings.json').writeAsString(
+          jsonEncode({
+            'daily_kcal_goal': 1600,
+            'daily_kcal_goal_updated_at': 12345,
+          }),
+        );
+
+        await AppSettingsService.initForTesting(tempDir);
+
+        expect(AppSettingsService.dailyKcalGoalUpdatedAt, isNull);
+      },
+    );
   });
 }

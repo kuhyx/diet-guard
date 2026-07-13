@@ -6,6 +6,12 @@ Pulls every other device's pushed log from GitHub-backed dumb storage
 diet_guard's entries to/from ``crdt_sync.Record``), re-signs every persisted
 entry, rebuilds the food bank, and pushes this device's own merged log back
 up in the new Record-based wire format.
+
+The daily budget syncs alongside the food log in the same tick (see
+:func:`_sync_budget`, called from :func:`run_sync`): a sibling
+``budget.json`` per device, merged the same way but last-writer-wins per
+edit rather than union-of-immutable-entries, since a budget (unlike a
+food-log entry) can be edited repeatedly.
 """
 
 from __future__ import annotations
@@ -15,6 +21,7 @@ import logging
 
 from crdt_sync import GitHubSyncClient, GitHubSyncError, Log, merge_logs
 
+from diet_guard._budget import read_raw_record, write_raw_record
 from diet_guard._constants import (
     SYNC_DEVICE_ID,
     SYNC_REPO_NAME,
@@ -24,7 +31,14 @@ from diet_guard._constants import (
 )
 from diet_guard._foodbank import rebuild_food_bank
 from diet_guard._state import DayLog, read_raw_log, resign_entry, write_raw_log
-from diet_guard._sync_merge import daylog_to_log, log_to_daylog, parse_remote_log
+from diet_guard._sync_merge import (
+    budget_to_log,
+    daylog_to_log,
+    log_to_budget,
+    log_to_daylog,
+    parse_remote_budget,
+    parse_remote_log,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -38,6 +52,11 @@ class SyncError(Exception):
 def _device_log_path(device_id: str) -> str:
     """Return the repo-relative path a device's full log is pushed to."""
     return f"{_DEVICES_DIR}/{device_id}/food_log.json"
+
+
+def _device_budget_path(device_id: str) -> str:
+    """Return the repo-relative path a device's budget is pushed to."""
+    return f"{_DEVICES_DIR}/{device_id}/budget.json"
 
 
 def _read_token() -> str:
@@ -84,6 +103,48 @@ def _pull_remote_logs(client: GitHubSyncClient) -> list[Log]:
     return remote_logs
 
 
+def _sync_budget(client: GitHubSyncClient) -> None:
+    """Pull other devices' budgets, merge, write locally, push this device's.
+
+    Runs in the same tick as the food-log sync, reusing the already
+    authenticated ``client``. Merging is last-writer-wins by edit time (see
+    :mod:`diet_guard._sync_merge`'s budget adapters), not the food log's
+    union-of-immutable-entries -- a budget can be edited repeatedly. A
+    device that has never run ``init`` neither contributes a local record
+    to the merge nor overwrites a real budget pulled from elsewhere, and if
+    *no* device has ever set one, nothing is written or pushed.
+    """
+    merged = budget_to_log(read_raw_record())
+    for device_id in client.list_directory(_DEVICES_DIR):
+        if device_id == SYNC_DEVICE_ID:
+            continue
+        text = client.get_file_text(_device_budget_path(device_id))
+        if text is None:
+            continue
+        try:
+            merged = merge_logs(merged, parse_remote_budget(text))
+        except (TypeError, KeyError, ValueError, json.JSONDecodeError):
+            _logger.warning(
+                "Unparsable budget pushed by device %r, skipping",
+                device_id,
+            )
+
+    merged_record = log_to_budget(merged)
+    if merged_record is None:
+        return
+    write_raw_record(merged_record)
+
+    push_json = json.dumps(
+        {record_id: record.to_dict() for record_id, record in merged.items()},
+        indent=2,
+    )
+    client.put_file_text(
+        _device_budget_path(SYNC_DEVICE_ID),
+        push_json,
+        message="diet_guard sync",
+    )
+
+
 def run_sync() -> DayLog:
     """Run one full sync tick: pull, merge, re-sign, persist, push.
 
@@ -91,7 +152,8 @@ def run_sync() -> DayLog:
     phone-origin ones): a signature computed on another device cannot be
     trusted as this device's shared key sees it, and an inbound entry with no
     signature at all would otherwise be silently dropped on the very next
-    read by :func:`diet_guard._state.load_log`.
+    read by :func:`diet_guard._state.load_log`. The daily budget syncs in
+    the same tick (see :func:`_sync_budget`), reusing this same client.
 
     Returns:
         The merged log as it now sits on disk locally, post re-sign.
@@ -118,6 +180,7 @@ def run_sync() -> DayLog:
     }
     write_raw_log(resigned)
     rebuild_food_bank(resigned)
+    _sync_budget(client)
 
     push_log = daylog_to_log(resigned)
     push_json = json.dumps(

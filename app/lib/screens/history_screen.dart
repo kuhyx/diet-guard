@@ -8,6 +8,7 @@ import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/screens/edit_entry_screen.dart';
 import 'package:diet_guard_app/screens/photo_viewer_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/day_status_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:flutter/material.dart';
 
@@ -230,7 +231,7 @@ List<_HistoryItem> _buildGroupedItems(List<FoodEntry> entries) {
   final items = <_HistoryItem>[];
   for (final day in days) {
     final dayEntries = byDay[day]!;
-    final totalKcal = dayEntries.fold<double>(0, (s, e) => s + e.kcal);
+    final totalKcal = sumKcal(dayEntries);
     final totalProtein = dayEntries.fold<double>(0, (s, e) => s + e.proteinG);
     final totalCarbs = dayEntries.fold<double>(0, (s, e) => s + e.carbsG);
     final totalFat = dayEntries.fold<double>(0, (s, e) => s + e.fatG);
@@ -286,7 +287,14 @@ String _formatDay(String dateKey) {
 /// filtering and sorting.
 class HistoryScreen extends StatefulWidget {
   /// Creates a [HistoryScreen].
-  const HistoryScreen({super.key});
+  ///
+  /// [initialDateRange], when given, pre-applies a date-range filter (e.g.
+  /// the Calendar screen navigating here after a day is tapped, filtering
+  /// to just that one day).
+  const HistoryScreen({this.initialDateRange, super.key});
+
+  /// A date-range filter applied on first load; null shows everything.
+  final DateTimeRange? initialDateRange;
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -295,13 +303,14 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   List<FoodEntry>? _allEntries;
   List<FoodEntry> _displayed = const [];
-  HistoryFilter _filter = HistoryFilter();
+  late HistoryFilter _filter;
   HistorySortField _sortField = HistorySortField.date;
   bool _sortAscending = false;
 
   @override
   void initState() {
     super.initState();
+    _filter = HistoryFilter(dateRange: widget.initialDateRange);
     unawaited(_load());
   }
 

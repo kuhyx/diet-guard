@@ -13,7 +13,7 @@ from unittest.mock import patch
 import pytest
 
 from diet_guard import _state
-from diet_guard._budget import BudgetNotInitializedError, seal_budget
+from diet_guard._budget import BudgetNotInitializedError, write_budget
 from diet_guard._estimator import Nutrition
 from diet_guard._state import (
     consumption_band,
@@ -205,25 +205,25 @@ class TestBudgetViews:
 
     def test_remaining_value(self) -> None:
         """Remaining is budget minus today's total."""
-        seal_budget(2000)
+        write_budget(2000)
         log_meal("lunch", _nut(500), slot=12)
         assert remaining_budget() == 1500.0
 
     def test_band_on_track(self) -> None:
         """Well under the warn fraction is 'on track'."""
-        seal_budget(2000)
+        write_budget(2000)
         log_meal("a", _nut(500), slot=8)
         assert consumption_band() == "on track"
 
     def test_band_approaching(self) -> None:
         """At or above the warn fraction but under budget is 'approaching limit'."""
-        seal_budget(2000)
+        write_budget(2000)
         log_meal("a", _nut(1700), slot=8)
         assert consumption_band() == "approaching limit"
 
     def test_band_over(self) -> None:
         """At or above budget is 'OVER BUDGET'."""
-        seal_budget(2000)
+        write_budget(2000)
         log_meal("a", _nut(2100), slot=8)
         assert consumption_band() == "OVER BUDGET"
 

@@ -253,8 +253,8 @@ class _GateMealFlow(_GateNutrition):
     def _unlock(self, logged: str) -> None:
         """Confirm the final log and tear the window down.
 
-        Teardown is scheduled *before* the budget is looked up, so a broken
-        budget seal (which raises) can never re-trap the user at unlock time.
+        Teardown is scheduled *before* the budget is looked up, so a corrupt
+        budget file (which raises) can never re-trap the user at unlock time.
         """
         self._set_status(f"{logged} — all meals logged, unlocking…")
         self.root.after(_UNLOCK_DELAY_MS, self.close)

@@ -245,10 +245,10 @@ def logged_slots_today() -> set[int]:
 
 
 def remaining_budget() -> float:
-    """Return kcal remaining against the sealed budget (may be negative).
+    """Return kcal remaining against the daily budget (may be negative).
 
     Raises:
-        BudgetError: If the budget is uninitialized or its seal is broken;
+        BudgetError: If the budget is uninitialized or its file is corrupt;
             the caller decides whether to guide the user or fail closed.
     """
     return round(daily_budget() - today_total_kcal(), 1)

@@ -20,6 +20,16 @@ Backward compatible with devices not yet migrated (the phone app, for now):
 falls back to the old plain-DayLog format, converting old-format entries
 through the same adapters used for the local log. Push always writes the
 new format -- there is no code path left that ever *writes* the old one.
+
+The budget adapters at the bottom of this module (:func:`budget_to_log`
+etc.) follow the same ``Record``/``Log`` shape, but differ in one important
+way: a budget record is edited repeatedly (not immutable-after-creation
+like a food-log entry), so its ``Hlc`` is derived from a ``t`` edit
+timestamp that :func:`diet_guard._budget.write_budget` bumps on every
+write, rather than from a birth time that never changes. There is no
+legacy plain-``DayLog``-shaped fallback for budgets -- ``budget.json`` is a
+brand-new sync payload, so every device pushing it already speaks the
+Record-based wire format.
 """
 
 from __future__ import annotations
@@ -176,3 +186,80 @@ def parse_remote_log(text: str) -> Log:
                 raise TypeError(msg)
         daylog[date_key] = entries
     return daylog_to_log(daylog)
+
+
+# Stable id: exactly one budget record per device-pushed budget.json.
+_BUDGET_RECORD_ID = "budget"
+
+
+def _budget_hlc(record: dict[str, object]) -> Hlc:
+    """Derive a deterministic Hlc for a raw budget record from its ``t`` field.
+
+    Mirrors :func:`_entry_hlc`'s determinism -- the same unedited record
+    always yields the same Hlc, so re-syncing an unchanged budget is a
+    no-op -- but reads ``t`` (bumped on every :func:`diet_guard._budget.
+    write_budget` call) rather than a fixed birth time, since a budget can
+    be edited repeatedly and the *edit* time is what last-writer-wins must
+    compare.
+    """
+    try:
+        dt = datetime.fromisoformat(str(record.get("t", "")))
+    except ValueError:
+        dt = _EPOCH
+    wall_time_ms = int(dt.timestamp() * 1000)
+    return Hlc.new_tick(SYNC_DEVICE_ID, wall_time_ms=wall_time_ms)
+
+
+def budget_to_log(record: dict[str, object] | None) -> Log:
+    """Convert a raw local/remote budget record into a single-record Log.
+
+    Returns an empty ``Log`` when ``record`` is None (this device has never
+    run ``init``), so an uninitialized device contributes nothing to the
+    merge rather than clobbering another device's real value.
+    """
+    if record is None:
+        return {}
+    hlc = _budget_hlc(record)
+    value = {k: v for k, v in record.items() if k != "t"}
+    rec = Record(id=_BUDGET_RECORD_ID, fields={"value": (value, hlc)})
+    return {rec.id: rec}
+
+
+def log_to_budget(log: Log) -> dict[str, object] | None:
+    """Convert a merged budget ``Log`` back into a raw budget record.
+
+    Returns None when the log has no budget record at all (neither device
+    has ever run ``init`` yet) -- callers treat that as "nothing to write
+    locally", not an error.
+    """
+    record = log.get(_BUDGET_RECORD_ID)
+    if record is None:
+        return None
+    value, hlc = record.fields.get("value", ({}, None))
+    result: dict[str, object] = dict(value) if isinstance(value, dict) else {}
+    if hlc is not None:
+        winning_time = datetime.fromtimestamp(hlc.wall_time_ms / 1000, tz=timezone.utc)
+        result["t"] = winning_time.astimezone().isoformat(timespec="seconds")
+    return result
+
+
+def parse_remote_budget(text: str) -> Log:
+    """Parse one device's pushed ``budget.json`` text into a ``crdt_sync.Log``.
+
+    Raises on malformed data; the caller
+    (:func:`diet_guard._sync._pull_remote_budgets`) logs-and-skips on that,
+    matching :func:`parse_remote_log`'s tolerance for a bad device file.
+
+    Raises:
+        TypeError: If the top-level JSON isn't an object, or a record value
+            isn't shaped as expected.
+        KeyError: Via ``Record.from_dict``, if a record is missing an
+            expected key.
+        ValueError: Via ``json.loads`` on invalid JSON, or ``Hlc.from_str``
+            on a malformed clock string.
+    """
+    raw = json.loads(text)
+    if not isinstance(raw, dict):
+        msg = f"top-level budget payload is not a JSON object: {raw!r}"
+        raise TypeError(msg)
+    return {record_id: Record.from_dict(data) for record_id, data in raw.items()}

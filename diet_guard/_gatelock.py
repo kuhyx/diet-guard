@@ -31,10 +31,13 @@ Building ``MealGate`` spans several sibling modules to keep each under the
 repo's 500-line limit: :mod:`._gatelock_core` provides the shared leaf
 widget/field helpers and state (``_GateCore``, ``_GateState``);
 :mod:`._gatelock_nutrition` provides the reference->total nutrition maths and
-food lookup (``_GateNutrition``); and :mod:`._gatelock_mealflow` provides the
-submit/log flow, dashboard, and callback-error handling (``_GateMealFlow``).
-``MealGate`` wires these mixins together, owns the ``gatelock.LockWindow``,
-and handles construction, layout, and event binding.
+food lookup (``_GateNutrition``); :mod:`._gatelock_mealflow` provides the
+submit/log flow, dashboard, and callback-error handling (``_GateMealFlow``);
+and :mod:`._gatelock_calendar` provides the second ``ttk.Notebook`` tab --
+the budget-adherence calendar, streaks, and YTD tally from
+:mod:`._daystatus`, plus budget editing (``_GateCalendar``). ``MealGate``
+wires these mixins together, owns the ``gatelock.LockWindow``, and handles
+construction, layout, and event binding.
 """
 
 from __future__ import annotations
@@ -49,12 +52,11 @@ from gatelock import GateRoot, LockConfig, LockWindow
 
 from diet_guard._constants import GATE_LOCK_FILE
 from diet_guard._gate import due_slots
+from diet_guard._gatelock_calendar import _GateCalendar
 from diet_guard._gatelock_core import _GateState
-from diet_guard._gatelock_mealflow import _GateMealFlow
 from diet_guard._gatelock_ui import (
     BG,
     GateCallbacks,
-    build_layout,
     make_vars,
 )
 from diet_guard._slots import current_slot, day_slots
@@ -122,7 +124,7 @@ def _pending_slots(*, demo_mode: bool) -> list[int]:
     return []
 
 
-class MealGate(_GateMealFlow):
+class MealGate(_GateCalendar):
     """A fullscreen lock that dismisses only once every missing slot is logged."""
 
     def __init__(self, *, demo_mode: bool = True) -> None:
@@ -157,17 +159,13 @@ class MealGate(_GateMealFlow):
             on_add_item=self._on_add_item,
             on_fetch_sync=self._on_fetch_sync,
         )
-        self._widgets = build_layout(
-            self.root,
-            self._vars,
-            callbacks,
-            demo_mode=self.demo_mode,
-        )
+        self._widgets = self._build_tabs(callbacks)
         self._wire_events()
         self._relabel_basis()
         self._refresh_slot_header()
         self._refresh_dashboard()
         self._refresh_projection()
+        self._refresh_calendar()
         self._lock.grab_input()
         self._widgets.desc_text.focus_set()
 

@@ -29,6 +29,7 @@ import pytest
 
 from diet_guard import (
     _gatelock,
+    _gatelock_calendar,
     _gatelock_core,
     _gatelock_mealflow,
     _gatelock_nutrition,
@@ -135,10 +136,16 @@ class FakeVar:
 
 
 class FakeEntry:
-    """A functional one-line entry (delete clears, insert appends)."""
+    """A functional one-line entry (delete clears, insert appends).
+
+    ``configure``/``config`` record their kwargs into ``configured``, so a
+    test can assert on a read-only/editable state toggle the same way it
+    would with :class:`FakeWidget`.
+    """
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         self._value = ""
+        self.configured: dict[str, object] = dict(kwargs)
 
     def get(self) -> str:
         return self._value
@@ -156,7 +163,7 @@ class FakeEntry:
         pass
 
     def configure(self, *args: object, **kwargs: object) -> None:
-        pass
+        self.configured.update(kwargs)
 
     config = configure
 
@@ -204,10 +211,15 @@ class FakeListbox:
 
 
 class FakeWidget:
-    """A generic no-op widget for Frame/Label/Button/OptionMenu."""
+    """A generic no-op widget for Frame/Label/Button/OptionMenu.
+
+    ``configure``/``config`` record their kwargs into ``configured`` (rather
+    than discarding them) so a test can assert on a widget's last-set color
+    or text, e.g. the calendar's per-cell status coloring.
+    """
 
     def __init__(self, *args: object, **kwargs: object) -> None:
-        pass
+        self.configured: dict[str, object] = dict(kwargs)
 
     def pack(self, *args: object, **kwargs: object) -> FakeWidget:
         return self
@@ -215,13 +227,45 @@ class FakeWidget:
     def place(self, *args: object, **kwargs: object) -> FakeWidget:
         return self
 
+    def grid(self, *args: object, **kwargs: object) -> FakeWidget:
+        return self
+
     def configure(self, *args: object, **kwargs: object) -> FakeWidget:
+        self.configured.update(kwargs)
         return self
 
     config = configure
 
     def bind(self, *args: object, **kwargs: object) -> None:
         pass
+
+    def register(self, func: object) -> object:
+        """Stand in for Tk's Tcl-command registration: return the callable as-is."""
+        return func
+
+
+class FakeNotebook(FakeWidget):
+    """A functional ``ttk.Notebook``: tracks added tabs and the selection."""
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)
+        self.tabs: list[tuple[object, str]] = []
+        self._selected = 0
+
+    def add(self, child: object, *, text: str = "") -> None:
+        self.tabs.append((child, text))
+
+    def select(self, tab_id: object = None) -> int | None:
+        if tab_id is None:
+            return self._selected
+        if isinstance(tab_id, int):
+            self._selected = tab_id
+        else:
+            for index, (child, _label) in enumerate(self.tabs):
+                if child is tab_id:
+                    self._selected = index
+                    break
+        return None
 
 
 _FAKE_TK = SimpleNamespace(
@@ -238,11 +282,14 @@ _FAKE_TK = SimpleNamespace(
     Event=object,
 )
 
+_FAKE_TTK = SimpleNamespace(Notebook=FakeNotebook)
+
 # Every mixin module the gate window is built from imports ``tkinter``
 # independently; all of them must see the fake so ``tk.TclError`` etc. are the
 # catchable ``_FakeTclError`` everywhere a test raises it.
 _GATE_TK_MODULES = (
     _gatelock,
+    _gatelock_calendar,
     _gatelock_core,
     _gatelock_nutrition,
     _gatelock_mealflow,
@@ -256,6 +303,7 @@ def gate() -> Iterator[MealGate]:
     with ExitStack() as stack:
         for module in _GATE_TK_MODULES:
             stack.enter_context(patch.object(module, "tk", _FAKE_TK))
+        stack.enter_context(patch.object(_gatelock_calendar, "ttk", _FAKE_TTK))
         yield MealGate(demo_mode=True)
 
 

@@ -87,7 +87,7 @@ class _GateNutrition(_GateCore):
         This answers, as the calories are typed, the four numbers the user asked
         to see together: how much is already eaten today, the day's goal, how
         much is left now, and how much would be left *after* logging the food
-        currently in the form.  With no budget sealed it degrades to the running
+        currently in the form.  With no budget set it degrades to the running
         total plus this item's calories, so it is always informative.
         """
         consumed = today_total_kcal()

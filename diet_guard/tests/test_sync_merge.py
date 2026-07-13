@@ -11,15 +11,19 @@ from __future__ import annotations
 
 import json
 
-from crdt_sync import merge_logs
+from crdt_sync import Record, merge_logs
 import pytest
 
 from diet_guard._sync_merge import (
+    _budget_hlc,
     _entry_hlc,
     _legacy_entry_id,
+    budget_to_log,
     daylog_to_log,
     entry_to_record,
+    log_to_budget,
     log_to_daylog,
+    parse_remote_budget,
     parse_remote_log,
     record_to_entry,
 )
@@ -208,6 +212,82 @@ class TestParseRemoteLog:
     def test_invalid_json_raises(self) -> None:
         with pytest.raises(json.JSONDecodeError):
             parse_remote_log("not json{{{")
+
+
+def _budget_record(**overrides: object) -> dict[str, object]:
+    """Build a minimal valid raw budget record, overriding what a test needs."""
+    record: dict[str, object] = {
+        "v": 2,
+        "b": 2000,
+        "t": "2026-06-22T08:00:00+02:00",
+    }
+    record.update(overrides)
+    return record
+
+
+class TestBudgetHlc:
+    def test_same_record_always_yields_the_same_hlc(self) -> None:
+        record = _budget_record()
+        assert _budget_hlc(record) == _budget_hlc(dict(record))
+
+    def test_malformed_t_still_yields_a_valid_hlc(self) -> None:
+        record = _budget_record(t="not-a-timestamp")
+        assert _budget_hlc(record).wall_time_ms == 0
+
+    def test_a_later_t_yields_a_greater_hlc(self) -> None:
+        earlier = _budget_record(t="2020-01-01T00:00:00+00:00")
+        later = _budget_record(t="2030-01-01T00:00:00+00:00")
+        assert _budget_hlc(later) > _budget_hlc(earlier)
+
+
+class TestBudgetLogRoundTrip:
+    def test_none_record_yields_an_empty_log(self) -> None:
+        assert budget_to_log(None) == {}
+
+    def test_round_trip_preserves_the_budget_and_weight(self) -> None:
+        record = _budget_record(w=80.0)
+        round_tripped = log_to_budget(budget_to_log(record))
+        assert round_tripped is not None
+        assert round_tripped["b"] == 2000
+        assert round_tripped["w"] == 80.0
+
+    def test_round_tripped_t_reflects_the_winning_hlc(self) -> None:
+        record = _budget_record(t="2026-06-22T08:00:00+02:00")
+        round_tripped = log_to_budget(budget_to_log(record))
+        assert round_tripped is not None
+        assert round_tripped["t"] != ""
+
+    def test_empty_log_has_no_budget(self) -> None:
+        assert log_to_budget({}) is None
+
+    def test_record_with_no_value_field_has_no_hlc_in_result(self) -> None:
+        """A record present but missing the "value" field is a defensive
+        edge case (should not occur from budget_to_log itself) -- the
+        result still comes back without crashing, and with no ``t``.
+        """
+        log = {"budget": Record(id="budget", fields={})}
+        round_tripped = log_to_budget(log)
+        assert round_tripped == {}
+
+
+class TestParseRemoteBudget:
+    def test_parses_pushed_budget_wire_content(self) -> None:
+        record = _budget_record()
+        pushed = budget_to_log(record)
+        wire = json.dumps({rid: rec.to_dict() for rid, rec in pushed.items()})
+        log = parse_remote_budget(wire)
+        assert log["budget"].id == "budget"
+
+    def test_empty_object_parses_as_empty_log(self) -> None:
+        assert parse_remote_budget("{}") == {}
+
+    def test_non_object_top_level_raises_type_error(self) -> None:
+        with pytest.raises(TypeError):
+            parse_remote_budget("[1, 2, 3]")
+
+    def test_invalid_json_raises(self) -> None:
+        with pytest.raises(json.JSONDecodeError):
+            parse_remote_budget("not json{{{")
 
 
 def _dumps(data: object) -> str:

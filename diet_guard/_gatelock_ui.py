@@ -70,6 +70,7 @@ class GateVars:
 class GateWidgets:
     """Interactive widgets the controller reads back after the UI is built."""
 
+    frame: tk.Frame
     desc_text: tk.Text
     amount_entry: tk.Entry
     per_entry: tk.Entry
@@ -461,6 +462,7 @@ def build_layout(
         ).place(x=10, y=10)
 
     return GateWidgets(
+        frame=frame,
         desc_text=desc_text,
         amount_entry=amount_entry,
         per_entry=per_entry,
