@@ -1,0 +1,733 @@
+<title>Calendar, streaks, and a freely-editable synced budget</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --fg: #1a1a2e;
+    --muted: #5b5b6e;
+    --card: #f4f5f9;
+    --border: #dcdce6;
+    --accent: #2f7d5f;
+    --accent-bg: #e4f3ec;
+    --red: #c0392b;
+    --red-bg: #fbe6e3;
+    --yellow: #a67c00;
+    --yellow-bg: #fbf1d6;
+    --code-bg: #f0f1f6;
+    --link: #1d5fb0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14141c;
+      --fg: #e8e8f0;
+      --muted: #a3a3b8;
+      --card: #1e1e2a;
+      --border: #33333f;
+      --accent: #56c398;
+      --accent-bg: #163227;
+      --red: #ff8b7d;
+      --red-bg: #3a1e1c;
+      --yellow: #e0c33c;
+      --yellow-bg: #362d10;
+      --code-bg: #1a1a24;
+      --link: #7db4ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2.5rem 1rem 6rem;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.65;
+  }
+  main {
+    max-width: min(48rem, 92vw);
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.7rem; margin-bottom: 0.25rem; }
+  h2 {
+    font-size: 1.3rem;
+    margin-top: 3rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
+  h3 { font-size: 1.05rem; margin-top: 1.75rem; }
+  p { margin: 0.9rem 0; }
+  .subtitle { color: var(--muted); margin-top: 0; }
+  code {
+    background: var(--code-bg);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.83rem;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; }
+  nav.toc {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    margin: 1.5rem 0 2.5rem;
+  }
+  nav.toc strong { display: block; margin-bottom: 0.5rem; }
+  nav.toc ul { margin: 0; padding-left: 1.2rem; }
+  nav.toc a { color: var(--link); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  .callout {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    margin: 1.2rem 0;
+  }
+  .diagram {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem;
+    margin: 1.2rem 0;
+    overflow-x: auto;
+  }
+  .flow { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .flow .arrow { color: var(--muted); font-size: 1.3rem; }
+  .box {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.55rem 0.8rem;
+    background: var(--bg);
+    font-size: 0.85rem;
+    text-align: center;
+    min-width: 6rem;
+  }
+  .box.strong { border-color: var(--accent); background: var(--accent-bg); font-weight: 600; }
+  .box.dim { color: var(--muted); }
+
+  /* calendar mini diagram */
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(2.1rem, 1fr));
+    gap: 0.3rem;
+    max-width: 24rem;
+    margin: 0.8rem 0;
+  }
+  .cal-cell {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #0b1f16;
+  }
+  .cal-cell.green { background: #4caf50; }
+  .cal-cell.yellow { background: #e0a83c; }
+  .cal-cell.red { background: #e5685a; }
+  .cal-cell.black { background: #0b0b0d; color: #eee; border: 1.5px solid #cfcfcf; }
+  .cal-cell.future { background: transparent; border: 1.5px dashed var(--border); color: var(--muted); font-weight: 400; }
+  .cal-legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.82rem; margin-top: 0.6rem; color: var(--muted); }
+  .cal-legend .swatch { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 50%; margin-right: 0.35rem; vertical-align: -1px; }
+
+  /* micro-world widget */
+  .widget {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.3rem;
+    margin: 1.3rem 0;
+  }
+  .widget-row { display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1rem; }
+  .field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; }
+  .field input[type="number"] {
+    width: 8rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--fg);
+    font-size: 0.95rem;
+  }
+  .field input[type="checkbox"] { transform: scale(1.2); margin-right: 0.4rem; }
+  .result-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .result-badge .dot { width: 0.75rem; height: 0.75rem; border-radius: 50%; }
+  .result-green { background: var(--accent-bg); color: var(--accent); }
+  .result-yellow { background: var(--yellow-bg); color: var(--yellow); }
+  .result-red { background: var(--red-bg); color: var(--red); }
+  .result-black { background: var(--code-bg); color: var(--fg); }
+  .result-neutral { background: var(--code-bg); color: var(--muted); }
+  .math-line { font-family: ui-monospace, monospace; font-size: 0.85rem; margin-top: 0.7rem; color: var(--muted); }
+  .math-line b { color: var(--fg); }
+
+  /* code walkthrough */
+  .file-group {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    margin: 1.3rem 0;
+  }
+  .file-group h3 { margin-top: 0; }
+  .filename { font-family: ui-monospace, monospace; font-size: 0.82rem; color: var(--muted); margin: 0.3rem 0 0.5rem; }
+
+  /* quiz */
+  .quiz-q {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.2rem;
+    margin: 1.3rem 0;
+    background: var(--card);
+  }
+  .quiz-q p.question { font-weight: 600; margin-top: 0; }
+  .quiz-options { display: flex; flex-direction: column; gap: 0.5rem; }
+  .quiz-option {
+    text-align: left;
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--fg);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-family: inherit;
+  }
+  .quiz-option:hover { border-color: var(--accent); }
+  .quiz-option.correct { background: var(--accent-bg); border-color: var(--accent); }
+  .quiz-option.incorrect { background: var(--red-bg); border-color: var(--red); }
+  .quiz-option[disabled] { cursor: default; }
+  .quiz-rationale {
+    margin-top: 0.6rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    display: none;
+  }
+  .quiz-rationale.shown { display: block; }
+  #quiz-score {
+    position: sticky;
+    bottom: 1rem;
+    background: var(--accent-bg);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 0.6rem 1.2rem;
+    text-align: center;
+    font-weight: 700;
+    margin-top: 1.5rem;
+    border: 1px solid var(--accent);
+  }
+  table { border-collapse: collapse; width: 100%; margin: 0.9rem 0; font-size: 0.88rem; }
+  th, td { border: 1px solid var(--border); padding: 0.45rem 0.6rem; text-align: left; }
+  th { background: var(--card); }
+</style>
+
+<main>
+<h1>Calendar, streaks, and a freely-editable synced budget</h1>
+<p class="subtitle">diet_guard — commit 957769f, 49 files, +4027/-443</p>
+
+<nav class="toc" aria-label="Table of contents">
+  <strong>Contents</strong>
+  <ul>
+    <li><a href="#background">Background</a></li>
+    <li><a href="#intuition">Intuition</a></li>
+    <li><a href="#code">Code walkthrough</a></li>
+    <li><a href="#quiz">Quiz</a></li>
+  </ul>
+</nav>
+
+<section id="background">
+<h2>Background</h2>
+
+<p>
+diet_guard is a "log-to-unlock" gate. On the PC, a systemd timer checks every
+30 minutes whether a meal slot (08:00, 12:00, 16:00, 20:00) has gone unlogged;
+if so, it throws up a fullscreen Tk window that blocks the desktop until the
+user types in what they ate. A companion Flutter app on the phone lets the
+user log meals there too. The two devices don't share a database — instead a
+Python library and a Dart port of it, both called <code>crdt_sync</code>,
+merge each device's log file using Hybrid Logical Clocks (HLCs): every record
+carries a clock derived from when it was written, and when two devices' logs
+are merged, the record with the later clock wins per field. GitHub is used
+purely as dumb file storage (one JSON file per device, under a private repo),
+polled every ~15 minutes.
+</p>
+
+<p>
+Before this change, the app also tracked a daily calorie budget — computed
+once from biometrics at setup time via the Mifflin-St Jeor formula — and then
+<em>sealed</em> it with <code>chattr +i</code>, an immutable-file flag. That
+was a deliberate anti-impulse-editing mechanism: you can't quietly raise your
+own budget mid-diet without a conscious <code>sudo chattr -i</code> step. The
+budget lived only on the PC and was never synced.
+</p>
+
+<p>
+This change does three things at once, and they're entangled on purpose:
+</p>
+<ol>
+<li>Adds a <strong>calendar view</strong> to both the PC gate and the phone
+app — every day colored by how that day's eating compared to budget, plus
+logging/adherence streak counters and a year-to-date tally.</li>
+<li>To color days on the <em>phone</em>, the phone needs to know the budget —
+which meant the budget could no longer be PC-only and sealed. So the seal is
+removed and the budget becomes a normal, freely-editable value synced
+last-writer-wins, exactly like the food log.</li>
+<li>Tapping a colored day now opens the existing history list, pre-filtered
+to just that day.</li>
+</ol>
+
+<div class="callout">
+This was an explicit trade-off, not an oversight: the developer flagged that
+"freely editable, synced" directly undoes the anti-impulse-editing guarantee
+the seal existed for, and the user confirmed they wanted that anyway — the
+budget-editing UI just adds one deliberate step (an Edit button) rather than
+a hard system-level lock.
+</div>
+</section>
+
+<section id="intuition">
+<h2>Intuition</h2>
+
+<h3>Classifying a day</h3>
+<p>
+Every day's status is one of four values, and the ordering matters:
+<code>NOT_LOGGED</code> is considered <em>worse</em> than <code>RED</code> —
+an unlogged day carries zero information about whether it went well or badly,
+which is worse than knowing it went badly. The other three are a symmetric
+band around the budget line, reusing the app's existing "80% is the warning
+threshold" constant so the yellow ceiling sits exactly as far above budget
+(120%) as the old warning line sat below it (80%):
+</p>
+
+<table>
+<tr><th>Status</th><th>Condition</th><th>Meaning</th></tr>
+<tr><td><b>GREEN</b></td><td><code>kcal &le; budget</code></td><td>at or under budget</td></tr>
+<tr><td><b>YELLOW</b></td><td><code>budget &lt; kcal &le; budget &times; 1.20</code></td><td>over, but within 20%</td></tr>
+<tr><td><b>RED</b></td><td><code>kcal &gt; budget &times; 1.20</code></td><td>more than 20% over</td></tr>
+<tr><td><b>NOT_LOGGED</b></td><td>no valid entries that day</td><td>unknown — worse than RED</td></tr>
+</table>
+
+<p>
+A day that's absent from the log because it simply hasn't happened yet (it's
+after "today") is a fifth, separate case: it must never render as
+<code>NOT_LOGGED</code>'s black cell, because that would visually punish the
+user for the future. The calendar widgets on both platforms special-case this
+by comparing the cell's date against a passed-in "today" before falling back
+to the not-logged classification.
+</p>
+
+<p>Try it — this is exactly the rule both the Python and Dart code implement:</p>
+
+<div class="widget" id="classifier-widget">
+  <div class="widget-row">
+    <div class="field">
+      <label for="w-budget">Daily budget (kcal)</label>
+      <input type="number" id="w-budget" value="2000" min="1" step="50">
+    </div>
+    <div class="field">
+      <label for="w-kcal">Eaten so far (kcal)</label>
+      <input type="number" id="w-kcal" value="1800" min="0" step="50">
+    </div>
+    <div class="field">
+      <label for="w-logged"><input type="checkbox" id="w-logged" checked>Anything logged this day?</label>
+    </div>
+    <div class="field">
+      <label for="w-future"><input type="checkbox" id="w-future">This day is in the future</label>
+    </div>
+  </div>
+  <div id="w-result"></div>
+  <div class="math-line" id="w-math"></div>
+</div>
+
+<h3>Making the budget syncable</h3>
+<p>
+The food log already had a clean sync story: every entry is immutable once
+logged, so its HLC can be derived deterministically from its own
+never-changing <code>time</code> field — the same entry always produces the
+same clock, so re-syncing is idempotent. The budget is different: it's a
+single value that gets <em>edited repeatedly</em>. Reusing the "derive the
+clock from an immutable field" trick doesn't work, because there's no
+immutable field to derive it from.
+</p>
+<p>
+The fix is to give the budget record its own edit timestamp — a
+<code>t</code> field (Python) / <code>updatedAt</code> field (Dart) that gets
+stamped fresh on every write — and derive the HLC from <em>that</em>. Now the
+merge rule is simply "whichever device's last edit has the later timestamp
+wins," which is exactly what a user expects from "I changed it on my phone,
+so that's the current value."
+</p>
+
+<div class="diagram">
+  <div class="flow">
+    <div class="box">PC writes<br>budget=1800<br><span style="color:var(--muted)">t=10:02</span></div>
+    <div class="arrow">＋</div>
+    <div class="box">Phone writes<br>budget=2200<br><span style="color:var(--muted)">t=10:05</span></div>
+    <div class="arrow">→</div>
+    <div class="box strong">merged: 2200<br><span style="font-weight:400">(later t wins)</span></div>
+  </div>
+</div>
+
+<h3>The calendar, end to end</h3>
+<p>
+Here's what the grid actually looks like once real data flows through the new
+classification rule — six days logged, budget 2000, "today" is day 6:
+</p>
+<div class="diagram">
+  <div class="cal-grid">
+    <div class="cal-cell green">1</div>
+    <div class="cal-cell yellow">2</div>
+    <div class="cal-cell red">3</div>
+    <div class="cal-cell black">4</div>
+    <div class="cal-cell green">5</div>
+    <div class="cal-cell green">6</div>
+    <div class="cal-cell future">7</div>
+  </div>
+  <div class="cal-legend">
+    <span><span class="swatch" style="background:#4caf50"></span>green — at/under budget</span>
+    <span><span class="swatch" style="background:#e0a83c"></span>yellow — up to 20% over</span>
+    <span><span class="swatch" style="background:#e5685a"></span>red — &gt;20% over</span>
+    <span><span class="swatch" style="background:#0b0b0d;border:1.5px solid #999"></span>black — not logged</span>
+    <span><span class="swatch" style="border:1.5px dashed #999;background:transparent"></span>dashed — future, not judged</span>
+  </div>
+</div>
+<p>
+Day 4 is black because nothing was logged, not because eating was bad — that
+distinction is the entire point of ranking it worse than red. Day 7 is dashed
+because it's tomorrow; the code never even asks whether it was "logged."
+Tapping any resolved day (1–6) now opens the history list filtered to just
+that date, so the calendar becomes a way to navigate into the log, not just a
+read-only summary.
+</p>
+</section>
+
+<section id="code">
+<h2>Code walkthrough</h2>
+<p>
+The diff spans 49 files but breaks into six concerns. Grouped by concern
+rather than by file, in the order a reader would want to build a mental model:
+</p>
+
+<div class="file-group">
+<h3>1. Removing the anti-impulse-editing seal</h3>
+<p class="filename">diet_guard/_budget.py · install.sh · CLAUDE.md</p>
+<p>
+<code>_budget.py</code> lost its base64+HMAC signing, its
+<code>seal_budget()</code>/<code>lock_command</code>/<code>unlock_command</code>,
+and the <code>BudgetLockedError</code> exception — replaced by a plain
+<code>write_budget()</code> that stamps an edit time and writes JSON, no
+ritual required:
+</p>
+<pre><code>def write_budget(value: int, *, weight_kg: float | None = None) -> None:
+    record: dict[str, object] = {
+        "v": _FILE_VERSION,
+        "b": int(value),
+        "t": _now_local().isoformat(timespec="seconds"),
+    }
+    if weight_kg is not None:
+        record["w"] = round(float(weight_kg), 1)
+    write_raw_record(record)</code></pre>
+<p>
+<code>install.sh</code> dropped its <code>chattr +i</code> step entirely
+(6 setup steps became 5), and CLAUDE.md's "Do NOT" list flipped from "don't
+remove the seal" to "don't reintroduce a seal as a fix" — documentation now
+actively warns against undoing this on purpose.
+</p>
+</div>
+
+<div class="file-group">
+<h3>2. Day-status classification, twice, kept honest by mirrored tests</h3>
+<p class="filename">diet_guard/_daystatus.py · app/lib/models/day_status.dart · app/lib/services/day_status_service.dart</p>
+<p>
+Python and Dart can't share code, so the same four-state classification
+(shown in the Intuition section above) is implemented independently in both
+languages, with matching module-doc "specs" at the top of each file pointing
+at its counterpart. Both expose the same shape of API — <code>dayStatus</code>,
+<code>statusMap</code>, <code>loggingStreak</code>, <code>adherenceStreak</code>,
+<code>yearToDateTally</code> — and both test suites encode the identical
+boundary matrix (exactly at budget, exactly at the yellow ceiling, one cent
+over it, an empty day, a day with only deleted entries) so a silent drift in
+either implementation fails its own tests rather than staying invisible.
+</p>
+<p>
+One subtlety both streak functions share: "today" being unlogged doesn't
+break a streak by itself (you haven't had the chance to log it yet), but
+"yesterday" being unlogged does. The streak counter starts at today, skips
+back one day <em>only</em> if today itself is absent from the status map,
+then counts backward as long as each day qualifies.
+</p>
+</div>
+
+<div class="file-group">
+<h3>3. Budget sync — a second synced file, same merge machinery</h3>
+<p class="filename">diet_guard/_sync_merge.py · _sync.py · app/lib/services/sync_merge.dart · sync_service.dart · app_settings_service.dart</p>
+<p>
+The budget becomes a sibling of the food log: a new
+<code>devices/&lt;device_id&gt;/budget.json</code> file per device, with one
+record (id <code>"budget"</code>) merged via the exact same
+<code>merge_logs</code>/<code>mergeLogs</code> primitive the food log already
+uses. No new merge algorithm was needed — only new adapter functions
+(<code>budget_to_log</code> / <code>log_to_budget</code> in Python,
+<code>budgetToLog</code> / <code>logToBudget</code> in Dart) translating
+between the on-disk budget record and the generic <code>Record</code>/
+<code>Log</code> shape <code>crdt_sync</code> operates on.
+</p>
+<p>
+On the Dart side, <code>AppSettingsService</code> gained a second write path:
+<code>saveDailyKcalGoal(int)</code> (a real user edit — stamps "now") versus
+<code>applySyncedBudget(int, {updatedAt})</code> (a merge result — persists
+the <em>winning</em> device's timestamp verbatim, not "now"). That distinction
+matters: if a sync merge re-stamped "now" on every tick, an unchanged value
+would look like a fresh edit and could out-race a genuinely newer edit on the
+next merge.
+</p>
+<div class="callout">
+A real bug surfaced while wiring this up: <code>backgroundSyncPush()</code>
+runs in a separate WorkManager background isolate with none of the foreground
+isolate's initialized singletons. Since budget sync now calls
+<code>AppSettingsService.instance</code>, that isolate needed an explicit
+<code>await AppSettingsService.init();</code> added — a one-line fix caught
+before it could crash a background sync tick in production.
+</div>
+</div>
+
+<div class="file-group">
+<h3>4. The PC gate's History tab</h3>
+<p class="filename">diet_guard/_gatelock_calendar.py (new, 466 lines) · _calendar_view.py (new) · _gatelock.py · _gatelock_ui.py</p>
+<p>
+The gate's fullscreen Tk window gained a second tab via <code>ttk.Notebook</code>
+— the existing meal-entry form becomes "Log Meal", and a new "History" tab
+holds the calendar, streaks, and budget field. The month-grid math
+(<code>build_month_cells</code>) was deliberately split into its own
+<code>_calendar_view.py</code> with zero Tk dependency, so the tricky
+boundary cases — variable month length, which weekday a month starts on,
+future-day handling — are unit-tested directly without a fake Tk harness in
+the loop.
+</p>
+<p>
+The budget field itself follows the same two-click state machine on both
+platforms: it starts <code>readonly</code> showing <code>2200</code> (a
+built-in default, not yet a real save) with a button labelled "Edit". First
+click flips the field to editable and relabels the button "Save"; second
+click validates (must parse as a positive integer) and either persists +
+reverts to read-only, or shows an error and stays in edit mode so nothing
+typed is silently discarded.
+</p>
+</div>
+
+<div class="file-group">
+<h3>5. The phone's Calendar screen</h3>
+<p class="filename">app/lib/screens/calendar_screen.dart (new) · widgets/day_status_calendar.dart (new) · widgets/streak_summary_row.dart (new) · log_meal_screen.dart</p>
+<p>
+The Flutter side mirrors the gate's layout and the same Edit/Save toggle,
+reachable from a new calendar icon in the main screen's app bar. The month
+grid widget (<code>DayStatusCalendar</code>) is a plain <code>StatelessWidget</code>
+— the parent owns which month is displayed and re-renders it, matching the
+existing <code>WorkoutCalendar</code> pattern from a sibling app in the same
+monorepo rather than inventing a new convention.
+</p>
+</div>
+
+<div class="file-group">
+<h3>6. Tapping a day opens that day's history</h3>
+<p class="filename">app/lib/widgets/day_status_calendar.dart · screens/history_screen.dart · screens/calendar_screen.dart</p>
+<p>
+Rather than building a new day-detail view, the calendar reuses the existing
+history list, which already supported filtering by an arbitrary date range.
+<code>HistoryScreen</code> gained one new constructor parameter,
+<code>initialDateRange</code>, applied once at load time:
+</p>
+<pre><code>const HistoryScreen({this.initialDateRange, super.key});
+...
+_filter = HistoryFilter(dateRange: widget.initialDateRange);</code></pre>
+<p>
+The calendar widget gained an optional <code>onDaySelected(DateTime)</code>
+callback; each day cell wraps itself in a <code>GestureDetector</code> only
+when that callback is provided, and the screen wires it to push
+<code>HistoryScreen</code> with the range collapsed to a single day
+(<code>start == end == that day</code>) — which the existing filter logic
+already treats as "everything logged on that date."
+</p>
+</div>
+</section>
+
+<section id="quiz">
+<h2>Quiz</h2>
+<p>Five questions on the reasoning behind this change, not line numbers. Click an option to reveal whether it's right.</p>
+
+<div id="quiz-root"></div>
+<div id="quiz-score">Score: 0 / 5</div>
+</section>
+</main>
+
+<script>
+(function () {
+  // ---- Day-status classifier micro-world ----
+  var budgetEl = document.getElementById('w-budget');
+  var kcalEl = document.getElementById('w-kcal');
+  var loggedEl = document.getElementById('w-logged');
+  var futureEl = document.getElementById('w-future');
+  var resultEl = document.getElementById('w-result');
+  var mathEl = document.getElementById('w-math');
+
+  function classify() {
+    var budget = Math.max(1, Number(budgetEl.value) || 0);
+    var kcal = Math.max(0, Number(kcalEl.value) || 0);
+    var logged = loggedEl.checked;
+    var future = futureEl.checked;
+    var ceiling = budget * 1.20;
+
+    if (future) {
+      resultEl.innerHTML = '<span class="result-badge result-neutral"><span class="dot" style="background:transparent;border:1.5px dashed currentColor"></span>FUTURE — not judged</span>';
+      mathEl.innerHTML = 'A day after "today" is never classified, regardless of the log — it skips straight to a neutral render.';
+      return;
+    }
+    if (!logged) {
+      resultEl.innerHTML = '<span class="result-badge result-black"><span class="dot" style="background:#0b0b0d;border:1px solid #999"></span>NOT_LOGGED — worse than red</span>';
+      mathEl.innerHTML = 'No valid entries this day &rarr; classified NOT_LOGGED, regardless of what <code>kcal</code> is set to.';
+      return;
+    }
+    if (kcal <= budget) {
+      resultEl.innerHTML = '<span class="result-badge result-green"><span class="dot" style="background:#2f7d5f"></span>GREEN</span>';
+      mathEl.innerHTML = '<b>' + kcal + '</b> &le; budget <b>' + budget + '</b>';
+    } else if (kcal <= ceiling) {
+      resultEl.innerHTML = '<span class="result-badge result-yellow"><span class="dot" style="background:#a67c00"></span>YELLOW</span>';
+      mathEl.innerHTML = 'budget <b>' + budget + '</b> &lt; <b>' + kcal + '</b> &le; ceiling <b>' + ceiling.toFixed(0) + '</b> (budget &times; 1.20)';
+    } else {
+      resultEl.innerHTML = '<span class="result-badge result-red"><span class="dot" style="background:#c0392b"></span>RED</span>';
+      mathEl.innerHTML = '<b>' + kcal + '</b> &gt; ceiling <b>' + ceiling.toFixed(0) + '</b> (budget &times; 1.20)';
+    }
+  }
+  [budgetEl, kcalEl, loggedEl, futureEl].forEach(function (el) {
+    el.addEventListener('input', classify);
+    el.addEventListener('change', classify);
+  });
+  classify();
+
+  // ---- Quiz ----
+  var questions = [
+    {
+      q: "Why is a not-logged day classified as worse than a red (badly-over-budget) day?",
+      options: [
+        "Red days are rarer in practice, so ranking not-logged below them balances the calendar's color mix overall.",
+        "The two color palettes only support four values total, so not-logged just reuses red's existing rank slot.",
+        "Not-logged carries no information about how the day went, treated as worse than a known bad outcome.",
+        "Not-logged days count twice toward the adherence streak, so ranking them below red keeps that math working."
+      ],
+      correct: 2,
+      rationale: "This was an explicit design decision from the person who requested the feature: not knowing is worse than knowing you went over, because at least a red day means you're aware of the outcome."
+    },
+    {
+      q: "How does the calendar avoid rendering a future day (after \"today\") as a black not-logged cell?",
+      options: [
+        "Both widgets check the cell's date against today first, rendering neutrally before the log gets consulted.",
+        "The log-loading code backfills every future date with a placeholder green entry before the grid gets built.",
+        "Future dates are dropped from the grid entirely, so a visible month only ever runs up through today's date.",
+        "A separate day-elapsed flag stored per cell retroactively unlocks the not-logged color once a day fully ends."
+      ],
+      correct: 0,
+      rationale: "day_status_calendar.dart's _statusFor and _gatelock_calendar.py's _cell_status both check `day > today` (or `date.isAfter(todayOnly)`) before consulting the status map at all."
+    },
+    {
+      q: "Food-log entries derive their sync clock from an immutable time field. Why couldn't the budget reuse that trick?",
+      options: [
+        "Budget syncing runs on its own separate background timer, so it needed an unrelated clock source avoiding entry ticks.",
+        "The budget record carries no id field, and clock derivation there requires an id to seed its internal hash.",
+        "Budget values are numeric while entry times are strings, and clock derivation only ever accepts string fields.",
+        "The budget gets edited repeatedly, so there's no fixed field to derive a clock from -- it needs its own edit stamp."
+      ],
+      correct: 3,
+      rationale: "An entry's time never changes after creation, so the same entry always yields the same clock (idempotent re-sync). The budget's value changes, so a fresh t/updatedAt field stamped on every edit is what lets last-writer-wins resolve correctly."
+    },
+    {
+      q: "What actually happens when a user taps a colored day in the calendar?",
+      options: [
+        "The tapped day's entries get copied into a temporary list and shown in a modal dialog above the grid.",
+        "The existing history screen opens with its date filter set to that single day, reusing logic already there.",
+        "A brand-new day-detail screen renders a summary card, built specifically and only ever for this one feature.",
+        "The app re-queries the sync server for that date, since the local log only ever holds the current month."
+      ],
+      correct: 1,
+      rationale: "HistoryScreen gained one new constructor parameter, initialDateRange, which seeds its existing HistoryFilter.dateRange -- no new screen or query path was built."
+    },
+    {
+      q: "Why does AppSettingsService need two different budget-write methods instead of just one?",
+      options: [
+        "One method targets local storage while the other writes straight to the GitHub-backed repo, different destinations.",
+        "Applying a merge must keep the winning edit's own timestamp, or an unchanged value would look freshly edited each tick.",
+        "The split exists purely for testability -- production code in practice really only ever calls one of the two methods.",
+        "The sync-facing method also checks the incoming value against a biometric minimum that the other one skips."
+      ],
+      correct: 1,
+      rationale: "If a merge re-stamped 'now' every time, syncing an unchanged value would make this device's copy look like the most recent edit, breaking idempotency and potentially out-racing a genuinely newer edit on the next merge."
+    }
+  ];
+
+  var root = document.getElementById('quiz-root');
+  var scoreEl = document.getElementById('quiz-score');
+  var score = 0;
+  var answered = 0;
+
+  questions.forEach(function (item, qIndex) {
+    var qDiv = document.createElement('div');
+    qDiv.className = 'quiz-q';
+
+    var p = document.createElement('p');
+    p.className = 'question';
+    p.textContent = (qIndex + 1) + '. ' + item.q;
+    qDiv.appendChild(p);
+
+    var optsDiv = document.createElement('div');
+    optsDiv.className = 'quiz-options';
+
+    var rationaleDiv = document.createElement('div');
+    rationaleDiv.className = 'quiz-rationale';
+    rationaleDiv.textContent = item.rationale;
+
+    item.options.forEach(function (optText, optIndex) {
+      var btn = document.createElement('button');
+      btn.className = 'quiz-option';
+      btn.type = 'button';
+      btn.textContent = optText;
+      btn.addEventListener('click', function () {
+        if (btn.disabled) return;
+        var allBtns = optsDiv.querySelectorAll('.quiz-option');
+        allBtns.forEach(function (b) { b.disabled = true; });
+        if (optIndex === item.correct) {
+          btn.classList.add('correct');
+          score++;
+        } else {
+          btn.classList.add('incorrect');
+          allBtns[item.correct].classList.add('correct');
+        }
+        rationaleDiv.classList.add('shown');
+        answered++;
+        scoreEl.textContent = 'Score: ' + score + ' / ' + questions.length + (answered === questions.length ? ' — done!' : '');
+      });
+      optsDiv.appendChild(btn);
+    });
+
+    qDiv.appendChild(optsDiv);
+    qDiv.appendChild(rationaleDiv);
+    root.appendChild(qDiv);
+  });
+})();
+</script>
