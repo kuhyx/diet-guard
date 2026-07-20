@@ -8,6 +8,7 @@ import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/background_tasks.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
+import 'package:diet_guard_app/services/frame_stats.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/notification_service.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,10 @@ Future<void> main() async {
       return initBackgroundTasks();
     }),
   );
+  // coverage:ignore-end
+  // Off unless armed with --dart-define=DIET_GUARD_FRAME_STATS=1.
+  // coverage:ignore-start
+  if (frameStatsEnabled) startFrameStats();
   // coverage:ignore-end
   runApp(const DietGuardApp());
 }

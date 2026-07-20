@@ -113,6 +113,40 @@ silently does **not** reach the running service.
   private `kuhyx/syncs` GitHub repo (see "Cross-device sync" above)
   and `~/.config/diet_guard/sync_token`.
 
+## The companion app's desktop target is a web build
+
+`app/` builds for two platforms, and only two: **Android** (the phone) and
+**web** (the Linux desktop). There is no `app/linux/` — Flutter's GTK embedder
+manages only ~20fps at 3840x2160 (measured on a stock `flutter create` app, so
+it is the toolkit, not this code), where the same Dart in Chrome sustains
+~144fps; see `~/todo/docs/desktop-performance-findings.md`. On the desktop the
+app is the web build served by `bin/diet_guard_desktop.dart` and shown in a
+Chrome `--app` window.
+
+Consequences worth knowing before touching `app/`:
+
+- **`dart:io` does not fail a web *compile*** — it becomes a stub that throws
+  at runtime, so the symptom is a blank white window, not a build error. Every
+  platform-specific edge goes behind a conditional export
+  (`document_store*.dart`, `blob_store*.dart`, `background_tasks*.dart`,
+  `notification_backend*.dart`, `token_vault*.dart`,
+  `github_client_factory*.dart`, `attached_image*.dart`). Branch on `kIsWeb`
+  *before* any `Platform.is…`, which itself throws on web.
+- **The port and the Chrome `--user-data-dir` are fixed on purpose**
+  (`lib/services/desktop_wrapper.dart`). IndexedDB is keyed by origin and
+  lives in that profile: changing either hides the entire local food log.
+- **The wrapper holds the GitHub token**, not the browser, and proxies
+  `api.github.com` plus the CORS-less device flow (`lib/desktop/github_proxy.dart`).
+- **The desktop pushes as device id `desktop`**, the phone as `phone`, the
+  Python side as `pc`. Sharing an id means two devices overwrite each other's
+  pushed log every tick.
+- **Desktop reminders only exist while the window is open.** A browser has no
+  WorkManager equivalent; the PC's real backstop is `diet-guard-gate.timer`,
+  which locks the screen. Don't "fix" this with a background service without
+  deciding you want a new daemon.
+- `flutter create --platforms linux` would silently restore the slow path.
+  Don't run it in `app/`.
+
 ## Commands
 
 - Run tests: `python -m pytest diet_guard/tests/ --cov=diet_guard --cov-branch --cov-fail-under=100`
@@ -120,6 +154,11 @@ silently does **not** reach the running service.
 - Test the lock manually (safe, closeable): `python -m diet_guard gate --demo`
 - Run one sync tick manually: `python -m diet_guard sync`
 - Install for production: `bash install.sh`
+- App tests: `cd app && flutter test`
+- Run the desktop app from the repo: `cd app && bash run.sh`
+- Install the desktop app (Arch package + .desktop entry):
+  `cd app && bash install_arch.sh`
+- Build the phone app: `cd app && flutter build apk --release`
 
 ## Do NOT
 
@@ -131,6 +170,9 @@ silently does **not** reach the running service.
 - Don't reintroduce a seal/lock/`chattr +i` on the budget file as a "fix" —
   it was deliberately removed so the budget is freely editable and synced
   between devices; see "Operational gotchas" above.
+- Don't re-add a Linux embedder target to `app/`, and don't change the
+  wrapper's fixed port or Chrome profile path — see "The companion app's
+  desktop target is a web build" above.
 
 ## Flutter/Dart AI rules
 

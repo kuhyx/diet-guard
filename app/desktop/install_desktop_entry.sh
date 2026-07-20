@@ -1,34 +1,34 @@
 #!/bin/bash
 
 # ============================================================================
-# Install the diet_guard_app launcher icon and .desktop entry for the Linux desktop.
+# Install the diet_guard_app launcher icon and .desktop entry for the Linux
+# desktop.
 #
-# Flutter's GTK runner has no icon of its own: my_application.cc calls
-# gtk_window_set_icon_name("diet-guard-app"), which resolves through the hicolor icon
-# theme. This script is what puts the icon into that theme, plus a .desktop
-# entry so the app appears in application menus.
+# The desktop app is a Flutter *web* build shown in a Chrome app window (the
+# Linux embedder manages only ~20fps at 4K), so the launcher starts the
+# wrapper, which serves the build and opens the browser.
 #
-# Icon PNGs are pre-rendered and committed under linux/icons/, so this script
+# Icon PNGs are pre-rendered and committed under desktop/icons/, so this script
 # needs no image tooling at run time. Regenerate them with:
 #   PYTHONPATH=~/testsAndMisc python3 -m python_pkg.app_icons \
-#       generate --app diet_guard_app --linux-out linux/icons
+#       generate --app diet_guard_app --linux-out desktop/icons
 # ============================================================================
 
 set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
-LINUX_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_DIR="$(dirname "$LINUX_DIR")"
-readonly SCRIPT_NAME LINUX_DIR REPO_DIR
+DESKTOP_SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_NAME DESKTOP_SRC_DIR
 readonly ICON_NAME="diet-guard-app"
-readonly BINARY_NAME="diet_guard_app"
-# GTK derives WM_CLASS from the GApplication id in linux/CMakeLists.txt,
-# not from the binary name; verified with xprop on the running window.
-readonly WM_CLASS="com.kuhy.diet_guard_app"
-readonly ICON_SRC_DIR="$LINUX_DIR/icons"
+# Chrome sets WM_CLASS from --class, which the wrapper passes explicitly.
+# Without it the window inherits the browser's own class and the taskbar shows
+# a browser icon instead of this app's.
+readonly WM_CLASS="diet_guard_app"
+readonly ICON_SRC_DIR="$DESKTOP_SRC_DIR/icons"
 readonly ICON_THEME_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor"
 readonly DESKTOP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
-readonly BUNDLE_BIN="$REPO_DIR/build/linux/x64/release/bundle/$BINARY_NAME"
+# Installed by install_arch.sh; the repo copy is only used for development.
+readonly LAUNCHER="/usr/bin/diet-guard-app"
 
 usage() {
     echo "Usage: $SCRIPT_NAME"
@@ -79,7 +79,7 @@ install_desktop_entry() {
 Type=Application
 Name=diet guard
 Comment=Diet logging and budget companion
-Exec=$BUNDLE_BIN
+Exec=$LAUNCHER
 Icon=$ICON_NAME
 Terminal=false
 Categories=Utility;
@@ -97,9 +97,9 @@ main() {
     install_desktop_entry
     echo "Installed $ICON_NAME icon into $ICON_THEME_DIR"
     echo "Installed $DESKTOP_DIR/$ICON_NAME.desktop"
-    if [[ ! -x "$BUNDLE_BIN" ]]; then
-        echo "Note: $BUNDLE_BIN does not exist yet."
-        echo "      Run 'flutter build linux --release' to make the entry launchable."
+    if [[ ! -x "$LAUNCHER" ]]; then
+        echo "Note: $LAUNCHER does not exist yet."
+        echo "      Run 'bash install_arch.sh' to make the entry launchable."
     fi
 }
 
