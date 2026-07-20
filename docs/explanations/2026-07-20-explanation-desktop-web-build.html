@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>diet_guard: the desktop app becomes a web build</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --fg: #1c1d20; --muted: #5d6169; --rule: #e2e2df;
+    --card: #ffffff; --accent: #0f7b6c; --accent-soft: #e4f2ef;
+    --warn: #b3541e; --warn-soft: #fbeee4; --code-bg: #f4f4f2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181b; --fg: #e6e7e9; --muted: #a0a5ad; --rule: #2c2f34;
+      --card: #1d2024; --accent: #4dd0b1; --accent-soft: #17322d;
+      --warn: #e8a06a; --warn-soft: #2e2318; --code-bg: #212429;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto; padding: 2.5rem 1.25rem 5rem;
+    max-width: min(48rem, 92vw);
+    background: var(--bg); color: var(--fg);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 1.02rem; line-height: 1.65;
+  }
+  h1 { font-size: 1.9rem; line-height: 1.25; margin: 0 0 .4rem; letter-spacing: -.02em; }
+  h2 { font-size: 1.42rem; margin: 3rem 0 .75rem; letter-spacing: -.015em; scroll-margin-top: 1rem; }
+  h3 { font-size: 1.08rem; margin: 2rem 0 .5rem; }
+  p, li { color: var(--fg); }
+  .sub { color: var(--muted); margin: 0 0 2rem; }
+  a { color: var(--accent); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .89em;
+         background: var(--code-bg); padding: .1em .32em; border-radius: 4px; }
+  pre { background: var(--code-bg); border: 1px solid var(--rule); border-radius: 10px;
+        padding: .85rem 1rem; overflow-x: auto; }
+  pre code { background: none; padding: 0; white-space: pre-wrap; word-break: break-word; }
+  nav.toc { border: 1px solid var(--rule); border-radius: 12px; padding: .9rem 1.1rem;
+            background: var(--card); }
+  nav.toc ol { margin: .3rem 0 0; padding-left: 1.15rem; }
+  nav.toc li { margin: .15rem 0; }
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft);
+          padding: .8rem 1rem; border-radius: 0 8px 8px 0; margin: 1.25rem 0; }
+  .trap { border-left: 3px solid var(--warn); background: var(--warn-soft);
+          padding: .8rem 1rem; border-radius: 0 8px 8px 0; margin: 1.25rem 0; }
+  figure { margin: 1.6rem 0; }
+  figcaption { color: var(--muted); font-size: .88rem; margin-top: .55rem; }
+  .diagram { border: 1px solid var(--rule); border-radius: 12px; background: var(--card);
+             padding: 1.1rem; overflow-x: auto; }
+  .row { display: flex; gap: .75rem; align-items: stretch; flex-wrap: wrap; }
+  .col { flex: 1 1 13rem; min-width: 11rem; }
+  .box { border: 1px solid var(--rule); border-radius: 10px; padding: .7rem .8rem;
+         background: var(--bg); }
+  .box .t { font-weight: 640; font-size: .93rem; }
+  .box .d { color: var(--muted); font-size: .85rem; }
+  .box.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .box.dead { opacity: .5; text-decoration-color: var(--muted); }
+  .arrow { align-self: center; color: var(--muted); font-size: 1.3rem; padding: 0 .1rem; }
+  .stack > * + * { margin-top: .55rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { border-bottom: 1px solid var(--rule); padding: .45rem .5rem; text-align: left;
+           vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .widget { border: 1px solid var(--rule); border-radius: 12px; background: var(--card);
+            padding: 1.1rem; margin: 1.5rem 0; }
+  .widget h4 { margin: 0 0 .2rem; font-size: 1rem; }
+  .widget .hint { color: var(--muted); font-size: .87rem; margin: 0 0 .9rem; }
+  .controls { display: flex; gap: .5rem 1rem; flex-wrap: wrap; align-items: center;
+              margin-bottom: .85rem; }
+  label.sw { display: inline-flex; gap: .4rem; align-items: center; font-size: .9rem; }
+  button { font: inherit; font-size: .92rem; padding: .4rem .8rem; border-radius: 8px;
+           border: 1px solid var(--rule); background: var(--bg); color: var(--fg);
+           cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .trace { font-family: ui-monospace, monospace; font-size: .86rem; }
+  .trace div { padding: .3rem .5rem; border-radius: 6px; }
+  .trace .hit { background: var(--accent-soft); }
+  .trace .miss { color: var(--muted); }
+  .quiz .q { border: 1px solid var(--rule); border-radius: 12px; background: var(--card);
+             padding: 1rem 1.1rem; margin: 1.1rem 0; }
+  .quiz .qt { font-weight: 620; margin: 0 0 .7rem; }
+  .quiz .opt { display: block; width: 100%; text-align: left; margin: .35rem 0;
+               padding: .5rem .7rem; }
+  .quiz .opt.correct { border-color: var(--accent); background: var(--accent-soft); }
+  .quiz .opt.wrong { border-color: var(--warn); background: var(--warn-soft); }
+  .quiz .why { font-size: .9rem; color: var(--muted); margin: .55rem 0 0; display: none; }
+  .quiz .why.show { display: block; }
+  .score { font-size: .95rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>The desktop app stops being a desktop app</h1>
+<p class="sub">How diet_guard's Linux companion moved off Flutter's GTK embedder onto a web
+build in a Chrome window — and what had to be rebuilt to survive the move.
+Commits <code>802ee0f..50f311b</code>, 20 Jul 2026.</p>
+
+<nav class="toc" aria-label="Table of contents">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#background">Background: two apps, one food log</a></li>
+    <li><a href="#intuition">Intuition: the browser can't touch your disk</a></li>
+    <li><a href="#code">The code, by concern</a></li>
+    <li><a href="#quiz">Quiz</a></li>
+  </ol>
+</nav>
+
+<h2 id="background">1. Background: two apps, one food log</h2>
+
+<p><strong>diet_guard</strong> is a log-to-unlock gate. Every ~30 minutes
+<code>diet-guard-gate.timer</code> runs a Python service that asks: has a meal slot
+(08:00, 12:00, 16:00, 20:00) come and gone without a logged meal? If so it throws a
+fullscreen Tk window over the desktop until you say what you ate.</p>
+
+<p>Alongside that Python gate lives <code>app/</code> — a Flutter companion app for logging
+on the phone. Both are clients of the same food log, and they meet through GitHub:
+<code>diet-guard-sync.timer</code> pushes each device's whole log as one JSON file into a
+private repo, under <code>diet-guard-sync/devices/&lt;id&gt;/food_log.json</code>. Merging is a
+union by entry <code>id</code> with tombstones winning, using the shared
+<code>crdt_sync</code> library. The Python side pushes as <code>pc</code>; the phone
+pushed as <code>phone</code>.</p>
+
+<figure>
+  <div class="diagram">
+    <div class="row">
+      <div class="col box"><div class="t">PC — Python gate</div>
+        <div class="d">Tk lock window · <code>~/.local/share/diet_guard/food_log.json</code> · pushes as <code>pc</code></div></div>
+      <div class="arrow">↔</div>
+      <div class="col box on"><div class="t">GitHub <code>kuhyx/syncs</code></div>
+        <div class="d">dumb file storage via the REST Contents API — one file per device</div></div>
+      <div class="arrow">↔</div>
+      <div class="col box"><div class="t">Phone — Flutter app</div>
+        <div class="d">JSON files in app documents dir · pushes as <code>phone</code></div></div>
+    </div>
+  </div>
+  <figcaption>Before this change: two real clients, syncing through a repo used as a
+  dumb key–value store. No device ever talks to another directly.</figcaption>
+</figure>
+
+<p>That Flutter app also had a Linux target — <code>app/linux/</code>, the standard GTK
+embedder Flutter generates. It worked, and it was slow: Flutter's Linux embedder
+manages roughly <strong>20fps at 3840×2160</strong>. That number comes from a stock
+<code>flutter create</code> counter app, so it is the toolkit, not any app's code. The
+same Dart rendered by Chrome sustains ~144fps on the same machine.</p>
+
+<p>So the desktop target moves to Flutter's <strong>web</strong> build, served locally and
+shown in a Chrome <code>--app</code> window. The UI and domain code carry over untouched.
+Everything else in this change exists because of one fact: <em>a web page cannot do
+what a native app could.</em></p>
+
+<h3>What the app stored, and where</h3>
+
+<p>Three services each owned a <code>File</code> under
+<code>getApplicationDocumentsDirectory()</code>:</p>
+
+<table>
+  <tr><th>Service</th><th>File</th><th>Holds</th></tr>
+  <tr><td><code>LogStorageService</code></td><td><code>food_log.json</code></td><td>every meal, by date key</td></tr>
+  <tr><td><code>FoodBankService</code></td><td><code>food_bank.json</code></td><td>autocomplete index, rebuilt from the log</td></tr>
+  <tr><td><code>AppSettingsService</code></td><td><code>app_settings.json</code></td><td>daily kcal budget, reward fields</td></tr>
+</table>
+
+<p>Photos went to <code>&lt;documents&gt;/images/&lt;uuid&gt;.jpg</code>, and the absolute path was
+stored on the entry as <code>imagePath</code>. Four plugins had no web implementation at all:
+<code>workmanager</code>, <code>flutter_local_notifications</code>,
+<code>image_picker</code>'s camera path, and <code>permission_handler</code>.</p>
+
+<h2 id="intuition">2. Intuition: the browser can't touch your disk</h2>
+
+<p>The whole change follows from a single constraint and one nasty property of how
+Dart compiles for the web.</p>
+
+<div class="trap">
+  <strong><code>dart:io</code> does not fail a web compile.</strong> It resolves to a stub
+  that throws at <em>runtime</em>. So the first web build succeeds, the browser opens…
+  and renders a blank white window with one unhelpful line in the console. There is no
+  compiler error pointing at the problem. Every platform-specific edge has to be found
+  by reading, not by building.
+</div>
+
+<p>Worse, <code>Platform.isAndroid</code> is itself <code>dart:io</code>. The old
+<code>main()</code> asked <em>“am I on Android?”</em> before registering background work —
+on web that question throws before the first frame ever renders. Hence the rule the whole
+codebase now follows: <strong>test <code>kIsWeb</code> first, always.</strong></p>
+
+<h3>Seams, not rewrites</h3>
+
+<p>Each platform edge becomes a three-file seam: an interface, an Android
+implementation, a web implementation, picked at compile time by a conditional export.</p>
+
+<figure>
+  <div class="diagram">
+    <div class="row">
+      <div class="col box"><div class="t">document_store.dart</div>
+        <div class="d">abstract <code>read(name)</code> / <code>write(name, contents)</code> — no <code>dart:io</code></div></div>
+      <div class="arrow">→</div>
+      <div class="col stack">
+        <div class="box on"><div class="t">…_io.dart</div><div class="d">files, atomic temp + rename</div></div>
+        <div class="box on"><div class="t">…_web.dart</div><div class="d">IndexedDB + wrapper mirror</div></div>
+      </div>
+    </div>
+    <p style="margin:.9rem 0 0"><code>export 'document_store_io.dart' if (dart.library.js_interop) 'document_store_web.dart';</code></p>
+  </div>
+  <figcaption>The same shape repeats seven times: documents, photo blobs, background
+  scheduling, notifications, the GitHub token, the GitHub client, and the image widget.</figcaption>
+</figure>
+
+<h3>The wrapper: the other half of the desktop app</h3>
+
+<p>A browser cannot write a file, cannot reach the OS keyring, and cannot call an endpoint
+that refuses CORS. So the desktop app grew a second half: a small local Dart process that
+serves the built web assets and does the things the page can't.</p>
+
+<figure>
+  <div class="diagram">
+    <div class="row">
+      <div class="col box on"><div class="t">Chrome <code>--app</code> window</div>
+        <div class="d">the Flutter web build · IndexedDB holds the log, settings, photos</div></div>
+      <div class="arrow">↔</div>
+      <div class="col box on"><div class="t">wrapper (Dart, localhost:8732)</div>
+        <div class="d">serves <code>/</code> · mirrors <code>/documents/*</code> and <code>/blobs/*</code> to disk · proxies <code>/github/*</code></div></div>
+      <div class="arrow">→</div>
+      <div class="col stack">
+        <div class="box"><div class="t">~/.local/share/diet-guard-desktop/</div><div class="d">disk copy of everything</div></div>
+        <div class="box"><div class="t">api.github.com</div><div class="d">token attached server-side</div></div>
+      </div>
+    </div>
+  </div>
+  <figcaption>The page never holds the token and never touches the filesystem; the wrapper
+  never draws anything. Together they are the desktop app.</figcaption>
+</figure>
+
+<p>Two constants in that picture are load-bearing and look like trivia:
+the <strong>port</strong> (8732) and the Chrome <strong>profile directory</strong>. IndexedDB
+is keyed by origin and lives inside that profile. Change either one and the app opens
+looking like a brand-new device with no history — no error, no warning, just an empty log.</p>
+
+<h3>Why the disk mirror is not redundant with sync</h3>
+
+<p>It's tempting to say: the log is on GitHub, so who cares if a browser profile is wiped?
+Two reasons. First, GitHub only has what was <em>already pushed</em> — a meal logged on the
+desktop and never synced exists nowhere else. Second, <strong>photos never sync at all</strong>:
+<code>imagePath</code> is stripped before push and ignored on pull, by design. For photos,
+the wrapper's disk copy is the only copy there is.</p>
+
+<div class="widget" id="w1">
+  <h4>Micro-world: where does a read come from?</h4>
+  <p class="hint">Flip the switches and press <em>Read <code>food_log.json</code></em>.
+  This traces the actual resolution order in the new code.</p>
+  <div class="controls">
+    <label class="sw"><input type="checkbox" id="w1-web" checked> running as the web build</label>
+    <label class="sw"><input type="checkbox" id="w1-idb"> IndexedDB has the document</label>
+    <label class="sw"><input type="checkbox" id="w1-wrap" checked> wrapper is running</label>
+    <label class="sw"><input type="checkbox" id="w1-disk" checked> wrapper has a disk copy</label>
+  </div>
+  <button class="primary" id="w1-go">Read food_log.json</button>
+  <div class="trace" id="w1-out" style="margin-top:.9rem"></div>
+</div>
+
+<h3>The device-id trap</h3>
+
+<p>The phone's sync code pushed under a hard-coded <code>phoneDeviceId = 'phone'</code>.
+The desktop runs <em>the same Dart</em>. Ship it unchanged and you have two different
+machines writing the same file in the sync repo, each overwriting the other's copy on every
+tick — a data-loss bug that only shows up once both devices are actually used.</p>
+
+<div class="widget" id="w2">
+  <h4>Micro-world: two devices, one id</h4>
+  <p class="hint">Each device logs a meal, then syncs. Choose what id the desktop pushes
+  under and step through the ticks.</p>
+  <div class="controls">
+    <label class="sw"><input type="radio" name="w2-id" value="phone"> desktop pushes as <code>phone</code></label>
+    <label class="sw"><input type="radio" name="w2-id" value="desktop" checked> desktop pushes as <code>desktop</code></label>
+    <button id="w2-step">Step</button>
+    <button id="w2-reset">Reset</button>
+  </div>
+  <div class="trace" id="w2-out"></div>
+</div>
+
+<h3>What the desktop genuinely gives up</h3>
+
+<table>
+  <tr><th>Capability</th><th>On the desktop now</th></tr>
+  <tr><td>Background nagging (<code>workmanager</code>)</td>
+      <td>Only while the window is open — an in-page check every 5 minutes. A closed tab
+      runs nothing. On the PC the real backstop is the gate, which <em>locks the screen</em>.</td></tr>
+  <tr><td>Notifications</td>
+      <td>Browser Notifications API, same window-open limitation.</td></tr>
+  <tr><td>Camera capture</td>
+      <td>Gone. The browser picker is a file input; picking a file still works.</td></tr>
+  <tr><td>Battery-optimization exemption</td>
+      <td>Hidden — an Android-only concept, and <code>permission_handler</code> has no web
+      implementation to call.</td></tr>
+</table>
+
+<h2 id="code">3. The code, by concern</h2>
+
+<h3>a. Storage moves behind <code>DocumentStore</code></h3>
+
+<p>The three services stopped owning a <code>File</code> and started owning a
+<code>DocumentStore</code>. Note the document names: they are the <em>exact old filenames</em>,
+so a phone that already has data keeps reading it after the upgrade.</p>
+
+<pre><code>class LogStorageService {
+  LogStorageService._(this._store);
+  static const documentName = 'food_log.json';   // unchanged on purpose
+  final DocumentStore _store;
+
+  static Future&lt;LogStorageService&gt; init() async {
+    if (_instance != null) return _instance!;
+    final svc = LogStorageService._(await openDocumentStore());  // io: files · web: IndexedDB
+    _instance = svc;
+    return svc;
+  }</code></pre>
+
+<p>Atomicity moved with it. The file backend keeps the temp-write-then-rename trick, and
+gained a per-process counter after two overlapping writes in one process collided on the
+same temp name:</p>
+
+<pre><code>final tmp = File('${file.path}.$pid.${_writeCounter++}.tmp');
+await tmp.writeAsString(contents);
+await tmp.rename(file.path);</code></pre>
+
+<h3>b. Photos: a blob store plus an image seam</h3>
+
+<p><code>imagePath</code> is now an opaque key: still an absolute path on Android, an IndexedDB
+key in the browser. Nothing may parse it. The picker reads bytes rather than copying a file,
+because the browser hands back a blob URL with no filesystem behind it:</p>
+
+<pre><code>final picked = await ImagePicker().pickImage(source: source);
+if (picked == null) return null;
+final store = await _resolveStore();
+return store.put(p.extension(picked.path), await picked.readAsBytes());</code></pre>
+
+<p><code>Image.file</code> cannot resolve an IndexedDB key, so the three call sites now use an
+<code>AttachedImage</code> widget: <code>Image.file</code> on Android, a
+<code>FutureBuilder</code> + <code>Image.memory</code> on web.</p>
+
+<h3>c. Scheduling and notifications</h3>
+
+<p><code>checkAndNotify</code> — the due-slot logic — moved into its own library so it carries
+no scheduler plugin. Around it, a seam:</p>
+
+<pre><code>// background_tasks_io.dart          // background_tasks_web.dart
+initBackgroundTasks() =&gt; WorkManager   initBackgroundTasks() =&gt; Timer.periodic(5 min)
+enqueueSyncBackstop() =&gt; one-off task  enqueueSyncBackstop() =&gt; no-op</code></pre>
+
+<p>And in <code>main()</code>, a subtle fix found only by running it: the notification permission
+request must <em>not</em> be awaited before the first frame. The browser's
+<code>Notification.requestPermission()</code> doesn't resolve until the user answers the prompt —
+awaiting it left the app as a blank white window behind the permission bubble.</p>
+
+<h3>d. GitHub: the wrapper holds the token</h3>
+
+<p>Two independent problems pushed the GitHub work out of the page:</p>
+
+<ul>
+  <li>GitHub's device-flow endpoints send no CORS headers, so a page simply cannot call them.</li>
+  <li><code>flutter_secure_storage</code> on web is WebCrypto-wrapped <code>localStorage</code>
+      with the wrap key sitting beside the ciphertext — obfuscation, not encryption at rest.</li>
+</ul>
+
+<p>So the wrapper owns the token file and proxies the API; the page gets a client whose
+requests are rewritten, carrying no credential of its own:</p>
+
+<pre><code>GitHubClient createGitHubClient(SyncSettings settings, {http.Client? httpClient}) =&gt;
+    GitHubClient(
+      owner: settings.owner, repo: settings.repo,
+      token: '',                                   // the wrapper attaches the real one
+      httpClient: WrapperProxyClient(inner: httpClient),
+    );</code></pre>
+
+<p>On the device-flow poll the wrapper deliberately answers <code>{"status":"ok"}</code> and keeps
+the token — the browser is never told what it is. It also falls back to reading the PC gate's
+existing <code>~/.config/diet_guard/sync_token</code>, which is why the desktop app needed no
+setup at all on the machine that already runs the gate.</p>
+
+<h3>e. Packaging, and deleting <code>linux/</code></h3>
+
+<p>Three packaging details, each learned by breaking it in an earlier migration:</p>
+
+<ul>
+  <li><code>dart build cli</code>, not <code>dart compile exe</code> — the latter refuses any
+      package whose dependency graph has native build hooks.</li>
+  <li><code>options=('!strip')</code> — makepkg would otherwise strip the AOT executable's
+      embedded snapshot. The stripped binary still runs; it just becomes the bare Dart VM
+      printing a usage message.</li>
+  <li>No browser in <code>depends</code> — a machine policy uninstalls <code>chromium</code>
+      seconds after makepkg installs it, failing dependency resolution. The wrapper discovers
+      a browser at runtime instead.</li>
+</ul>
+
+<h3>f. Closing the verification holes</h3>
+
+<p>Two follow-ups matter as much as the migration itself. The IndexedDB stores were invisible
+to the test suite — they import the browser factory, which can't be imported on the VM — so the
+classes were split from their <code>open…()</code> functions and are now driven against
+<code>idb_shim</code>'s in-memory backend. And the pre-push gate ran only Python; it now runs
+<code>flutter analyze</code> and <code>flutter test</code>, and <em>fails</em> rather than skips
+when the toolchain is missing:</p>
+
+<pre><code>if ! command -v flutter &gt;/dev/null 2&gt;&amp;1; then
+    fail "flutter is not on PATH but app/ exists (cannot verify the app)"
+fi</code></pre>
+
+<div class="note">
+  A gate that quietly passes when it can't do its job is the same as no gate. This one was
+  checked by breaking a Dart file on purpose and confirming the push was refused.
+</div>
+
+<h2 id="quiz">4. Quiz</h2>
+<p class="score" id="score">Score: 0 / 0</p>
+<div class="quiz" id="quiz"></div>
+
+<script>
+(function () {
+  // ---- Micro-world 1: read resolution -------------------------------------
+  var out1 = document.getElementById('w1-out');
+  function line(text, hit) {
+    var d = document.createElement('div');
+    d.className = hit ? 'hit' : 'miss';
+    d.textContent = text;
+    return d;
+  }
+  document.getElementById('w1-go').addEventListener('click', function () {
+    var web = document.getElementById('w1-web').checked;
+    var idb = document.getElementById('w1-idb').checked;
+    var wrap = document.getElementById('w1-wrap').checked;
+    var disk = document.getElementById('w1-disk').checked;
+    out1.textContent = '';
+    if (!web) {
+      out1.appendChild(line('FileDocumentStore.read() → <documents>/food_log.json', true));
+      out1.appendChild(line('Android never consults IndexedDB or the wrapper.', false));
+      return;
+    }
+    out1.appendChild(line('IndexedDbDocumentStore.read("food_log.json")', true));
+    if (idb) {
+      out1.appendChild(line('  ✓ found in IndexedDB → returned', true));
+      out1.appendChild(line('  (the wrapper is never asked on this path)', false));
+      return;
+    }
+    out1.appendChild(line('  ✗ empty IndexedDB — first run, or a cleared profile', false));
+    if (!wrap) {
+      out1.appendChild(line('  ✗ GET localhost:8732/documents/… threw (no wrapper)', false));
+      out1.appendChild(line('  → null: the app starts empty but usable, as a plain tab', true));
+      return;
+    }
+    if (!disk) {
+      out1.appendChild(line('  ✗ wrapper answered 404 — nothing mirrored yet', false));
+      out1.appendChild(line('  → null: genuinely a new device', true));
+      return;
+    }
+    out1.appendChild(line('  ✓ wrapper served its disk copy → recovered', true));
+    out1.appendChild(line('  the wiped profile costs nothing', true));
+  });
+
+  // ---- Micro-world 2: device ids ------------------------------------------
+  var out2 = document.getElementById('w2-out');
+  var step = 0;
+  function desktopId() {
+    var r = document.querySelector('input[name="w2-id"]:checked');
+    return r ? r.value : 'desktop';
+  }
+  function render(frames) {
+    out2.textContent = '';
+    frames.forEach(function (f) { out2.appendChild(line(f[0], f[1])); });
+  }
+  function draw() {
+    var id = desktopId();
+    var shared = id === 'phone';
+    var frames = [];
+    if (step === 0) {
+      frames.push(['devices/phone/food_log.json   : (empty)', false]);
+      frames.push(['devices/' + id + '/food_log.json' + (shared ? '' : ' : (empty)'), false]);
+      frames.push(['press Step: the phone logs "apple" and syncs', true]);
+    }
+    if (step >= 1) {
+      frames.push(['tick 1 — phone pushes  devices/phone → [apple]', true]);
+    }
+    if (step === 1) {
+      frames.push(['press Step: the desktop logs "oatmeal" and syncs', true]);
+    }
+    if (step >= 2) {
+      if (shared) {
+        frames.push(['tick 2 — desktop pulls devices/phone → merges [apple, oatmeal]', true]);
+        frames.push(['        desktop pushes devices/phone → [apple, oatmeal]', true]);
+        frames.push(['        …but it skipped its own dir: it IS "phone"', false]);
+      } else {
+        frames.push(['tick 2 — desktop pulls devices/phone → merges [apple, oatmeal]', true]);
+        frames.push(['        desktop pushes devices/desktop → [apple, oatmeal]', true]);
+      }
+    }
+    if (step === 2) frames.push(['press Step: the phone logs "banana" offline, then syncs', true]);
+    if (step >= 3) {
+      if (shared) {
+        frames.push(['tick 3 — phone skips devices/phone (its own dir) → pulls nothing', false]);
+        frames.push(['        phone pushes devices/phone → [apple, banana]', false]);
+        frames.push(['        ✗ "oatmeal" is gone: overwritten in the one shared file', false]);
+        frames.push(['        the desktop still shows it — until its next pull', false]);
+      } else {
+        frames.push(['tick 3 — phone pulls devices/desktop → merges [apple, oatmeal, banana]', true]);
+        frames.push(['        phone pushes devices/phone → [apple, oatmeal, banana]', true]);
+        frames.push(['        ✓ every device converges; nothing is lost', true]);
+      }
+    }
+    render(frames);
+  }
+  document.getElementById('w2-step').addEventListener('click', function () {
+    if (step < 3) step++;
+    draw();
+  });
+  document.getElementById('w2-reset').addEventListener('click', function () { step = 0; draw(); });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="w2-id"]'), function (r) {
+    r.addEventListener('change', function () { step = 0; draw(); });
+  });
+  draw();
+
+  // ---- Quiz ---------------------------------------------------------------
+  var questions = [
+    {
+      q: 'The first web build compiled and ran, showing a blank white window. Why is that the expected first symptom rather than a build error?',
+      options: [
+        'The web renderer needs CanvasKit assets, which the local wrapper had not yet been taught to serve at all',
+        'Conditional exports are resolved lazily, so the wrong implementation is chosen once the app requests it',
+        'dart:io compiles for web as a stub that only throws when it is actually called at runtime',
+        'Flutter web silently drops any plugin lacking a web implementation, so start-up never finished'
+      ],
+      correct: 2,
+      why: 'dart:io is not rejected by the web compiler — it becomes a throwing stub, so the failure surfaces at runtime as a blank page.'
+    },
+    {
+      q: 'Why must the wrapper keep a copy of the app’s data on disk, given that the food log already syncs to GitHub?',
+      options: [
+        'GitHub rate-limits the Contents API, so a local copy avoids hitting the ceiling during a busy day',
+        'Photos never sync, and unpushed entries exist nowhere else, so sync cannot restore either of them',
+        'IndexedDB caps out near 5-10MB per origin, so older entries have to be offloaded somewhere else',
+        'The Python gate reads that copy directly, which is how the two clients stay in step on one machine'
+      ],
+      correct: 1,
+      why: 'The mirror covers exactly what sync cannot: photos (imagePath is stripped before push) and anything logged but not yet pushed.'
+    },
+    {
+      q: 'What breaks if the wrapper’s fixed port or the Chrome profile path is changed?',
+      options: [
+        'The wrapper refuses to start, because the port is asserted against the packaged .desktop entry',
+        'Sync duplicates the device, since the sync identity is derived from the serving origin',
+        'The app opens with no history, since IndexedDB is keyed by origin and kept in that profile',
+        'Notifications stop, as permission is granted per origin and the app cannot re-request it'
+      ],
+      correct: 2,
+      why: 'Both storage and permissions are origin-scoped and profile-local; the app simply looks brand new, with no error.'
+    },
+    {
+      q: 'The desktop began pushing under a new device id instead of reusing the phone’s. What does that avoid?',
+      options: [
+        'Two machines writing the same file in the sync repo, each overwriting the other’s pushed log',
+        'The Python side rejecting the payload, because it validates the id against a known-device list',
+        'Entry ids colliding between devices, which the union merge would resolve by dropping one',
+        'The phone re-signing desktop entries, which needs the shared key the desktop does not hold'
+      ],
+      correct: 0,
+      why: 'Sync is one file per device id. Sharing an id means each device overwrites the other on every tick, and each skips that path as "its own".'
+    },
+    {
+      q: 'Why does the pre-push gate fail, rather than skip, when app/ exists but flutter is missing?',
+      options: [
+        'Because the Flutter toolchain is what generates the requirements.txt hash the venv gate checks',
+        'Because CI runs on a runner where flutter is always present, so the mismatch is a config bug',
+        'Because a check that passes when it cannot run gives the same green as no check at all',
+        'Because pre-commit already runs the Dart hooks, so a missing toolchain means a broken install'
+      ],
+      correct: 2,
+      why: 'A skipped check reports green while verifying nothing — the failure mode the gate was added to prevent.'
+    }
+  ];
+
+  var quiz = document.getElementById('quiz');
+  var scoreEl = document.getElementById('score');
+  var answered = 0, right = 0;
+
+  questions.forEach(function (item, qi) {
+    var card = document.createElement('div');
+    card.className = 'q';
+    var title = document.createElement('p');
+    title.className = 'qt';
+    title.textContent = (qi + 1) + '. ' + item.q;
+    card.appendChild(title);
+    var done = false;
+    item.options.forEach(function (text, oi) {
+      var b = document.createElement('button');
+      b.className = 'opt';
+      b.textContent = text;
+      b.addEventListener('click', function () {
+        if (done) return;
+        done = true;
+        answered++;
+        var isRight = oi === item.correct;
+        if (isRight) right++;
+        b.classList.add(isRight ? 'correct' : 'wrong');
+        if (!isRight) {
+          card.querySelectorAll('.opt')[item.correct].classList.add('correct');
+        }
+        card.querySelector('.why').classList.add('show');
+        scoreEl.textContent = 'Score: ' + right + ' / ' + answered;
+      });
+      card.appendChild(b);
+    });
+    var why = document.createElement('p');
+    why.className = 'why';
+    why.textContent = item.why;
+    card.appendChild(why);
+    quiz.appendChild(card);
+  });
+})();
+</script>
+</body>
+</html>
