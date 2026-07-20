@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:diet_guard_app/services/blob_store_io.dart';
 import 'package:diet_guard_app/services/photo_attach_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
@@ -26,7 +27,7 @@ void main() {
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_photo_');
     originalPlatform = ImagePickerPlatform.instance;
-    PhotoAttachService.resetForTesting(testDir: tempDir);
+    PhotoAttachService.resetForTesting(store: FileBlobStore(tempDir));
   });
 
   tearDown(() async {

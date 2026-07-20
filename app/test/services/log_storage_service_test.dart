@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/local_time.dart';
 import 'package:diet_guard_app/models/meal_component.dart';
@@ -21,7 +22,7 @@ void main() {
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_test_');
-    LogStorageService.resetForTesting(testDir: tempDir);
+    LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
   });
 
   tearDown(() async {

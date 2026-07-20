@@ -2,16 +2,15 @@
 /// background due-slot check, then shows the primary meal-logging screen.
 library;
 
-import 'dart:io';
+import 'dart:async';
 
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
-import 'package:diet_guard_app/services/background_check_service.dart';
+import 'package:diet_guard_app/services/background_tasks.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/notification_service.dart';
 import 'package:flutter/material.dart';
-import 'package:workmanager/workmanager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,18 +18,19 @@ Future<void> main() async {
   await AppSettingsService.init();
   await FoodBankService.init();
   final notifications = await NotificationService.init();
-  await notifications.requestPermission();
-  // WorkManager has no Linux/web/desktop implementation -- registering it
-  // there throws. Guard to the two platforms that ship it.
+  // Deliberately *not* awaited before the first frame: the browser's
+  // `Notification.requestPermission()` does not complete until the user
+  // answers the prompt, so awaiting it here left the desktop app as a blank
+  // white window behind the permission bubble. Scheduling is likewise
+  // platform-specific (WorkManager on Android, an in-page timer in the
+  // browser -- see background_tasks.dart) and equally not worth a delayed
+  // first frame.
   // coverage:ignore-start
-  if (Platform.isAndroid || Platform.isIOS) {
-    await Workmanager().initialize(backgroundCheckCallbackDispatcher);
-    await Workmanager().registerPeriodicTask(
-      backgroundCheckTaskName,
-      backgroundCheckTaskName,
-      frequency: const Duration(minutes: 15),
-    );
-  }
+  unawaited(
+    notifications.requestPermission().then((_) {
+      return initBackgroundTasks();
+    }),
+  );
   // coverage:ignore-end
   runApp(const DietGuardApp());
 }

@@ -2,7 +2,6 @@
 library;
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/screens/edit_entry_screen.dart';
@@ -10,6 +9,7 @@ import 'package:diet_guard_app/screens/photo_viewer_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/day_status_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/widgets/attached_image.dart';
 import 'package:flutter/material.dart';
 
 // ---------------------------------------------------------------------------
@@ -636,16 +636,11 @@ class _Thumbnail extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
-        child: Image.file(
-          File(path),
+        child: AttachedImage(
+          path: path,
           width: 40,
           height: 40,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => const SizedBox(
-            width: 40,
-            height: 40,
-            child: Icon(Icons.broken_image),
-          ),
         ),
       ),
     );

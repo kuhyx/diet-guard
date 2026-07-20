@@ -5,6 +5,7 @@
 
 import 'dart:io';
 
+import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/background_sync_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
@@ -22,12 +23,12 @@ void main() {
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_bg_sync_');
-    LogStorageService.resetForTesting(testDir: tempDir);
-    FoodBankService.resetForTesting(testDir: tempDir);
+    LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
+    FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
     // Pre-seeds the singleton so backgroundSyncPush's own AppSettingsService
     // .init() call short-circuits instead of hitting the real (unmocked in
     // this test) path_provider channel.
-    AppSettingsService.resetForTesting(testDir: tempDir);
+    AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
   });
 
   tearDown(() async {

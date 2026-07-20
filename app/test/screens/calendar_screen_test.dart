@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/screens/calendar_screen.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
@@ -29,8 +30,8 @@ void main() {
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_calendar_');
-    LogStorageService.resetForTesting(testDir: tempDir);
-    await AppSettingsService.initForTesting(tempDir);
+    LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
+    await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
   });
 
   tearDown(() async {

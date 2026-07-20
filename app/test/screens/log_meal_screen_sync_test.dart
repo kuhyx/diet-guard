@@ -3,6 +3,7 @@
 
 import 'dart:io';
 
+import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
@@ -20,8 +21,8 @@ void main() {
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_autosync_');
-    LogStorageService.resetForTesting(testDir: tempDir);
-    FoodBankService.resetForTesting(testDir: tempDir);
+    LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
+    FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
   });
 
   tearDown(() async {

@@ -1,13 +1,15 @@
-// `checkAndNotify` is the unit-testable half of the WorkManager periodic
+// `checkAndNotify` is the scheduler-independent half of the periodic
 // check; `backgroundCheckCallbackDispatcher` itself is integration-only
 // (real WorkManager isolate, manual on-device smoke test) per the project
 // plan, and is excluded from coverage.
 
 import 'dart:io';
 
+import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
-import 'package:diet_guard_app/services/background_check_service.dart';
+import 'package:diet_guard_app/services/due_slot_check.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/notification_backend_io.dart';
 import 'package:diet_guard_app/services/notification_service.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -31,10 +33,10 @@ void main() {
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_bg_check_');
-    LogStorageService.resetForTesting(testDir: tempDir);
+    LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     notificationLog = installFakeAndroidNotifications();
     NotificationService.resetForTesting(
-      plugin: FlutterLocalNotificationsPlugin(),
+      backend: LocalNotificationsBackend(FlutterLocalNotificationsPlugin()),
     );
   });
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -28,12 +29,12 @@ void main() {
 
   group('resetForTesting', () {
     test('with testDir creates a working instance', () {
-      AppSettingsService.resetForTesting(testDir: tempDir);
+      AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
       expect(AppSettingsService.instance, isNotNull);
     });
 
     test('without testDir nulls the singleton', () {
-      AppSettingsService.resetForTesting(testDir: tempDir);
+      AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
       AppSettingsService.resetForTesting();
       // instance getter throws when null — verify via dailyKcalGoal fallback.
       expect(AppSettingsService.dailyKcalGoal, 2200);
@@ -42,7 +43,7 @@ void main() {
 
   group('init early-return', () {
     test('returns existing instance without re-initialising', () async {
-      AppSettingsService.resetForTesting(testDir: tempDir);
+      AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
       final first = AppSettingsService.instance;
       // init() sees _instance != null and returns early (no platform channel).
       final second = await AppSettingsService.init();
@@ -52,7 +53,7 @@ void main() {
 
   group('saveDailyKcalGoal', () {
     test('updates in-memory value and persists to file', () async {
-      AppSettingsService.resetForTesting(testDir: tempDir);
+      AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
       await AppSettingsService.instance.saveDailyKcalGoal(1800);
 
       expect(AppSettingsService.dailyKcalGoal, 1800);
@@ -65,7 +66,7 @@ void main() {
     });
 
     test('stamps a fresh dailyKcalGoalUpdatedAt', () async {
-      AppSettingsService.resetForTesting(testDir: tempDir);
+      AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
       final before = DateTime.now();
       await AppSettingsService.instance.saveDailyKcalGoal(1800);
       final after = DateTime.now();
@@ -81,7 +82,7 @@ void main() {
     test(
       'persists the given value and updatedAt verbatim, not "now"',
       () async {
-        AppSettingsService.resetForTesting(testDir: tempDir);
+        AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
         final winningEdit = DateTime.utc(2020);
 
         await AppSettingsService.instance.applySyncedBudget(
@@ -105,7 +106,7 @@ void main() {
     );
 
     test('a null updatedAt is accepted and persisted as null', () async {
-      AppSettingsService.resetForTesting(testDir: tempDir);
+      AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
       await AppSettingsService.instance.applySyncedBudget(1700);
       expect(AppSettingsService.dailyKcalGoalUpdatedAt, isNull);
     });
@@ -117,13 +118,13 @@ void main() {
         '${tempDir.path}/app_settings.json',
       ).writeAsString(jsonEncode({'daily_kcal_goal': 1600}));
 
-      await AppSettingsService.initForTesting(tempDir);
+      await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
 
       expect(AppSettingsService.dailyKcalGoal, 1600);
     });
 
     test('keeps default 2200 when file does not exist', () async {
-      await AppSettingsService.initForTesting(tempDir);
+      await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
 
       expect(AppSettingsService.dailyKcalGoal, 2200);
     });
@@ -133,7 +134,7 @@ void main() {
         '${tempDir.path}/app_settings.json',
       ).writeAsString('not json at all');
 
-      await AppSettingsService.initForTesting(tempDir);
+      await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
 
       expect(AppSettingsService.dailyKcalGoal, 2200);
     });
@@ -143,7 +144,7 @@ void main() {
         '${tempDir.path}/app_settings.json',
       ).writeAsString(jsonEncode([1, 2, 3]));
 
-      await AppSettingsService.initForTesting(tempDir);
+      await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
 
       expect(AppSettingsService.dailyKcalGoal, 2200);
     });
@@ -153,7 +154,7 @@ void main() {
         '${tempDir.path}/app_settings.json',
       ).writeAsString(jsonEncode({'daily_kcal_goal': 'two thousand'}));
 
-      await AppSettingsService.initForTesting(tempDir);
+      await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
 
       expect(AppSettingsService.dailyKcalGoal, 2200);
     });
@@ -166,7 +167,7 @@ void main() {
         }),
       );
 
-      await AppSettingsService.initForTesting(tempDir);
+      await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
 
       expect(
         AppSettingsService.dailyKcalGoalUpdatedAt,
@@ -181,7 +182,7 @@ void main() {
           '${tempDir.path}/app_settings.json',
         ).writeAsString(jsonEncode({'daily_kcal_goal': 1600}));
 
-        await AppSettingsService.initForTesting(tempDir);
+        await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
 
         expect(AppSettingsService.dailyKcalGoalUpdatedAt, isNull);
       },
@@ -197,7 +198,7 @@ void main() {
           }),
         );
 
-        await AppSettingsService.initForTesting(tempDir);
+        await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
 
         expect(AppSettingsService.dailyKcalGoalUpdatedAt, isNull);
       },
@@ -212,7 +213,7 @@ void main() {
         }),
       );
 
-      await AppSettingsService.initForTesting(tempDir);
+      await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
 
       expect(AppSettingsService.rewardLabel, 'Podcast');
       expect(AppSettingsService.rewardUrl, 'https://example.com/podcast');
@@ -223,7 +224,7 @@ void main() {
         '${tempDir.path}/app_settings.json',
       ).writeAsString(jsonEncode({'daily_kcal_goal': 1600}));
 
-      await AppSettingsService.initForTesting(tempDir);
+      await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
 
       expect(AppSettingsService.rewardLabel, isNull);
       expect(AppSettingsService.rewardUrl, isNull);
@@ -238,7 +239,7 @@ void main() {
         }),
       );
 
-      await AppSettingsService.initForTesting(tempDir);
+      await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
 
       expect(AppSettingsService.rewardLabel, isNull);
       expect(AppSettingsService.rewardUrl, isNull);
@@ -254,7 +255,7 @@ void main() {
 
   group('saveReward', () {
     test('persists label and url, readable back via static getters', () async {
-      AppSettingsService.resetForTesting(testDir: tempDir);
+      AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
       await AppSettingsService.instance.saveReward(
         label: 'Podcast',
         url: 'https://example.com/podcast',
@@ -272,7 +273,7 @@ void main() {
     });
 
     test('clears fields back to null when saved as null', () async {
-      AppSettingsService.resetForTesting(testDir: tempDir);
+      AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
       await AppSettingsService.instance.saveReward(
         label: 'Podcast',
         url: 'https://example.com/podcast',
@@ -284,7 +285,7 @@ void main() {
     });
 
     test('does not disturb the existing kcal goal fields', () async {
-      AppSettingsService.resetForTesting(testDir: tempDir);
+      AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
       await AppSettingsService.instance.saveDailyKcalGoal(1800);
       await AppSettingsService.instance.saveReward(
         label: 'Podcast',

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
@@ -43,9 +44,9 @@ void main() {
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_settings_');
-    LogStorageService.resetForTesting(testDir: tempDir);
-    FoodBankService.resetForTesting(testDir: tempDir);
-    AppSettingsService.resetForTesting(testDir: tempDir);
+    LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
+    FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
+    AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
     SharedPreferences.setMockInitialValues({});
     installFakeSecureStorage();
   });

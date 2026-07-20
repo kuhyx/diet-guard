@@ -1,7 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:diet_guard_app/services/token_vault.dart';
 import 'package:http/http.dart' as http;
+
+/// GitHub's device-code endpoint.
+const githubDeviceCodeUrl = 'https://github.com/login/device/code';
+
+/// GitHub's device-flow token endpoint.
+const githubTokenUrl = 'https://github.com/login/oauth/access_token';
 
 /// First-stage response of the GitHub OAuth Device Flow: the code the user
 /// types on github.com and the URL to type it into.
@@ -72,6 +79,8 @@ class GitHubDeviceAuth {
   GitHubDeviceAuth({
     required this.clientId,
     this.scope = 'repo',
+    this.deviceCodeUrl = githubDeviceCodeUrl,
+    this.tokenUrl = githubTokenUrl,
     http.Client? httpClient,
     Future<void> Function(Duration)? delay,
   }) : _http = httpClient ?? http.Client(),
@@ -84,17 +93,26 @@ class GitHubDeviceAuth {
   /// OAuth scope requested. `repo` is required for private-repo contents.
   final String scope;
 
+  /// Endpoint asked for a device + user code.
+  ///
+  /// GitHub's own URL on Android. The desktop web build points both this and
+  /// [tokenUrl] at the local wrapper instead, because GitHub's device-flow
+  /// endpoints send no CORS headers and a page cannot call them at all (see
+  /// `desktop/github_proxy.dart`).
+  final String deviceCodeUrl;
+
+  /// Endpoint polled for the access token. See [deviceCodeUrl].
+  final String tokenUrl;
+
   final http.Client _http;
   final Future<void> Function(Duration) _delay;
 
-  static const _deviceCodeUrl = 'https://github.com/login/device/code';
-  static const _tokenUrl = 'https://github.com/login/oauth/access_token';
   static const _grantType = 'urn:ietf:params:oauth:grant-type:device_code';
 
   /// Step 1: ask GitHub for a device + user code.
   Future<DeviceCodeResponse> requestDeviceCode() async {
     final res = await _http.post(
-      Uri.parse(_deviceCodeUrl),
+      Uri.parse(deviceCodeUrl),
       headers: const {'Accept': 'application/json'},
       body: {'client_id': clientId, 'scope': scope},
     );
@@ -118,7 +136,7 @@ class GitHubDeviceAuth {
     while (DateTime.now().isBefore(deadline)) {
       await _delay(Duration(seconds: intervalSeconds));
       final res = await _http.post(
-        Uri.parse(_tokenUrl),
+        Uri.parse(tokenUrl),
         headers: const {'Accept': 'application/json'},
         body: {
           'client_id': clientId,
@@ -130,6 +148,9 @@ class GitHubDeviceAuth {
 
       final token = json['access_token'] as String?;
       if (token != null) return token;
+      // The wrapper-proxied flow deliberately keeps the token server-side and
+      // answers with a bare acknowledgement instead (see [deviceCodeUrl]).
+      if (json['status'] == 'ok') return wrapperManagedToken;
 
       switch (json['error'] as String?) {
         case 'authorization_pending':

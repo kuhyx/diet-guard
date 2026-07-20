@@ -1,3 +1,4 @@
+import 'package:diet_guard_app/services/notification_backend_io.dart';
 import 'package:diet_guard_app/services/notification_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,7 +22,7 @@ void main() {
     test('init calls the platform initialize method, idempotently', () async {
       final log = installFakeAndroidNotifications();
       NotificationService.resetForTesting(
-        plugin: FlutterLocalNotificationsPlugin(),
+        backend: LocalNotificationsBackend(FlutterLocalNotificationsPlugin()),
       );
 
       await NotificationService.init();
@@ -33,7 +34,7 @@ void main() {
     test('requestPermission delegates to the Android implementation', () async {
       installFakeAndroidNotifications();
       NotificationService.resetForTesting(
-        plugin: FlutterLocalNotificationsPlugin(),
+        backend: LocalNotificationsBackend(FlutterLocalNotificationsPlugin()),
       );
       await NotificationService.init();
 
@@ -43,7 +44,7 @@ void main() {
     test('syncToSlots shows due slots and cancels the rest', () async {
       final log = installFakeAndroidNotifications();
       NotificationService.resetForTesting(
-        plugin: FlutterLocalNotificationsPlugin(),
+        backend: LocalNotificationsBackend(FlutterLocalNotificationsPlugin()),
       );
       await NotificationService.init();
       log.clear();
@@ -65,7 +66,7 @@ void main() {
     test('syncToSlots with no due slots cancels every known slot', () async {
       final log = installFakeAndroidNotifications();
       NotificationService.resetForTesting(
-        plugin: FlutterLocalNotificationsPlugin(),
+        backend: LocalNotificationsBackend(FlutterLocalNotificationsPlugin()),
       );
       await NotificationService.init();
       log.clear();
@@ -81,7 +82,9 @@ void main() {
       () async {
         final log = installFakeAndroidNotifications();
         NotificationService.resetForTesting(
-          plugin: FlutterLocalNotificationsPlugin(),
+          backend: LocalNotificationsBackend(
+            FlutterLocalNotificationsPlugin(),
+          ),
         );
         await NotificationService.init();
 

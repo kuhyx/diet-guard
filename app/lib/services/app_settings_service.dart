@@ -2,11 +2,10 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 
+import 'package:diet_guard_app/services/document_store.dart';
+import 'package:diet_guard_app/services/document_store_factory.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 /// Singleton storing lightweight settings such as the daily kcal goal.
 ///
@@ -18,14 +17,18 @@ import 'package:path_provider/path_provider.dart';
 /// nothing of its own to contribute yet, rather than silently syncing the
 /// unset default.
 class AppSettingsService {
-  AppSettingsService._(this._file);
+  AppSettingsService._(this._store);
+
+  /// Document name this service owns, unchanged from the pre-web on-disk
+  /// filename so an installed phone keeps reading its existing settings.
+  static const documentName = 'app_settings.json';
 
   static AppSettingsService? _instance;
 
   /// Returns the initialized singleton; throws if [init] was not called.
   static AppSettingsService get instance => _instance!;
 
-  final File _file;
+  final DocumentStore _store;
   int _dailyKcalGoal = 2200;
   DateTime? _dailyKcalGoalUpdatedAt;
   String? _rewardLabel;
@@ -49,13 +52,15 @@ class AppSettingsService {
   /// Returns the configured temptation-bundling reward URL, or null.
   static String? get rewardUrl => _instance?._rewardUrl;
 
-  /// Initialises the singleton, pointing at the app's documents directory.
+  /// Initialises the singleton against the platform document store (files on
+  /// Android, IndexedDB in the browser-hosted desktop app).
   static Future<AppSettingsService> init() async {
     if (_instance != null) return _instance!;
-    final dir = await getApplicationDocumentsDirectory();
-    final svc = AppSettingsService._(
-      File(p.join(dir.path, 'app_settings.json')),
-    );
+    // Resolving the platform store is a plugin call (path_provider /
+    // IndexedDB), not reachable from `flutter test`.
+    // coverage:ignore-start
+    final svc = AppSettingsService._(await openDocumentStore());
+    // coverage:ignore-end
     await svc._load();
     _instance = svc;
     return svc;
@@ -63,35 +68,29 @@ class AppSettingsService {
 
   /// Resets the singleton so [init] can be called again in tests.
   ///
-  /// When [testDir] is given, reads/writes go there instead of the real
-  /// documents directory.
+  /// When [store] is given, reads/writes go there instead of the real
+  /// platform store.
   @visibleForTesting
-  static void resetForTesting({Directory? testDir}) {
-    _instance = testDir == null
-        ? null
-        : AppSettingsService._(
-            File(p.join(testDir.path, 'app_settings.json')),
-          );
+  static void resetForTesting({DocumentStore? store}) {
+    _instance = store == null ? null : AppSettingsService._(store);
   }
 
-  /// Initialises from [testDir], calling [_load], for use in unit tests.
+  /// Initialises from [store], calling [_load], for use in unit tests.
   ///
-  /// Bypasses [getApplicationDocumentsDirectory] so tests don't need platform
-  /// channels.
+  /// Bypasses [openDocumentStore] so tests need no platform channels.
   @visibleForTesting
-  static Future<AppSettingsService> initForTesting(Directory testDir) async {
-    final svc = AppSettingsService._(
-      File(p.join(testDir.path, 'app_settings.json')),
-    );
+  static Future<AppSettingsService> initForTesting(DocumentStore store) async {
+    final svc = AppSettingsService._(store);
     await svc._load();
     _instance = svc;
     return svc;
   }
 
   Future<void> _load() async {
-    if (!_file.existsSync()) return;
+    final raw = await _store.read(documentName);
+    if (raw == null) return;
     try {
-      final data = jsonDecode(await _file.readAsString());
+      final data = jsonDecode(raw);
       if (data is Map && data['daily_kcal_goal'] is int) {
         _dailyKcalGoal = data['daily_kcal_goal'] as int;
       }
@@ -141,12 +140,12 @@ class AppSettingsService {
     await _writeToDisk();
   }
 
-  /// Writes the full current in-memory state to disk -- the single write
+  /// Writes the full current in-memory state to the store -- the single write
   /// path every setter funnels through, so no two methods can race on
-  /// independently overwriting the same JSON file.
+  /// independently overwriting the same document.
   Future<void> _writeToDisk() async {
-    await _file.parent.create(recursive: true);
-    await _file.writeAsString(
+    await _store.write(
+      documentName,
       jsonEncode({
         'daily_kcal_goal': _dailyKcalGoal,
         'daily_kcal_goal_updated_at': _dailyKcalGoalUpdatedAt

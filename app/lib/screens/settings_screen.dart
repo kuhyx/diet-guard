@@ -8,12 +8,13 @@ library;
 
 import 'dart:async';
 
-import 'package:crdt_sync/crdt_sync.dart' as crdt_sync;
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/github_device_auth.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -75,7 +76,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _rewardUrlController.text = AppSettingsService.rewardUrl ?? '';
     _ownerController.text = settings.owner;
     _repoController.text = settings.repo;
-    _tokenController.text = settings.token;
+    // On web the stored "token" is only a stand-in for one the desktop
+    // wrapper holds (see TokenVault); showing it would invite the user to
+    // edit a literal. [_storedToken] keeps it for round-tripping.
+    _storedToken = settings.token;
+    _tokenController.text = SyncSettings.exposesTokenValue
+        ? settings.token
+        : '';
     _clientIdController.text = settings.clientId;
     setState(() => _loading = false);
   }
@@ -92,12 +99,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  SyncSettings _currentSettings() => SyncSettings(
-    owner: _ownerController.text.trim(),
-    repo: _repoController.text.trim(),
-    token: _tokenController.text.trim(),
-    clientId: _clientIdController.text.trim(),
-  );
+  /// The token as loaded, so a platform that cannot display it (web) still
+  /// round-trips it instead of blanking it on the next save.
+  String _storedToken = '';
+
+  SyncSettings _currentSettings() {
+    final typed = _tokenController.text.trim();
+    return SyncSettings(
+      owner: _ownerController.text.trim(),
+      repo: _repoController.text.trim(),
+      // The `_storedToken` side is web-only (the wrapper holds the real
+      // token), so it is unreachable from a VM test.
+      token: typed.isEmpty && !SyncSettings.exposesTokenValue
+          // coverage:ignore-line
+          ? _storedToken
+          : typed,
+      clientId: _clientIdController.text.trim(),
+    );
+  }
 
   /// Persists the temptation-bundling reward fields, blank -> null.
   Future<void> _saveReward() async {
@@ -128,10 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() => _clientIdController.text = clientId);
       await _currentSettings().save();
     }
-    final auth = GitHubDeviceAuth(
-      clientId: clientId,
-      httpClient: widget.httpClient,
-    );
+    final auth = createDeviceAuth(clientId, httpClient: widget.httpClient);
     try {
       final device = await auth.requestDeviceCode();
       if (!mounted) return;
@@ -141,7 +157,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         builder: (_) => _DeviceCodeDialog(device: device, auth: auth),
       );
       if (token != null && token.isNotEmpty) {
-        setState(() => _tokenController.text = token);
+        setState(() {
+          _storedToken = token;
+          if (SyncSettings.exposesTokenValue) _tokenController.text = token;
+        });
         _showMessage('Connected — syncing…');
         await _currentSettings().save();
         await _syncAfterConnect();
@@ -157,12 +176,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// to work immediately, with clear confirmation either way.
   Future<void> _syncAfterConnect() async {
     final settings = _currentSettings();
-    final client = crdt_sync.GitHubClient(
-      owner: settings.owner,
-      repo: settings.repo,
-      token: settings.token,
-      httpClient: widget.httpClient,
-    );
+    final client = createGitHubClient(settings, httpClient: widget.httpClient);
     try {
       await runSync(client);
       _showMessage('Connected and synced.');
@@ -184,12 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _testConnection() async {
     setState(() => _busy = true);
     final settings = _currentSettings();
-    final client = crdt_sync.GitHubClient(
-      owner: settings.owner,
-      repo: settings.repo,
-      token: settings.token,
-      httpClient: widget.httpClient,
-    );
+    final client = createGitHubClient(settings, httpClient: widget.httpClient);
     try {
       final ok = await client.canAccessRepo();
       _showMessage(ok ? 'Connection OK.' : 'Connection failed.');
@@ -205,12 +214,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _busy = true);
     final settings = _currentSettings();
     await settings.save();
-    final client = crdt_sync.GitHubClient(
-      owner: settings.owner,
-      repo: settings.repo,
-      token: settings.token,
-      httpClient: widget.httpClient,
-    );
+    final client = createGitHubClient(settings, httpClient: widget.httpClient);
     try {
       await runSync(client);
       _showMessage('Synced.');
@@ -240,6 +244,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _showMessage('Could not request exemption: $e');
     }
   }
+
+  /// True on the one platform with OEM battery optimization to exempt from.
+  ///
+  /// Uses [defaultTargetPlatform] rather than `Platform.isAndroid` because
+  /// `dart:io` is a throwing stub in the desktop web build.
+  bool get _isAndroid =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   @override
   Widget build(BuildContext context) {
@@ -335,8 +346,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               TextField(
                 controller: _tokenController,
                 obscureText: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Personal access token (fallback)',
+                  // Both wrapper hints are web-only; a VM test always takes
+                  // the null branch.
+                  // coverage:ignore-start
+                  helperText: SyncSettings.exposesTokenValue
+                      ? null
+                      : _storedToken.isEmpty
+                      ? 'Stored by the desktop wrapper, never by the browser'
+                      : 'A token is stored by the desktop wrapper; type here '
+                            'only to replace it',
+                  // coverage:ignore-end
+                  helperMaxLines: 2,
                 ),
               ),
             ],
@@ -365,18 +387,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Text('Notifications', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(
-            'A background check nags you every ~15 min if a meal slot is '
-            'overdue. Aggressive OEM battery optimization (MIUI, some '
-            'Samsung configs) can delay this well past 15 min -- request an '
-            'exemption for reliable nagging.',
+            _isAndroid
+                ? 'A background check nags you every ~15 min if a meal slot '
+                      'is overdue. Aggressive OEM battery optimization (MIUI, '
+                      'some Samsung configs) can delay this well past 15 min '
+                      '-- request an exemption for reliable nagging.'
+                : 'A check runs every 5 min while this window is open and '
+                      'notifies you about an overdue meal slot. A browser '
+                      'cannot run anything once the window is closed -- on '
+                      'the PC the real backstop is the diet_guard gate, '
+                      'which locks the screen instead.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: _requestBatteryExemption,
-            icon: const Icon(Icons.battery_alert),
-            label: const Text('Disable battery optimization'),
-          ),
+          // Battery-optimization exemption is an Android-only concept, and
+          // `permission_handler` has no web implementation at all; the row
+          // would throw rather than degrade if it were shown in the browser.
+          if (_isAndroid) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _requestBatteryExemption,
+              icon: const Icon(Icons.battery_alert),
+              label: const Text('Disable battery optimization'),
+            ),
+          ],
           if (_status != null) ...[
             const SizedBox(height: 16),
             Text(_status!, style: Theme.of(context).textTheme.bodyMedium),

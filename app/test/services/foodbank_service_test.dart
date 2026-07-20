@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/models/food_bank_record.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/meal_component.dart';
@@ -129,8 +130,8 @@ void main() {
 
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp('diet_guard_bank_');
-      FoodBankService.resetForTesting(testDir: tempDir);
-      LogStorageService.resetForTesting(testDir: tempDir);
+      FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
+      LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     });
 
     tearDown(() async {
@@ -189,8 +190,8 @@ void main() {
 
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp('diet_guard_fb_manual_');
-      FoodBankService.resetForTesting(testDir: tempDir);
-      LogStorageService.resetForTesting(testDir: tempDir);
+      FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
+      LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     });
 
     tearDown(() async {
@@ -338,8 +339,8 @@ void main() {
 
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp('diet_guard_fb_err_');
-      FoodBankService.resetForTesting(testDir: tempDir);
-      LogStorageService.resetForTesting(testDir: tempDir);
+      FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
+      LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     });
 
     tearDown(() async {

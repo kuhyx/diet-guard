@@ -1,8 +1,7 @@
 /// Full-screen, pinch-to-zoom view of a locally attached meal photo.
 library;
 
-import 'dart:io';
-
+import 'package:diet_guard_app/widgets/attached_image.dart';
 import 'package:flutter/material.dart';
 
 /// Shows the image at [path] full-screen, with pinch-to-zoom and a back
@@ -11,7 +10,8 @@ class PhotoViewerScreen extends StatelessWidget {
   /// Creates a [PhotoViewerScreen] for the photo at [path].
   const PhotoViewerScreen({required this.path, super.key});
 
-  /// Local filesystem path to the image to display.
+  /// Blob key of the image to display (a file path on Android, an IndexedDB
+  /// key in the desktop web build).
   final String path;
 
   @override
@@ -24,13 +24,10 @@ class PhotoViewerScreen extends StatelessWidget {
       ),
       body: Center(
         child: InteractiveViewer(
-          child: Image.file(
-            File(path),
-            errorBuilder: (context, error, stackTrace) => const Icon(
-              Icons.broken_image,
-              color: Colors.white,
-              size: 64,
-            ),
+          child: AttachedImage(
+            path: path,
+            errorIconSize: 64,
+            errorIconColor: Colors.white,
           ),
         ),
       ),

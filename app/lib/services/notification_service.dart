@@ -5,77 +5,51 @@
 library;
 
 import 'package:diet_guard_app/models/slot.dart';
+import 'package:diet_guard_app/services/notification_backend.dart';
+import 'package:diet_guard_app/services/notification_backend_factory.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-/// Wraps [FlutterLocalNotificationsPlugin] so the due-slot notification
-/// logic ([syncToSlots]) is unit-testable against a fake platform channel,
-/// independent of the real plugin's native implementation.
+/// Owns the due-slot notification logic ([syncToSlots]) independently of the
+/// platform surface that actually posts them: `flutter_local_notifications`
+/// on Android, the browser's Notifications API in the desktop web build (see
+/// `notification_backend.dart`).
 class NotificationService {
-  NotificationService._(this._plugin);
+  NotificationService._(this._backend);
 
   static NotificationService? _instance;
 
-  final FlutterLocalNotificationsPlugin _plugin;
+  final NotificationBackend _backend;
 
   bool _initialized = false;
-
-  static const _channelId = 'diet_guard_due_slot';
-  static const _channelName = 'Meal reminders';
 
   /// Returns the initialized singleton; throws if [init] was not called.
   static NotificationService get instance => _instance!;
 
-  /// Initializes the singleton with the real plugin (idempotent -- a
+  /// Initializes the singleton with the platform backend (idempotent -- a
   /// second call returns the already-initialized instance without
   /// re-running platform setup).
   static Future<NotificationService> init() async {
-    final svc = _instance ??= NotificationService._(
-      FlutterLocalNotificationsPlugin(),
-    );
+    final svc = _instance ??= NotificationService._(openNotificationBackend());
     if (!svc._initialized) {
-      // `linux:` is required whenever the app runs on Linux (the desktop
-      // build used to visually verify screens); this app has no real
-      // Linux target otherwise.
-      const settings = InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-        linux: LinuxInitializationSettings(defaultActionName: 'Open'),
-      );
-      await svc._plugin.initialize(settings: settings);
+      await svc._backend.initialize();
       svc._initialized = true;
     }
     return svc;
   }
 
-  /// Resets the singleton so tests can inject a plugin pointed at a fake
-  /// platform channel. A subsequent [init] call drives that fake's
-  /// `initialize` codepath, same as production.
+  /// Resets the singleton so tests can inject a backend -- typically one over
+  /// a plugin pointed at a fake platform channel. A subsequent [init] call
+  /// drives that backend's `initialize` codepath, same as production.
   @visibleForTesting
-  static void resetForTesting({FlutterLocalNotificationsPlugin? plugin}) {
-    _instance = plugin == null ? null : NotificationService._(plugin);
+  static void resetForTesting({NotificationBackend? backend}) {
+    _instance = backend == null ? null : NotificationService._(backend);
   }
 
-  /// Requests Android 13+'s runtime `POST_NOTIFICATIONS` permission.
+  /// Requests the platform's notification permission.
   ///
-  /// Returns null on platforms where this Android-specific call doesn't
-  /// apply -- the caller treats null and false the same way (don't block on
-  /// it; notifications degrade silently if denied, matching the rest of
-  /// this service's silent-on-failure stance). This app only ships an
-  /// `android/` target, so in production the non-null path always runs;
-  /// the fallback exists for the Linux desktop build used to visually
-  /// verify this screen, where `resolvePlatformSpecificImplementation`
-  /// correctly resolves to null -- not reachable from `flutter test`
-  /// without polluting the process-global plugin registration other tests
-  /// in this file rely on, so it's excluded from coverage rather than
-  /// chased with a fragile test-ordering trick.
-  Future<bool?> requestPermission() =>
-      _plugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.requestNotificationsPermission() ??
-      // coverage:ignore-line
-      Future.value();
+  /// Returns null where the concept doesn't apply; callers treat null and
+  /// false the same way.
+  Future<bool?> requestPermission() => _backend.requestPermission();
 
   /// Shows a notification for every slot in [dueSlots] and cancels one for
   /// every other known slot.
@@ -88,27 +62,14 @@ class NotificationService {
     final due = dueSlots.toSet();
     for (final slot in daySlots()) {
       if (due.contains(slot)) {
-        await _show(slot);
+        await _backend.show(
+          slot,
+          'Meal not logged',
+          "You haven't logged your ${slotLabel(slot)} meal yet.",
+        );
       } else {
-        await _plugin.cancel(id: slot);
+        await _backend.cancel(slot);
       }
     }
-  }
-
-  Future<void> _show(int slot) async {
-    const details = NotificationDetails(
-      android: AndroidNotificationDetails(
-        _channelId,
-        _channelName,
-        importance: Importance.high,
-        priority: Priority.high,
-      ),
-    );
-    await _plugin.show(
-      id: slot,
-      title: 'Meal not logged',
-      body: "You haven't logged your ${slotLabel(slot)} meal yet.",
-      notificationDetails: details,
-    );
   }
 }

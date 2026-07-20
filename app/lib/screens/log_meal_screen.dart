@@ -3,7 +3,6 @@
 library;
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
@@ -16,8 +15,9 @@ import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/screens/meal_builder_screen.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
-import 'package:diet_guard_app/services/background_sync_service.dart';
+import 'package:diet_guard_app/services/background_tasks.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
+import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
@@ -28,7 +28,6 @@ import 'package:diet_guard_app/widgets/slot_selector_row.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
-import 'package:workmanager/workmanager.dart';
 
 /// Lets the user log one food item, with food-bank autocomplete and
 /// today's slot status, or hop into [MealBuilderScreen] for a composite
@@ -122,10 +121,8 @@ class _LogMealScreenState extends State<LogMealScreen>
     try {
       final settings = await SyncSettings.load();
       if (!settings.isConfigured) return;
-      final client = GitHubClient(
-        owner: settings.owner,
-        repo: settings.repo,
-        token: settings.token,
+      final client = createGitHubClient(
+        settings,
         httpClient: widget.httpClient,
       );
       try {
@@ -143,24 +140,12 @@ class _LogMealScreenState extends State<LogMealScreen>
     }
   }
 
-  /// Queues a connectivity-gated WorkManager push so a meal logged while
-  /// offline still uploads on reconnect, without the app being reopened. The
-  /// in-process [_autoSync] covers the online case; this is the backstop.
-  /// [ExistingWorkPolicy.replace] coalesces a burst of logs into one pending
-  /// job, and backoff retries a push that fails once connectivity returns.
-  /// No-op off mobile (WorkManager ships only on Android/iOS).
+  /// Queues the platform's offline push backstop so a meal logged while
+  /// offline still uploads on reconnect. The in-process [_autoSync] covers
+  /// the online case; this is the backstop (a no-op on web, which has no
+  /// out-of-page scheduler -- see background_tasks.dart).
   // coverage:ignore-start
-  Future<void> _enqueueSyncBackstop() async {
-    if (!Platform.isAndroid && !Platform.isIOS) return;
-    await Workmanager().registerOneOffTask(
-      syncPushTaskName,
-      syncPushTaskName,
-      constraints: Constraints(networkType: NetworkType.connected),
-      existingWorkPolicy: ExistingWorkPolicy.replace,
-      backoffPolicy: BackoffPolicy.linear,
-      backoffPolicyDelay: const Duration(minutes: 1),
-    );
-  }
+  Future<void> _enqueueSyncBackstop() => enqueueSyncBackstop();
 
   // coverage:ignore-end
 

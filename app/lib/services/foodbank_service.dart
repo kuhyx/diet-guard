@@ -5,16 +5,15 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:diet_guard_app/models/food_bank_record.dart';
 import 'package:diet_guard_app/models/food_suggestion.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
+import 'package:diet_guard_app/services/document_store.dart';
+import 'package:diet_guard_app/services/document_store_factory.dart';
 import 'package:diet_guard_app/services/fuzzy.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 /// Below this similarity ratio a non-substring candidate is dropped.
 /// Mirrors `_foodbank._FUZZY_THRESHOLD`.
@@ -40,41 +39,46 @@ String _displayName(FoodBankRecord record, String key) =>
 
 /// Singleton service for the locally-rebuilt food bank.
 class FoodBankService {
-  FoodBankService._(this._file);
+  FoodBankService._(this._store);
+
+  /// Document holding the log-derived bank. Unchanged from the pre-web
+  /// on-disk filename so an installed phone keeps its existing bank.
+  static const documentName = 'food_bank.json';
+
+  /// Document holding the manually-curated bank.
+  static const manualDocumentName = 'food_bank_manual.json';
 
   static FoodBankService? _instance;
 
   /// Returns the initialized singleton; throws if [init] was not called.
   static FoodBankService get instance => _instance!;
 
-  final File _file;
+  final DocumentStore _store;
 
   /// Initializes the singleton, pointing at the app's documents directory.
   static Future<FoodBankService> init() async {
     if (_instance != null) return _instance!;
-    final dir = await getApplicationDocumentsDirectory();
-    final svc = FoodBankService._(File(p.join(dir.path, 'food_bank.json')));
+    final svc = FoodBankService._(await openDocumentStore());
     _instance = svc;
     return svc;
   }
 
   /// Resets the singleton so [init] can be called again in tests.
   @visibleForTesting
-  static void resetForTesting({Directory? testDir}) {
-    _instance = testDir == null
-        ? null
-        : FoodBankService._(File(p.join(testDir.path, 'food_bank.json')));
+  static void resetForTesting({DocumentStore? store}) {
+    _instance = store == null ? null : FoodBankService._(store);
   }
 
-  /// Reads the persisted bank (empty map on a missing/unparsable file).
-  Future<Map<String, FoodBankRecord>> readBank() async {
-    if (!_file.existsSync()) return {};
-    String raw;
-    try {
-      raw = await _file.readAsString();
-    } on FileSystemException {
-      return {};
-    }
+  /// Reads the persisted bank (empty map on a missing/unparsable document).
+  Future<Map<String, FoodBankRecord>> readBank() => _readBank(documentName);
+
+  /// Persists [bank].
+  Future<void> writeBank(Map<String, FoodBankRecord> bank) =>
+      _writeBank(documentName, bank);
+
+  Future<Map<String, FoodBankRecord>> _readBank(String name) async {
+    final raw = await _store.read(name);
+    if (raw == null) return {};
     Object? data;
     try {
       data = jsonDecode(raw);
@@ -93,14 +97,15 @@ class FoodBankService {
     return result;
   }
 
-  /// Persists [bank] to disk, creating the parent directory if needed.
-  Future<void> writeBank(Map<String, FoodBankRecord> bank) async {
-    await _file.parent.create(recursive: true);
+  Future<void> _writeBank(
+    String name,
+    Map<String, FoodBankRecord> bank,
+  ) async {
     final encoded = <String, Object?>{
       for (final mapEntry in bank.entries)
         mapEntry.key: mapEntry.value.toJson(),
     };
-    await _file.writeAsString(jsonEncode(encoded));
+    await _store.write(name, jsonEncode(encoded));
   }
 
   /// Rebuilds the bank by replaying [log]'s entries in a fixed, device-
@@ -204,44 +209,11 @@ class FoodBankService {
   // Manual bank (food items added directly without logging them as eaten)
   // ---------------------------------------------------------------------------
 
-  File get _manualFile =>
-      File(p.join(_file.parent.path, 'food_bank_manual.json'));
+  Future<Map<String, FoodBankRecord>> _readManualBank() =>
+      _readBank(manualDocumentName);
 
-  Future<Map<String, FoodBankRecord>> _readManualBank() async {
-    final file = _manualFile;
-    if (!file.existsSync()) return {};
-    String raw;
-    try {
-      raw = await file.readAsString();
-    } on FileSystemException {
-      return {};
-    }
-    Object? data;
-    try {
-      data = jsonDecode(raw);
-    } on FormatException {
-      return {};
-    }
-    if (data is! Map) return {};
-    final result = <String, FoodBankRecord>{};
-    for (final entry in data.entries) {
-      final key = entry.key;
-      final value = entry.value;
-      if (key is String && value is Map) {
-        result[key] = FoodBankRecord.fromJson(value.cast<String, dynamic>());
-      }
-    }
-    return result;
-  }
-
-  Future<void> _writeManualBank(Map<String, FoodBankRecord> bank) async {
-    final file = _manualFile;
-    await file.parent.create(recursive: true);
-    final encoded = <String, Object?>{
-      for (final entry in bank.entries) entry.key: entry.value.toJson(),
-    };
-    await file.writeAsString(jsonEncode(encoded));
-  }
+  Future<void> _writeManualBank(Map<String, FoodBankRecord> bank) =>
+      _writeBank(manualDocumentName, bank);
 
   /// Adds or updates [record] in the manually-curated bank without logging it
   /// as eaten. A repeated call with the same normalized name overwrites the

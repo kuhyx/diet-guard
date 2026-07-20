@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:diet_guard_app/services/blob_store_io.dart';
+import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/models/slot.dart';
@@ -133,10 +135,10 @@ void main() {
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_screen_');
-    LogStorageService.resetForTesting(testDir: tempDir);
-    FoodBankService.resetForTesting(testDir: tempDir);
-    PhotoAttachService.resetForTesting(testDir: tempDir);
-    AppSettingsService.resetForTesting(testDir: tempDir);
+    LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
+    FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
+    PhotoAttachService.resetForTesting(store: FileBlobStore(tempDir));
+    AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
     originalImagePickerPlatform = ImagePickerPlatform.instance;
   });
 

@@ -2,15 +2,14 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/local_time.dart';
 import 'package:diet_guard_app/models/meal_component.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
+import 'package:diet_guard_app/services/document_store.dart';
+import 'package:diet_guard_app/services/document_store_factory.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 /// The on-disk log shape: date key (`YYYY-MM-DD`) to that day's entries.
@@ -25,34 +24,37 @@ typedef DayLog = Map<String, List<FoodEntry>>;
 /// autocomplete is small-corpus fuzzy string matching, not a relational
 /// query.
 class LogStorageService {
-  LogStorageService._(this._file);
+  LogStorageService._(this._store);
+
+  /// Document name this service owns, unchanged from the pre-web on-disk
+  /// filename so an installed phone keeps reading its existing log.
+  static const documentName = 'food_log.json';
 
   static LogStorageService? _instance;
 
   /// Returns the initialized singleton; throws if [init] was not called.
   static LogStorageService get instance => _instance!;
 
-  final File _file;
+  final DocumentStore _store;
 
-  /// Initializes the singleton, pointing at the app's documents directory
-  /// (phone-sandboxed; no external-storage permission needed).
+  /// Initializes the singleton against the platform document store: files in
+  /// the app's documents directory on Android (phone-sandboxed; no
+  /// external-storage permission needed), IndexedDB in the browser-hosted
+  /// desktop app.
   static Future<LogStorageService> init() async {
     if (_instance != null) return _instance!;
-    final dir = await getApplicationDocumentsDirectory();
-    final svc = LogStorageService._(File(p.join(dir.path, 'food_log.json')));
+    final svc = LogStorageService._(await openDocumentStore());
     _instance = svc;
     return svc;
   }
 
   /// Resets the singleton so [init] can be called again in tests.
   ///
-  /// When [testDir] is given, subsequent reads/writes go there instead of
-  /// the real documents directory, so a test can never touch real data.
+  /// When [store] is given, subsequent reads/writes go there instead of the
+  /// real platform store, so a test can never touch real data.
   @visibleForTesting
-  static void resetForTesting({Directory? testDir}) {
-    _instance = testDir == null
-        ? null
-        : LogStorageService._(File(p.join(testDir.path, 'food_log.json')));
+  static void resetForTesting({DocumentStore? store}) {
+    _instance = store == null ? null : LogStorageService._(store);
   }
 
   /// Reads the full log, including tombstoned entries.
@@ -60,13 +62,8 @@ class LogStorageService {
   /// Returns an empty log on a missing or unparsable file, mirroring
   /// `_state._read_raw_log`'s defensive read.
   Future<DayLog> readLog() async {
-    if (!_file.existsSync()) return {};
-    String raw;
-    try {
-      raw = await _file.readAsString();
-    } on FileSystemException {
-      return {};
-    }
+    final raw = await _store.read(documentName);
+    if (raw == null) return {};
     Object? data;
     try {
       data = jsonDecode(raw);
@@ -87,22 +84,16 @@ class LogStorageService {
     return result;
   }
 
-  /// Persists the full log to disk, creating the parent directory if
-  /// needed, mirroring `_state._write_log`.
+  /// Persists the full log to the store, mirroring `_state._write_log`.
+  ///
+  /// Atomicity against a concurrent reader is the store's job (see
+  /// `FileDocumentStore.write`'s temp-file-and-rename), not this method's.
   Future<void> writeLog(DayLog log) async {
-    await _file.parent.create(recursive: true);
     final encoded = <String, Object?>{
       for (final mapEntry in log.entries)
         mapEntry.key: mapEntry.value.map((e) => e.toLocalJson()).toList(),
     };
-    // Write to a per-process temp file then atomically rename it over the
-    // real one, so a concurrent reader never sees a half-written file. The
-    // connectivity-gated background push (see background_sync_service.dart)
-    // can `runSync` -> writeLog in a separate isolate while the foreground
-    // app also writes; the pid in the temp name keeps the two from colliding.
-    final tmp = File('${_file.path}.$pid.tmp');
-    await tmp.writeAsString(jsonEncode(encoded));
-    await tmp.rename(_file.path);
+    await _store.write(documentName, jsonEncode(encoded));
   }
 
   /// Appends a signed-on-PC-eventually entry for [desc] to today's log.

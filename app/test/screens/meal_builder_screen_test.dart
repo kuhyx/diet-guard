@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:diet_guard_app/services/blob_store_io.dart';
+import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/screens/meal_builder_screen.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
@@ -28,9 +30,9 @@ void main() {
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_builder_');
-    LogStorageService.resetForTesting(testDir: tempDir);
-    FoodBankService.resetForTesting(testDir: tempDir);
-    PhotoAttachService.resetForTesting(testDir: tempDir);
+    LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
+    FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
+    PhotoAttachService.resetForTesting(store: FileBlobStore(tempDir));
     originalImagePickerPlatform = ImagePickerPlatform.instance;
   });
 

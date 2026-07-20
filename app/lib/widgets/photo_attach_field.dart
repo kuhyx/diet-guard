@@ -1,10 +1,10 @@
 /// Shared attach/preview/remove control for a meal entry's optional photo.
 library;
 
-import 'dart:io';
-
 import 'package:diet_guard_app/screens/photo_viewer_screen.dart';
 import 'package:diet_guard_app/services/photo_attach_service.dart';
+import 'package:diet_guard_app/widgets/attached_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -41,14 +41,21 @@ class PhotoAttachField extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera),
-              title: const Text('Take a photo'),
-              onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
-            ),
+            // No camera row on web: the browser's picker is a file input,
+            // and `ImageSource.camera` silently falls back to the same file
+            // dialog -- an option that lies about what it does is worse than
+            // no option.
+            if (!kIsWeb)
+              ListTile(
+                leading: const Icon(Icons.photo_camera),
+                title: const Text('Take a photo'),
+                onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
+              ),
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text('Choose from gallery'),
+              title: const Text(
+                kIsWeb ? 'Choose a file' : 'Choose from gallery',
+              ),
               onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
             ),
           ],
@@ -86,16 +93,11 @@ class PhotoAttachField extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.file(
-          File(path),
+        child: AttachedImage(
+          path: path,
           width: thumbnailSize,
           height: thumbnailSize,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => SizedBox(
-            width: thumbnailSize,
-            height: thumbnailSize,
-            child: const Icon(Icons.broken_image),
-          ),
         ),
       ),
     );

@@ -5,9 +5,9 @@
 /// reconnect and uploads the log without the app being reopened.
 library;
 
-import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
+import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
@@ -41,12 +41,7 @@ Future<bool> backgroundSyncPush({http.Client? httpClient}) async {
     return false; // couldn't read config in-isolate; let WorkManager retry
   }
   if (!settings.isConfigured) return true; // nothing to push; don't retry
-  final client = GitHubClient(
-    owner: settings.owner,
-    repo: settings.repo,
-    token: settings.token,
-    httpClient: httpClient,
-  );
+  final client = createGitHubClient(settings, httpClient: httpClient);
   try {
     await runSync(client);
     return true;

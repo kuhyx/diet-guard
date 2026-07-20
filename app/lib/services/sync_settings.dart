@@ -4,16 +4,17 @@
 /// manual fallback.
 library;
 
-import 'package:flutter/services.dart' show PlatformException;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:diet_guard_app/services/token_vault.dart';
+import 'package:diet_guard_app/services/token_vault_factory.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// The GitHub token is kept in the OS keystore (Android Keystore / libsecret)
-/// via [flutter_secure_storage]; only the non-secret owner/repo live in
-/// `SharedPreferences`. Older builds stored the token in plaintext prefs;
-/// [load]/[save] migrate it transparently and never drop the plaintext copy
-/// until a secure write is confirmed (so we degrade to -- never below -- the
-/// old behaviour when no secret service is available).
+/// The GitHub token is kept out of `SharedPreferences`, which holds only the
+/// non-secret owner/repo: on Android it lives in the OS keystore, and in the
+/// desktop web build it lives in the wrapper process rather than the browser
+/// at all (see [TokenVault]). Older builds stored the token in plaintext
+/// prefs; [load]/[save] migrate it transparently and never drop the plaintext
+/// copy until a vault write is confirmed (so we degrade to -- never below --
+/// the old behaviour when no secure store is available).
 class SyncSettings {
   /// Creates a [SyncSettings] from its owner/repo/token.
   const SyncSettings({
@@ -59,12 +60,10 @@ class SyncSettings {
   // the token has been migrated into secure storage.
   static const _kToken = 'sync.token';
 
-  /// Key for the token inside the OS keystore.
-  static const _secureToken = 'sync.token';
+  static final TokenVault _vault = openTokenVault();
 
-  /// Default options keep us off the deprecated `encryptedSharedPreferences`
-  /// path on Android and use libsecret on Linux.
-  static const _secure = FlutterSecureStorage();
+  /// True when this platform can show the stored token back to the user.
+  static bool get exposesTokenValue => _vault.exposesTokenValue;
 
   /// Loads settings, defaulting the owner/repo to `kuhyx/syncs`
   /// (matching the PC's `SYNC_REPO_OWNER`/`SYNC_REPO_NAME` constants) and the
@@ -90,54 +89,33 @@ class SyncSettings {
     );
   }
 
-  /// Reads the token, preferring the keystore and falling back to the legacy
-  /// plaintext value. A legacy value is migrated into the keystore on read,
-  /// but only dropped from prefs once that secure write succeeds.
+  /// Reads the token, preferring the vault and falling back to the legacy
+  /// plaintext value. A legacy value is migrated into the vault on read, but
+  /// only dropped from prefs once that write succeeds.
   static Future<String> _loadToken(SharedPreferences prefs) async {
-    String? secure;
-    try {
-      secure = await _secure.read(key: _secureToken);
-    } on PlatformException {
-      // No secret service available -- fall back to the legacy plaintext copy.
-      secure = null;
-    }
-    if (secure != null && secure.isNotEmpty) return secure;
+    final stored = await _vault.read();
+    if (stored.isNotEmpty) return stored;
 
     final legacy = prefs.getString(_kToken) ?? '';
-    if (legacy.isNotEmpty && await _writeSecureToken(legacy)) {
+    if (legacy.isNotEmpty && await _vault.write(legacy)) {
       await prefs.remove(_kToken);
     }
     return legacy;
   }
 
-  /// Persists [owner]/[repo] to prefs and [token] to the keystore (or
-  /// plaintext prefs as a fallback -- see [_loadToken]).
+  /// Persists [owner]/[repo] to prefs and [token] to the vault (or plaintext
+  /// prefs as a fallback -- see [_loadToken]).
   Future<void> save() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kOwner, owner);
     await prefs.setString(_kRepo, repo);
     await prefs.setString(_kClientId, clientId);
-    // Confirm-before-delete: only remove the plaintext copy once the keystore
+    // Confirm-before-delete: only remove the plaintext copy once the vault
     // write succeeds; otherwise keep persisting it to prefs as before.
-    if (await _writeSecureToken(token)) {
+    if (await _vault.write(token)) {
       await prefs.remove(_kToken);
     } else {
       await prefs.setString(_kToken, token);
-    }
-  }
-
-  /// Writes [token] to the keystore (deleting the entry when empty). Returns
-  /// false if the platform secret service is unavailable.
-  static Future<bool> _writeSecureToken(String token) async {
-    try {
-      if (token.isEmpty) {
-        await _secure.delete(key: _secureToken);
-      } else {
-        await _secure.write(key: _secureToken, value: token);
-      }
-      return true;
-    } on PlatformException {
-      return false;
     }
   }
 

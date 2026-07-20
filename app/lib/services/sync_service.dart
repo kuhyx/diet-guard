@@ -20,16 +20,11 @@ import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
+import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_merge.dart';
 
 const _devicesDir = 'diet-guard-sync/devices';
-
-/// This device's id in the `diet-guard-sync/devices/<id>/food_log.json`
-/// layout. The PC pushes under `pc` (`SYNC_DEVICE_ID` in
-/// `diet_guard/_constants.py`); the phone is the only other device in this
-/// design.
-const phoneDeviceId = 'phone';
 
 /// Runs one full sync tick: pull, merge, preserve photos, persist, push.
 ///
@@ -43,7 +38,7 @@ Future<DayLog> runSync(GitHubClient client) async {
 
   final mergedLog = await syncLog(
     client: client,
-    deviceId: phoneDeviceId,
+    deviceId: syncDeviceId,
     pathPrefix: _devicesDir,
     localLog: dayLogToLog(local),
     encode: encodeLogForPush,
@@ -82,7 +77,7 @@ Future<void> _syncBudget(GitHubClient client) async {
 
   final mergedBudgetLog = await syncLog(
     client: client,
-    deviceId: phoneDeviceId,
+    deviceId: syncDeviceId,
     pathPrefix: _devicesDir,
     localLog: budgetToLog(localRecord),
     encode: encodeBudgetForPush,
