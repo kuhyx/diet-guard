@@ -13,7 +13,12 @@
 #      `pip install -r requirements.txt`), rebuilt only when requirements.txt
 #      changes (hash-gated so day-to-day pushes stay fast);
 #   2. `pre-commit run --all-files` (mirrors the pre-commit workflow);
-#   3. `python -m pytest` inside that clean venv (mirrors Tests).
+#   3. `python -m pytest` inside that clean venv (mirrors Tests);
+#   4. `flutter analyze` + `flutter test` for the companion app in app/.
+#
+# The app is gated here rather than only by pre-commit because pre-commit has
+# no Dart hooks at all: without this, the app's tests were never run by
+# anything automatic, and a red app/ could be pushed with a green gate.
 #
 # Wired as the pre-push hook, so a red result blocks the push before CI ever
 # sees it. Escape hatch for genuine emergencies: `git push --no-verify`.
@@ -29,6 +34,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 readonly ROOT
 cd "$ROOT"
 
+readonly APP_DIR="$ROOT/app"
 readonly VENV_DIR="$ROOT/.ci-mirror-venv"
 readonly HASH_FILE="$VENV_DIR/.requirements.sha256"
 readonly REQ_PATH="$ROOT/$REQUIREMENTS_FILE"
@@ -82,11 +88,30 @@ run_pytest_clean_venv() {
     "$VENV_DIR/bin/python" -m pytest "$@" || fail "pytest (clean requirements.txt venv)"
 }
 
+# Gate the Flutter companion app the same way: analyze (pre-commit has no Dart
+# hooks) then the full test suite. Deliberately fails rather than skips when
+# flutter is missing -- a gate that quietly passes on a machine without the
+# toolchain is the same as no gate.
+run_flutter_gates() {
+    if [[ ! -f "$APP_DIR/pubspec.yaml" ]]; then
+        log "no app/pubspec.yaml — skipping the Flutter gates"
+        return
+    fi
+    if ! command -v flutter >/dev/null 2>&1; then
+        fail "flutter is not on PATH but app/ exists (cannot verify the app)"
+    fi
+    log "flutter analyze (app/)"
+    (cd "$APP_DIR" && flutter analyze) || fail "flutter analyze"
+    log "flutter test (app/)"
+    (cd "$APP_DIR" && flutter test) || fail "flutter test"
+}
+
 main() {
     require_file
     ensure_venv
     run_precommit_all_files
     run_pytest_clean_venv "$@"
+    run_flutter_gates
     log "all CI gates passed locally — safe to push"
 }
 
