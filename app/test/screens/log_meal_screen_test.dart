@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:diet_guard_app/models/food_entry.dart';
+import 'package:diet_guard_app/models/nutrition.dart';
+import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/screens/calendar_screen.dart';
 import 'package:diet_guard_app/screens/food_bank_screen.dart';
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
@@ -8,6 +10,7 @@ import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/screens/meal_builder_screen.dart';
 import 'package:diet_guard_app/screens/photo_viewer_screen.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
+import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/photo_attach_service.dart';
@@ -15,6 +18,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:url_launcher_platform_interface/link.dart';
+import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
+
+/// Stub launcher that records the URL instead of opening it -- same pattern
+/// as settings_screen_test.dart's fake, duplicated locally per this
+/// codebase's convention of small per-file fakes over a shared mock.
+class _FakeUrlLauncher extends UrlLauncherPlatform
+    with MockPlatformInterfaceMixin {
+  String? launched;
+
+  @override
+  final LinkDelegate? linkDelegate = null;
+
+  @override
+  Future<bool> supportsMode(PreferredLaunchMode mode) async => true;
+
+  @override
+  Future<bool> launchUrl(String url, LaunchOptions options) async {
+    launched = url;
+    return true;
+  }
+}
 
 /// Returns a fixed [XFile] without touching any real platform channel.
 class _FakeImagePickerPlatform extends ImagePickerPlatform {
@@ -110,6 +136,7 @@ void main() {
     LogStorageService.resetForTesting(testDir: tempDir);
     FoodBankService.resetForTesting(testDir: tempDir);
     PhotoAttachService.resetForTesting(testDir: tempDir);
+    AppSettingsService.resetForTesting(testDir: tempDir);
     originalImagePickerPlatform = ImagePickerPlatform.instance;
   });
 
@@ -117,6 +144,7 @@ void main() {
     LogStorageService.resetForTesting();
     FoodBankService.resetForTesting();
     PhotoAttachService.resetForTesting();
+    AppSettingsService.resetForTesting();
     ImagePickerPlatform.instance = originalImagePickerPlatform;
     await tempDir.delete(recursive: true);
   });
@@ -481,6 +509,177 @@ void main() {
       await settle(tester);
 
       expect(find.byType(LogMealScreen), findsOneWidget);
+    });
+  });
+
+  const nutritionA = Nutrition(
+    kcal: 200,
+    proteinG: 10,
+    carbsG: 20,
+    fatG: 4,
+    grams: 100,
+    source: 'manual',
+  );
+
+  testWidgets(
+    'repeat last meal FAB is disabled with no previous meal logged',
+    (tester) async {
+      await tester.runAsync(() async {
+        await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+        await settle(tester);
+
+        final fab = tester.widget<FloatingActionButton>(
+          find.byType(FloatingActionButton),
+        );
+        expect(fab.onPressed, isNull);
+        expect(find.byTooltip('No previous meal to repeat'), findsOneWidget);
+      });
+    },
+  );
+
+  testWidgets(
+    'tapping repeat last meal logs a duplicate of the most recent entry '
+    "with today's current slot",
+    (tester) async {
+      await tester.runAsync(() async {
+        const older = FoodEntry(
+          id: 'older',
+          time: '2026-06-01T08:00:00+02:00',
+          desc: 'first meal',
+          grams: 100,
+          kcal: 100,
+          proteinG: 5,
+          carbsG: 10,
+          fatG: 2,
+          source: 'manual',
+        );
+        await LogStorageService.instance.writeLog({
+          '2026-06-01': [older],
+        });
+        await LogStorageService.instance.logMeal('second meal', nutritionA);
+
+        await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+        await settle(tester);
+
+        final fab = find.byType(FloatingActionButton);
+        await tester.ensureVisible(fab);
+        await tester.tap(fab);
+        await settle(tester);
+
+        expect(find.text('Logged "second meal" again.'), findsOneWidget);
+
+        final entries = await LogStorageService.instance.todayEntries();
+        final repeated = entries.where((e) => e.desc == 'second meal');
+        expect(repeated.length, 2);
+        // The seed entry (logged with no explicit slot) has slot: null; the
+        // repeat must be the one stamped with today's current slot.
+        expect(
+          repeated.any((e) => e.slot == currentSlot(DateTime.now())),
+          isTrue,
+        );
+      });
+    },
+  );
+
+  testWidgets(
+    'tapping repeat last meal twice keeps repeating the newly-logged entry',
+    (tester) async {
+      await tester.runAsync(() async {
+        await LogStorageService.instance.logMeal('looped meal', nutritionA);
+
+        await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+        await settle(tester);
+
+        final fab = find.byType(FloatingActionButton);
+        await tester.ensureVisible(fab);
+        await tester.tap(fab);
+        await settle(tester);
+        await tester.tap(fab);
+        await settle(tester);
+
+        final entries = await LogStorageService.instance.todayEntries();
+        expect(entries.where((e) => e.desc == 'looped meal').length, 3);
+      });
+    },
+  );
+
+  testWidgets(
+    'reward affordance is absent by default and appears after a repeat '
+    'once a reward is configured',
+    (tester) async {
+      await tester.runAsync(() async {
+        await LogStorageService.instance.logMeal('reward meal', nutritionA);
+        await AppSettingsService.instance.saveReward(
+          label: 'Podcast',
+          url: 'https://example.com/podcast',
+        );
+
+        await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+        await settle(tester);
+
+        expect(find.text('Open Podcast'), findsNothing);
+
+        final fab = find.byType(FloatingActionButton);
+        await tester.ensureVisible(fab);
+        await tester.tap(fab);
+        await settle(tester);
+
+        expect(find.text('Open Podcast'), findsOneWidget);
+      });
+    },
+  );
+
+  testWidgets('editing the description field dismisses a stale reward prompt', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await LogStorageService.instance.logMeal('reward meal', nutritionA);
+      await AppSettingsService.instance.saveReward(
+        label: 'Podcast',
+        url: 'https://example.com/podcast',
+      );
+
+      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+      await settle(tester);
+
+      final fab = find.byType(FloatingActionButton);
+      await tester.ensureVisible(fab);
+      await tester.tap(fab);
+      await settle(tester);
+      expect(find.text('Open Podcast'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField).at(0), 'x');
+      await settle(tester);
+
+      expect(find.text('Open Podcast'), findsNothing);
+    });
+  });
+
+  testWidgets('tapping the reward affordance launches the configured URL', (
+    tester,
+  ) async {
+    final launcher = _FakeUrlLauncher();
+    UrlLauncherPlatform.instance = launcher;
+
+    await tester.runAsync(() async {
+      await LogStorageService.instance.logMeal('reward meal', nutritionA);
+      await AppSettingsService.instance.saveReward(
+        label: 'Podcast',
+        url: 'https://example.com/podcast',
+      );
+
+      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+      await settle(tester);
+
+      final fab = find.byType(FloatingActionButton);
+      await tester.ensureVisible(fab);
+      await tester.tap(fab);
+      await settle(tester);
+
+      await tester.tap(find.text('Open Podcast'));
+      await settle(tester);
+
+      expect(launcher.launched, 'https://example.com/podcast');
     });
   });
 }

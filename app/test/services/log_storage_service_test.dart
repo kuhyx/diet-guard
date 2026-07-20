@@ -381,4 +381,73 @@ void main() {
       expect(log['2026-06-22']!.first.desc, 'original desc');
     });
   });
+
+  group('lastLoggedEntry', () {
+    test('returns null for an empty log', () async {
+      expect(await LogStorageService.instance.lastLoggedEntry(), isNull);
+    });
+
+    test('returns the newest non-deleted entry across all days', () async {
+      const older = FoodEntry(
+        id: 'older',
+        time: '2026-06-01T08:00:00+02:00',
+        desc: 'older meal',
+        grams: 100,
+        kcal: 100,
+        proteinG: 5,
+        carbsG: 10,
+        fatG: 2,
+        source: 'manual',
+      );
+      const newer = FoodEntry(
+        id: 'newer',
+        time: '2026-06-22T20:00:00+02:00',
+        desc: 'newer meal',
+        grams: 100,
+        kcal: 200,
+        proteinG: 10,
+        carbsG: 20,
+        fatG: 4,
+        source: 'manual',
+      );
+      await LogStorageService.instance.writeLog({
+        '2026-06-01': [older],
+        '2026-06-22': [newer],
+      });
+      final last = await LogStorageService.instance.lastLoggedEntry();
+      expect(last!.id, 'newer');
+    });
+
+    test('skips a tombstoned newest entry and falls through', () async {
+      const tombstoned = FoodEntry(
+        id: 'gone',
+        time: '2026-06-22T20:00:00+02:00',
+        desc: 'undone meal',
+        grams: 100,
+        kcal: 300,
+        proteinG: 1,
+        carbsG: 1,
+        fatG: 1,
+        source: 'manual',
+        deleted: true,
+      );
+      const kept = FoodEntry(
+        id: 'kept',
+        time: '2026-06-15T12:00:00+02:00',
+        desc: 'kept meal',
+        grams: 100,
+        kcal: 150,
+        proteinG: 5,
+        carbsG: 15,
+        fatG: 3,
+        source: 'manual',
+      );
+      await LogStorageService.instance.writeLog({
+        '2026-06-15': [kept],
+        '2026-06-22': [tombstoned],
+      });
+      final last = await LogStorageService.instance.lastLoggedEntry();
+      expect(last!.id, 'kept');
+    });
+  });
 }

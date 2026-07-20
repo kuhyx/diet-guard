@@ -202,5 +202,102 @@ void main() {
         expect(AppSettingsService.dailyKcalGoalUpdatedAt, isNull);
       },
     );
+
+    test('loads reward_label and reward_url from an existing file', () async {
+      await File('${tempDir.path}/app_settings.json').writeAsString(
+        jsonEncode({
+          'daily_kcal_goal': 1600,
+          'reward_label': 'Podcast',
+          'reward_url': 'https://example.com/podcast',
+        }),
+      );
+
+      await AppSettingsService.initForTesting(tempDir);
+
+      expect(AppSettingsService.rewardLabel, 'Podcast');
+      expect(AppSettingsService.rewardUrl, 'https://example.com/podcast');
+    });
+
+    test('reward fields stay null when the file has no such keys', () async {
+      await File(
+        '${tempDir.path}/app_settings.json',
+      ).writeAsString(jsonEncode({'daily_kcal_goal': 1600}));
+
+      await AppSettingsService.initForTesting(tempDir);
+
+      expect(AppSettingsService.rewardLabel, isNull);
+      expect(AppSettingsService.rewardUrl, isNull);
+    });
+
+    test('reward fields stay null when not strings', () async {
+      await File('${tempDir.path}/app_settings.json').writeAsString(
+        jsonEncode({
+          'daily_kcal_goal': 1600,
+          'reward_label': 123,
+          'reward_url': false,
+        }),
+      );
+
+      await AppSettingsService.initForTesting(tempDir);
+
+      expect(AppSettingsService.rewardLabel, isNull);
+      expect(AppSettingsService.rewardUrl, isNull);
+    });
+  });
+
+  group('rewardLabel / rewardUrl static getters', () {
+    test('default to null when singleton is uninitialised', () {
+      expect(AppSettingsService.rewardLabel, isNull);
+      expect(AppSettingsService.rewardUrl, isNull);
+    });
+  });
+
+  group('saveReward', () {
+    test('persists label and url, readable back via static getters', () async {
+      AppSettingsService.resetForTesting(testDir: tempDir);
+      await AppSettingsService.instance.saveReward(
+        label: 'Podcast',
+        url: 'https://example.com/podcast',
+      );
+
+      expect(AppSettingsService.rewardLabel, 'Podcast');
+      expect(AppSettingsService.rewardUrl, 'https://example.com/podcast');
+
+      final raw = await File(
+        '${tempDir.path}/app_settings.json',
+      ).readAsString();
+      final data = jsonDecode(raw) as Map;
+      expect(data['reward_label'], 'Podcast');
+      expect(data['reward_url'], 'https://example.com/podcast');
+    });
+
+    test('clears fields back to null when saved as null', () async {
+      AppSettingsService.resetForTesting(testDir: tempDir);
+      await AppSettingsService.instance.saveReward(
+        label: 'Podcast',
+        url: 'https://example.com/podcast',
+      );
+      await AppSettingsService.instance.saveReward(label: null, url: null);
+
+      expect(AppSettingsService.rewardLabel, isNull);
+      expect(AppSettingsService.rewardUrl, isNull);
+    });
+
+    test('does not disturb the existing kcal goal fields', () async {
+      AppSettingsService.resetForTesting(testDir: tempDir);
+      await AppSettingsService.instance.saveDailyKcalGoal(1800);
+      await AppSettingsService.instance.saveReward(
+        label: 'Podcast',
+        url: 'https://example.com/podcast',
+      );
+
+      expect(AppSettingsService.dailyKcalGoal, 1800);
+
+      final raw = await File(
+        '${tempDir.path}/app_settings.json',
+      ).readAsString();
+      final data = jsonDecode(raw) as Map;
+      expect(data['daily_kcal_goal'], 1800);
+    });
   });
 }

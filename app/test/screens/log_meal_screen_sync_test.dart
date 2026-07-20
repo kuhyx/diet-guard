@@ -3,6 +3,7 @@
 
 import 'dart:io';
 
+import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
@@ -171,6 +172,52 @@ void main() {
       await settle(tester);
 
       // The new meal is pushed right away, not left for a lifecycle event.
+      expect(puts, 2);
+    });
+  });
+
+  testWidgets('pushes immediately after repeating the last meal', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'sync.owner': 'o',
+      'sync.repo': 'r',
+    });
+    installFakeSecureStorage(initial: {'sync.token': 't'});
+    var puts = 0;
+    final mock = MockClient((req) async {
+      if (req.method == 'PUT') puts++;
+      if (req.method == 'GET' && req.url.pathSegments.length == 3) {
+        return http.Response('{}', 200);
+      }
+      return http.Response('', 404);
+    });
+
+    await tester.runAsync(() async {
+      await LogStorageService.instance.logMeal(
+        'seed meal',
+        const Nutrition(
+          kcal: 100,
+          proteinG: 5,
+          carbsG: 10,
+          fatG: 2,
+          grams: 50,
+          source: 'manual',
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(home: LogMealScreen(httpClient: mock)),
+      );
+      await settle(tester);
+      expect(puts, 1); // launch push
+
+      final fab = find.byType(FloatingActionButton);
+      await tester.ensureVisible(fab);
+      await tester.tap(fab);
+      await settle(tester);
+
+      // The repeated meal is pushed right away too, same as manual logging.
       expect(puts, 2);
     });
   });

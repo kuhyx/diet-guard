@@ -43,6 +43,8 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _kcalGoalController = TextEditingController();
+  final _rewardLabelController = TextEditingController();
+  final _rewardUrlController = TextEditingController();
   final _ownerController = TextEditingController();
   final _repoController = TextEditingController();
   final _tokenController = TextEditingController();
@@ -69,6 +71,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     if (!mounted) return;
     _kcalGoalController.text = AppSettingsService.dailyKcalGoal.toString();
+    _rewardLabelController.text = AppSettingsService.rewardLabel ?? '';
+    _rewardUrlController.text = AppSettingsService.rewardUrl ?? '';
     _ownerController.text = settings.owner;
     _repoController.text = settings.repo;
     _tokenController.text = settings.token;
@@ -79,6 +83,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _kcalGoalController.dispose();
+    _rewardLabelController.dispose();
+    _rewardUrlController.dispose();
     _ownerController.dispose();
     _repoController.dispose();
     _tokenController.dispose();
@@ -92,6 +98,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     token: _tokenController.text.trim(),
     clientId: _clientIdController.text.trim(),
   );
+
+  /// Persists the temptation-bundling reward fields, blank -> null.
+  Future<void> _saveReward() async {
+    final label = _rewardLabelController.text.trim();
+    final url = _rewardUrlController.text.trim();
+    await AppSettingsService.instance.saveReward(
+      label: label.isEmpty ? null : label,
+      url: url.isEmpty ? null : url,
+    );
+  }
 
   void _showMessage(String message) {
     if (!mounted) return;
@@ -252,6 +268,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 unawaited(AppSettingsService.instance.saveDailyKcalGoal(n));
               }
             },
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 8),
+          Text('Reward', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            'Shown after a one-tap "repeat last meal" log, as a temptation '
+            'bundle. Leave blank to disable. Device-local, not synced.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _rewardLabelController,
+            decoration: const InputDecoration(
+              labelText: 'Reward label',
+              helperText: 'e.g. "Podcast episode"',
+            ),
+            onChanged: (v) => unawaited(_saveReward()),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _rewardUrlController,
+            decoration: const InputDecoration(labelText: 'Reward URL'),
+            onChanged: (v) => unawaited(_saveReward()),
           ),
           const SizedBox(height: 24),
           const Divider(),

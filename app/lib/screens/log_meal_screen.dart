@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:crdt_sync/crdt_sync.dart';
+import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/food_suggestion.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/models/slot.dart';
@@ -14,6 +15,7 @@ import 'package:diet_guard_app/screens/food_bank_screen.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/screens/meal_builder_screen.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
+import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/background_sync_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
@@ -25,6 +27,7 @@ import 'package:diet_guard_app/widgets/photo_attach_field.dart';
 import 'package:diet_guard_app/widgets/slot_selector_row.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:workmanager/workmanager.dart';
 
 /// Lets the user log one food item, with food-bank autocomplete and
@@ -52,6 +55,8 @@ class _LogMealScreenState extends State<LogMealScreen>
   String _source = 'manual';
   String? _status;
   String? _imagePath;
+  FoodEntry? _lastEntry;
+  bool _showRewardPrompt = false;
 
   /// Single-flight guard so a launch sync and a lifecycle sync never overlap.
   bool _autoSyncing = false;
@@ -75,6 +80,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     unawaited(_refreshSlots());
     unawaited(_onDescChanged());
     unawaited(_autoSync());
+    unawaited(_refreshLastEntry());
   }
 
   @override
@@ -164,6 +170,15 @@ class _LogMealScreenState extends State<LogMealScreen>
     setState(() => _loggedSlots = logged);
   }
 
+  /// Refreshes the entry "repeat last meal" would log, and its enabled
+  /// state. Called after every log (manual, built, or repeated) so the
+  /// button always repeats the most recent entry, not a stale one.
+  Future<void> _refreshLastEntry() async {
+    final entry = await LogStorageService.instance.lastLoggedEntry();
+    if (!mounted) return;
+    setState(() => _lastEntry = entry);
+  }
+
   void _onMacroEdited() {
     if (_source == 'food bank') {
       setState(() => _source = 'manual');
@@ -175,7 +190,12 @@ class _LogMealScreenState extends State<LogMealScreen>
       _descController.text,
     );
     if (!mounted) return;
-    setState(() => _suggestions = matches);
+    setState(() {
+      _suggestions = matches;
+      // Starting to fill in the manual form dismisses a stale reward prompt
+      // left over from a prior one-tap "repeat last meal" log.
+      _showRewardPrompt = false;
+    });
   }
 
   void _onSuggestionSelected(FoodSuggestion suggestion) {
@@ -236,6 +256,49 @@ class _LogMealScreenState extends State<LogMealScreen>
     await _refreshSlots();
     if (!mounted) return;
     setState(() => _status = 'Logged "$desc".');
+    await _refreshLastEntry();
+  }
+
+  /// One-tap "repeat last meal": re-logs [_lastEntry] verbatim (minus any
+  /// photo) against today's current slot. Mirrors [_onLogMeal]'s post-write
+  /// sequence exactly so offline/sync semantics stay identical.
+  Future<void> _onLogLastMeal() async {
+    final last = _lastEntry;
+    if (last == null) return;
+    final nutrition = Nutrition(
+      kcal: last.kcal,
+      proteinG: last.proteinG,
+      carbsG: last.carbsG,
+      fatG: last.fatG,
+      grams: last.grams,
+      source: last.source,
+    );
+    await LogStorageService.instance.logMeal(
+      last.desc,
+      nutrition,
+      slot: currentSlot(DateTime.now()),
+      components: last.components,
+      // No imagePath: a repeated meal shouldn't drag forward a photo of a
+      // specific past occasion.
+    );
+    final log = await LogStorageService.instance.readLog();
+    await FoodBankService.instance.rebuildAndPersist(log);
+    unawaited(_autoSync());
+    unawaited(_enqueueSyncBackstop());
+    if (!mounted) return;
+    await _refreshSlots();
+    if (!mounted) return;
+    setState(() {
+      _status = 'Logged "${last.desc}" again.';
+      _showRewardPrompt = AppSettingsService.rewardUrl?.isNotEmpty ?? false;
+    });
+    await _refreshLastEntry();
+  }
+
+  Future<void> _openReward() async {
+    final url = AppSettingsService.rewardUrl;
+    if (url == null || url.isEmpty) return;
+    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 
   Future<void> _onBuildMeal() async {
@@ -243,6 +306,7 @@ class _LogMealScreenState extends State<LogMealScreen>
       MaterialPageRoute(builder: (_) => const MealBuilderScreen()),
     );
     await _refreshSlots();
+    await _refreshLastEntry();
     // A meal built and logged in the builder should push right away too,
     // with the same offline backstop.
     unawaited(_autoSync());
@@ -311,8 +375,18 @@ class _LogMealScreenState extends State<LogMealScreen>
           ),
         ],
       ),
+      floatingActionButton: Tooltip(
+        message: _lastEntry == null
+            ? 'No previous meal to repeat'
+            : 'Repeat "${_lastEntry!.desc}"',
+        child: FloatingActionButton.extended(
+          onPressed: _lastEntry == null ? null : _onLogLastMeal,
+          icon: const Icon(Icons.repeat),
+          label: const Text('Repeat last meal'),
+        ),
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -363,6 +437,17 @@ class _LogMealScreenState extends State<LogMealScreen>
             if (_status != null) ...[
               const SizedBox(height: 12),
               Text(_status!),
+            ],
+            if (_showRewardPrompt &&
+                (AppSettingsService.rewardUrl?.isNotEmpty ?? false)) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () => unawaited(_openReward()),
+                icon: const Icon(Icons.card_giftcard),
+                label: Text(
+                  'Open ${AppSettingsService.rewardLabel ?? "reward"}',
+                ),
+              ),
             ],
           ],
         ),

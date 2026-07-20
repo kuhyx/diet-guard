@@ -240,4 +240,15 @@ class LogStorageService {
     final entries = await todayEntries();
     return entries.where((e) => e.slot != null).map((e) => e.slot!).toSet();
   }
+
+  /// Returns the single most recently logged, non-deleted entry across all
+  /// days, or `null` if nothing has ever been logged.
+  ///
+  /// Backs the "repeat last meal" one-tap action -- deliberately not scoped
+  /// to today or to the currently-due slot, since the point is "log the same
+  /// thing I just ate," which should work identically at any time of day.
+  Future<FoodEntry?> lastLoggedEntry() async {
+    final entries = await allEntriesNewestFirst();
+    return entries.isEmpty ? null : entries.first;
+  }
 }

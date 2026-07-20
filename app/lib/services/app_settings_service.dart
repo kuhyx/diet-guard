@@ -28,6 +28,8 @@ class AppSettingsService {
   final File _file;
   int _dailyKcalGoal = 2200;
   DateTime? _dailyKcalGoalUpdatedAt;
+  String? _rewardLabel;
+  String? _rewardUrl;
 
   /// Returns the configured daily kcal goal, or 2200 when uninitialised.
   static int get dailyKcalGoal => _instance?._dailyKcalGoal ?? 2200;
@@ -35,6 +37,17 @@ class AppSettingsService {
   /// Returns when the goal was last set on this device, or null if never.
   static DateTime? get dailyKcalGoalUpdatedAt =>
       _instance?._dailyKcalGoalUpdatedAt;
+
+  /// Returns the configured temptation-bundling reward label, or null.
+  ///
+  /// Device-local only -- no `updatedAt`/sync merge wiring, unlike the kcal
+  /// goal. Adding a sync-ready timestamp without real merge logic in
+  /// `sync_merge.dart`/`sync_service.dart` would imply cross-device behavior
+  /// that doesn't exist yet.
+  static String? get rewardLabel => _instance?._rewardLabel;
+
+  /// Returns the configured temptation-bundling reward URL, or null.
+  static String? get rewardUrl => _instance?._rewardUrl;
 
   /// Initialises the singleton, pointing at the app's documents directory.
   static Future<AppSettingsService> init() async {
@@ -87,6 +100,12 @@ class AppSettingsService {
           data['daily_kcal_goal_updated_at'] as String,
         );
       }
+      if (data is Map && data['reward_label'] is String) {
+        _rewardLabel = data['reward_label'] as String;
+      }
+      if (data is Map && data['reward_url'] is String) {
+        _rewardUrl = data['reward_url'] as String;
+      }
     } on Exception {
       // Ignore parse errors and keep defaults.
     }
@@ -107,14 +126,33 @@ class AppSettingsService {
   Future<void> applySyncedBudget(int goal, {DateTime? updatedAt}) =>
       _persist(goal, updatedAt);
 
+  /// Updates and persists the temptation-bundling reward shown after a
+  /// one-tap "repeat last meal" log. Pass `null` for either field to clear
+  /// it.
+  Future<void> saveReward({String? label, String? url}) async {
+    _rewardLabel = label;
+    _rewardUrl = url;
+    await _writeToDisk();
+  }
+
   Future<void> _persist(int goal, DateTime? updatedAt) async {
     _dailyKcalGoal = goal;
     _dailyKcalGoalUpdatedAt = updatedAt;
+    await _writeToDisk();
+  }
+
+  /// Writes the full current in-memory state to disk -- the single write
+  /// path every setter funnels through, so no two methods can race on
+  /// independently overwriting the same JSON file.
+  Future<void> _writeToDisk() async {
     await _file.parent.create(recursive: true);
     await _file.writeAsString(
       jsonEncode({
-        'daily_kcal_goal': goal,
-        'daily_kcal_goal_updated_at': updatedAt?.toIso8601String(),
+        'daily_kcal_goal': _dailyKcalGoal,
+        'daily_kcal_goal_updated_at': _dailyKcalGoalUpdatedAt
+            ?.toIso8601String(),
+        'reward_label': _rewardLabel,
+        'reward_url': _rewardUrl,
       }),
     );
   }
