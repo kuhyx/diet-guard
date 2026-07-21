@@ -535,15 +535,20 @@ linter:
   provide an intuitive and easy navigation bar or controls.
 * **Typography:** Stress and emphasize font sizes to ease understanding, e.g.,
   hero text, section headlines, list headlines, keywords in paragraphs.
-* **Background:** Apply subtle noise texture to the main background to add a
-  premium, tactile feel.
-* **Shadows:** Multi-layered drop shadows create a strong sense of depth; cards
-  have a soft, deep shadow to look "lifted."
+* **Background:** Keep backgrounds flat and simple — no noise texture or
+  gradients. Follow the `unified-design-system` skill (safe-design-rules
+  rule 17: simple-on-complex); let content and typography carry visual
+  interest instead of background texture.
+* **Shadows:** Follow the `unified-design-system` skill's shadow policy: no
+  shadows at all in dark UI (differentiate elevation with lighter surface
+  fills, not shadows); in light UI, shadows are for floating/overlay
+  elements only (menus, dialogs), never for inline cards, and never mixed
+  with a border on the same surface.
 * **Icons:** Incorporate icons to enhance the user’s understanding and the
   logical navigation of the app.
-* **Interactive Elements:** Buttons, checkboxes, sliders, lists, charts, graphs,
-  and other interactive elements have a shadow with elegant use of color to
-  create a "glow" effect.
+* **Interactive Elements:** Buttons/controls signal state via color and fill
+  changes, not a "glow" shadow — one depth technique per surface, per
+  `unified-design-system`.
 
 #### Theming
 * **Centralized Theme:** Define a centralized `ThemeData` object to ensure a
@@ -551,8 +556,11 @@ linter:
 * **Light and Dark Themes:** Implement support for both light and dark themes,
   ideal for a user-facing theme toggle (`ThemeMode.light`, `ThemeMode.dark`,
   `ThemeMode.system`).
-* **Color Scheme Generation:** Generate harmonious color palettes from a single
-  color using `ColorScheme.fromSeed`.
+* **Color Scheme Generation:** Do NOT use `ColorScheme.fromSeed` for this
+  app's palette — it can't reproduce hand-picked values exactly. Build
+  `ThemeData` from explicit `ColorScheme.dark(...)`/`.light(...)` using the
+  frozen, identical-everywhere tokens in the `unified-design-system` skill
+  (`~/.claude/skills/unified-design-system/references/tokens.md`).
 
   ```dart
   final ThemeData lightTheme = ThemeData(

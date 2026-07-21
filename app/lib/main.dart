@@ -11,6 +11,7 @@ import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/frame_stats.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/notification_service.dart';
+import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 
 Future<void> main() async {
@@ -49,7 +50,7 @@ class DietGuardApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Diet Guard',
-      theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
+      theme: buildAppTheme(),
       home: const LogMealScreen(),
     );
   }

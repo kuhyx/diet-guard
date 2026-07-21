@@ -2,6 +2,7 @@
 library;
 
 import 'package:diet_guard_app/models/day_status.dart';
+import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 
 /// Monthly calendar widget that colors each day by its [DayStatus].
@@ -74,22 +75,35 @@ class DayStatusCalendar extends StatelessWidget {
     return statusByDate[_dateKey(year, m, day)] ?? DayStatus.notLogged;
   }
 
-  Color _cellColor(DayStatus? status) => switch (status) {
-    null => Colors.grey.shade800,
-    DayStatus.notLogged => Colors.black,
-    DayStatus.red => Colors.red.shade400,
-    DayStatus.yellow => Colors.amber.shade700,
-    DayStatus.green => Colors.green.shade700,
+  Color _cellColor(
+    DayStatus? status,
+    ColorScheme scheme,
+    AppStatusColors statusColors,
+  ) => switch (status) {
+    // Future day: nothing to judge yet, so it reads as part of the
+    // panel rather than an empty/failed slot.
+    null => scheme.surfaceContainerHigh,
+    // Recessed below the panel (darker than the surrounding
+    // ink-raised-1 container) with a visible outline, so it reads as
+    // "empty" without vanishing into the background.
+    DayStatus.notLogged => scheme.surface,
+    DayStatus.red => scheme.error,
+    DayStatus.yellow => statusColors.warning,
+    DayStatus.green => statusColors.success,
   };
 
-  Color _textColor(DayStatus? status) => switch (status) {
-    null => Colors.white38,
-    DayStatus.notLogged => Colors.white,
-    DayStatus.red || DayStatus.yellow || DayStatus.green => Colors.black,
+  Color _textColor(DayStatus? status, ColorScheme scheme) => switch (status) {
+    null => scheme.onSurfaceVariant,
+    DayStatus.notLogged => scheme.onSurface,
+    // Status colors sit at mid brightness, so the near-black `ink` role
+    // (not a separate pure black) gives strong, on-palette contrast.
+    DayStatus.red || DayStatus.yellow || DayStatus.green => scheme.surface,
   };
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final statusColors = Theme.of(context).extension<AppStatusColors>()!;
     final year = month.year;
     final m = month.month;
     final daysInMonth = DateTime(year, m + 1, 0).day;
@@ -99,10 +113,10 @@ class DayStatusCalendar extends StatelessWidget {
     final rows = (totalCells / 7).ceil();
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.grey.shade800,
-        borderRadius: BorderRadius.circular(8),
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Column(
         children: [
@@ -110,28 +124,28 @@ class DayStatusCalendar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.chevron_left, color: Colors.white70),
+                icon: Icon(Icons.chevron_left, color: scheme.onSurfaceVariant),
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
                 onPressed: onPrevMonth,
               ),
               Text(
                 '${_monthNames[m - 1]} $year',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: scheme.onSurface,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  fontSize: AppTextSize.body,
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.chevron_right, color: Colors.white70),
+                icon: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
                 onPressed: onNextMonth,
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.xs + 2),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: _weekHeaders
@@ -141,9 +155,12 @@ class DayStatusCalendar extends StatelessWidget {
                     child: Text(
                       h,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 11,
+                      // Two-letter day abbreviations are UI chrome (like a
+                      // badge/tag), deliberately kept below the 16px body
+                      // floor rather than forced to grow past their slot.
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: AppTextSize.label - 2,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -151,7 +168,7 @@ class DayStatusCalendar extends StatelessWidget {
                 )
                 .toList(),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           ...List.generate(rows, (row) {
             return Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -168,17 +185,20 @@ class DayStatusCalendar extends StatelessWidget {
                   margin: const EdgeInsets.symmetric(vertical: 2),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _cellColor(status),
+                    color: _cellColor(status, scheme, statusColors),
                     border: status == DayStatus.notLogged
-                        ? Border.all(color: Colors.white70)
+                        ? Border.all(color: scheme.outline)
                         : null,
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     '$day',
+                    // A fixed 30px circle can't fit 16px bold digits for
+                    // two-digit days without overflowing — kept as a
+                    // deliberate chrome exception (rule 4), not accidental.
                     style: TextStyle(
-                      color: _textColor(status),
-                      fontSize: 12,
+                      color: _textColor(status, scheme),
+                      fontSize: AppTextSize.label - 2,
                       fontWeight:
                           status != null && status != DayStatus.notLogged
                           ? FontWeight.bold

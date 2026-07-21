@@ -16,18 +16,19 @@ class PhotoViewerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: scheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: scheme.surface,
+        foregroundColor: scheme.onSurface,
       ),
       body: Center(
         child: InteractiveViewer(
           child: AttachedImage(
             path: path,
             errorIconSize: 64,
-            errorIconColor: Colors.white,
+            errorIconColor: scheme.onSurface,
           ),
         ),
       ),
