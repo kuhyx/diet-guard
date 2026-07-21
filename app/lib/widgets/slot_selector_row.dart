@@ -4,6 +4,7 @@
 library;
 
 import 'package:diet_guard_app/models/slot.dart';
+import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 
 /// One row of [ChoiceChip]s: one per today's slot hour plus a fixed
@@ -34,24 +35,42 @@ class SlotSelectorRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final statusColors = Theme.of(context).extension<AppStatusColors>()!;
     final elapsed = elapsedSlots(now).toSet();
+    // Snack has no logged/due/upcoming status like the hour chips, so it
+    // uses `accent` as its "color" instead of a status color -- but still
+    // needs every property below set explicitly like the hour chips are.
+    // Leaving any of them unset falls through to Flutter's own ChoiceChip
+    // default, a literal pure-white border (the one banned value in this
+    // system) -- the open finding the unified-design-system doc flagged.
+    final snackSelected = selectedSlot == null;
+    final snackColor = snackSelected ? scheme.primary : scheme.onSurfaceVariant;
     return Wrap(
-      spacing: 6,
-      runSpacing: 4,
+      spacing: AppSpacing.xs + 2,
+      runSpacing: AppSpacing.xs,
       children: [
         ...daySlots().map((slot) {
           final isLogged = loggedSlots.contains(slot);
           final isDue = !isLogged && elapsed.contains(slot);
           final color = isLogged
-              ? Colors.green
+              ? statusColors.success
               : isDue
-              ? Colors.red
-              : Colors.grey;
+              ? scheme.error
+              : scheme.onSurfaceVariant;
           final isSelected = selectedSlot == slot;
           return ChoiceChip(
             label: Text(slotLabel(slot)),
             selected: isSelected,
-            avatar: isLogged ? Icon(Icons.check, size: 14, color: color) : null,
+            // Icon reads lighter than the label text (rule 28): reduced
+            // opacity instead of the label's full-strength color.
+            avatar: isLogged
+                ? Icon(
+                    Icons.check,
+                    size: 14,
+                    color: color.withValues(alpha: 0.72),
+                  )
+                : null,
             backgroundColor: color.withValues(alpha: 0.15),
             selectedColor: color.withValues(alpha: 0.35),
             labelStyle: TextStyle(color: color),
@@ -64,8 +83,23 @@ class SlotSelectorRow extends StatelessWidget {
         }),
         ChoiceChip(
           label: const Text('Snack'),
-          avatar: const Icon(Icons.fastfood, size: 14),
-          selected: selectedSlot == null,
+          // Icon reads lighter than the label text (rule 28): reduced
+          // opacity instead of the label's full-strength color.
+          avatar: Icon(
+            Icons.fastfood,
+            size: 14,
+            color: snackColor.withValues(alpha: 0.72),
+          ),
+          selected: snackSelected,
+          backgroundColor: scheme.onSurfaceVariant.withValues(alpha: 0.15),
+          selectedColor: scheme.primary.withValues(alpha: 0.35),
+          labelStyle: TextStyle(color: snackColor),
+          side: BorderSide(
+            width: snackSelected ? 2 : 1,
+            color: snackSelected
+                ? snackColor
+                : snackColor.withValues(alpha: 0.4),
+          ),
           onSelected: (_) => onSlotSelected(null),
         ),
       ],
