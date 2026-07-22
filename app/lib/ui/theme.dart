@@ -21,6 +21,20 @@ ThemeData buildAppTheme() {
     onPrimary: Color(
       0xFF211D1B,
     ), // on-fill — every filled surface uses dark text
+    // secondary/tertiary — the shared palette has one accent, not a
+    // separate secondary hue, so these mirror primary. Without an explicit
+    // value here, widgets that reach for secondaryContainer (e.g.
+    // SegmentedButton's selected segment) silently fall back to Flutter's
+    // stock Material teal — confirmed live on-device in the todo app,
+    // which shares this same theme.dart template.
+    secondary: Color(0xFFB8862E), // accent
+    onSecondary: Color(0xFF211D1B), // on-fill
+    secondaryContainer: Color(0xFF463E3A), // line-dark
+    onSecondaryContainer: Color(0xFFB8862E), // accent
+    tertiary: Color(0xFFB8862E), // accent
+    onTertiary: Color(0xFF211D1B), // on-fill
+    tertiaryContainer: Color(0xFF463E3A), // line-dark
+    onTertiaryContainer: Color(0xFFB8862E), // accent
     error: Color(0xFFE2585F), // danger
     onError: Color(0xFF211D1B), // on-fill
   );
