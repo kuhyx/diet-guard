@@ -36,7 +36,12 @@ class SlotSelectorRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final statusColors = Theme.of(context).extension<AppStatusColors>()!;
+    // A `!` here would crash in any context that doesn't build its theme
+    // from buildAppTheme() -- most widget tests just wrap in a bare
+    // MaterialApp(home: ...). Falling back to the app's own dark instance
+    // matches production exactly when the extension is genuinely absent.
+    final statusColors =
+        Theme.of(context).extension<AppStatusColors>() ?? AppStatusColors.dark;
     final elapsed = elapsedSlots(now).toSet();
     // Snack has no logged/due/upcoming status like the hour chips, so it
     // uses `accent` as its "color" instead of a status color -- but still

@@ -1,9 +1,20 @@
 import 'package:diet_guard_app/models/day_status.dart';
+import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/day_status_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
+// The real app theme, not a bare default MaterialApp -- the widget under
+// test reads its colors from Theme.of(context), so asserting against the
+// same theme the app actually ships is what makes these assertions mean
+// anything (a bare MaterialApp's own default colors would be arbitrary).
+final _theme = buildAppTheme();
+final _statusColors = _theme.extension<AppStatusColors>()!;
+
+Widget _wrap(Widget child) => MaterialApp(
+  theme: _theme,
+  home: Scaffold(body: child),
+);
 
 Color _colorOfDay(WidgetTester tester, String day) {
   final container = tester.widget<Container>(
@@ -95,7 +106,7 @@ void main() {
           ),
         ),
       );
-      expect(_colorOfDay(tester, '15'), Colors.green.shade700);
+      expect(_colorOfDay(tester, '15'), _statusColors.success);
     });
 
     testWidgets('colors a yellow day', (tester) async {
@@ -110,7 +121,7 @@ void main() {
           ),
         ),
       );
-      expect(_colorOfDay(tester, '15'), Colors.amber.shade700);
+      expect(_colorOfDay(tester, '15'), _statusColors.warning);
     });
 
     testWidgets('colors a red day', (tester) async {
@@ -125,7 +136,7 @@ void main() {
           ),
         ),
       );
-      expect(_colorOfDay(tester, '15'), Colors.red.shade400);
+      expect(_colorOfDay(tester, '15'), _theme.colorScheme.error);
     });
 
     testWidgets(
@@ -142,7 +153,7 @@ void main() {
             ),
           ),
         );
-        expect(_colorOfDay(tester, '15'), Colors.black);
+        expect(_colorOfDay(tester, '15'), _theme.colorScheme.surface);
       },
     );
 
@@ -161,7 +172,10 @@ void main() {
           ),
         );
         // Day 25 is after the reference "today" of June 10.
-        expect(_colorOfDay(tester, '25'), Colors.grey.shade800);
+        expect(
+          _colorOfDay(tester, '25'),
+          _theme.colorScheme.surfaceContainerHigh,
+        );
       },
     );
 
@@ -179,7 +193,7 @@ void main() {
           ),
         ),
       );
-      expect(_colorOfDay(tester, '20'), Colors.red.shade400);
+      expect(_colorOfDay(tester, '20'), _theme.colorScheme.error);
     });
 
     testWidgets('renders a month starting on Sunday correctly', (

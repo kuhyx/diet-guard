@@ -103,7 +103,12 @@ class DayStatusCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final statusColors = Theme.of(context).extension<AppStatusColors>()!;
+    // A `!` here would crash in any context that doesn't build its theme
+    // from buildAppTheme() -- most widget tests just wrap in a bare
+    // MaterialApp(home: ...). Falling back to the app's own dark instance
+    // matches production exactly when the extension is genuinely absent.
+    final statusColors =
+        Theme.of(context).extension<AppStatusColors>() ?? AppStatusColors.dark;
     final year = month.year;
     final m = month.month;
     final daysInMonth = DateTime(year, m + 1, 0).day;
