@@ -17,10 +17,9 @@ are unit-tested directly without a fake Tk in the loop.
 from __future__ import annotations
 
 import calendar
-from dataclasses import dataclass
+import contextlib
 import tkinter as tk
 from tkinter import ttk
-from typing import TYPE_CHECKING
 
 from diet_guard._budget import (
     BudgetError,
@@ -38,9 +37,20 @@ from diet_guard._calendar_view import (
     ytd_text,
 )
 from diet_guard._daystatus import DayStatus, status_map
+from diet_guard._gatelock_calendar_ui import (
+    _DECEMBER,
+    _DEFAULT_BUDGET_KCAL,
+    _JANUARY,
+    _MONTH_AFTER_DECEMBER,
+    CalendarCallbacks,
+    CalendarVars,
+    CalendarWidgets,
+    _style_notebook,
+    build_calendar_frame,
+    make_calendar_vars,
+)
 from diet_guard._gatelock_mealflow import _GateMealFlow
 from diet_guard._gatelock_ui import (
-    BG,
     ERR,
     FG,
     GateCallbacks,
@@ -49,242 +59,14 @@ from diet_guard._gatelock_ui import (
 )
 from diet_guard._state import load_log, now_local
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-# Palette additions specific to the calendar (BG/FG/ERR come from
-# _gatelock_ui's public exports; the rest are private to that module, so
-# equivalents are defined locally rather than reaching across the boundary).
-_MUTED = "#9a9a9a"
-_FIELD_BG = "#2a2a2a"
-_ACCENT = "#00ff88"
-
-# calendar.monthcalendar never returns more than 6 weeks for any month.
-_MONTH_ROWS = 6
-_WEEKDAY_LABELS = ("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")
-_JANUARY = 1
-_DECEMBER = 12
-_MONTH_AFTER_DECEMBER = 13
-
-# Shown (and classified against) before any budget has ever been set --
-# mirrors the phone app's AppSettingsService default, so a fresh install
-# shows a meaningful calendar on both platforms with no setup ritual.
-_DEFAULT_BUDGET_KCAL = 2200
-
-
-@dataclass
-class CalendarVars:
-    """Tk string variables bound to the History tab's live fields."""
-
-    month_label: tk.StringVar
-    streaks: tk.StringVar
-    ytd: tk.StringVar
-    budget_status: tk.StringVar
-
-
-@dataclass
-class CalendarWidgets:
-    """Interactive widgets of the History tab."""
-
-    frame: tk.Frame
-    day_cells: list[tk.Label]
-    budget_entry: tk.Entry
-    budget_edit_button: tk.Button
-    budget_status_label: tk.Label
-
-
-@dataclass
-class CalendarCallbacks:
-    """Construction-time commands the History tab's widgets fire."""
-
-    on_prev_month: Callable[[], None]
-    on_next_month: Callable[[], None]
-    on_edit_or_save_budget: Callable[[], None]
-
-
-def make_calendar_vars(root: tk.Misc) -> CalendarVars:
-    """Create the History tab's string variables, all mastered to ``root``."""
-    return CalendarVars(
-        month_label=tk.StringVar(master=root, value=""),
-        streaks=tk.StringVar(master=root, value=""),
-        ytd=tk.StringVar(master=root, value=""),
-        budget_status=tk.StringVar(master=root, value=""),
-    )
-
-
-def _build_budget_row(
-    parent: tk.Frame,
-    vars_: CalendarVars,
-    on_edit_or_save_budget: Callable[[], None],
-) -> tuple[tk.Entry, tk.Button, tk.Label]:
-    """Build the budget row; return the entry, its edit button, and status label.
-
-    The entry starts read-only (``state="readonly"``): the budget is
-    displayed but not directly typeable.  The button on the right starts
-    labelled "Edit"; clicking it makes the entry editable and relabels
-    itself "Save" -- a second click validates and persists, then reverts
-    both back to their read-only defaults.
-    """
-    row = tk.Frame(parent, bg=BG)
-    row.pack(pady=(8, 4))
-    tk.Label(
-        row,
-        text="Daily budget (kcal):",
-        font=("Arial", 12),
-        bg=BG,
-        fg=FG,
-    ).pack(side="left")
-    entry = tk.Entry(
-        row,
-        font=("Arial", 13),
-        width=8,
-        bg=_FIELD_BG,
-        fg=FG,
-        insertbackground=FG,
-        justify="center",
-        state="readonly",
-        readonlybackground=_FIELD_BG,
-    )
-    entry.pack(side="left", padx=(6, 6), ipady=2)
-    edit_button = tk.Button(
-        row,
-        text="Edit",
-        font=("Arial", 12, "bold"),
-        bg=_ACCENT,
-        fg="#003322",
-        activebackground="#00cc66",
-        cursor="hand2",
-        command=on_edit_or_save_budget,
-    )
-    edit_button.pack(side="left")
-    status_label = tk.Label(
-        parent,
-        textvariable=vars_.budget_status,
-        font=("Arial", 11),
-        bg=BG,
-        fg=FG,
-    )
-    status_label.pack(pady=(0, 4))
-    return entry, edit_button, status_label
-
-
-def _build_month_nav(
-    parent: tk.Frame,
-    vars_: CalendarVars,
-    callbacks: CalendarCallbacks,
-) -> None:
-    """Build the prev/month-label/next header row."""
-    row = tk.Frame(parent, bg=BG)
-    row.pack(pady=(4, 2))
-    tk.Button(
-        row,
-        text="◀",
-        font=("Arial", 12, "bold"),
-        bg=_FIELD_BG,
-        fg=FG,
-        command=callbacks.on_prev_month,
-        cursor="hand2",
-    ).pack(side="left", padx=4)
-    tk.Label(
-        row,
-        textvariable=vars_.month_label,
-        font=("Arial", 14, "bold"),
-        bg=BG,
-        fg=FG,
-        width=16,
-        justify="center",
-    ).pack(side="left")
-    tk.Button(
-        row,
-        text="▶",
-        font=("Arial", 12, "bold"),
-        bg=_FIELD_BG,
-        fg=FG,
-        command=callbacks.on_next_month,
-        cursor="hand2",
-    ).pack(side="left", padx=4)
-
-
-def _build_grid(parent: tk.Frame) -> list[tk.Label]:
-    """Build the fixed 6x7 day-cell grid and return the flat cell list."""
-    weekday_row = tk.Frame(parent, bg=BG)
-    weekday_row.pack()
-    for col, label in enumerate(_WEEKDAY_LABELS):
-        tk.Label(
-            weekday_row,
-            text=label,
-            font=("Arial", 10, "bold"),
-            bg=BG,
-            fg=_MUTED,
-            width=4,
-        ).grid(row=0, column=col, padx=1)
-
-    grid_frame = tk.Frame(parent, bg=BG)
-    grid_frame.pack(pady=(2, 4))
-    day_cells: list[tk.Label] = []
-    for row in range(_MONTH_ROWS):
-        for col in range(7):
-            cell = tk.Label(
-                grid_frame,
-                text="",
-                font=("Arial", 11),
-                width=4,
-                height=2,
-                bg=BG,
-                fg=FG,
-                highlightthickness=2,
-                highlightbackground=BG,
-            )
-            cell.grid(row=row, column=col, padx=1, pady=1)
-            day_cells.append(cell)
-    return day_cells
-
-
-def build_calendar_frame(
-    root: tk.Misc,
-    vars_: CalendarVars,
-    callbacks: CalendarCallbacks,
-) -> CalendarWidgets:
-    """Lay out the History tab and return the widgets the controller drives."""
-    frame = tk.Frame(root, bg=BG)
-    tk.Label(
-        frame,
-        text="📅  History",
-        font=("Arial", 22, "bold"),
-        bg=BG,
-        fg=_ACCENT,
-    ).pack(pady=(10, 0))
-
-    budget_entry, budget_edit_button, budget_status_label = _build_budget_row(
-        frame,
-        vars_,
-        callbacks.on_edit_or_save_budget,
-    )
-    _build_month_nav(frame, vars_, callbacks)
-    day_cells = _build_grid(frame)
-
-    tk.Label(
-        frame,
-        textvariable=vars_.streaks,
-        font=("Arial", 13, "bold"),
-        bg=BG,
-        fg=FG,
-    ).pack(pady=(6, 0))
-    tk.Label(
-        frame,
-        textvariable=vars_.ytd,
-        font=("Arial", 12),
-        bg=BG,
-        fg=_MUTED,
-    ).pack(pady=(2, 8))
-
-    return CalendarWidgets(
-        frame=frame,
-        day_cells=day_cells,
-        budget_entry=budget_entry,
-        budget_edit_button=budget_edit_button,
-        budget_status_label=budget_status_label,
-    )
+__all__ = [
+    "CalendarCallbacks",
+    "CalendarVars",
+    "CalendarWidgets",
+    "_GateCalendar",
+    "build_calendar_frame",
+    "make_calendar_vars",
+]
 
 
 class _GateCalendar(_GateMealFlow):
@@ -292,40 +74,46 @@ class _GateCalendar(_GateMealFlow):
 
     _cal_vars: CalendarVars
     _cal_widgets: CalendarWidgets
+    _cal_surfaces: list[CalendarWidgets]
     _cal_year: int
     _cal_month: int
     _cal_editing_budget: bool
     _notebook: ttk.Notebook
 
-    def _build_tabs(self, callbacks: GateCallbacks) -> GateWidgets:
-        """Build the ttk.Notebook, wire both tabs, and return the meal widgets.
+    def _build_tabs(self, parent: tk.Misc, callbacks: GateCallbacks) -> GateWidgets:
+        """Build one monitor's notebook, wire both tabs, return its meal widgets.
 
-        The controller stores the returned bundle as ``self._widgets`` exactly
-        as it did with the bare ``build_layout`` result before this tab
-        existed; the calendar's own vars/widgets are stashed on self.
+        Called once per live output since gatelock v0.2.0. Every copy shares
+        one set of ``GateVars``, so the meal form stays in step across
+        monitors; the calendar tab is read-only apart from the budget field,
+        which is likewise variable-backed.
+
+        The History tab's own widgets are stashed per surface so the refresh
+        pass can repaint every monitor's grid.
         """
         today = now_local().date()
         self._cal_year = today.year
         self._cal_month = today.month
         self._cal_editing_budget = False
-        self._notebook = ttk.Notebook(self.root)
-        self._notebook.place(relx=0, rely=0, relwidth=1, relheight=1)
+        _style_notebook(parent)
+        notebook = ttk.Notebook(parent)
+        notebook.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self._notebook = notebook
 
         widgets = build_layout(
-            self._notebook, self._vars, callbacks, demo_mode=self.demo_mode
+            notebook, self._vars, callbacks, demo_mode=self.demo_mode
         )
-        self._notebook.add(widgets.frame, text="Log Meal")
+        notebook.add(widgets.frame, text="Log Meal")
 
-        self._cal_vars = make_calendar_vars(self.root)
         cal_callbacks = CalendarCallbacks(
             on_prev_month=self._on_prev_month,
             on_next_month=self._on_next_month,
             on_edit_or_save_budget=self._on_edit_or_save_budget,
         )
-        self._cal_widgets = build_calendar_frame(
-            self._notebook, self._cal_vars, cal_callbacks
-        )
-        self._notebook.add(self._cal_widgets.frame, text="History")
+        cal_widgets = build_calendar_frame(notebook, self._cal_vars, cal_callbacks)
+        notebook.add(cal_widgets.frame, text="History")
+        self._cal_surfaces.append(cal_widgets)
+        self._cal_widgets = cal_widgets
         return widgets
 
     # -- refresh --------------------------------------------------------------
@@ -364,31 +152,29 @@ class _GateCalendar(_GateMealFlow):
         self._cal_vars.month_label.set(
             f"{calendar.month_name[self._cal_month]} {self._cal_year}",
         )
-        cells = self._cal_widgets.day_cells
-        for index, cell_widget in enumerate(cells):
-            row, col = divmod(index, 7)
-            spec = weeks[row][col] if row < len(weeks) else CalendarCell(None, None)
-            bg, fg, outline = cell_style(spec.status)
-            cell_widget.config(
-                text=str(spec.day) if spec.day else "",
-                bg=bg,
-                fg=fg,
-                highlightbackground=outline,
-            )
+        for surface in self._cal_surfaces:
+            for index, cell_widget in enumerate(surface.day_cells):
+                row, col = divmod(index, 7)
+                spec = weeks[row][col] if row < len(weeks) else CalendarCell(None, None)
+                bg, fg, outline = cell_style(spec.status)
+                with contextlib.suppress(tk.TclError):
+                    cell_widget.config(
+                        text=str(spec.day) if spec.day else "",
+                        bg=bg,
+                        fg=fg,
+                        highlightbackground=outline,
+                    )
 
     def _refresh_budget_field(self, budget: int | None) -> None:
         """Show ``budget`` in the (read-only) entry, or leave it blank if unset.
 
-        Temporarily switches to the "normal" Tk state to mutate the text --
-        a real ``readonly`` Entry rejects ``.insert``/``.delete`` the same
-        as direct typing -- then restores read-only.
+        The text goes through the shared variable rather than the widget,
+        which sidesteps the old dance of flipping to "normal" to mutate it:
+        a ``readonly`` Entry rejects ``.insert``/``.delete`` but still
+        follows its ``textvariable``.
         """
-        entry = self._cal_widgets.budget_entry
-        entry.config(state="normal")
-        entry.delete(0, tk.END)
-        if budget is not None:
-            entry.insert(0, str(budget))
-        entry.config(state="readonly")
+        self._cal_vars.budget.set("" if budget is None else str(budget))
+        self._set_budget_entry_state("readonly")
 
     # -- month navigation -------------------------------------------------------
 
@@ -410,10 +196,25 @@ class _GateCalendar(_GateMealFlow):
 
     # -- budget editing -----------------------------------------------------
 
+    def _set_budget_entry_state(self, state: str) -> None:
+        """Lock or unlock the budget entry on every monitor."""
+        for surface in self._cal_surfaces:
+            with contextlib.suppress(tk.TclError):
+                surface.budget_entry.config(state=state)
+
+    def _set_budget_button_text(self, text: str) -> None:
+        """Relabel the budget edit/save button on every monitor."""
+        for surface in self._cal_surfaces:
+            with contextlib.suppress(tk.TclError):
+                surface.budget_edit_button.config(text=text)
+
     def _set_budget_status(self, text: str, *, error: bool) -> None:
         """Update the budget-edit status line, red for errors."""
         self._cal_vars.budget_status.set(text)
-        self._cal_widgets.budget_status_label.config(fg=ERR if error else FG)
+        colour = ERR if error else FG
+        for surface in self._cal_surfaces:
+            with contextlib.suppress(tk.TclError):
+                surface.budget_status_label.config(fg=colour)
 
     def _on_edit_or_save_budget(self) -> None:
         """Toggle the budget row between read-only display and editing.
@@ -426,14 +227,14 @@ class _GateCalendar(_GateMealFlow):
         """
         if not self._cal_editing_budget:
             self._cal_editing_budget = True
-            self._cal_widgets.budget_entry.config(state="normal")
-            self._cal_widgets.budget_edit_button.config(text="Save")
+            self._set_budget_entry_state("normal")
+            self._set_budget_button_text("Save")
             self._set_budget_status("", error=False)
             return
         if not self._save_budget_entry():
             return
         self._cal_editing_budget = False
-        self._cal_widgets.budget_edit_button.config(text="Edit")
+        self._set_budget_button_text("Edit")
         self._refresh_calendar()
         self._refresh_dashboard()
         self._refresh_projection()
@@ -448,7 +249,7 @@ class _GateCalendar(_GateMealFlow):
         Returns:
             Whether the value was valid and persisted.
         """
-        raw = self._cal_widgets.budget_entry.get().strip()
+        raw = self._cal_vars.budget.get().strip()
         try:
             value = int(raw)
         except ValueError:

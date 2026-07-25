@@ -235,10 +235,26 @@ class TestLockDelegation:
     """MealGate's gatelock wiring: hooks delegate, run()/close() delegate."""
 
     def test_on_focus_ready_focuses_desc_text(self, gate: MealGate) -> None:
-        """on_focus_ready puts keyboard focus on the description box."""
-        gate._widgets.desc_text.focus_force = MagicMock()
-        gate.on_focus_ready()
-        gate._widgets.desc_text.focus_force.assert_called_once()
+        """on_focus_ready puts keyboard focus on the description box.
+
+        ``desc_text`` is a group built fresh on each access now, so the
+        assertion has to bind to the widget underneath it.
+        """
+        widget = gate._widgets.bundles[0].desc_text
+        widget.focus_force = MagicMock()
+
+        gate.on_focus_ready(MagicMock())
+
+        widget.focus_force.assert_called_once()
+
+    def test_on_focus_ready_with_no_live_output(self, gate: MealGate) -> None:
+        """No surface at all: the gate is held with nothing to focus."""
+        widget = gate._widgets.bundles[0].desc_text
+        widget.focus_force = MagicMock()
+
+        gate.on_focus_ready(None)
+
+        widget.focus_force.assert_not_called()
 
     def test_on_close_is_a_noop(self, gate: MealGate) -> None:
         """on_close has no hardware/state to release; must not raise."""

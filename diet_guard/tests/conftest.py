@@ -25,11 +25,14 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+from gatelock import Output, OutputRect
 import pytest
 
 from diet_guard import (
     _gatelock,
+    _gatelock_buttons,
     _gatelock_calendar,
+    _gatelock_calendar_ui,
     _gatelock_core,
     _gatelock_mealflow,
     _gatelock_nutrition,
@@ -78,6 +81,57 @@ def _block_real_tk() -> Iterator[None]:
         patch("diet_guard._gatelock.tk", MagicMock()),
         patch("diet_guard._gatelock.GateRoot", MagicMock()),
     ):
+        yield
+
+
+FAKE_OUTPUTS = (
+    Output("DP-0", connected=True, rect=OutputRect(0, 0, 1920, 1080), primary=True),
+)
+"""One live output by default, so the Tk-screen fallback (which would call
+int() on a MagicMock) is never reached."""
+
+TWO_OUTPUTS = (
+    Output("DP-0", connected=True, rect=OutputRect(0, 0, 3840, 2160), primary=True),
+    Output("HDMI-0", connected=True, rect=OutputRect(3840, 0, 2560, 1440)),
+)
+"""The real desk. Opt in with ``dual_output`` for anything asserting that the
+gate is really built on every monitor."""
+
+
+def _make_toplevel(_parent: object = None, **_kwargs: object) -> MagicMock:
+    """A Toplevel stand-in for gatelock's per-output surfaces."""
+    window = MagicMock()
+    window.winfo_children.return_value = []
+    return window
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_gatelock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[None]:
+    """Keep gatelock v0.2.0's per-output machinery off the real machine.
+
+    ``_block_real_tk`` patches ``tk`` inside *diet_guard*, which is no longer
+    enough: ``LockWindow.setup()`` builds one real ``tk.Toplevel`` per live
+    output through *gatelock's* own ``tk``. Over a MagicMock root that sends
+    real tkinter into unbounded mock recursion, so the suite **hangs** rather
+    than failing. The runtime dir is redirected too, so no test can stand a
+    production locker down through the arbiter.
+    """
+    monkeypatch.setenv("GATELOCK_RUNTIME_DIR", str(tmp_path / "gatelock-runtime"))
+    with (
+        patch("gatelock._surfaces.tk.Toplevel", side_effect=_make_toplevel),
+        patch("gatelock._outputs.RandrBackend.create", return_value=None),
+        patch("gatelock._outputs.scan_xrandr", return_value=FAKE_OUTPUTS),
+        patch("gatelock._detect._RandrEventSource.start", return_value=False),
+    ):
+        yield
+
+
+@pytest.fixture
+def dual_output(_hermetic_gatelock: None) -> Iterator[None]:
+    """Re-scan as a two-monitor desk, layered over the single-output default."""
+    with patch("gatelock._outputs.scan_xrandr", return_value=TWO_OUTPUTS):
         yield
 
 
@@ -268,6 +322,23 @@ class FakeNotebook(FakeWidget):
         return None
 
 
+class FakeStyle:
+    """A no-op stand-in for ``ttk.Style`` -- records calls, applies nothing."""
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        self.theme: str | None = None
+        self.configured: dict[str, dict[str, object]] = {}
+
+    def theme_use(self, theme_name: str) -> None:
+        self.theme = theme_name
+
+    def configure(self, style_name: str, **kwargs: object) -> None:
+        self.configured.setdefault(style_name, {}).update(kwargs)
+
+    def map(self, style_name: str, **kwargs: object) -> None:
+        self.configured.setdefault(style_name, {}).update(kwargs)
+
+
 _FAKE_TK = SimpleNamespace(
     END="end",
     TclError=_FakeTclError,
@@ -282,14 +353,16 @@ _FAKE_TK = SimpleNamespace(
     Event=object,
 )
 
-_FAKE_TTK = SimpleNamespace(Notebook=FakeNotebook)
+_FAKE_TTK = SimpleNamespace(Notebook=FakeNotebook, Style=FakeStyle)
 
 # Every mixin module the gate window is built from imports ``tkinter``
 # independently; all of them must see the fake so ``tk.TclError`` etc. are the
 # catchable ``_FakeTclError`` everywhere a test raises it.
 _GATE_TK_MODULES = (
     _gatelock,
+    _gatelock_buttons,
     _gatelock_calendar,
+    _gatelock_calendar_ui,
     _gatelock_core,
     _gatelock_nutrition,
     _gatelock_mealflow,
@@ -304,6 +377,7 @@ def gate() -> Iterator[MealGate]:
         for module in _GATE_TK_MODULES:
             stack.enter_context(patch.object(module, "tk", _FAKE_TK))
         stack.enter_context(patch.object(_gatelock_calendar, "ttk", _FAKE_TTK))
+        stack.enter_context(patch.object(_gatelock_calendar_ui, "ttk", _FAKE_TTK))
         yield MealGate(demo_mode=True)
 
 

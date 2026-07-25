@@ -12,6 +12,7 @@ from diet_guard._calendar_view import (
     ytd_text,
 )
 from diet_guard._daystatus import DayStatus
+from diet_guard._gatelock_ui import BG, FG
 
 
 class TestBuildMonthCells:
@@ -84,9 +85,13 @@ class TestCellStyle:
         bg, _fg, outline = cell_style(None)
         assert bg == outline
 
-    def test_not_logged_is_black_with_a_visible_outline(self) -> None:
+    def test_not_logged_is_hollow_with_a_visible_outline(self) -> None:
+        """A "not logged" cell blends into the background but keeps a
+        near-white outline, distinguishing "no data" from a black square
+        (safe-design-rules rule 1: no pure black)."""
         bg, _fg, outline = cell_style(DayStatus.NOT_LOGGED)
-        assert bg == "#000000"
+        assert bg == BG
+        assert outline == FG
         assert outline != bg
 
     def test_green_yellow_red_each_style_distinctly(self) -> None:

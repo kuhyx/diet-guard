@@ -49,7 +49,7 @@ class TestNoBypassRegression:
         pending_before = list(gate._pending)
         with patch.object(gate, "close") as mock_close:
             gate._notebook.select(gate._cal_widgets.frame)
-            gate._notebook.select(gate._widgets.frame)
+            gate._notebook.select(gate._widgets.bundles[0].frame)
         assert gate._notebook.select() == 0
         assert gate._pending == pending_before
         mock_close.assert_not_called()
@@ -68,7 +68,7 @@ class TestBudgetDefaultAndDegradation:
 
     def test_no_budget_set_shows_2200_in_the_entry(self, gate: MealGate) -> None:
         gate._refresh_calendar()
-        assert gate._cal_widgets.budget_entry.get() == "2200"
+        assert gate._cal_vars.budget.get() == "2200"
 
     def test_entry_starts_read_only(self, gate: MealGate) -> None:
         assert gate._cal_widgets.budget_entry.configured.get("state") == "readonly"
@@ -88,7 +88,7 @@ class TestBudgetDefaultAndDegradation:
         write_budget(1800)
         log_meal("oatmeal", _nutrition(kcal=300), None)
         gate._refresh_calendar()
-        assert gate._cal_widgets.budget_entry.get() == "1800"
+        assert gate._cal_vars.budget.get() == "1800"
         assert "Logging streak" in gate._cal_vars.streaks.get()
 
     def test_a_corrupt_budget_file_degrades_with_an_error_message(
@@ -129,9 +129,13 @@ class TestBudgetEditToggle:
     """Edit/Save toggle: first click unlocks, second click validates+saves."""
 
     def _type(self, gate: MealGate, value: str) -> None:
-        """Replace the budget entry's text (as if the user retyped it)."""
-        gate._cal_widgets.budget_entry.delete(0, "end")
-        gate._cal_widgets.budget_entry.insert(0, value)
+        """Replace the budget entry's text (as if the user retyped it).
+
+        The entry is variable-backed since the per-output migration, so
+        typing is modelled by setting the shared variable -- which is also
+        what makes the field agree across monitors.
+        """
+        gate._cal_vars.budget.set(value)
 
     def test_first_click_unlocks_editing_without_persisting(
         self,
@@ -205,4 +209,4 @@ class TestBudgetEditToggle:
         gate._on_edit_or_save_budget()
         self._type(gate, "1234")
         gate._on_prev_month()
-        assert gate._cal_widgets.budget_entry.get() == "1234"
+        assert gate._cal_vars.budget.get() == "1234"

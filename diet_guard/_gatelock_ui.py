@@ -16,20 +16,45 @@ controller internals ever cross the module boundary.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import tkinter as tk
 from typing import TYPE_CHECKING
+
+from gatelock import LockConfig
+
+from diet_guard._gatelock_buttons import make_button
+from diet_guard._gatelock_spacing import MD, SM, XS
+from diet_guard._gatelock_typography import (
+    BODY,
+    CAPTION,
+    DISPLAY,
+    LABEL,
+    SUBTITLE,
+    TITLE,
+)
+from diet_guard._gatelock_ui_types import (
+    GateCallbacks,
+    GateEntryVars,
+    GateVars,
+    GateWidgets,
+    _MacroEntries,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-# Palette (mirrors the screen locker's dark, high-contrast lock aesthetic).
-BG = "#1a1a1a"
-FG = "#e0e0e0"
-_ACCENT = "#00ff88"
-ERR = "#ff6666"
-_FIELD_BG = "#2a2a2a"
-_MUTED = "#9a9a9a"
+# Palette: sourced from the shared gatelock LockConfig (unified-design-system)
+# instead of locally-invented hex literals -- see DESIGN_AUDIT_TODO.md. BG/FG/
+# ERR stay as re-exports since _gatelock_mealflow and _gatelock_calendar
+# already import them by name; they now track LockConfig instead of a
+# separate, driftable copy.
+_COLORS = LockConfig()
+BG = _COLORS.bg
+FG = _COLORS.fg
+ERR = _COLORS.danger
+_ACCENT = _COLORS.accent
+_FIELD_BG = _COLORS.field_bg
+_MUTED = _COLORS.muted
+_FONT = _COLORS.font_family
 # Number of food-bank / staple / OFF suggestions shown in the picker list.
 SUGGESTION_ROWS = 5
 # Grams a label's macros are assumed to describe when the "per" field is blank.
@@ -42,59 +67,18 @@ BASIS_PREFIX_GRAMS = "Nutrition as on the label — per"
 BASIS_PREFIX_ITEMS = "Nutrition per 1 item ≈"
 
 
-@dataclass
-class _MacroEntries:
-    """The four macro entry widgets, in (kcal, protein, carbs, fat) order."""
-
-    kcal: tk.Entry
-    protein: tk.Entry
-    carbs: tk.Entry
-    fat: tk.Entry
-
-
-@dataclass
-class GateVars:
-    """Tk string variables bound to the gate's live, auto-updating fields."""
-
-    status: tk.StringVar
-    slot_header: tk.StringVar
-    preview: tk.StringVar
-    projection: tk.StringVar
-    cal_headline: tk.StringVar
-    dashboard: tk.StringVar
-    meal_summary: tk.StringVar
-    unit: tk.StringVar
-
-
-@dataclass
-class GateWidgets:
-    """Interactive widgets the controller reads back after the UI is built."""
-
-    frame: tk.Frame
-    desc_text: tk.Text
-    amount_entry: tk.Entry
-    per_entry: tk.Entry
-    basis_prefix: tk.Label
-    macros: _MacroEntries
-    suggestion_box: tk.Listbox
-    meal_name_entry: tk.Entry
-    status_label: tk.Label
-
-
-@dataclass
-class GateCallbacks:
-    """Construction-time commands the widgets fire (not key/event bindings).
-
-    These are the callbacks that must be supplied when a widget is created --
-    option-menu and button commands.  Per-keystroke event bindings are wired by
-    the controller after the layout is built, so they are not carried here.
-    """
-
-    on_unit_change: Callable[[str], None]
-    on_submit: Callable[[], None]
-    on_close: Callable[[], None]
-    on_add_item: Callable[[], None]
-    on_fetch_sync: Callable[[], None]
+__all__ = [
+    "DEFAULT_PER_GRAMS",
+    "UNIT_GRAMS",
+    "GateCallbacks",
+    "GateEntryVars",
+    "GateVars",
+    "GateWidgets",
+    "_MacroEntries",
+    "build_layout",
+    "is_numeric_or_blank",
+    "make_vars",
+]
 
 
 def make_vars(root: tk.Misc) -> GateVars:
@@ -108,6 +92,15 @@ def make_vars(root: tk.Misc) -> GateVars:
         dashboard=tk.StringVar(master=root, value=""),
         meal_summary=tk.StringVar(master=root, value=""),
         unit=tk.StringVar(master=root, value=UNIT_GRAMS),
+        entries=GateEntryVars(
+            amount=tk.StringVar(master=root, value=""),
+            per=tk.StringVar(master=root, value=f"{DEFAULT_PER_GRAMS:g}"),
+            meal_name=tk.StringVar(master=root, value=""),
+            kcal=tk.StringVar(master=root, value=""),
+            protein=tk.StringVar(master=root, value=""),
+            carbs=tk.StringVar(master=root, value=""),
+            fat=tk.StringVar(master=root, value=""),
+        ),
     )
 
 
@@ -122,12 +115,15 @@ def is_numeric_or_blank(proposed: str) -> bool:
     return True
 
 
-def _numeric_entry(root: tk.Misc, parent: tk.Frame, *, width: int) -> tk.Entry:
+def _numeric_entry(
+    root: tk.Misc, parent: tk.Frame, *, width: int, variable: tk.StringVar
+) -> tk.Entry:
     """Return an entry that only accepts a number or a blank string."""
     vcmd = (root.register(is_numeric_or_blank), "%P")
     return tk.Entry(
         parent,
-        font=("Arial", 15),
+        textvariable=variable,
+        font=(_FONT, BODY),
         width=width,
         bg=_FIELD_BG,
         fg=FG,
@@ -138,13 +134,15 @@ def _numeric_entry(root: tk.Misc, parent: tk.Frame, *, width: int) -> tk.Entry:
     )
 
 
-def _macro_cell(root: tk.Misc, row: tk.Frame, label: str) -> tk.Entry:
+def _macro_cell(
+    root: tk.Misc, row: tk.Frame, label: str, variable: tk.StringVar
+) -> tk.Entry:
     """Pack one small labelled numeric entry into the macro row."""
     cell = tk.Frame(row, bg=BG)
-    cell.pack(side="left", padx=6)
-    tk.Label(cell, text=label, font=("Arial", 11), bg=BG, fg=FG).pack()
-    entry = _numeric_entry(root, cell, width=7)
-    entry.pack(ipady=3)
+    cell.pack(side="left", padx=SM)
+    tk.Label(cell, text=label, font=(_FONT, CAPTION), bg=BG, fg=FG).pack()
+    entry = _numeric_entry(root, cell, width=7, variable=variable)
+    entry.pack(ipady=XS)
     return entry
 
 
@@ -158,13 +156,13 @@ def _build_desc(parent: tk.Frame) -> tk.Text:
     tk.Label(
         parent,
         text="What did you eat?",
-        font=("Arial", 12),
+        font=(_FONT, LABEL),
         bg=BG,
         fg=FG,
     ).pack()
     text = tk.Text(
         parent,
-        font=("Arial", 15),
+        font=(_FONT, BODY),
         width=64,
         height=2,
         wrap="word",
@@ -174,7 +172,7 @@ def _build_desc(parent: tk.Frame) -> tk.Text:
         highlightthickness=1,
         highlightbackground=_MUTED,
     )
-    text.pack(pady=(2, 6))
+    text.pack(pady=(XS, SM))
     return text
 
 
@@ -182,59 +180,60 @@ def _build_suggestion_box(parent: tk.Frame) -> tk.Listbox:
     """Build the food-bank / staple / OFF picker list and return it."""
     box = tk.Listbox(
         parent,
-        font=("Arial", 12),
+        font=(_FONT, BODY),
         width=52,
         height=SUGGESTION_ROWS,
         bg=_FIELD_BG,
         fg=FG,
         selectbackground=_ACCENT,
-        selectforeground="#003322",
+        selectforeground=_COLORS.on_fill,
         activestyle="none",
         highlightthickness=0,
     )
-    box.pack(pady=(0, 8))
+    box.pack(pady=(0, SM))
     return box
 
 
 def _build_amount_row(
     root: tk.Misc,
     parent: tk.Frame,
-    unit_var: tk.StringVar,
+    vars_: GateVars,
     on_unit_change: Callable[[str], None],
 ) -> tk.Entry:
     """Build the "how much did you eat?" amount + unit row; return the entry."""
     tk.Label(
         parent,
         text="How much did you eat?",
-        font=("Arial", 12),
+        font=(_FONT, LABEL),
         bg=BG,
         fg=FG,
     ).pack()
     row = tk.Frame(parent, bg=BG)
-    row.pack(pady=(2, 6))
-    amount_entry = _numeric_entry(root, row, width=10)
-    amount_entry.pack(side="left", ipady=3)
+    row.pack(pady=(XS, SM))
+    amount_entry = _numeric_entry(root, row, width=10, variable=vars_.entries.amount)
+    amount_entry.pack(side="left", ipady=XS)
     unit_menu = tk.OptionMenu(
         row,
-        unit_var,
+        vars_.unit,
         UNIT_GRAMS,
         UNIT_ITEMS,
         command=on_unit_change,
     )
     unit_menu.configure(
-        font=("Arial", 12),
+        font=(_FONT, LABEL),
         bg=_FIELD_BG,
         fg=FG,
         activebackground=_ACCENT,
         highlightthickness=0,
     )
-    unit_menu.pack(side="left", padx=(8, 0))
+    unit_menu.pack(side="left", padx=(SM, 0))
     return amount_entry
 
 
 def _build_macro_section(
     root: tk.Misc,
     parent: tk.Frame,
+    vars_: GateVars,
 ) -> tuple[tk.Label, tk.Entry, _MacroEntries]:
     """Build the per-basis field and macro row.
 
@@ -246,29 +245,28 @@ def _build_macro_section(
     basis_prefix = tk.Label(
         basis,
         text=BASIS_PREFIX_GRAMS,
-        font=("Arial", 12),
+        font=(_FONT, LABEL),
         bg=BG,
         fg=FG,
     )
     basis_prefix.pack(side="left")
-    per_entry = _numeric_entry(root, basis, width=5)
-    per_entry.insert(0, f"{DEFAULT_PER_GRAMS:g}")
-    per_entry.pack(side="left", padx=4, ipady=2)
+    per_entry = _numeric_entry(root, basis, width=5, variable=vars_.entries.per)
+    per_entry.pack(side="left", padx=XS, ipady=XS)
     tk.Label(
         basis,
         text="g  (leave calories blank to look it up):",
-        font=("Arial", 12),
+        font=(_FONT, LABEL),
         bg=BG,
         fg=FG,
     ).pack(side="left")
 
     row = tk.Frame(parent, bg=BG)
-    row.pack(pady=(2, 6))
+    row.pack(pady=(XS, SM))
     macros = _MacroEntries(
-        kcal=_macro_cell(root, row, "kcal"),
-        protein=_macro_cell(root, row, "P"),
-        carbs=_macro_cell(root, row, "C"),
-        fat=_macro_cell(root, row, "F"),
+        kcal=_macro_cell(root, row, "kcal", vars_.entries.kcal),
+        protein=_macro_cell(root, row, "P", vars_.entries.protein),
+        carbs=_macro_cell(root, row, "C", vars_.entries.carbs),
+        fat=_macro_cell(root, row, "F", vars_.entries.fat),
     )
     return basis_prefix, per_entry, macros
 
@@ -282,20 +280,20 @@ def _build_dashboard(parent: tk.Frame, vars_: GateVars) -> None:
     tk.Label(
         parent,
         textvariable=vars_.cal_headline,
-        font=("Arial", 22, "bold"),
+        font=(_FONT, TITLE, "bold"),
         bg=BG,
         fg=_ACCENT,
-    ).pack(pady=(12, 0))
+    ).pack(pady=(MD, 0))
     tk.Label(
         parent,
         textvariable=vars_.dashboard,
-        font=("Courier", 11),
+        font=("Courier", CAPTION),
         bg=BG,
         fg=_MUTED,
         justify="left",
         anchor="w",
         wraplength=900,
-    ).pack(pady=(2, 0))
+    ).pack(pady=(XS, 0))
 
 
 def _build_meal_controls(
@@ -311,42 +309,39 @@ def _build_meal_controls(
     form for the next one; "Log & Continue" then logs the summed meal.
     """
     row = tk.Frame(parent, bg=BG)
-    row.pack(pady=(2, 2))
+    row.pack(pady=(XS, XS))
     tk.Label(
         row,
         text="Meal name (optional):",
-        font=("Arial", 11),
+        font=(_FONT, LABEL),
         bg=BG,
         fg=FG,
     ).pack(side="left")
     meal_name_entry = tk.Entry(
         row,
-        font=("Arial", 13),
+        textvariable=vars_.entries.meal_name,
+        font=(_FONT, BODY),
         width=18,
         bg=_FIELD_BG,
         fg=FG,
         insertbackground=FG,
     )
-    meal_name_entry.pack(side="left", padx=(6, 8), ipady=2)
-    tk.Button(
+    meal_name_entry.pack(side="left", padx=(SM, SM), ipady=XS)
+    make_button(
         row,
         text="+ Add item",
-        font=("Arial", 12, "bold"),
-        bg=_FIELD_BG,
-        fg=_ACCENT,
-        activebackground="#333333",
-        cursor="hand2",
+        variant="secondary",
         command=on_add_item,
     ).pack(side="left")
     tk.Label(
         parent,
         textvariable=vars_.meal_summary,
-        font=("Arial", 11),
+        font=(_FONT, LABEL),
         bg=BG,
         fg=_MUTED,
         wraplength=900,
         justify="center",
-    ).pack(pady=(0, 2))
+    ).pack(pady=(0, XS))
     return meal_name_entry
 
 
@@ -368,79 +363,72 @@ def build_layout(
     tk.Label(
         frame,
         text="🍽  Diet Gate",
-        font=("Arial", 30, "bold"),
+        font=(_FONT, DISPLAY, "bold"),
         bg=BG,
         fg=_ACCENT,
-    ).pack(pady=(0, 4))
+    ).pack(pady=(0, XS))
     tk.Label(
         frame,
         textvariable=vars_.slot_header,
-        font=("Arial", 16, "bold"),
+        font=(_FONT, SUBTITLE, "bold"),
         bg=BG,
         fg=FG,
         wraplength=900,
         justify="center",
-    ).pack(pady=(0, 10))
+    ).pack(pady=(0, MD))
 
     desc_text = _build_desc(frame)
     suggestion_box = _build_suggestion_box(frame)
     amount_entry = _build_amount_row(
         root,
         frame,
-        vars_.unit,
+        vars_,
         callbacks.on_unit_change,
     )
-    basis_prefix, per_entry, macros = _build_macro_section(root, frame)
+    basis_prefix, per_entry, macros = _build_macro_section(root, frame, vars_)
 
     tk.Label(
         frame,
         textvariable=vars_.projection,
-        font=("Arial", 13, "bold"),
+        font=(_FONT, LABEL, "bold"),
         bg=BG,
         fg=FG,
         wraplength=900,
         justify="center",
-    ).pack(pady=(2, 2))
+    ).pack(pady=(XS, XS))
     tk.Label(
         frame,
         textvariable=vars_.preview,
-        font=("Arial", 14, "bold"),
+        font=(_FONT, BODY, "bold"),
         bg=BG,
         fg=_ACCENT,
         wraplength=900,
         justify="center",
-    ).pack(pady=(2, 6))
+    ).pack(pady=(XS, SM))
 
     meal_name_entry = _build_meal_controls(frame, vars_, callbacks.on_add_item)
 
-    tk.Button(
+    make_button(
         frame,
         text="Log & Continue",
-        font=("Arial", 15, "bold"),
-        bg=_ACCENT,
-        fg="#003322",
-        activebackground="#00cc66",
-        cursor="hand2",
+        variant="primary",
         command=callbacks.on_submit,
-    ).pack(pady=(4, 6))
+    ).pack(pady=(XS, SM))
 
     # Manual pull for a meal already logged on another device (the phone) but
     # not yet propagated to this machine -- saves re-typing it to unlock.
-    tk.Button(
+    make_button(
         frame,
         text="⟳ Fetch from sync",
-        font=("Arial", 12),
-        bg="#334455",
-        fg="white",
-        activebackground="#445566",
-        cursor="hand2",
+        variant="secondary",
         command=callbacks.on_fetch_sync,
-    ).pack(pady=(0, 6))
+        bold=False,
+    ).pack(pady=(0, SM))
 
     status_label = tk.Label(
         frame,
         textvariable=vars_.status,
-        font=("Arial", 12),
+        font=(_FONT, LABEL),
         bg=BG,
         fg=FG,
         wraplength=900,
@@ -451,14 +439,12 @@ def build_layout(
     _build_dashboard(frame, vars_)
 
     if demo_mode:
-        tk.Button(
+        make_button(
             root,
             text="✕ Close Demo",
-            font=("Arial", 12),
-            bg="#ff4444",
-            fg="white",
+            variant="danger",
             command=callbacks.on_close,
-            cursor="hand2",
+            bold=False,
         ).place(x=10, y=10)
 
     return GateWidgets(

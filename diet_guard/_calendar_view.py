@@ -13,6 +13,8 @@ import calendar
 from dataclasses import dataclass
 from datetime import date
 
+from gatelock import LockConfig
+
 from diet_guard._daystatus import (
     DayStatus,
     adherence_streak,
@@ -22,15 +24,19 @@ from diet_guard._daystatus import (
 from diet_guard._gatelock_ui import BG, FG
 from diet_guard._state import now_local
 
-_NOT_LOGGED_FILL = "#000000"
-_NOT_LOGGED_OUTLINE = "#e0e0e0"
+_COLORS = LockConfig()
+# A "not logged" cell renders hollow -- background-colored fill, near-white
+# outline -- rather than a pure-black square (safe-design-rules rule 1),
+# distinguishing "no data" from "logged and over/under budget" (colored fill).
+_NOT_LOGGED_FILL = BG
+_NOT_LOGGED_OUTLINE = FG
 _STATUS_COLORS = {
-    DayStatus.GREEN: "#33cc66",
-    DayStatus.YELLOW: "#e0c33c",
-    DayStatus.RED: "#ff5555",
+    DayStatus.GREEN: _COLORS.success,
+    DayStatus.YELLOW: _COLORS.warning,
+    DayStatus.RED: _COLORS.danger,
 }
-_STATUS_TEXT_COLOR = "#003322"
-_MUTED = "#9a9a9a"
+_STATUS_TEXT_COLOR = _COLORS.on_fill
+_MUTED = _COLORS.muted
 
 
 @dataclass(frozen=True)

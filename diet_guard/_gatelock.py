@@ -48,14 +48,21 @@ import sys
 import tkinter as tk
 from typing import TYPE_CHECKING
 
-from gatelock import GateRoot, LockConfig, LockWindow
+from gatelock import (
+    RANK_DIET_GUARD,
+    Arbiter,
+    GateRoot,
+    LockConfig,
+    LockWindow,
+    SurfaceInfo,
+)
 
 from diet_guard._constants import GATE_LOCK_FILE
 from diet_guard._gate import due_slots
-from diet_guard._gatelock_calendar import _GateCalendar
+from diet_guard._gatelock_calendar import _GateCalendar, make_calendar_vars
 from diet_guard._gatelock_core import _GateState
+from diet_guard._gatelock_groups import GateWidgetsGroup
 from diet_guard._gatelock_ui import (
-    BG,
     GateCallbacks,
     make_vars,
 )
@@ -144,22 +151,62 @@ class MealGate(_GateCalendar):
         self.root = GateRoot()
         self.root.on_callback_error = self.on_callback_error
         self.root.title("Diet Gate" + (" [DEMO]" if demo_mode else ""))
-        config = LockConfig(mode="soft" if demo_mode else "hard", bg=BG)
-        self._lock = LockWindow(self.root, config, hooks=self)
+        # No bg=/fg=/... overrides here: LockConfig's own defaults already
+        # are the unified-design-system palette, and _gatelock_ui reads the
+        # same LockConfig() rather than a separate hardcoded copy -- see
+        # DESIGN_AUDIT_TODO.md for why an override here previously drifted.
+        config = LockConfig(
+            mode="soft" if demo_mode else "hard",
+            app_name="diet_guard",
+            rank=RANK_DIET_GUARD,
+        )
+        # Published here, then owned by LockWindow, which releases it on
+        # close -- so deliberately not kept as an attribute.
+        arbiter = Arbiter(
+            "diet_guard",
+            RANK_DIET_GUARD,
+            grab=config.resolved_grab(),
+            disable_vt=config.resolved_disable_vt(),
+        )
+        arbiter.publish()
+        arbiter.acquire_holder()
+        self._lock = LockWindow(self.root, config, hooks=self, arbiter=arbiter)
         self._vars = make_vars(self.root)
-        self._build()
-
-    def _build(self) -> None:
-        """Lay out the UI, wire events, seed the first prompt, and grab input."""
-        self._lock.setup()
-        callbacks = GateCallbacks(
+        # Built before setup(), which calls build_surface per live output.
+        self._cal_vars = make_calendar_vars(self.root)
+        self._cal_surfaces = []
+        self._widgets = GateWidgetsGroup(self._vars)
+        self._callbacks = GateCallbacks(
             on_unit_change=self._on_unit_change,
             on_submit=self._on_submit,
             on_close=self.close,
             on_add_item=self._on_add_item,
             on_fetch_sync=self._on_fetch_sync,
         )
-        self._widgets = self._build_tabs(callbacks)
+        self._build()
+
+    def build_surface(self, parent: tk.Misc, surface: SurfaceInfo) -> None:
+        """Lay the whole gate out on one monitor.
+
+        Called once per live output, and again whenever an output comes back.
+        Every copy shares one set of GateVars, so a value typed on any screen
+        is the same value on all of them and logging works from whichever
+        monitor the user is actually looking at.
+        """
+        widgets = self._build_tabs(parent, self._callbacks)
+        self._widgets.add(widgets, surface.output_name)
+        # An output coming back mid-lock gets its bindings too; tk's bind
+        # replaces rather than stacks, so re-wiring the others is a no-op.
+        self._wire_events()
+
+    def teardown_surface(self, surface: SurfaceInfo) -> None:
+        """Forget the copy for an output that went dark."""
+        self._widgets.discard(surface.output_name)
+        self._cal_surfaces = self._cal_surfaces[: len(self._widgets.bundles)]
+
+    def _build(self) -> None:
+        """Lay out the UI, wire events, seed the first prompt, and grab input."""
+        self._lock.setup()
         self._wire_events()
         self._relabel_basis()
         self._refresh_slot_header()
@@ -169,8 +216,14 @@ class MealGate(_GateCalendar):
         self._lock.grab_input()
         self._widgets.desc_text.focus_set()
 
-    def on_focus_ready(self) -> None:
-        """Put keyboard focus on the description entry once it is mapped."""
+    def on_focus_ready(self, surface: SurfaceInfo | None) -> None:
+        """Put keyboard focus on the description entry once it is mapped.
+
+        ``surface`` is None when no output is live -- the gate is held with
+        nothing to show, so there is nothing to focus.
+        """
+        if surface is None:
+            return
         self._widgets.desc_text.focus_force()
 
     def on_close(self) -> None:
