@@ -88,6 +88,19 @@ run_pytest_clean_venv() {
     "$VENV_DIR/bin/python" -m pytest "$@" || fail "pytest (clean requirements.txt venv)"
 }
 
+# Run flutter with the calling git hook's environment stripped.
+#
+# `git push` exports GIT_DIR (and friends) to its hooks, and the flutter tool
+# shells out to git to identify its own SDK. With GIT_DIR set it reads THIS
+# repository instead of /opt/flutter: `flutter --version` then reports our
+# HEAD as the framework revision and our URL as the repository, pub resolves
+# the SDK as `0.0.0-unknown`, every version constraint fails, and the wrong
+# answer is written into flutter's own version cache for the next caller.
+flutter_clean_env() {
+    env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE -u GIT_PREFIX \
+        -u GIT_COMMON_DIR -u GIT_OBJECT_DIRECTORY flutter "$@"
+}
+
 # Gate the Flutter companion app the same way: analyze (pre-commit has no Dart
 # hooks) then the full test suite. Deliberately fails rather than skips when
 # flutter is missing -- a gate that quietly passes on a machine without the
@@ -101,9 +114,9 @@ run_flutter_gates() {
         fail "flutter is not on PATH but app/ exists (cannot verify the app)"
     fi
     log "flutter analyze (app/)"
-    (cd "$APP_DIR" && flutter analyze) || fail "flutter analyze"
+    (cd "$APP_DIR" && flutter_clean_env analyze) || fail "flutter analyze"
     log "flutter test (app/)"
-    (cd "$APP_DIR" && flutter test) || fail "flutter test"
+    (cd "$APP_DIR" && flutter_clean_env test) || fail "flutter test"
 }
 
 main() {
