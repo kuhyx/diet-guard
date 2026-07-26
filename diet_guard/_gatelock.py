@@ -180,7 +180,6 @@ class MealGate(_GateCalendar):
             on_unit_change=self._on_unit_change,
             on_submit=self._on_submit,
             on_close=self.close,
-            on_add_item=self._on_add_item,
             on_fetch_sync=self._on_fetch_sync,
         )
         self._build()

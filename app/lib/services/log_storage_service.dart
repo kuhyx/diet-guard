@@ -106,7 +106,6 @@ class LogStorageService {
     Nutrition nutrition, {
     int? slot,
     List<MealComponent>? components,
-    String? imagePath,
   }) async {
     final now = DateTime.now();
     final entry = FoodEntry(
@@ -121,7 +120,6 @@ class LogStorageService {
       source: nutrition.source,
       slot: slot,
       components: components,
-      imagePath: imagePath,
     );
     final log = await readLog();
     log.putIfAbsent(localDateKey(now), () => []).add(entry);
@@ -230,16 +228,5 @@ class LogStorageService {
   Future<Set<int>> loggedSlotsToday() async {
     final entries = await todayEntries();
     return entries.where((e) => e.slot != null).map((e) => e.slot!).toSet();
-  }
-
-  /// Returns the single most recently logged, non-deleted entry across all
-  /// days, or `null` if nothing has ever been logged.
-  ///
-  /// Backs the "repeat last meal" one-tap action -- deliberately not scoped
-  /// to today or to the currently-due slot, since the point is "log the same
-  /// thing I just ate," which should work identically at any time of day.
-  Future<FoodEntry?> lastLoggedEntry() async {
-    final entries = await allEntriesNewestFirst();
-    return entries.isEmpty ? null : entries.first;
   }
 }

@@ -11,6 +11,10 @@ This is a deliberate design change from the file's previous ``chattr +i``
 seal, which existed specifically to make impulsive "make room" edits
 require a deliberate root step. That friction is gone by design; nothing in
 this module tries to reintroduce it.
+
+Everything here answers "what is the budget *now*".  "What was the budget on
+2026-06-14?" is :mod:`diet_guard._budget_history`, which :func:`write_budget`
+keeps up to date on every edit.
 """
 
 from __future__ import annotations
@@ -20,6 +24,14 @@ from datetime import datetime, timezone
 import json
 import logging
 
+from diet_guard._budget_history import (
+    BudgetSchedule,
+    history_to_json,
+    load_entries,
+    record_budget_change,
+    seed_from_budget,
+    write_raw_history,
+)
 from diet_guard._constants import BUDGET_FILE
 
 _logger = logging.getLogger(__name__)
@@ -135,6 +147,35 @@ def is_initialized() -> bool:
     return BUDGET_FILE.exists()
 
 
+def _seed_history_if_empty(record: dict[str, object] | None) -> None:
+    """Grandfather ``record``'s budget to the epoch if no history exists yet.
+
+    Guards on the history being **empty**, not on the file being absent.  An
+    empty-but-present document is reachable in normal operation -- notably
+    :func:`diet_guard._sync._sync_budget` writing back a merge that carried no
+    ``hist:`` fields (a pre-feature peer) -- and a presence-based guard would
+    then never seed again, leaving a history of only ``{today: <new value>}``
+    so every past day falls through to the *current* budget.  That is exactly
+    the retroactive reclassification this module exists to prevent.
+    """
+    if load_entries():
+        return
+    seeded = seed_from_budget(record)
+    if seeded:
+        write_raw_history(history_to_json(seeded))
+
+
+def current_schedule(*, default: int) -> BudgetSchedule:
+    """Return the budget history as a schedule, seeding it if still empty.
+
+    Lives here rather than in :mod:`diet_guard._budget_history` so the seeding
+    logic sits with the module that owns the value being grandfathered; that
+    also keeps ``_budget_history`` free of any import back into this module.
+    """
+    _seed_history_if_empty(read_raw_record())
+    return BudgetSchedule(load_entries(), default=default)
+
+
 def write_budget(value: int, *, weight_kg: float | None = None) -> None:
     """Write ``value`` as the daily kcal budget, plainly (no seal, no signing).
 
@@ -143,6 +184,17 @@ def write_budget(value: int, *, weight_kg: float | None = None) -> None:
     know *when* this write happened to resolve a last-edit-wins merge
     against another device's write).
 
+    Also the single funnel that maintains the effective-from history (see
+    :mod:`diet_guard._budget_history`), so past days keep being judged
+    against the budget that applied to them.
+
+    The ordering below is load-bearing and must not be rearranged: the
+    *pre-write* record is grandfathered to :data:`EPOCH_DAY` **before** the
+    new value is recorded for today.  Seeding afterwards would leave a
+    history of only ``{today: <new value>}``, which makes every past day
+    resolve to the new value -- precisely the retroactive reclassification
+    the history exists to prevent.
+
     Args:
         value: The daily budget in kcal.
         weight_kg: Body weight in kg to store alongside the budget, so a
@@ -150,6 +202,8 @@ def write_budget(value: int, *, weight_kg: float | None = None) -> None:
             writes a budget-only record that reads back with no protein
             target.
     """
+    existing = read_raw_record()
+    _seed_history_if_empty(existing)
     record: dict[str, object] = {
         "v": _FILE_VERSION,
         "b": int(value),
@@ -158,6 +212,7 @@ def write_budget(value: int, *, weight_kg: float | None = None) -> None:
     if weight_kg is not None:
         record["w"] = round(float(weight_kg), 1)
     write_raw_record(record)
+    record_budget_change(int(value))
 
 
 def _read_record() -> dict[str, object]:

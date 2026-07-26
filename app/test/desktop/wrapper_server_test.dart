@@ -97,7 +97,10 @@ void main() {
     });
 
     test('404s an unmirrored document', () async {
-      expect((await http.get(url('/documents/food_bank.json'))).statusCode, 404);
+      expect(
+        (await http.get(url('/documents/food_bank.json'))).statusCode,
+        404,
+      );
     });
 
     test('rejects a traversing name instead of writing outside dataDir', () {
@@ -113,17 +116,6 @@ void main() {
 
     test('rejects a method other than GET/POST', () async {
       expect((await http.delete(url('/documents/x.json'))).statusCode, 405);
-    });
-  });
-
-  group('blob mirror', () {
-    test('round-trips photo bytes', () async {
-      final bytes = [1, 2, 3, 4];
-      final posted = await http.post(url('/blobs/photo.jpg'), body: bytes);
-      final fetched = await http.get(url('/blobs/photo.jpg'));
-
-      expect(posted.statusCode, 204);
-      expect(fetched.bodyBytes, bytes);
     });
   });
 
@@ -146,18 +138,21 @@ void main() {
       );
     });
 
-    test('falls back to the PC gate token when it has none of its own', () async {
-      // The Python side already keeps a token for diet-guard-sync.timer;
-      // reusing it is what makes the desktop app need no second setup.
-      final fallback = File(p.join(tempDir.path, 'config', 'fallback_token'))
-        ..createSync(recursive: true)
-        ..writeAsStringSync('ghp_from_gate\n');
-      addTearDown(fallback.deleteSync);
+    test(
+      'falls back to the PC gate token when it has none of its own',
+      () async {
+        // The Python side already keeps a token for diet-guard-sync.timer;
+        // reusing it is what makes the desktop app need no second setup.
+        final fallback = File(p.join(tempDir.path, 'config', 'fallback_token'))
+          ..createSync(recursive: true)
+          ..writeAsStringSync('ghp_from_gate\n');
+        addTearDown(fallback.deleteSync);
 
-      final response = await http.get(url('/github/auth/status'));
+        final response = await http.get(url('/github/auth/status'));
 
-      expect(jsonDecode(response.body), {'configured': true});
-    });
+        expect(jsonDecode(response.body), {'configured': true});
+      },
+    );
 
     test('attaches the token to a proxied API call', () async {
       await http.post(url('/github/auth/token'), body: 'ghp_stored');
@@ -238,8 +233,9 @@ void main() {
     test('ignores an unreadable token file rather than failing', () async {
       // A directory where the token file should be: readToken must fall
       // through to "no token" instead of throwing out of every request.
-      Directory(p.join(tempDir.path, 'config', 'sync_token'))
-          .createSync(recursive: true);
+      Directory(
+        p.join(tempDir.path, 'config', 'sync_token'),
+      ).createSync(recursive: true);
 
       expect(jsonDecode((await http.get(url('/github/auth/status'))).body), {
         'configured': false,

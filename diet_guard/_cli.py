@@ -37,7 +37,7 @@ from diet_guard._portions import (
     estimate_unit_grams,
 )
 from diet_guard._resolve import ManualMacros, resolve_nutrition
-from diet_guard._slots import current_slot, day_slots, slot_label
+from diet_guard._slots import day_slots, slot_for_log, slot_label
 from diet_guard._state import (
     entry_kcal,
     log_meal,
@@ -344,7 +344,7 @@ def _cmd_ate(description: str, portion: _Portion, macros: _ManualMacros) -> int:
             "re-run with --kcal <number> to log it manually.",
         )
         return 1
-    log_meal(description, nutrition, current_slot(now_local()))
+    log_meal(description, nutrition, slot_for_log(now_local()))
     remember_food(description, nutrition)
     macro_str = f"P{nutrition.protein_g:g} C{nutrition.carbs_g:g} F{nutrition.fat_g:g}"
     portion_str = f"{nutrition.grams:g} g" if nutrition.grams else "portion n/a"

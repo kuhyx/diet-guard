@@ -147,7 +147,7 @@ class TestLogMealGate:
         with (
             patch.object(_mcp, "resolve_nutrition", return_value=_nutrition()),
             patch.object(_mcp, "ManualMacros") as manual,
-            patch.object(_mcp, "current_slot", return_value=8),
+            patch.object(_mcp, "slot_for_log", return_value=8),
             patch.object(_mcp, "now_local"),
             patch.object(_mcp, "record_meal") as record,
         ):

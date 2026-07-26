@@ -4,11 +4,7 @@
 /// crdt_sync's shared transport ([GitHubClient]/[syncLog]), merges with the
 /// local log via crdt_sync's shared CRDT scheme (`sync_merge.dart` adapts
 /// [FoodEntry]s to/from [Record]), rebuilds the food bank, and pushes this
-/// device's own merged log back up in the new Record-based wire format. One
-/// phone-specific step, with no PC-side equivalent: a pulled copy of an
-/// entry never carries `imagePath` (stripped before push, meaningless on
-/// another device), so it must not null out a local photo attachment for
-/// the same `id` (plan decision 10).
+/// device's own merged log back up in the new Record-based wire format.
 ///
 /// The daily budget syncs alongside the food log in the same tick (see
 /// [_syncBudget]): a sibling `budget.json` per device, merged
@@ -19,6 +15,7 @@ library;
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
@@ -26,7 +23,7 @@ import 'package:diet_guard_app/services/sync_merge.dart';
 
 const _devicesDir = 'diet-guard-sync/devices';
 
-/// Runs one full sync tick: pull, merge, preserve photos, persist, push.
+/// Runs one full sync tick: pull, merge, persist, push.
 ///
 /// Returns the merged log as it now sits on disk locally. Propagates any
 /// [GitHubSyncError] from the client for the caller (auto-sync / the manual
@@ -34,7 +31,6 @@ const _devicesDir = 'diet-guard-sync/devices';
 Future<DayLog> runSync(GitHubClient client) async {
   final logService = LogStorageService.instance;
   final local = await logService.readLog();
-  final localImagePaths = _imagePathsById(local);
 
   final mergedLog = await syncLog(
     client: client,
@@ -47,13 +43,54 @@ Future<DayLog> runSync(GitHubClient client) async {
     commitMessage: 'diet_guard_app sync',
   );
 
-  var merged = logToDayLog(mergedLog);
-  merged = _preserveLocalImagePaths(merged, localImagePaths);
+  final merged = logToDayLog(mergedLog);
 
   await logService.writeLog(merged);
   await FoodBankService.instance.rebuildAndPersist(merged);
   await _syncBudget(client);
+  await _syncFoodBank(client);
+  await _syncManualBank(client);
   return merged;
+}
+
+/// Pulls, merges, persists and pushes the log-derived food bank.
+///
+/// Runs after the local rebuild above, so this device's records already
+/// reflect the merged log; the merge then unions in whatever another device
+/// knows, max-count winning per food. Mirrors `_sync._sync_food_bank`.
+Future<void> _syncFoodBank(GitHubClient client) async {
+  final merged = await syncLog(
+    client: client,
+    deviceId: syncDeviceId,
+    pathPrefix: _devicesDir,
+    localLog: foodBankToLog(await FoodBankService.instance.readBank()),
+    encode: encodeFoodBankForPush,
+    decode: parseRemoteFoodBank,
+    filename: 'food_bank.json',
+    commitMessage: 'diet_guard_app sync',
+  );
+  await FoodBankService.instance.writeBank(logToFoodBank(merged));
+}
+
+/// Pulls, merges, persists and pushes the hand-curated food bank.
+///
+/// Curated entries are the one part of the bank that is not derivable from
+/// the food log, so unlike `food_bank.json` they need a real merge:
+/// last-writer-wins per food name by edit time, union across devices. Mirrors
+/// `_sync._sync_manual_bank`.
+Future<void> _syncManualBank(GitHubClient client) async {
+  final local = await FoodBankService.instance.readManualBank();
+  final merged = await syncLog(
+    client: client,
+    deviceId: syncDeviceId,
+    pathPrefix: _devicesDir,
+    localLog: manualBankToLog(local),
+    encode: encodeManualBankForPush,
+    decode: parseRemoteManualBank,
+    filename: 'food_bank_manual.json',
+    commitMessage: 'diet_guard_app sync',
+  );
+  await FoodBankService.instance.applyMergedManualBank(logToManualBank(merged));
 }
 
 /// Pulls other devices' budgets, merges, applies the winner locally, pushes.
@@ -79,11 +116,20 @@ Future<void> _syncBudget(GitHubClient client) async {
     client: client,
     deviceId: syncDeviceId,
     pathPrefix: _devicesDir,
-    localLog: budgetToLog(localRecord),
+    localLog: budgetToLog(
+      localRecord,
+      BudgetHistoryService.schedule.entries,
+    ),
     encode: encodeBudgetForPush,
     decode: parseRemoteBudget,
     filename: 'budget.json',
     commitMessage: 'diet_guard_app sync',
+  );
+
+  // The history merges by field union, so it is applied unconditionally --
+  // independently of whether the scalar budget resolved to anything.
+  await BudgetHistoryService.instance.applyMerged(
+    logToHistory(mergedBudgetLog),
   );
 
   final merged = logToBudget(mergedBudgetLog);
@@ -93,40 +139,4 @@ Future<void> _syncBudget(GitHubClient client) async {
     mergedKcal,
     updatedAt: DateTime.tryParse(merged['t'] as String? ?? ''),
   );
-}
-
-Map<String, String> _imagePathsById(DayLog log) {
-  final result = <String, String>{};
-  for (final entries in log.values) {
-    for (final entry in entries) {
-      final id = entry.id;
-      final imagePath = entry.imagePath;
-      if (id != null && imagePath != null) result[id] = imagePath;
-    }
-  }
-  return result;
-}
-
-DayLog _preserveLocalImagePaths(
-  DayLog log,
-  Map<String, String> imagePathsById,
-) {
-  if (imagePathsById.isEmpty) return log;
-  return {
-    for (final mapEntry in log.entries)
-      mapEntry.key: [
-        for (final entry in mapEntry.value)
-          _withPreservedImagePath(entry, imagePathsById),
-      ],
-  };
-}
-
-FoodEntry _withPreservedImagePath(
-  FoodEntry entry,
-  Map<String, String> imagePathsById,
-) {
-  if (entry.imagePath != null) return entry;
-  final preserved = imagePathsById[entry.id];
-  if (preserved == null) return entry;
-  return entry.copyWithImagePath(preserved);
 }

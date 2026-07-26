@@ -24,7 +24,6 @@ class FoodEntry {
     this.hmac,
     this.components,
     this.deleted = false,
-    this.imagePath,
   });
 
   /// Builds a [FoodEntry] from its JSON map representation.
@@ -48,7 +47,6 @@ class FoodEntry {
         .map(MealComponent.fromJson)
         .toList(),
     deleted: json['deleted'] as bool? ?? false,
-    imagePath: json['imagePath'] as String?,
   );
 
   /// Stable identity for sync merge (UUID v4). Null only for legacy entries
@@ -96,21 +94,17 @@ class FoodEntry {
   /// physically removed) so a sync merge can't resurrect a stale copy.
   final bool deleted;
 
-  /// Local file path to an attached photo, if any. Phone-local only --
-  /// never read from a pulled remote copy and stripped before push.
-  final String? imagePath;
-
-  /// Returns the full local-storage representation, including [imagePath].
-  Map<String, Object?> toLocalJson() => {
-    ...toSyncJson(),
-    if (imagePath != null) 'imagePath': imagePath,
-  };
+  /// Returns the full local-storage representation.
+  ///
+  /// Identical to [toSyncJson] now that nothing is device-local: every field
+  /// a device stores is a field it shares.
+  Map<String, Object?> toLocalJson() => toSyncJson();
 
   /// Returns what gets pushed to this device's sync snapshot.
   ///
-  /// Excludes [imagePath] (meaningless on another device) and [hmac] (the
-  /// phone never computes one; the PC re-signs on merge regardless of
-  /// origin, so an inbound signature would only be stripped there anyway).
+  /// Excludes [hmac] (the phone never computes one; the PC re-signs on merge
+  /// regardless of origin, so an inbound signature would only be stripped
+  /// there anyway).
   Map<String, Object?> toSyncJson() => {
     if (id != null) 'id': id,
     'time': time,
@@ -127,24 +121,6 @@ class FoodEntry {
     if (deleted) 'deleted': true,
   };
 
-  /// Returns a copy of this entry with [imagePath] replaced.
-  FoodEntry copyWithImagePath(String? imagePath) => FoodEntry(
-    id: id,
-    time: time,
-    desc: desc,
-    grams: grams,
-    kcal: kcal,
-    proteinG: proteinG,
-    carbsG: carbsG,
-    fatG: fatG,
-    source: source,
-    slot: slot,
-    hmac: hmac,
-    components: components,
-    deleted: deleted,
-    imagePath: imagePath,
-  );
-
   /// Returns a copy of this entry tombstoned (`deleted: true`).
   FoodEntry copyWithDeleted() => FoodEntry(
     id: id,
@@ -160,6 +136,5 @@ class FoodEntry {
     hmac: hmac,
     components: components,
     deleted: true,
-    imagePath: imagePath,
   );
 }

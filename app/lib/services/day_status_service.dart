@@ -19,6 +19,7 @@ library;
 
 import 'package:diet_guard_app/models/day_status.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
+import 'package:diet_guard_app/services/budget_schedule.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 
 /// The multiplier defining the top of the "yellow" band above budget: a 20%
@@ -49,6 +50,24 @@ double sumKcal(Iterable<FoodEntry> entries) {
   return total;
 }
 
+/// Returns the summed protein/carbs/fat across [entries].
+///
+/// The macro counterpart to [sumKcal], so the three folds live in one place
+/// rather than being re-inlined per caller.
+({double proteinG, double carbsG, double fatG}) sumMacros(
+  Iterable<FoodEntry> entries,
+) {
+  var proteinG = 0.0;
+  var carbsG = 0.0;
+  var fatG = 0.0;
+  for (final entry in entries) {
+    proteinG += entry.proteinG;
+    carbsG += entry.carbsG;
+    fatG += entry.fatG;
+  }
+  return (proteinG: proteinG, carbsG: carbsG, fatG: fatG);
+}
+
 /// Returns [log]'s entries for [day] with tombstoned (deleted) ones
 /// removed -- `readLog()` returns the raw log including tombstones, so
 /// every consumer that classifies a day (rather than just displaying an
@@ -77,10 +96,18 @@ DayStatus dayStatus(DayLog log, String day, int budget) {
 
 /// Returns a [DayStatus] for every date key present in [log].
 ///
+/// Each day is judged against the budget that applied *on that day*, so a
+/// later budget change leaves earlier days classified exactly as before.
+///
 /// Days with no log entries are simply absent from the result; a caller
 /// rendering a full calendar treats a missing key as [DayStatus.notLogged].
-Map<String, DayStatus> statusMap(DayLog log, {required int budget}) {
-  return {for (final day in log.keys) day: dayStatus(log, day, budget)};
+Map<String, DayStatus> statusMap(
+  DayLog log, {
+  required BudgetSchedule schedule,
+}) {
+  return {
+    for (final day in log.keys) day: dayStatus(log, day, schedule.forDay(day)),
+  };
 }
 
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);

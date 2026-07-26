@@ -22,6 +22,11 @@ import logging
 from crdt_sync import GitHubSyncClient, GitHubSyncError, Log, merge_logs
 
 from diet_guard._budget import read_raw_record, write_raw_record
+from diet_guard._budget_history import (
+    history_to_json,
+    load_entries,
+    write_raw_history,
+)
 from diet_guard._constants import (
     SYNC_DEVICE_ID,
     SYNC_REPO_NAME,
@@ -29,15 +34,23 @@ from diet_guard._constants import (
     SYNC_TIMEOUT_SECONDS,
     SYNC_TOKEN_FILE,
 )
-from diet_guard._foodbank import rebuild_food_bank
+from diet_guard._foodbank import read_food_bank, rebuild_food_bank, write_food_bank
+from diet_guard._foodbank_manual import read_manual_bank, write_manual_bank
 from diet_guard._state import DayLog, read_raw_log, resign_entry, write_raw_log
 from diet_guard._sync_merge import (
     budget_to_log,
     daylog_to_log,
+    food_bank_to_log,
     log_to_budget,
     log_to_daylog,
+    log_to_food_bank,
+    log_to_history,
+    log_to_manual_bank,
+    manual_bank_to_log,
     parse_remote_budget,
+    parse_remote_food_bank,
     parse_remote_log,
+    parse_remote_manual_bank,
 )
 
 _logger = logging.getLogger(__name__)
@@ -52,6 +65,16 @@ class SyncError(Exception):
 def _device_log_path(device_id: str) -> str:
     """Return the repo-relative path a device's full log is pushed to."""
     return f"{_DEVICES_DIR}/{device_id}/food_log.json"
+
+
+def _device_food_bank_path(device_id: str) -> str:
+    """Return one device's pushed derived-food-bank path."""
+    return f"{_DEVICES_DIR}/{device_id}/food_bank.json"
+
+
+def _device_manual_bank_path(device_id: str) -> str:
+    """Return one device's pushed curated-food-bank path."""
+    return f"{_DEVICES_DIR}/{device_id}/food_bank_manual.json"
 
 
 def _device_budget_path(device_id: str) -> str:
@@ -103,6 +126,100 @@ def _pull_remote_logs(client: GitHubSyncClient) -> list[Log]:
     return remote_logs
 
 
+def _sync_food_bank(client: GitHubSyncClient) -> None:
+    """Pull, merge, persist and push the log-derived food bank.
+
+    Runs *after* the local rebuild in :func:`run_sync`, so this device's own
+    records already reflect the merged log; the merge then unions in whatever
+    another device knows and max-count wins per food (see
+    :func:`diet_guard._sync_merge.food_bank_to_log`).
+
+    Strictly speaking the bank is derivable from the already-synced log, so
+    both devices converge on their own eventually.  Syncing it makes them
+    agree *now*, and publishes the bank so a fresh device has autocomplete
+    before it has replayed anything.
+
+    **The log stays authoritative for which foods exist.**  A CRDT union
+    never shrinks, so without this the max-count merge would resurrect a food
+    whose entries were all undone -- a peer's stale copy would out-clock the
+    local absence and be written back and re-pushed forever, un-deletable.
+    Restricting the result to the foods the freshly-rebuilt local bank still
+    contains fixes that, and stays identical across devices because that
+    rebuild comes from the *merged* log both devices share.
+    """
+    local = read_food_bank()
+    merged = food_bank_to_log(local)
+    for device_id in client.list_directory(_DEVICES_DIR):
+        if device_id == SYNC_DEVICE_ID:
+            continue
+        text = client.get_file_text(_device_food_bank_path(device_id))
+        if text is None:
+            continue
+        try:
+            merged = merge_logs(merged, parse_remote_food_bank(text))
+        except (TypeError, KeyError, ValueError, json.JSONDecodeError):
+            _logger.warning(
+                "Unparsable food bank pushed by device %r, skipping",
+                device_id,
+            )
+
+    if not merged:
+        return
+    resolved = {
+        name: record
+        for name, record in log_to_food_bank(merged).items()
+        if name in local
+    }
+    write_food_bank(resolved)
+    merged = food_bank_to_log(resolved)
+    client.put_file_text(
+        _device_food_bank_path(SYNC_DEVICE_ID),
+        json.dumps(
+            {record_id: record.to_dict() for record_id, record in merged.items()},
+            indent=2,
+        ),
+        message="diet_guard sync",
+    )
+
+
+def _sync_manual_bank(client: GitHubSyncClient) -> None:
+    """Pull, merge, persist and push the hand-curated food bank.
+
+    Curated entries are the one part of the bank that is not derivable from
+    the food log (see :mod:`diet_guard._foodbank_manual`), so unlike
+    ``food_bank.json`` they need a real merge: last-writer-wins per food name
+    by edit time, union across devices.
+    """
+    merged = manual_bank_to_log(read_manual_bank())
+    for device_id in client.list_directory(_DEVICES_DIR):
+        if device_id == SYNC_DEVICE_ID:
+            continue
+        text = client.get_file_text(_device_manual_bank_path(device_id))
+        if text is None:
+            continue
+        try:
+            merged = merge_logs(merged, parse_remote_manual_bank(text))
+        except (TypeError, KeyError, ValueError, json.JSONDecodeError):
+            _logger.warning(
+                "Unparsable curated food bank pushed by device %r, skipping",
+                device_id,
+            )
+
+    if not merged:
+        # No device has curated anything: nothing to persist, and pushing an
+        # empty object every tick would be pure churn.
+        return
+    write_manual_bank(log_to_manual_bank(merged))
+    client.put_file_text(
+        _device_manual_bank_path(SYNC_DEVICE_ID),
+        json.dumps(
+            {record_id: record.to_dict() for record_id, record in merged.items()},
+            indent=2,
+        ),
+        message="diet_guard sync",
+    )
+
+
 def _sync_budget(client: GitHubSyncClient) -> None:
     """Pull other devices' budgets, merge, write locally, push this device's.
 
@@ -114,7 +231,7 @@ def _sync_budget(client: GitHubSyncClient) -> None:
     to the merge nor overwrites a real budget pulled from elsewhere, and if
     *no* device has ever set one, nothing is written or pushed.
     """
-    merged = budget_to_log(read_raw_record())
+    merged = budget_to_log(read_raw_record(), load_entries())
     for device_id in client.list_directory(_DEVICES_DIR):
         if device_id == SYNC_DEVICE_ID:
             continue
@@ -133,6 +250,13 @@ def _sync_budget(client: GitHubSyncClient) -> None:
     if merged_record is None:
         return
     write_raw_record(merged_record)
+    merged_history = log_to_history(merged)
+    # Only write back when the merge actually carried history. A pre-feature
+    # peer contributes none, and persisting an empty document would look like
+    # "history already exists" to any presence-based check and stop the local
+    # seed from ever running.
+    if merged_history:
+        write_raw_history(history_to_json(merged_history))
 
     push_json = json.dumps(
         {record_id: record.to_dict() for record_id, record in merged.items()},
@@ -181,6 +305,8 @@ def run_sync() -> DayLog:
     write_raw_log(resigned)
     rebuild_food_bank(resigned)
     _sync_budget(client)
+    _sync_food_bank(client)
+    _sync_manual_bank(client)
 
     push_log = daylog_to_log(resigned)
     push_json = json.dumps(

@@ -3,6 +3,8 @@ library;
 
 import 'dart:convert';
 
+import 'package:diet_guard_app/services/budget_history_service.dart';
+import 'package:diet_guard_app/services/budget_schedule.dart';
 import 'package:diet_guard_app/services/document_store.dart';
 import 'package:diet_guard_app/services/document_store_factory.dart';
 import 'package:flutter/foundation.dart';
@@ -29,28 +31,18 @@ class AppSettingsService {
   static AppSettingsService get instance => _instance!;
 
   final DocumentStore _store;
-  int _dailyKcalGoal = 2200;
+  int _dailyKcalGoal = kDefaultDailyKcalGoal;
   DateTime? _dailyKcalGoalUpdatedAt;
-  String? _rewardLabel;
-  String? _rewardUrl;
 
-  /// Returns the configured daily kcal goal, or 2200 when uninitialised.
-  static int get dailyKcalGoal => _instance?._dailyKcalGoal ?? 2200;
+  /// Returns the configured daily kcal goal, or the default when
+  /// uninitialised. This is the budget in force *today*; asking what applied
+  /// on a past day is [BudgetHistoryService.schedule].
+  static int get dailyKcalGoal =>
+      _instance?._dailyKcalGoal ?? kDefaultDailyKcalGoal;
 
   /// Returns when the goal was last set on this device, or null if never.
   static DateTime? get dailyKcalGoalUpdatedAt =>
       _instance?._dailyKcalGoalUpdatedAt;
-
-  /// Returns the configured temptation-bundling reward label, or null.
-  ///
-  /// Device-local only -- no `updatedAt`/sync merge wiring, unlike the kcal
-  /// goal. Adding a sync-ready timestamp without real merge logic in
-  /// `sync_merge.dart`/`sync_service.dart` would imply cross-device behavior
-  /// that doesn't exist yet.
-  static String? get rewardLabel => _instance?._rewardLabel;
-
-  /// Returns the configured temptation-bundling reward URL, or null.
-  static String? get rewardUrl => _instance?._rewardUrl;
 
   /// Initialises the singleton against the platform document store (files on
   /// Android, IndexedDB in the browser-hosted desktop app).
@@ -86,6 +78,20 @@ class AppSettingsService {
     return svc;
   }
 
+  /// Grandfathers the loaded goal to the epoch when no history exists yet.
+  ///
+  /// Mirrors `_budget.current_schedule`'s seed-on-read: without this the only
+  /// seeding path was an explicit edit, so an upgraded device that had merely
+  /// *synced* a goal classified its whole history against the fallback instead
+  /// of that goal.
+  Future<void> _seedHistoryIfEmpty() async {
+    if (!BudgetHistoryService.isInitialized) return;
+    await BudgetHistoryService.instance.seedIfEmpty(
+      _dailyKcalGoal,
+      _dailyKcalGoalUpdatedAt,
+    );
+  }
+
   Future<void> _load() async {
     final raw = await _store.read(documentName);
     if (raw == null) return;
@@ -99,21 +105,30 @@ class AppSettingsService {
           data['daily_kcal_goal_updated_at'] as String,
         );
       }
-      if (data is Map && data['reward_label'] is String) {
-        _rewardLabel = data['reward_label'] as String;
-      }
-      if (data is Map && data['reward_url'] is String) {
-        _rewardUrl = data['reward_url'] as String;
-      }
     } on Exception {
       // Ignore parse errors and keep defaults.
     }
+    await _seedHistoryIfEmpty();
   }
 
   /// Updates the in-memory value and persists [goal] to disk, stamping the
   /// edit with the current time -- the timestamp a sync merge compares
   /// against another device's edit to resolve last-writer-wins.
-  Future<void> saveDailyKcalGoal(int goal) => _persist(goal, DateTime.now());
+  ///
+  /// Also the single funnel that maintains the effective-from history, so
+  /// past days keep being judged against the budget that applied to them.
+  ///
+  /// The ordering below is load-bearing and must not be rearranged: the
+  /// *pre-write* value is grandfathered to the epoch **before** the new one
+  /// is recorded for today. Seeding afterwards would leave a history of only
+  /// `{today: <new value>}`, which makes every past day resolve to the new
+  /// value -- precisely the retroactive reclassification the history exists
+  /// to prevent.
+  Future<void> saveDailyKcalGoal(int goal) async {
+    await _seedHistoryIfEmpty();
+    await _persist(goal, DateTime.now());
+    await BudgetHistoryService.instance.recordChange(goal);
+  }
 
   /// Applies a synced budget value without stamping a fresh edit time.
   ///
@@ -122,17 +137,12 @@ class AppSettingsService {
   /// "now", so re-syncing an unchanged value stays idempotent instead of
   /// making this device's copy look newer than it actually is on every
   /// tick.
+  ///
+  /// Deliberately records no history change: this is a merge write-back, not
+  /// a user edit, and the history has its own merged entries applied
+  /// alongside it by the sync layer.
   Future<void> applySyncedBudget(int goal, {DateTime? updatedAt}) =>
       _persist(goal, updatedAt);
-
-  /// Updates and persists the temptation-bundling reward shown after a
-  /// one-tap "repeat last meal" log. Pass `null` for either field to clear
-  /// it.
-  Future<void> saveReward({String? label, String? url}) async {
-    _rewardLabel = label;
-    _rewardUrl = url;
-    await _writeToDisk();
-  }
 
   Future<void> _persist(int goal, DateTime? updatedAt) async {
     _dailyKcalGoal = goal;
@@ -150,8 +160,6 @@ class AppSettingsService {
         'daily_kcal_goal': _dailyKcalGoal,
         'daily_kcal_goal_updated_at': _dailyKcalGoalUpdatedAt
             ?.toIso8601String(),
-        'reward_label': _rewardLabel,
-        'reward_url': _rewardUrl,
       }),
     );
   }

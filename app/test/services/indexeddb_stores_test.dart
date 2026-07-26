@@ -1,12 +1,10 @@
-// The IndexedDB stores are the desktop device's primary copy of the food log
-// and the *only* copy of its photos, and their wrapper-mirror fallback is the
-// recovery path for a wiped Chrome profile. `idb_shim`'s in-memory backend
-// lets all of that run on the plain VM, so none of it has to ship untested
-// just because it only executes in a browser.
+// The IndexedDB document store is the desktop device's primary copy of the
+// food log, and its wrapper-mirror fallback is the recovery path for a wiped
+// Chrome profile. `idb_shim`'s in-memory backend lets all of that run on the
+// plain VM, so none of it has to ship untested just because it only executes
+// in a browser.
 import 'dart:convert';
-import 'dart:typed_data';
 
-import 'package:diet_guard_app/services/blob_store_indexeddb.dart';
 import 'package:diet_guard_app/services/desktop_wrapper.dart';
 import 'package:diet_guard_app/services/document_store_indexeddb.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -92,56 +90,6 @@ void main() {
       await store.write('food_log.json', '{"a":1}');
 
       expect(await store.read('food_log.json'), '{"a":1}');
-    });
-  });
-
-  group('IndexedDbBlobStore', () {
-    late IndexedDbBlobStore store;
-
-    setUp(() async {
-      store = IndexedDbBlobStore(
-        await _openMemoryDb(IndexedDbBlobStore.storeName),
-        httpClient: wrapper.client,
-      );
-    });
-
-    test('put returns a key ending in the extension and stores the bytes', () async {
-      final key = await store.put('.jpg', Uint8List.fromList([1, 2, 3]));
-
-      expect(key, endsWith('.jpg'));
-      expect(await store.get(key), [1, 2, 3]);
-    });
-
-    test('put gives each photo its own key', () async {
-      final first = await store.put('.jpg', Uint8List.fromList([1]));
-      final second = await store.put('.jpg', Uint8List.fromList([1]));
-
-      expect(first, isNot(second));
-    });
-
-    test('mirrors photo bytes to the wrapper', () async {
-      // Photos never sync -- `imagePath` is stripped before push -- so this
-      // mirror is the only thing standing between a cleared profile and
-      // losing them permanently.
-      final key = await store.put('.jpg', Uint8List.fromList([7, 7]));
-
-      expect(wrapper.stored[key], [7, 7]);
-    });
-
-    test('recovers a photo from the wrapper when IndexedDB is empty', () async {
-      wrapper.stored['photo.jpg'] = [4, 2];
-
-      expect(await store.get('photo.jpg'), [4, 2]);
-    });
-
-    test('returns null for a photo neither side has', () async {
-      expect(await store.get('gone.jpg'), null);
-    });
-
-    test('returns null when the wrapper is not running', () async {
-      wrapper.offline = true;
-
-      expect(await store.get('gone.jpg'), null);
     });
   });
 }

@@ -61,6 +61,23 @@ int? currentSlot(DateTime now) {
   return elapsed.isEmpty ? null : elapsed.last;
 }
 
+/// Returns the slot a meal logged at [now] should be attributed to.
+///
+/// CLAMP RULE (keep byte-identical with `_slots.slot_for_log`): before the
+/// first window, clamp to the first slot; after the last window, clamp to the
+/// last slot; behaviour inside a window is unchanged.
+///
+/// Unlike [currentSlot] this never returns null, which is the point: an
+/// off-hours meal used to satisfy no slot at all, so eating at 07:30 or
+/// 22:30 still produced a "you haven't logged your meal" reminder. Attribution
+/// is deliberately separate from [elapsedSlots]/[missingSlots] -- widening
+/// *those* would instead make every slot fall due at 23:00.
+int slotForLog(DateTime now) {
+  final slots = daySlots();
+  if (now.hour < gateDayStartHour) return slots.first;
+  return currentSlot(now) ?? slots.last;
+}
+
 /// Returns a human `HH:00` label for [slot], e.g. `"08:00"`.
 ///
 /// Mirrors `_slots.slot_label`.

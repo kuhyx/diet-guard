@@ -1,8 +1,4 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- image_picker's camera source delegates to the device's camera app via
-         intent, but declaring this avoids picker failures on OEMs that check
-         for it before honoring the intent. -->
-    <uses-permission android:name="android.permission.CAMERA"/>
     <!-- Sync (github_client.dart) needs raw socket access. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Android 13+ requires runtime opt-in to post notifications; requested

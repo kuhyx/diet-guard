@@ -1,5 +1,6 @@
 import 'package:diet_guard_app/models/day_status.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
+import 'package:diet_guard_app/services/budget_schedule.dart';
 import 'package:diet_guard_app/services/day_status_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,6 +14,35 @@ FoodEntry buildEntry({required double kcal, bool deleted = false}) => FoodEntry(
   fatG: 0,
   source: 'manual',
   deleted: deleted,
+);
+
+FoodEntry buildMacroEntry({
+  required double proteinG,
+  required double carbsG,
+  required double fatG,
+}) => FoodEntry(
+  time: '2026-01-01T12:00:00',
+  desc: 'test',
+  grams: 100,
+  kcal: 0,
+  proteinG: proteinG,
+  carbsG: carbsG,
+  fatG: fatG,
+  source: 'manual',
+);
+
+/// A schedule where one budget has applied since the beginning of time.
+BudgetSchedule flat(int budget) => BudgetSchedule(
+  [const BudgetEntry(effectiveFrom: kEpochDay, kcal: 0, editedAt: '')]
+      .map(
+        (_) => BudgetEntry(
+          effectiveFrom: kEpochDay,
+          kcal: budget,
+          editedAt: '1970-01-01T00:00:00.000Z',
+        ),
+      )
+      .toList(),
+  fallback: budget,
 );
 
 void main() {
@@ -36,6 +66,25 @@ void main() {
         ],
       };
       expect(dayTotalKcal(log, '2026-01-01'), 100);
+    });
+  });
+
+  group('sumMacros', () {
+    test('sums protein, carbs and fat across entries', () {
+      final totals = sumMacros([
+        buildMacroEntry(proteinG: 10, carbsG: 20, fatG: 5),
+        buildMacroEntry(proteinG: 5, carbsG: 30, fatG: 2.5),
+      ]);
+      expect(totals.proteinG, 15);
+      expect(totals.carbsG, 50);
+      expect(totals.fatG, 7.5);
+    });
+
+    test('is all zeroes for no entries', () {
+      final totals = sumMacros(const []);
+      expect(totals.proteinG, 0);
+      expect(totals.carbsG, 0);
+      expect(totals.fatG, 0);
     });
   });
 
@@ -101,7 +150,7 @@ void main() {
         '2026-01-01': [buildEntry(kcal: 1000)],
         '2026-01-02': [buildEntry(kcal: 5000)],
       };
-      expect(statusMap(log, budget: 2000), {
+      expect(statusMap(log, schedule: flat(2000)), {
         '2026-01-01': DayStatus.green,
         '2026-01-02': DayStatus.red,
       });
@@ -109,7 +158,7 @@ void main() {
 
     test('empty log is empty map', () {
       final log = <String, List<FoodEntry>>{};
-      expect(statusMap(log, budget: 2000), <String, DayStatus>{});
+      expect(statusMap(log, schedule: flat(2000)), <String, DayStatus>{});
     });
   });
 

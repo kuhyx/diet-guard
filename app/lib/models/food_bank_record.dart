@@ -2,7 +2,7 @@
 /// diet_guard's `_foodbank.BankRecord`.
 library;
 
-/// A previously-logged food's remembered macros and use count.
+/// A previously-logged (or hand-curated) food's macros and use count.
 ///
 /// Mirrors `_foodbank.py`'s on-disk shape: `{desc, kcal, protein_g,
 /// carbs_g, fat_g, grams, count, components?}`. Unlike [FoodEntry], a
@@ -20,19 +20,35 @@ class FoodBankRecord {
     required this.grams,
     required this.count,
     this.components,
+    this.editedAt,
   });
 
   /// Builds a [FoodBankRecord] from its JSON map representation.
-  factory FoodBankRecord.fromJson(Map<String, dynamic> json) => FoodBankRecord(
-    desc: json['desc'] as String? ?? '',
-    kcal: (json['kcal'] as num?)?.toDouble() ?? 0,
-    proteinG: (json['protein_g'] as num?)?.toDouble() ?? 0,
-    carbsG: (json['carbs_g'] as num?)?.toDouble() ?? 0,
-    fatG: (json['fat_g'] as num?)?.toDouble() ?? 0,
-    grams: (json['grams'] as num?)?.toDouble() ?? 0,
-    count: (json['count'] as num?)?.toDouble() ?? 0,
-    components: (json['components'] as List?)?.cast<String>(),
-  );
+  ///
+  /// Every field is type-*checked* rather than cast. These maps now arrive
+  /// from another device over the network, and a bad cast here throws a
+  /// Dart `TypeError` -- an `Error`, not an `Exception` -- which sails
+  /// straight past the `on Exception` guards in `background_sync_service`
+  /// and `settings_screen`. One malformed record in the shared repo would
+  /// otherwise break this device's sync permanently. Mirrors the `isinstance`
+  /// checks the Python side already uses.
+  factory FoodBankRecord.fromJson(Map<String, dynamic> json) {
+    double number(Object? value) => value is num ? value.toDouble() : 0;
+    final components = json['components'];
+    return FoodBankRecord(
+      desc: json['desc'] is String ? json['desc'] as String : '',
+      kcal: number(json['kcal']),
+      proteinG: number(json['protein_g']),
+      carbsG: number(json['carbs_g']),
+      fatG: number(json['fat_g']),
+      grams: number(json['grams']),
+      count: number(json['count']),
+      components: components is List
+          ? components.whereType<String>().toList()
+          : null,
+      editedAt: json['t'] is String ? json['t'] as String : null,
+    );
+  }
 
   /// The food or meal's display name, as the user typed it.
   final String desc;
@@ -58,6 +74,13 @@ class FoodBankRecord {
   /// Component names, for a composite meal record only.
   final List<String>? components;
 
+  /// Local ISO-8601 stamp of the last hand-edit, for curated entries only.
+  ///
+  /// Null on log-derived records: those are rebuilt from the (already synced)
+  /// log and need no clock of their own. On a curated entry it is what the
+  /// cross-device merge orders by -- see `foodbank_manual_sync`.
+  final String? editedAt;
+
   /// Returns this record as a JSON-ready map with snake_case keys.
   Map<String, Object?> toJson() => {
     'desc': desc,
@@ -68,5 +91,6 @@ class FoodBankRecord {
     'grams': grams,
     'count': count,
     if (components != null) 'components': components,
+    if (editedAt != null) 't': editedAt,
   };
 }

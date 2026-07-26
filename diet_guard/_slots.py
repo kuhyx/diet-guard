@@ -93,8 +93,9 @@ def missing_slots(now: datetime, logged: set[int]) -> tuple[int, ...]:
 def current_slot(now: datetime) -> int | None:
     """Return the most recent elapsed slot as of ``now``, or None.
 
-    Used to tag a meal logged through the plain ``ate`` CLI with the slot it
-    belongs to, so it counts toward that checkpoint.
+    Reports the schedule position only.  Tagging a *log* with a slot goes
+    through :func:`slot_for_log`, which additionally clamps off-hours meals
+    instead of returning None.
 
     Args:
         now: Reference local time.
@@ -104,6 +105,32 @@ def current_slot(now: datetime) -> int | None:
     """
     elapsed = elapsed_slots(now)
     return elapsed[-1] if elapsed else None
+
+
+def slot_for_log(now: datetime) -> int:
+    """Return the slot a meal logged at ``now`` should be attributed to.
+
+    CLAMP RULE (keep byte-identical with ``slot.dart``'s ``slotForLog``): before
+    the first window, clamp to the first slot; after the last window, clamp to
+    the last slot; behaviour inside a window is unchanged.
+
+    Unlike :func:`current_slot` this never returns None, which is the point: an
+    off-hours meal used to satisfy no slot at all, so eating at 07:30 or 22:30
+    still left the gate firing for that checkpoint.  Attribution is deliberately
+    separate from :func:`elapsed_slots`/:func:`missing_slots` -- widening *those*
+    would instead make every slot fall due at 23:00.
+
+    Args:
+        now: Reference local time.
+
+    Returns:
+        The slot hour to tag the log with.
+    """
+    slots = day_slots()
+    if now.hour < GATE_DAY_START_HOUR:
+        return slots[0]
+    current = current_slot(now)
+    return current if current is not None else slots[-1]
 
 
 def slot_label(slot: int) -> str:

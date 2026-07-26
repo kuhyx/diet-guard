@@ -13,11 +13,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from diet_guard import _sync
-from diet_guard._budget import daily_budget, write_budget
+from diet_guard._budget import budget_weight, daily_budget, write_budget
+from diet_guard._budget_history import load_entries
 from diet_guard._estimator import Nutrition
 from diet_guard._foodbank import lookup_food
 from diet_guard._state import load_log, log_meal
-from diet_guard._sync_merge import budget_to_log
+from diet_guard._sync_merge import (
+    budget_to_log,
+)
 
 
 def _remote_budget_json(*, kcal: int, t: str, weight_kg: float | None = None) -> str:
@@ -90,7 +93,12 @@ class TestRunSync:
             merged = _sync.run_sync()
 
         assert sum(len(entries) for entries in merged.values()) == 1
-        client.put_file_text.assert_called_once()
+        pushed = [call.args[0] for call in client.put_file_text.call_args_list]
+        # The log push, plus the derived bank rebuilt from that same log.
+        assert pushed == [
+            "diet-guard-sync/devices/pc/food_bank.json",
+            "diet-guard-sync/devices/pc/food_log.json",
+        ]
         pushed_path = client.put_file_text.call_args.args[0]
         assert pushed_path == "diet-guard-sync/devices/pc/food_log.json"
         pushed_json = client.put_file_text.call_args.args[1]
@@ -107,12 +115,14 @@ class TestRunSync:
         )
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
-        # Both the food-log and budget pulls skip "pc" (this device) and
-        # only ever read "phone"'s files -- never "pc"'s.
+        # Every pull -- food log, budget, curated bank -- skips "pc" (this
+        # device) and only ever reads "phone"'s files.
         requested_paths = [call.args[0] for call in client.get_file_text.call_args_list]
         assert requested_paths == [
             "diet-guard-sync/devices/phone/food_log.json",
             "diet-guard-sync/devices/phone/budget.json",
+            "diet-guard-sync/devices/phone/food_bank.json",
+            "diet-guard-sync/devices/phone/food_bank_manual.json",
         ]
 
     def test_skips_a_device_with_no_pushed_file_yet(self) -> None:
@@ -282,6 +292,34 @@ class TestSyncBudget:
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         assert daily_budget() == 1800
+
+    def test_a_remote_edit_does_not_delete_the_local_body_weight(self) -> None:
+        """The w-loss bug: ``w`` is PC-local and must survive a phone edit.
+
+        ``w`` never travels (budget_to_log strips it), so before this fix a
+        winning remote record replaced the whole stored map and silently took
+        the weight -- and the protein target -- with it.
+        """
+        _write_token()
+        write_budget(1500, weight_kg=78.5)
+        remote_json = _remote_budget_json(kcal=1800, t="2999-01-01T09:00:00")
+        client = _mock_client(
+            devices=("phone",),
+            files={"diet-guard-sync/devices/phone/budget.json": remote_json},
+        )
+        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+            _sync.run_sync()
+        assert daily_budget() == 1800
+        assert budget_weight() == 78.5
+
+    def test_budget_history_survives_a_round_trip(self) -> None:
+        """The history is written back locally after every merge."""
+        _write_token()
+        write_budget(2000)
+        client = _mock_client(devices=())
+        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+            _sync.run_sync()
+        assert load_entries()[-1].kcal == 2000
 
     def test_malformed_remote_budget_is_skipped(self) -> None:
         """A corrupt remote budget.json is skipped, not a crash."""

@@ -4,6 +4,7 @@ import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/screens/calendar_screen.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,11 +33,15 @@ void main() {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_calendar_');
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
+    BudgetHistoryService.resetForTesting(
+      store: FileDocumentStore(tempDir),
+    );
   });
 
   tearDown(() async {
     LogStorageService.resetForTesting();
     AppSettingsService.resetForTesting();
+    BudgetHistoryService.resetForTesting();
     await tempDir.delete(recursive: true);
   });
 

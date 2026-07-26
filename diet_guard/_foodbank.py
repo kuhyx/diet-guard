@@ -19,16 +19,12 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import TYPE_CHECKING
 
 from diet_guard._coerce import as_float
 from diet_guard._constants import FOOD_BANK_FILE
 from diet_guard._estimator import Nutrition
+from diet_guard._foodbank_manual import read_manual_bank
 from diet_guard._fuzzy import match_score
-from diet_guard._meal import MealItem, meal_total
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
 
 _logger = logging.getLogger(__name__)
 
@@ -107,6 +103,16 @@ def _write_bank(bank: dict[str, BankRecord]) -> None:
         json.dump(bank, handle, indent=2, sort_keys=True)
 
 
+def read_food_bank() -> dict[str, BankRecord]:
+    """Return the derived bank verbatim, for the sync layer."""
+    return _read_bank()
+
+
+def write_food_bank(bank: dict[str, BankRecord]) -> None:
+    """Persist a merged derived bank, for the sync layer."""
+    _write_bank(bank)
+
+
 def _record_to_nutrition(record: BankRecord) -> Nutrition:
     """Build a :class:`Nutrition` from a stored bank record.
 
@@ -140,28 +146,6 @@ def remember_food(description: str, nutrition: Nutrition) -> None:
         nutrition: The macros to store for it.
     """
     _upsert(description, nutrition, components=None)
-
-
-def remember_meal(name: str, items: Sequence[MealItem]) -> Nutrition:
-    """Bank each component and the composite meal, returning the summed macros.
-
-    Each item is remembered on its own (so it autocompletes next time) and the
-    meal is stored as one entry carrying its summed macros plus its component
-    names, so the whole meal can be re-picked later as a single summed food.  A
-    blank meal name still banks the items but stores no empty-keyed composite.
-
-    Args:
-        name: The composite meal's name (e.g. ``"dinner"``).
-        items: The meal's components, each with its own nutrition.
-
-    Returns:
-        The summed nutrition for the whole meal.
-    """
-    for item in items:
-        remember_food(item.name, item.nutrition)
-    total = meal_total(items)
-    _upsert(name, total, components=[item.name for item in items])
-    return total
 
 
 def _apply_upsert(
@@ -211,8 +195,10 @@ def _upsert(
 ) -> None:
     """Insert or refresh one bank record on disk, bumping its use count.
 
-    Shared by :func:`remember_food` (a single food) and :func:`remember_meal`
-    (a composite, which additionally records its ``components``).
+    The ``components`` path is now only reached by
+    :func:`rebuild_food_bank` replaying composite entries already in the log
+    -- nothing creates a new one, but historical composites keep re-banking
+    their parts.
 
     Args:
         description: The food or meal name (its normalized form is the key).
@@ -292,8 +278,22 @@ def rebuild_food_bank(log: dict[str, list[dict[str, object]]]) -> dict[str, Bank
     return bank
 
 
+def _all_records() -> dict[str, BankRecord]:
+    """Return curated entries merged under the log-derived ones.
+
+    Log-derived records win on a name collision: they carry a real ``count``
+    and the macros the food was actually logged with, whereas a curated entry
+    is only a starting point.  Mirrors ``foodbank_service.dart``'s
+    ``{...manualBank, ...logBank}``.
+    """
+    return {**read_manual_bank(), **_read_bank()}
+
+
 def lookup_food(description: str) -> Nutrition | None:
     """Return the exact-match macros for ``description``, or None.
+
+    Searches curated entries as well as logged ones, so a food added by hand
+    on either device resolves here too.
 
     Args:
         description: The food name to look up verbatim (case-insensitive).
@@ -301,7 +301,7 @@ def lookup_food(description: str) -> Nutrition | None:
     Returns:
         The stored Nutrition, or None if the food is not banked.
     """
-    record = _read_bank().get(_normalize(description))
+    record = _all_records().get(_normalize(description))
     return _record_to_nutrition(record) if record is not None else None
 
 
@@ -319,7 +319,9 @@ def search_foods(
 
     An empty query returns the most-logged foods (the expandable full list).
     A non-empty query keeps substring and close-typo matches, ranked by match
-    quality then by use count.
+    quality then by use count.  Searches curated entries (added by hand on
+    either device, see :mod:`diet_guard._foodbank_manual`) as well as logged
+    ones; a logged record wins on a name collision.
 
     Args:
         query: Free-text the user has typed so far.
@@ -328,7 +330,7 @@ def search_foods(
     Returns:
         ``(display_name, Nutrition)`` pairs, ranked, at most ``limit`` long.
     """
-    bank = _read_bank()
+    bank = _all_records()
     normalized = _normalize(query)
     if not normalized:
         return _ranked_all(bank, limit)

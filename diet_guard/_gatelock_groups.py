@@ -298,11 +298,6 @@ class GateWidgetsGroup:
         return EntryGroup(self._each("per_entry"), self._vars.entries.per)
 
     @property
-    def meal_name_entry(self) -> EntryGroup:
-        """The meal-name entry, over its shared variable."""
-        return EntryGroup(self._each("meal_name_entry"), self._vars.entries.meal_name)
-
-    @property
     def macros(self) -> MacroGroup:
         """The four macro entries, each over its shared variable."""
         cells = [bundle.macros for bundle in self._bundles]

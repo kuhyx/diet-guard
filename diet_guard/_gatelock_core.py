@@ -32,7 +32,6 @@ if TYPE_CHECKING:
     from gatelock import GateRoot
 
     from diet_guard._estimator import Nutrition
-    from diet_guard._meal import MealItem
 
 _logger = logging.getLogger(__name__)
 
@@ -60,15 +59,13 @@ class _GateState:
     (bank entries are the user's own names) or only fills macros (OFF products).
     ``last_reference`` is the natural-basis nutrition of the food last picked
     or looked up, kept so a grams<->items toggle can re-express it losslessly;
-    it is cleared the moment a macro is hand-edited.  ``meal_items`` accumulates
-    the parts of a multi-item meal before they are logged as one summed entry.
+    it is cleared the moment a macro is hand-edited.
     """
 
     source: str = "manual"
     suggestions: list[tuple[str, Nutrition]] = field(default_factory=list)
     suggestion_mode: str = "bank"
     last_reference: Nutrition | None = None
-    meal_items: list[MealItem] = field(default_factory=list)
 
 
 class _GateCore:

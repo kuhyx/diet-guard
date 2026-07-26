@@ -8,10 +8,9 @@
 /// this way uses.
 ///
 /// Each [FoodEntry] maps to one [Record] with a single opaque `body` field
-/// holding [FoodEntry.toSyncJson] (already excludes `imagePath` and `hmac`
-/// -- neither belongs in the synced Record: `imagePath` is phone-local and
-/// reattached by `sync_service.dart` as a separate post-merge step; `hmac`
-/// is never computed here, since the phone never holds the shared key).
+/// holding [FoodEntry.toSyncJson] (which excludes `hmac`: it is never
+/// computed here, since the phone never holds the shared key, and the PC
+/// re-signs every entry on merge regardless of origin).
 /// Entries are immutable after creation (only `deleted` ever changes
 /// post-write), so there is no benefit to crdt_sync's per-field LWW
 /// granularity here -- the whole body shares one derived [Hlc].
@@ -34,7 +33,9 @@ import 'dart:convert';
 
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:crypto/crypto.dart';
+import 'package:diet_guard_app/models/food_bank_record.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
+import 'package:diet_guard_app/services/budget_schedule.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 
 const _syncDeviceId = 'phone';
@@ -186,6 +187,141 @@ String encodeLogForPush(Log log) {
   return jsonEncode(encoded);
 }
 
+/// Converts the log-derived food bank into a crdt_sync [Log].
+///
+/// The bank is *derived* -- both devices replay the same synced log and
+/// compute the same records -- so this exists to make them agree
+/// **immediately** rather than only after each has replayed.
+///
+/// The clock is the record's own `count`, not a wall time, so
+/// last-writer-wins means *max-count-wins*: the device that has seen more of
+/// the log has the higher count, and re-merging is idempotent because the
+/// count does not move unless the log did. Mirrors
+/// `_sync_merge.food_bank_to_log`.
+Log foodBankToLog(Map<String, FoodBankRecord> bank) {
+  final log = <String, Record>{};
+  for (final mapEntry in bank.entries) {
+    log[mapEntry.key] = Record(
+      id: mapEntry.key,
+      fields: {
+        'body': (
+          mapEntry.value.toJson(),
+          Hlc.newTick(
+            _syncDeviceId,
+            wallTimeMsOverride: mapEntry.value.count.toInt(),
+          ),
+        ),
+      },
+    );
+  }
+  return log;
+}
+
+/// Converts a merged food-bank [Log] back into bank shape.
+Map<String, FoodBankRecord> logToFoodBank(Log log) {
+  final bank = <String, FoodBankRecord>{};
+  for (final mapEntry in log.entries) {
+    if (mapEntry.value.deleted) continue;
+    final body = mapEntry.value.fields['body']?.$1;
+    if (body is! Map) continue;
+    bank[mapEntry.key] = FoodBankRecord.fromJson(
+      Map<String, dynamic>.from(body.cast<String, dynamic>()),
+    );
+  }
+  return bank;
+}
+
+/// Parses one device's pushed `food_bank.json` into a crdt_sync [Log].
+Log parseRemoteFoodBank(String text) {
+  final raw = jsonDecode(text);
+  if (raw is! Map) {
+    throw const FormatException(
+      'top-level food-bank payload is not a JSON object',
+    );
+  }
+  return raw.cast<String, dynamic>().map(
+    (id, data) => MapEntry(id, Record.fromJson(data as Map<String, dynamic>)),
+  );
+}
+
+/// Serializes a merged food-bank [Log] for push.
+String encodeFoodBankForPush(Log log) => jsonEncode({
+  for (final entry in log.entries) entry.key: entry.value.toJson(),
+});
+
+/// Converts the hand-curated food bank into a crdt_sync [Log].
+///
+/// One record per normalized food name, carrying the whole bank record as an
+/// opaque `body` -- the same shape food-log entries use. Unlike an entry a
+/// curated food is editable, so its [Hlc] comes from the record's own
+/// `editedAt` stamp rather than a fixed birth time. Mirrors
+/// `_sync_merge.manual_bank_to_log`.
+Log manualBankToLog(Map<String, FoodBankRecord> bank) {
+  final log = <String, Record>{};
+  for (final mapEntry in bank.entries) {
+    final wallTimeMs =
+        DateTime.tryParse(
+          mapEntry.value.editedAt ?? '',
+        )?.toUtc().millisecondsSinceEpoch ??
+        0;
+    final body = Map<String, dynamic>.from(mapEntry.value.toJson())
+      ..remove('t');
+    log[mapEntry.key] = Record(
+      id: mapEntry.key,
+      fields: {
+        'body': (
+          body,
+          Hlc.newTick(_syncDeviceId, wallTimeMsOverride: wallTimeMs),
+        ),
+      },
+    );
+  }
+  return log;
+}
+
+/// Converts a merged curated-bank [Log] back into bank shape.
+///
+/// Each record's `editedAt` is reconstructed from its field [Hlc], so the
+/// stored stamp and the clock the merge compared can never drift apart.
+/// Mirrors `_sync_merge.log_to_manual_bank`.
+Map<String, FoodBankRecord> logToManualBank(Log log) {
+  final bank = <String, FoodBankRecord>{};
+  for (final mapEntry in log.entries) {
+    if (mapEntry.value.deleted) continue;
+    final field = mapEntry.value.fields['body'];
+    final body = field?.$1;
+    if (body is! Map) continue;
+    final json = Map<String, dynamic>.from(body.cast<String, dynamic>());
+    final hlc = field?.$2;
+    if (hlc != null) {
+      json['t'] = DateTime.fromMillisecondsSinceEpoch(
+        hlc.wallTimeMs,
+        isUtc: true,
+      ).toLocal().toIso8601String();
+    }
+    bank[mapEntry.key] = FoodBankRecord.fromJson(json);
+  }
+  return bank;
+}
+
+/// Parses one device's pushed curated-bank text into a crdt_sync [Log].
+Log parseRemoteManualBank(String text) {
+  final raw = jsonDecode(text);
+  if (raw is! Map) {
+    throw const FormatException(
+      'top-level curated-bank payload is not a JSON object',
+    );
+  }
+  return raw.cast<String, dynamic>().map(
+    (id, data) => MapEntry(id, Record.fromJson(data as Map<String, dynamic>)),
+  );
+}
+
+/// Serializes a merged curated-bank [Log] for push.
+String encodeManualBankForPush(Log log) => jsonEncode({
+  for (final entry in log.entries) entry.key: entry.value.toJson(),
+});
+
 /// Stable id: exactly one budget record per device-pushed `budget.json`.
 const budgetRecordId = 'budget';
 
@@ -205,18 +341,88 @@ Hlc budgetHlc(Map<String, dynamic> record) {
   return Hlc.newTick(_syncDeviceId, wallTimeMsOverride: wallTimeMs);
 }
 
-/// Converts a raw local/remote budget record into a single-record [Log].
+/// Field-name prefix for the effective-from budget history, one field per
+/// date. A separate *field* rather than a separate document, because
+/// `mergeRecord` unions field names -- see [budgetToLog].
+const budgetHistoryFieldPrefix = 'hist:';
+
+/// Derives a deterministic [Hlc] for one history entry from its edit time.
+///
+/// Same trick as [budgetHlc]: identical inputs always yield the same clock,
+/// so re-syncing unchanged history is a no-op. Two devices that seed the
+/// history independently derive the same wall time and the same value and
+/// differ only in node id, so whichever side wins the field-level LWW, the
+/// value is identical and the merge converges in one round.
+Hlc historyHlc(BudgetEntry entry) {
+  final wallTimeMs =
+      DateTime.tryParse(entry.editedAt)?.toUtc().millisecondsSinceEpoch ?? 0;
+  return Hlc.newTick(_syncDeviceId, wallTimeMsOverride: wallTimeMs);
+}
+
+/// Converts a raw local budget record plus its history into a [Log].
 ///
 /// Returns an empty [Log] when [record] is null (this device has never
 /// explicitly set a budget), so it contributes nothing to the merge rather
 /// than clobbering another device's real value with the unset default.
-Log budgetToLog(Map<String, dynamic>? record) {
+///
+/// The history rides along as one `hist:<YYYY-MM-DD>` field per entry on the
+/// *same* record. crdt_sync's `mergeRecord` is per-field LWW over the union
+/// of field names, so a device that predates the history neither clobbers
+/// those fields nor blocks them: it merges them in from the remote and
+/// pushes them straight back out (both sides push the *merged* log). That is
+/// what makes this safe to roll out without a coordinated release.
+///
+/// `w` (body weight) is stripped from `value` for the same reason the
+/// history is not stored there: inside the shared map it was collateral
+/// damage of whole-map LWW, since this device rebuilds that map without it.
+/// Python carries it as its own `weight` field instead, and this device
+/// relays that field untouched through the merged log even though it has no
+/// weight of its own to contribute -- so both devices still see one value.
+Log budgetToLog(
+  Map<String, dynamic>? record, [
+  List<BudgetEntry> entries = const [],
+]) {
   if (record == null) return {};
   final hlc = budgetHlc(record);
-  final value = Map<String, dynamic>.from(record)..remove('t');
-  return {
-    budgetRecordId: Record(id: budgetRecordId, fields: {'value': (value, hlc)}),
-  };
+  final value = Map<String, dynamic>.from(record)
+    ..remove('t')
+    ..remove('w');
+  final fields = <String, (dynamic, Hlc)>{'value': (value, hlc)};
+  for (final entry in entries) {
+    fields['$budgetHistoryFieldPrefix${entry.effectiveFrom}'] = (
+      entry.kcal,
+      historyHlc(entry),
+    );
+  }
+  return {budgetRecordId: Record(id: budgetRecordId, fields: fields)};
+}
+
+/// Extracts the effective-from history from a merged budget [Log].
+///
+/// Each entry's `editedAt` is reconstructed from its field Hlc rather than
+/// carried separately, so the stored timestamp and the clock the merge
+/// compared can never drift apart.
+List<BudgetEntry> logToHistory(Log log) {
+  final record = log[budgetRecordId];
+  if (record == null) return const [];
+  final entries = <BudgetEntry>[];
+  for (final field in record.fields.entries) {
+    if (!field.key.startsWith(budgetHistoryFieldPrefix)) continue;
+    final kcal = field.value.$1;
+    if (kcal is! int) continue;
+    entries.add(
+      BudgetEntry(
+        effectiveFrom: field.key.substring(budgetHistoryFieldPrefix.length),
+        kcal: kcal,
+        editedAt: DateTime.fromMillisecondsSinceEpoch(
+          field.value.$2.wallTimeMs,
+          isUtc: true,
+        ).toLocal().toIso8601String(),
+      ),
+    );
+  }
+  entries.sort((a, b) => a.effectiveFrom.compareTo(b.effectiveFrom));
+  return entries;
 }
 
 /// Converts a merged budget [Log] back into a raw budget record.

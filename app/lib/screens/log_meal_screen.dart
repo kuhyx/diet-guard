@@ -7,31 +7,33 @@ import 'dart:async';
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/food_suggestion.dart';
+import 'package:diet_guard_app/models/local_time.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/screens/calendar_screen.dart';
 import 'package:diet_guard_app/screens/food_bank_screen.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
-import 'package:diet_guard_app/screens/meal_builder_screen.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/background_tasks.dart';
+import 'package:diet_guard_app/services/budget_history_service.dart';
+import 'package:diet_guard_app/services/day_status_service.dart';
+import 'package:diet_guard_app/services/due_slot_check.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
+import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/autocomplete_suggestion_list.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
-import 'package:diet_guard_app/widgets/photo_attach_field.dart';
 import 'package:diet_guard_app/widgets/slot_selector_row.dart';
+import 'package:diet_guard_app/widgets/today_progress_card.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 
 /// Lets the user log one food item, with food-bank autocomplete and
-/// today's slot status, or hop into [MealBuilderScreen] for a composite
-/// multi-item meal.
+/// today's slot status.
 class LogMealScreen extends StatefulWidget {
   /// Creates a [LogMealScreen].
   const LogMealScreen({super.key, this.httpClient});
@@ -53,9 +55,7 @@ class _LogMealScreenState extends State<LogMealScreen>
   int? _selectedSlot;
   String _source = 'manual';
   String? _status;
-  String? _imagePath;
-  FoodEntry? _lastEntry;
-  bool _showRewardPrompt = false;
+  TodayProgress? _progress;
 
   /// Single-flight guard so a launch sync and a lifecycle sync never overlap.
   bool _autoSyncing = false;
@@ -75,11 +75,10 @@ class _LogMealScreenState extends State<LogMealScreen>
     ]) {
       controller.addListener(_onMacroEdited);
     }
-    _selectedSlot = currentSlot(DateTime.now());
+    _selectedSlot = slotForLog(DateTime.now());
     unawaited(_refreshSlots());
     unawaited(_onDescChanged());
     unawaited(_autoSync());
-    unawaited(_refreshLastEntry());
   }
 
   @override
@@ -155,15 +154,6 @@ class _LogMealScreenState extends State<LogMealScreen>
     setState(() => _loggedSlots = logged);
   }
 
-  /// Refreshes the entry "repeat last meal" would log, and its enabled
-  /// state. Called after every log (manual, built, or repeated) so the
-  /// button always repeats the most recent entry, not a stale one.
-  Future<void> _refreshLastEntry() async {
-    final entry = await LogStorageService.instance.lastLoggedEntry();
-    if (!mounted) return;
-    setState(() => _lastEntry = entry);
-  }
-
   void _onMacroEdited() {
     if (_source == 'food bank') {
       setState(() => _source = 'manual');
@@ -177,9 +167,13 @@ class _LogMealScreenState extends State<LogMealScreen>
     if (!mounted) return;
     setState(() {
       _suggestions = matches;
-      // Starting to fill in the manual form dismisses a stale reward prompt
-      // left over from a prior one-tap "repeat last meal" log.
-      _showRewardPrompt = false;
+      // Typing the *next* meal dismisses the previous log's progress card.
+      // Guarded on non-empty text because _onLogMeal's own
+      // `_descController.clear()` also fires this listener: without the
+      // guard the two async chains race and the clear can null the card
+      // right after _onLogMeal set it, so the card never appears on device
+      // (in-memory test stores resolve fast enough to hide this).
+      if (_descController.text.isNotEmpty) _progress = null;
     });
   }
 
@@ -203,7 +197,10 @@ class _LogMealScreenState extends State<LogMealScreen>
   Future<void> _onLogMeal() async {
     final desc = _descController.text.trim();
     if (desc.isEmpty) {
-      setState(() => _status = 'Type what you ate first.');
+      setState(() {
+        _status = 'Type what you ate first.';
+        _progress = null;
+      });
       return;
     }
     final nutrition = nutritionForPortion(
@@ -219,7 +216,6 @@ class _LogMealScreenState extends State<LogMealScreen>
       desc,
       nutrition,
       slot: _selectedSlot,
-      imagePath: _imagePath,
     );
     final log = await LogStorageService.instance.readLog();
     await FoodBankService.instance.rebuildAndPersist(log);
@@ -230,72 +226,56 @@ class _LogMealScreenState extends State<LogMealScreen>
     // Offline backstop: if the push above fails (no connectivity), a
     // connectivity-gated WorkManager task uploads the meal on reconnect.
     unawaited(_enqueueSyncBackstop());
+    await _dismissStaleReminder();
     if (!mounted) return;
     _descController.clear();
     _macros.clear();
     setState(() {
       _source = 'manual';
-      _imagePath = null;
-      _selectedSlot = currentSlot(DateTime.now());
+      _selectedSlot = slotForLog(DateTime.now());
     });
-    await _refreshSlots();
-    if (!mounted) return;
-    setState(() => _status = 'Logged "$desc".');
-    await _refreshLastEntry();
-  }
-
-  /// One-tap "repeat last meal": re-logs [_lastEntry] verbatim (minus any
-  /// photo) against today's current slot. Mirrors [_onLogMeal]'s post-write
-  /// sequence exactly so offline/sync semantics stay identical.
-  Future<void> _onLogLastMeal() async {
-    final last = _lastEntry;
-    if (last == null) return;
-    final nutrition = Nutrition(
-      kcal: last.kcal,
-      proteinG: last.proteinG,
-      carbsG: last.carbsG,
-      fatG: last.fatG,
-      grams: last.grams,
-      source: last.source,
-    );
-    await LogStorageService.instance.logMeal(
-      last.desc,
-      nutrition,
-      slot: currentSlot(DateTime.now()),
-      components: last.components,
-      // No imagePath: a repeated meal shouldn't drag forward a photo of a
-      // specific past occasion.
-    );
-    final log = await LogStorageService.instance.readLog();
-    await FoodBankService.instance.rebuildAndPersist(log);
-    unawaited(_autoSync());
-    unawaited(_enqueueSyncBackstop());
-    if (!mounted) return;
     await _refreshSlots();
     if (!mounted) return;
     setState(() {
-      _status = 'Logged "${last.desc}" again.';
-      _showRewardPrompt = AppSettingsService.rewardUrl?.isNotEmpty ?? false;
+      _status = null;
+      _progress = _buildProgress(log, desc);
     });
-    await _refreshLastEntry();
   }
 
-  Future<void> _openReward() async {
-    final url = AppSettingsService.rewardUrl;
-    if (url == null || url.isEmpty) return;
-    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-  }
+  /// Clears any reminder the meal just logged has now satisfied.
+  ///
+  /// Without this a notification already on screen survives until the next
+  /// background tick (up to 15 minutes), which reads as a false alarm even
+  /// though the meal was logged on this very device. Passes
+  /// `pullWhenDue: false` because [_autoSync] above already owns the network
+  /// here and the local log is by definition the freshest copy.
+  ///
+  /// [checkAndNotify] already swallows notification-platform failures, so
+  /// the meal -- written before this runs -- can never be lost to one.
+  Future<void> _dismissStaleReminder() => checkAndNotify(pullWhenDue: false);
 
-  Future<void> _onBuildMeal() async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const MealBuilderScreen()),
+  /// Summarises today from the log just written.
+  ///
+  /// Takes the already-read [log] rather than re-reading, so the card can
+  /// never disagree with the write that produced it.
+  TodayProgress _buildProgress(DayLog log, String desc) {
+    final budget = AppSettingsService.dailyKcalGoal;
+    final today = localDateKey(DateTime.now());
+    final entries = (log[today] ?? const <FoodEntry>[])
+        .where((entry) => !entry.deleted)
+        .toList();
+    final macros = sumMacros(entries);
+    return TodayProgress(
+      justLogged: desc,
+      consumedKcal: sumKcal(entries),
+      budgetKcal: budget,
+      proteinG: macros.proteinG,
+      carbsG: macros.carbsG,
+      fatG: macros.fatG,
+      adherenceStreak: adherenceStreak(
+        statusMap(log, schedule: BudgetHistoryService.schedule),
+      ),
     );
-    await _refreshSlots();
-    await _refreshLastEntry();
-    // A meal built and logged in the builder should push right away too,
-    // with the same offline backstop.
-    unawaited(_autoSync());
-    unawaited(_enqueueSyncBackstop());
   }
 
   void _onOpenHistory() {
@@ -360,18 +340,8 @@ class _LogMealScreenState extends State<LogMealScreen>
           ),
         ],
       ),
-      floatingActionButton: Tooltip(
-        message: _lastEntry == null
-            ? 'No previous meal to repeat'
-            : 'Repeat "${_lastEntry!.desc}"',
-        child: FloatingActionButton.extended(
-          onPressed: _lastEntry == null ? null : _onLogLastMeal,
-          icon: const Icon(Icons.repeat),
-          label: const Text('Repeat last meal'),
-        ),
-      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -396,20 +366,7 @@ class _LogMealScreenState extends State<LogMealScreen>
             const SizedBox(height: 8),
             Row(
               children: [
-                PhotoAttachField(
-                  imagePath: _imagePath,
-                  onChanged: (path) => setState(() => _imagePath = path),
-                  compact: true,
-                ),
                 const Spacer(),
-                Tooltip(
-                  message: 'Build a multi-item meal',
-                  child: OutlinedButton(
-                    onPressed: _onBuildMeal,
-                    child: const Icon(Icons.playlist_add),
-                  ),
-                ),
-                const SizedBox(width: 8),
                 Tooltip(
                   message: 'Log meal',
                   child: FilledButton(
@@ -419,20 +376,16 @@ class _LogMealScreenState extends State<LogMealScreen>
                 ),
               ],
             ),
+            // Mutually exclusive: _status carries a validation complaint,
+            // _progress the post-log summary. A successful log clears one
+            // and sets the other, so the two never stack.
             if (_status != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               Text(_status!),
             ],
-            if (_showRewardPrompt &&
-                (AppSettingsService.rewardUrl?.isNotEmpty ?? false)) ...[
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: () => unawaited(_openReward()),
-                icon: const Icon(Icons.card_giftcard),
-                label: Text(
-                  'Open ${AppSettingsService.rewardLabel ?? "reward"}',
-                ),
-              ),
+            if (_progress != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              TodayProgressCard(progress: _progress!),
             ],
           ],
         ),

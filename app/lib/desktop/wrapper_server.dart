@@ -7,9 +7,8 @@
 /// half of the desktop app:
 ///
 /// * it serves the built web assets;
-/// * it owns an on-disk copy of every document and photo the app stores, so a
-///   wiped Chrome profile is not a total-loss event (photos in particular
-///   never sync, so nothing else could restore them);
+/// * it owns an on-disk copy of every document the app stores, so a wiped
+///   Chrome profile is not a total-loss event;
 /// * it fronts GitHub, holding the sync token and running the CORS-less
 ///   device flow the page cannot (see `github_proxy.dart`).
 ///
@@ -38,7 +37,7 @@ class WrapperServer {
   /// Directory holding the built Flutter web assets.
   final String webRoot;
 
-  /// Directory holding the on-disk copies of documents and photo blobs.
+  /// Directory holding the on-disk copies of the app's documents.
   final String dataDir;
 
   /// GitHub half of the wrapper.
@@ -92,13 +91,6 @@ class WrapperServer {
         request,
         'documents',
         path.substring(WrapperPaths.documents.length),
-      );
-    }
-    if (path.startsWith(WrapperPaths.blobs)) {
-      return _storedFile(
-        request,
-        'blobs',
-        path.substring(WrapperPaths.blobs.length),
       );
     }
     return _static(request, path);

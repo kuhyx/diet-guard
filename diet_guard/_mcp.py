@@ -43,7 +43,7 @@ from pydantic import BaseModel
 from diet_guard._budget import BudgetError
 from diet_guard._gate import due_slots
 from diet_guard._resolve import ManualMacros, resolve_nutrition
-from diet_guard._slots import current_slot, day_slots, slot_label
+from diet_guard._slots import current_slot, day_slots, slot_for_log, slot_label
 from diet_guard._state import (
     consumption_band,
     logged_slots_today,
@@ -234,7 +234,7 @@ def log_meal(
                 "or Open Food Facts. Pass kcal=<number> to log it manually."
             ),
         }
-    target_slot = slot if slot is not None else current_slot(now_local())
+    target_slot = slot if slot is not None else slot_for_log(now_local())
     resolved = {
         "kcal": nutrition.kcal,
         "protein_g": nutrition.protein_g,

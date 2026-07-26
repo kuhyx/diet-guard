@@ -12,13 +12,7 @@ from unittest.mock import patch
 
 from diet_guard import _foodbank
 from diet_guard._estimator import Nutrition
-from diet_guard._foodbank import (
-    lookup_food,
-    remember_food,
-    remember_meal,
-    search_foods,
-)
-from diet_guard._meal import MealItem
+from diet_guard._foodbank import lookup_food, remember_food, search_foods
 
 _NUT = Nutrition(
     kcal=250,
@@ -120,39 +114,6 @@ class TestSearch:
         _write_raw({"applekey": {"kcal": 50, "count": 1}})
         names = [name for name, _ in search_foods("")]
         assert names == ["applekey"]
-
-
-class TestRememberMeal:
-    """Banking a composite meal and its components."""
-
-    def test_banks_each_item_and_the_composite(self) -> None:
-        """Every component and the summed meal land in the bank."""
-        items = [
-            MealItem("salad", Nutrition(80, 2, 8, 5, 120, "manual")),
-            MealItem("chicken", Nutrition(330, 62, 0, 7, 200, "manual")),
-        ]
-        total = remember_meal("dinner", items)
-        assert total.kcal == 410
-        assert lookup_food("salad") is not None
-        assert lookup_food("chicken") is not None
-        dinner = lookup_food("dinner")
-        assert dinner is not None
-        assert dinner.kcal == 410
-
-    def test_composite_records_components(self) -> None:
-        """The meal entry carries its component names for later use."""
-        item = MealItem("rice", Nutrition(260, 5, 56, 1, 180, "manual"))
-        remember_meal("bowl", [item])
-        bank = json.loads(_foodbank.FOOD_BANK_FILE.read_text(encoding="utf-8"))
-        assert bank["bowl"]["components"] == ["rice"]
-
-    def test_blank_name_banks_items_only(self) -> None:
-        """A blank meal name still banks items but stores no empty composite."""
-        item = MealItem("toast", Nutrition(120, 4, 20, 2, 40, "manual"))
-        remember_meal("   ", [item])
-        assert lookup_food("toast") is not None
-        bank = json.loads(_foodbank.FOOD_BANK_FILE.read_text(encoding="utf-8"))
-        assert list(bank) == ["toast"]
 
 
 class TestCorruptQuarantine:

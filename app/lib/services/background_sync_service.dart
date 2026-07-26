@@ -6,6 +6,7 @@
 library;
 
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
@@ -34,6 +35,8 @@ Future<bool> backgroundSyncPush({http.Client? httpClient}) async {
   await LogStorageService.init();
   await FoodBankService.init();
   await AppSettingsService.init();
+  // runSync also merges the budget history through this singleton.
+  await BudgetHistoryService.init();
   final SyncSettings settings;
   try {
     settings = await SyncSettings.load();

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:flutter/material.dart';
@@ -47,6 +48,9 @@ void main() {
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
     AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
+    BudgetHistoryService.resetForTesting(
+      store: FileDocumentStore(tempDir),
+    );
     SharedPreferences.setMockInitialValues({});
     installFakeSecureStorage();
   });
@@ -55,6 +59,7 @@ void main() {
     LogStorageService.resetForTesting();
     FoodBankService.resetForTesting();
     AppSettingsService.resetForTesting();
+    BudgetHistoryService.resetForTesting();
     await tempDir.delete(recursive: true);
   });
 
@@ -96,46 +101,6 @@ void main() {
 
       expect(find.widgetWithText(TextField, 'kuhyx'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'syncs'), findsOneWidget);
-    });
-  });
-
-  testWidgets('loads existing saved reward values into their fields', (
-    tester,
-  ) async {
-    await tester.runAsync(() async {
-      await AppSettingsService.instance.saveReward(
-        label: 'Podcast',
-        url: 'https://example.com/podcast',
-      );
-
-      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
-      await settle(tester);
-
-      expect(find.widgetWithText(TextField, 'Podcast'), findsOneWidget);
-      expect(
-        find.widgetWithText(TextField, 'https://example.com/podcast'),
-        findsOneWidget,
-      );
-    });
-  });
-
-  testWidgets('typing into the reward fields persists them', (tester) async {
-    await tester.runAsync(() async {
-      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
-      await settle(tester);
-
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Reward label'),
-        'Podcast',
-      );
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Reward URL'),
-        'https://example.com/podcast',
-      );
-      await settle(tester);
-
-      expect(AppSettingsService.rewardLabel, 'Podcast');
-      expect(AppSettingsService.rewardUrl, 'https://example.com/podcast');
     });
   });
 

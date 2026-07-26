@@ -5,11 +5,9 @@ import 'dart:async';
 
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/screens/edit_entry_screen.dart';
-import 'package:diet_guard_app/screens/photo_viewer_screen.dart';
-import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/day_status_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
-import 'package:diet_guard_app/widgets/attached_image.dart';
 import 'package:flutter/material.dart';
 
 // ---------------------------------------------------------------------------
@@ -51,7 +49,6 @@ class HistoryFilter {
     this.maxCarbs,
     this.minFat,
     this.maxFat,
-    this.hasPhoto,
     this.source,
   });
 
@@ -85,9 +82,6 @@ class HistoryFilter {
   /// Maximum fat (g).
   double? maxFat;
 
-  /// null = all, true = with photo, false = without.
-  bool? hasPhoto;
-
   /// null = all, or a source string from the log.
   String? source;
 
@@ -103,7 +97,6 @@ class HistoryFilter {
       maxCarbs != null ||
       minFat != null ||
       maxFat != null ||
-      hasPhoto != null ||
       source != null;
 }
 
@@ -185,13 +178,6 @@ List<FoodEntry> applyHistoryFilter(
   }
   if (filter.maxFat != null) {
     result = result.where((e) => e.fatG <= filter.maxFat!).toList();
-  }
-  if (filter.hasPhoto != null) {
-    result = result
-        .where(
-          (e) => filter.hasPhoto! ? e.imagePath != null : e.imagePath == null,
-        )
-        .toList();
   }
   if (filter.source != null) {
     result = result.where((e) => e.source == filter.source).toList();
@@ -372,7 +358,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       maxCarbs: _filter.maxCarbs,
       minFat: _filter.minFat,
       maxFat: _filter.maxFat,
-      hasPhoto: _filter.hasPhoto,
       source: _filter.source,
     );
     var draftSortField = _sortField;
@@ -512,7 +497,9 @@ class _DayHeaderTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final goal = AppSettingsService.dailyKcalGoal;
+    // The budget that applied on *that* day, not today's -- a later budget
+    // change must not repaint months of history red.
+    final goal = BudgetHistoryService.schedule.forDay(header.dateKey);
     final kcalColor = header.totalKcal > goal
         ? colorScheme.error
         : colorScheme.primary;
@@ -576,7 +563,7 @@ class _EntryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: _Thumbnail(imagePath: entry.imagePath),
+      leading: const Icon(Icons.restaurant),
       title: Text(entry.desc),
       subtitle: Text('${entry.time}  •  ${entry.source}'),
       trailing: Text('${entry.kcal.toStringAsFixed(0)} kcal'),
@@ -612,38 +599,6 @@ class _EntryTile extends StatelessWidget {
       await LogStorageService.instance.deleteEntry(entry.id!);
       await onDelete?.call();
     }
-  }
-}
-
-class _Thumbnail extends StatelessWidget {
-  const _Thumbnail({required this.imagePath});
-
-  final String? imagePath;
-
-  @override
-  Widget build(BuildContext context) {
-    final path = imagePath;
-    if (path == null) {
-      return const SizedBox(
-        width: 40,
-        height: 40,
-        child: Icon(Icons.restaurant),
-      );
-    }
-    return GestureDetector(
-      onTap: () => Navigator.of(context).push<void>(
-        MaterialPageRoute(builder: (_) => PhotoViewerScreen(path: path)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(6),
-        child: AttachedImage(
-          path: path,
-          width: 40,
-          height: 40,
-          fit: BoxFit.cover,
-        ),
-      ),
-    );
   }
 }
 
@@ -905,43 +860,6 @@ class _FilterSheet extends StatelessWidget {
                     const SizedBox(height: 8),
                   ],
 
-                  // Photo filter
-                  Text(
-                    'Photo',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      FilterChip(
-                        label: const Text('Any'),
-                        selected: filter.hasPhoto == null,
-                        onSelected: (_) {
-                          filter.hasPhoto = null;
-                          onFilterChanged(filter);
-                        },
-                      ),
-                      FilterChip(
-                        label: const Text('With photo'),
-                        selected: filter.hasPhoto == true,
-                        onSelected: (_) {
-                          filter.hasPhoto = true;
-                          onFilterChanged(filter);
-                        },
-                      ),
-                      FilterChip(
-                        label: const Text('Without photo'),
-                        selected: filter.hasPhoto == false,
-                        onSelected: (_) {
-                          filter.hasPhoto = false;
-                          onFilterChanged(filter);
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
                   // Source filter
                   Text(
                     'Source',
@@ -959,7 +877,7 @@ class _FilterSheet extends StatelessWidget {
                           onFilterChanged(filter);
                         },
                       ),
-                      for (final src in ['manual', 'food bank', 'meal'])
+                      for (final src in ['manual', 'food bank'])
                         FilterChip(
                           label: Text(src),
                           selected: filter.source == src,

@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
-import 'package:diet_guard_app/screens/photo_viewer_screen.dart';
+import 'package:diet_guard_app/services/budget_history_service.dart';
+import 'package:diet_guard_app/services/budget_schedule.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,10 +15,12 @@ void main() {
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_history_');
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
+    BudgetHistoryService.resetForTesting(store: FileDocumentStore(tempDir));
   });
 
   tearDown(() async {
     LogStorageService.resetForTesting();
+    BudgetHistoryService.resetForTesting();
     await tempDir.delete(recursive: true);
   });
 
@@ -29,6 +32,62 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 200));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('a day header shows the budget that applied on that day', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      // 2200 until 2026-06-15, 2000 from then on.
+      await BudgetHistoryService.instance.applyMerged(const [
+        BudgetEntry(
+          effectiveFrom: kEpochDay,
+          kcal: 2200,
+          editedAt: '2026-01-01T00:00:00.000Z',
+        ),
+        BudgetEntry(
+          effectiveFrom: '2026-06-15',
+          kcal: 2000,
+          editedAt: '2026-06-15T00:00:00.000Z',
+        ),
+      ]);
+      await LogStorageService.instance.writeLog({
+        '2026-06-01': [
+          const FoodEntry(
+            id: 'before',
+            time: '2026-06-01T08:00:00+02:00',
+            desc: 'before the cut',
+            grams: 100,
+            kcal: 2100,
+            proteinG: 5,
+            carbsG: 10,
+            fatG: 2,
+            source: 'manual',
+          ),
+        ],
+        '2026-06-20': [
+          const FoodEntry(
+            id: 'after',
+            time: '2026-06-20T08:00:00+02:00',
+            desc: 'after the cut',
+            grams: 100,
+            kcal: 2100,
+            proteinG: 5,
+            carbsG: 10,
+            fatG: 2,
+            source: 'manual',
+          ),
+        ],
+      });
+
+      await tester.pumpWidget(const MaterialApp(home: HistoryScreen()));
+      await settle(tester);
+
+      // Same 2100 kcal on both days, judged against different budgets --
+      // lowering the budget must not repaint the earlier day.
+      expect(find.text('2100 / 2200 kcal'), findsOneWidget);
+      expect(find.text('2100 / 2000 kcal'), findsOneWidget);
+    });
+  });
 
   testWidgets('shows a message when nothing has been logged', (tester) async {
     await tester.runAsync(() async {
@@ -94,39 +153,6 @@ void main() {
       final tiles = tester.widgetList<ListTile>(find.byType(ListTile)).toList();
       expect((tiles[0].title! as Text).data, 'new dinner');
       expect((tiles[1].title! as Text).data, 'old breakfast');
-    });
-  });
-
-  testWidgets('tapping a thumbnail opens the full-screen photo viewer', (
-    tester,
-  ) async {
-    await tester.runAsync(() async {
-      final imageFile = File('${tempDir.path}/photo.png')
-        ..writeAsBytesSync([1, 2, 3]);
-      await LogStorageService.instance.writeLog({
-        '2026-06-22': [
-          FoodEntry(
-            id: 'with-photo',
-            time: '2026-06-22T20:00:00+02:00',
-            desc: 'dinner with a photo',
-            grams: 100,
-            kcal: 200,
-            proteinG: 10,
-            carbsG: 20,
-            fatG: 4,
-            source: 'manual',
-            imagePath: imageFile.path,
-          ),
-        ],
-      });
-
-      await tester.pumpWidget(const MaterialApp(home: HistoryScreen()));
-      await settle(tester);
-
-      await tester.tap(find.byType(Image));
-      await settle(tester);
-
-      expect(find.byType(PhotoViewerScreen), findsOneWidget);
     });
   });
 
@@ -209,7 +235,6 @@ void main() {
         carbsG: 40,
         fatG: 1,
         source: 'food bank',
-        imagePath: '/fake/img.jpg',
       ),
       const FoodEntry(
         id: 'c',
@@ -282,26 +307,6 @@ void main() {
         ascending: false,
       );
       expect(result.map((e) => e.id), ['b']); // fat=1
-    });
-
-    test('hasPhoto=true keeps only entries with imagePath', () {
-      final result = applyHistoryFilter(
-        entries,
-        HistoryFilter(hasPhoto: true),
-        HistorySortField.date,
-        ascending: false,
-      );
-      expect(result.map((e) => e.id), ['b']);
-    });
-
-    test('hasPhoto=false keeps only entries without imagePath', () {
-      final result = applyHistoryFilter(
-        entries,
-        HistoryFilter(hasPhoto: false),
-        HistorySortField.date,
-        ascending: false,
-      );
-      expect(result.map((e) => e.id), ['c', 'a']);
     });
 
     test('source filter keeps only matching source', () {
@@ -390,10 +395,6 @@ void main() {
 
     test('HistoryFilter.isActive is true when source is set', () {
       expect(HistoryFilter(source: 'manual').isActive, isTrue);
-    });
-
-    test('HistoryFilter.isActive is true when hasPhoto is set', () {
-      expect(HistoryFilter(hasPhoto: true).isActive, isTrue);
     });
 
     test('maxProtein filters by protein', () {
@@ -791,54 +792,6 @@ void main() {
       expect(find.text('Filter & Sort'), findsNothing);
       expect(find.textContaining('manual meal'), findsOneWidget);
       expect(find.textContaining('bank meal'), findsNothing);
-    });
-  });
-
-  testWidgets('filter sheet photo chips fire onSelected callbacks', (
-    tester,
-  ) async {
-    await tester.runAsync(() async {
-      // Zero macros: date/photo/source sections are visible without scrolling.
-      await LogStorageService.instance.writeLog({
-        '2026-06-24': [
-          const FoodEntry(
-            id: 'ph1',
-            time: '2026-06-24T08:00:00+02:00',
-            desc: 'photo test entry',
-            grams: 100,
-            kcal: 0,
-            proteinG: 0,
-            carbsG: 0,
-            fatG: 0,
-            source: 'manual',
-          ),
-        ],
-      });
-
-      await tester.pumpWidget(const MaterialApp(home: HistoryScreen()));
-      await settle(tester);
-
-      await tester.tap(find.byIcon(Icons.filter_list));
-      await settle(tester);
-
-      expect(find.text('Filter & Sort'), findsOneWidget);
-
-      // Tap 'With photo' → covers lines 769-771 (hasPhoto = true).
-      await tester.tap(find.widgetWithText(FilterChip, 'With photo'));
-      await settle(tester);
-
-      // Tap 'Without photo' → covers lines 777-779 (hasPhoto = false).
-      await tester.tap(find.widgetWithText(FilterChip, 'Without photo'));
-      await settle(tester);
-
-      // Tap 'Any' to reset → covers lines 761-763 (hasPhoto = null).
-      await tester.tap(find.widgetWithText(FilterChip, 'Any'));
-      await settle(tester);
-
-      await tester.tap(find.text('Apply'));
-      await settle(tester);
-
-      expect(find.text('Filter & Sort'), findsNothing);
     });
   });
 

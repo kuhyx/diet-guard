@@ -16,7 +16,7 @@ import 'package:uuid/uuid.dart';
 /// Edit screen for an existing [FoodEntry].
 ///
 /// Preserves [FoodEntry.id], [FoodEntry.time], [FoodEntry.slot],
-/// [FoodEntry.imagePath], and [FoodEntry.deleted]. All nutritional fields and
+/// and [FoodEntry.deleted]. All nutritional fields and
 /// the description are editable.
 class EditEntryScreen extends StatefulWidget {
   /// Creates an [EditEntryScreen] pre-filled with [entry].
@@ -129,7 +129,6 @@ class _EditEntryScreenState extends State<EditEntryScreen> {
       fatG: nutrition.fatG,
       source: _source,
       slot: e.slot,
-      imagePath: e.imagePath,
     );
     await LogStorageService.instance.updateEntry(e, updated);
     final log = await LogStorageService.instance.readLog();

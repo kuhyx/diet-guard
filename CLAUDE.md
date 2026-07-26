@@ -17,7 +17,13 @@ tally, both derived from the same day-status classification
 (`_daystatus.py` / `day_status_service.dart`).
 
 See `docs/design.md` for the original feature spec (meal-slot timing logic,
-the Tue/Wed/Thu "filled most of the day" catch-up rule, multi-item meals).
+the Tue/Wed/Thu "filled most of the day" catch-up rule). Note that the
+multi-item **meal builder** described there was removed on 2026-07-26 as
+unused, on both the gate and the phone; only its `components` *storage*
+remains, so already-logged composite meals keep their per-item macros. Nothing
+creates a new one. The phone's "repeat last meal" button and the
+temptation-bundling reward prompt were removed in the same pass (the reward
+was replaced by a post-log progress card).
 
 ## Scheduling
 
@@ -58,10 +64,24 @@ fine-grained GitHub PAT scoped to `syncs`'s contents (read/write),
 then save it to `~/.config/diet_guard/sync_token`, mode 600. Until that file
 exists, every sync tick is a harmless no-op that logs `sync not configured`.
 
-The food bank stays *derived*, never synced: only `food_log.json` round-trips
-through GitHub, and each device rebuilds its own `food_bank.json` locally by
-replaying the merged log (`_foodbank.rebuild_food_bank`) — this is what avoids
-needing CRDT counter-merge logic for a food's `count`.
+**Both halves of the food bank sync.** The derived bank
+(`food_bank.json`) is still rebuilt locally from the merged log
+(`_foodbank.rebuild_food_bank`), but it is then merged and pushed too, so the
+two devices agree *immediately* instead of only after each has replayed the
+log. Its merge clock is the record's own **`count`**, not a wall time: LWW
+therefore means *max-count-wins*, which is the correct merge for a derived
+counter (the device that has seen more of the log has the higher count) and
+is idempotent, because the count only moves when the log does. That is what
+sidesteps needing a real counter CRDT.
+
+The **hand-curated** bank also syncs
+(`food_bank_manual.json`, `_foodbank_manual.py` / the manual half of
+`foodbank_service.dart`). Those are foods the user added without ever eating
+them, so they are not derivable from any log; before they synced they were
+the last piece of device-local state in the app. One CRDT record per
+normalized name, last-writer-wins by an `editedAt` stamp, union across
+devices. `lookup_food`/`search_foods` merge them under the log-derived
+records, so a food curated on the phone autocompletes in the PC gate.
 
 ## Production dependency installation — read this before adding any dependency
 
@@ -103,9 +123,29 @@ silently does **not** reach the running service.
   timestamp so `diet-guard-sync.timer`'s `budget.json` sync (mirroring the
   food-log sync) resolves concurrent edits last-writer-wins. Do not
   reintroduce the seal as a "fix" — the removal is the feature.
+- **Past days are judged against the budget that applied then.**
+  `~/.local/share/diet_guard/.budget_history` (`diet_guard/_budget_history.py`,
+  mirrored by `app/lib/services/budget_schedule.dart`) is a forward-only list
+  of `(effective_from, kcal)` entries; `status_map`/`statusMap` resolve each
+  day through it, so lowering the budget never retroactively breaks the
+  adherence streak or the YTD tally. It syncs as extra `hist:<YYYY-MM-DD>`
+  *fields* on the existing `budget` CRDT record rather than as a second
+  document: `merge_record` is per-field LWW over the **union** of field names
+  and both devices push the *merged* log, so a device that predates the
+  feature relays those fields untouched. `write_budget` /
+  `saveDailyKcalGoal` must seed the pre-write value to `1970-01-01` **before**
+  recording the new one for today — reversing that makes every past day adopt
+  the new budget, which is the exact bug this exists to prevent.
 - **Biometrics are used once and discarded.** `init` asks for biometrics to
   compute the daily budget, then the only persisted output is the computed
   budget number — never the biometrics themselves.
+- **PC and phone share one source of truth for every piece of data.** The
+  food log, the budget, the budget history, body weight (`w`, its own
+  `weight` CRDT field), and the curated food bank all round-trip through
+  `kuhyx/syncs`. The derived food bank is a local cache of the synced log,
+  not separate state. There is deliberately nothing left that only one
+  device knows — if you add a new stored field, sync it or explain in a
+  comment why it physically cannot be shared.
 - **State lives entirely under `~/.local/share/diet_guard/`** — no
   cross-repo file coupling (unlike wake_alarm, which reads
   `~/screen-locker/screen_locker/workout_log.json`). Safe to reason about in
@@ -162,9 +202,21 @@ Consequences worth knowing before touching `app/`:
 
 ## Do NOT
 
-- Don't relax the meal-slot/macro logic without re-reading `docs/design.md` —
-  the Tue/Wed/Thu catch-up rule and multi-item meal summing are deliberate,
-  not accidental complexity.
+- Don't relax the meal-slot logic without re-reading `docs/design.md` — the
+  Tue/Wed/Thu catch-up rule is deliberate, not accidental complexity. The
+  off-hours **clamp** in `slot_for_log`/`slotForLog` is likewise deliberate
+  (a meal before 08:00 counts toward 08:00, after 22:00 toward 20:00) and
+  must stay byte-identical across Python and Dart; do NOT "fix" it by
+  widening `elapsed_slots`, which would make every slot fall due at 23:00.
+- Don't re-add the meal builder, the "repeat last meal" button, the reward
+  prompt, or **meal photos** — all four were removed deliberately as unused.
+  The photo removal took `image_picker`, the blob stores, the wrapper's
+  `/blobs/` route and the `CAMERA` permission with it; re-adding photos means
+  re-adding all of that *plus* syncing image blobs, since a device-local
+  attachment would violate the shared-source-of-truth rule above. Do not strip the
+  `components` field either: nothing writes it any more, but historical
+  composite entries and the food bank still read it, and it is part of the
+  sync wire format.
 - Don't add a dependency without doing the production install-path check
   above.
 - Don't reintroduce a seal/lock/`chattr +i` on the budget file as a "fix" —

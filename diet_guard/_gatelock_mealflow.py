@@ -1,10 +1,10 @@
-"""Submit/record/meal-building flow and dashboard for the MealGate gate.
+"""Submit/record flow and dashboard for the MealGate gate.
 
 Split out of :mod:`._gatelock` to keep that module under the repo's 500-line
 limit.  ``_GateMealFlow`` extends
 :class:`~diet_guard._gatelock_nutrition._GateNutrition` with the
-submit/lookup/log flow for single foods and multi-item meals, the per-slot
-input reset, and the running calorie/macro dashboard.
+submit/lookup/log flow, the per-slot input reset, and the running
+calorie/macro dashboard.
 """
 
 from __future__ import annotations
@@ -14,11 +14,10 @@ import tkinter as tk
 from typing import TYPE_CHECKING
 
 from diet_guard._budget import BudgetError, daily_budget, protein_target_g
-from diet_guard._foodbank import remember_food, remember_meal
+from diet_guard._foodbank import remember_food
 from diet_guard._gate import due_slots
 from diet_guard._gatelock_nutrition import _GateNutrition
 from diet_guard._gatelock_ui import ERR, FG, UNIT_GRAMS
-from diet_guard._meal import MealItem, item_to_component, meal_total
 from diet_guard._resolve import lookup_candidates
 from diet_guard._slots import slot_label
 from diet_guard._state import (
@@ -41,17 +40,15 @@ _DASHBOARD_ROWS = 5
 _TIME_SLICE = slice(11, 16)
 # Width a meal description is truncated to in the dashboard.
 _DASH_DESC_WIDTH = 22
-# Fallback name for a multi-item meal when the user leaves the name field blank.
-_DEFAULT_MEAL_NAME = "meal"
 
 
 class _GateMealFlow(_GateNutrition):
-    """Submit/lookup/log flow for single foods and multi-item meals."""
+    """Submit/lookup/log flow for a logged food."""
 
-    # -- slot walk (meal-in-progress reset) ----------------------------------
+    # -- slot walk ------------------------------------------------------------
 
-    def _clear_food_inputs(self) -> None:
-        """Empty the food fields, picker, preview, and basis (keeps any meal)."""
+    def _clear_inputs(self) -> None:
+        """Empty the food fields, picker, preview, and basis for a new slot."""
         self._set_desc("")
         self._widgets.amount_entry.delete(0, tk.END)
         self._vars.unit.set(UNIT_GRAMS)
@@ -66,13 +63,6 @@ class _GateMealFlow(_GateNutrition):
         self._vars.preview.set("")
         self._refresh_projection()
 
-    def _clear_inputs(self) -> None:
-        """Empty the food fields and discard any in-progress meal (new slot)."""
-        self._clear_food_inputs()
-        self._state.meal_items = []
-        self._widgets.meal_name_entry.delete(0, tk.END)
-        self._vars.meal_summary.set("")
-
     # -- behaviour ------------------------------------------------------------
 
     def _set_status(self, text: str, *, error: bool = False) -> None:
@@ -85,17 +75,9 @@ class _GateMealFlow(_GateNutrition):
         self._on_submit()
 
     def _on_submit(self) -> None:
-        """Validate, then look up, or log -- as a single food or a summed meal.
-
-        With a meal in progress, an empty form finalizes the accumulated items,
-        and a completed form adds itself as the meal's last item before logging.
-        With no meal in progress this is the original single-food path.
-        """
+        """Validate, then look the food up, or log it."""
         description = self._get_desc()
         if not description:
-            if self._state.meal_items:
-                self._log_meal()
-                return
             self._set_status("Type what you ate first.", error=True)
             self._widgets.desc_text.focus_set()
             return
@@ -113,10 +95,6 @@ class _GateMealFlow(_GateNutrition):
         if nutrition is None:
             self._set_status("Enter the calories, then submit.", error=True)
             self._widgets.macros.kcal.focus_set()
-            return
-        if self._state.meal_items:
-            self._state.meal_items.append(MealItem(description, nutrition))
-            self._log_meal()
             return
         self._record(description, nutrition)
 
@@ -154,55 +132,6 @@ class _GateMealFlow(_GateNutrition):
         remember_food(description, nutrition)
         self._finish_slot(f"{nutrition.kcal:g} kcal ({nutrition.source})")
 
-    def _meal_name(self) -> str:
-        """Return the trimmed meal name the user typed (empty if none)."""
-        return self._widgets.meal_name_entry.get().strip()
-
-    def _refresh_meal_summary(self) -> None:
-        """Update the running "meal so far" line from the accumulated items."""
-        if not self._state.meal_items:
-            self._vars.meal_summary.set("")
-            return
-        total = meal_total(self._state.meal_items)
-        names = ", ".join(item.name for item in self._state.meal_items)
-        self._vars.meal_summary.set(
-            f"Meal so far ({len(self._state.meal_items)}): {names}  →  "
-            f"{total.kcal:g} kcal · P{total.protein_g:g} "
-            f"C{total.carbs_g:g} F{total.fat_g:g}",
-        )
-
-    def _on_add_item(self) -> None:
-        """Add the current form as one component of a multi-part meal.
-
-        Requires a name and resolved calories (a blank calorie field triggers a
-        lookup first, exactly like submitting).  On success the item is appended
-        to the meal-in-progress, the running total updates, and the food fields
-        clear for the next item while the meal name is kept.
-        """
-        description = self._get_desc()
-        if not description:
-            self._set_status("Type the item first, then add it.", error=True)
-            self._widgets.desc_text.focus_set()
-            return
-        values = self._macro_values()
-        if values is None:
-            self._set_status("Macros must be numbers.", error=True)
-            self._widgets.macros.kcal.focus_set()
-            return
-        if values[0] is None:
-            self._begin_lookup(description)
-            return
-        nutrition = self._current_nutrition()
-        if nutrition is None:
-            self._set_status("Enter the calories, then add the item.", error=True)
-            self._widgets.macros.kcal.focus_set()
-            return
-        self._state.meal_items.append(MealItem(description, nutrition))
-        self._refresh_meal_summary()
-        self._clear_food_inputs()
-        self._set_status(f"Added {description}. Add another, or Log & Continue.")
-        self._widgets.desc_text.focus_set()
-
     def _slot_for_log(self) -> int | None:
         """Return the slot to tag a log with -- None in demo (satisfies no slot).
 
@@ -212,31 +141,12 @@ class _GateMealFlow(_GateNutrition):
         """
         return None if self.demo_mode else self._pending[0]
 
-    def _log_meal(self) -> None:
-        """Log the accumulated multi-item meal for the current slot and advance.
-
-        Each component and the summed composite are banked (see
-        :func:`diet_guard._foodbank.remember_meal`), and the slot is
-        satisfied by the summed total under the meal's name.
-        """
-        name = self._meal_name() or _DEFAULT_MEAL_NAME
-        count = len(self._state.meal_items)
-        total = remember_meal(name, list(self._state.meal_items))
-        log_meal(
-            name,
-            total,
-            self._slot_for_log(),
-            components=[item_to_component(item) for item in self._state.meal_items],
-        )
-        self._state.meal_items = []
-        self._finish_slot(f"{name}: {total.kcal:g} kcal ({count} items)")
-
     def _finish_slot(self, summary: str) -> None:
         """Advance past the current slot after something was logged for it.
 
         Args:
-            summary: A short description of what was logged (calories/source, or
-                the meal name and item count), shown in the confirmation line.
+            summary: A short description of what was logged (calories and
+                source), shown in the confirmation line.
         """
         slot = self._pending[0]
         self._pending.pop(0)

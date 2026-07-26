@@ -12,6 +12,7 @@ import 'dart:async';
 import 'package:diet_guard_app/models/day_status.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/day_status_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/widgets/day_status_calendar.dart';
@@ -56,14 +57,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
     super.dispose();
   }
 
-  /// Loads the log, recomputes status/streaks/tally against the current
-  /// budget, and refreshes the (read-only) budget field -- unless the user
-  /// is mid-edit, in which case their unsaved text is left untouched.
+  /// Loads the log, recomputes status/streaks/tally, and refreshes the
+  /// (read-only) budget field -- unless the user is mid-edit, in which case
+  /// their unsaved text is left untouched.
+  ///
+  /// Each past day is judged against the budget that applied *then*, so
+  /// changing the budget today leaves the grid, the streaks, and the tally
+  /// for earlier days alone.
   Future<void> _load() async {
     final log = await LogStorageService.instance.readLog();
     if (!mounted) return;
     final budget = AppSettingsService.dailyKcalGoal;
-    final statusByDate = statusMap(log, budget: budget);
+    final statusByDate = statusMap(
+      log,
+      schedule: BudgetHistoryService.schedule,
+    );
     setState(() {
       _statusByDate = statusByDate;
       _loggingStreak = loggingStreak(statusByDate);

@@ -41,14 +41,27 @@ from typing import TYPE_CHECKING
 
 from crdt_sync import Hlc, Record
 
+from diet_guard._budget_history import BudgetEntry
 from diet_guard._constants import SYNC_DEVICE_ID
+from diet_guard._foodbank_manual import record_edit_time
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from crdt_sync import Log
 
     from diet_guard._state import DayLog
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def _wall_time_ms(stamp: str) -> int:
+    """Return ``stamp``'s epoch milliseconds, or the epoch when unparsable."""
+    try:
+        moment = datetime.fromisoformat(stamp)
+    except ValueError:
+        moment = _EPOCH
+    return int(moment.timestamp() * 1000)
 
 
 def _entry_hlc(entry: dict[str, object]) -> Hlc:
@@ -190,6 +203,15 @@ def parse_remote_log(text: str) -> Log:
 
 # Stable id: exactly one budget record per device-pushed budget.json.
 _BUDGET_RECORD_ID = "budget"
+# Field-name prefix for the effective-from budget history, one field per date.
+# A separate *field* rather than a separate document, because merge_record
+# unions field names -- see budget_to_log.
+_HISTORY_FIELD_PREFIX = "hist:"
+# Body weight, as its own field rather than a key inside ``value``.  It is
+# shared state like everything else -- both devices must see one value -- but
+# it needs its own Hlc so a device that never sets it (the phone) cannot
+# delete it merely by pushing a budget edit.
+_WEIGHT_FIELD = "weight"
 
 
 def _budget_hlc(record: dict[str, object]) -> Hlc:
@@ -210,19 +232,89 @@ def _budget_hlc(record: dict[str, object]) -> Hlc:
     return Hlc.new_tick(SYNC_DEVICE_ID, wall_time_ms=wall_time_ms)
 
 
-def budget_to_log(record: dict[str, object] | None) -> Log:
-    """Convert a raw local/remote budget record into a single-record Log.
+def _history_hlc(entry: BudgetEntry) -> Hlc:
+    """Derive a deterministic Hlc for one history entry from its edit time.
+
+    Same trick as :func:`_budget_hlc`: identical inputs always yield the same
+    clock, so re-syncing unchanged history is a no-op.  Two devices that seed
+    the history independently derive the same ``wall_time_ms`` and the same
+    value and differ only in node id, so whichever side wins the field-level
+    LWW, the value is identical and the merge converges in one round.
+    """
+    try:
+        moment = datetime.fromisoformat(entry.edited_at)
+    except ValueError:
+        moment = _EPOCH
+    return Hlc.new_tick(SYNC_DEVICE_ID, wall_time_ms=int(moment.timestamp() * 1000))
+
+
+def budget_to_log(
+    record: dict[str, object] | None,
+    entries: tuple[BudgetEntry, ...] = (),
+) -> Log:
+    """Convert a raw local budget record plus its history into a Log.
 
     Returns an empty ``Log`` when ``record`` is None (this device has never
     run ``init``), so an uninitialized device contributes nothing to the
     merge rather than clobbering another device's real value.
+
+    The history rides along as one ``hist:<YYYY-MM-DD>`` field per entry on
+    the *same* record.  ``crdt_sync``'s ``merge_record`` is per-field LWW over
+    the union of field names, so a device that predates the history neither
+    clobbers those fields nor blocks them: it merges them in from the remote
+    and pushes them straight back out (both sides push the *merged* log).
+    That is what makes this safe to roll out without a coordinated release.
+
+    ``w`` (body weight) travels the same way, as its own :data:`_WEIGHT_FIELD`
+    rather than as a key inside ``value``.  It is shared state -- both devices
+    must agree on it -- but inside ``value`` it was collateral damage of the
+    whole-map LWW: the phone rebuilds that map without ``w``, so any phone
+    budget edit silently deleted the stored weight and with it the protein
+    target.  As its own field it is protected by per-field LWW, and a device
+    that never sets it relays it untouched instead of dropping it.
     """
     if record is None:
         return {}
     hlc = _budget_hlc(record)
-    value = {k: v for k, v in record.items() if k != "t"}
-    rec = Record(id=_BUDGET_RECORD_ID, fields={"value": (value, hlc)})
+    value = {k: v for k, v in record.items() if k not in {"t", "w"}}
+    fields: dict[str, tuple[object, Hlc]] = {"value": (value, hlc)}
+    weight = record.get("w")
+    if isinstance(weight, (int, float)) and not isinstance(weight, bool):
+        fields[_WEIGHT_FIELD] = (float(weight), hlc)
+    for entry in entries:
+        fields[f"{_HISTORY_FIELD_PREFIX}{entry.effective_from}"] = (
+            entry.kcal,
+            _history_hlc(entry),
+        )
+    rec = Record(id=_BUDGET_RECORD_ID, fields=fields)
     return {rec.id: rec}
+
+
+def log_to_history(log: Log) -> tuple[BudgetEntry, ...]:
+    """Extract the effective-from history from a merged budget ``Log``.
+
+    Each entry's ``edited_at`` is reconstructed from its field Hlc rather than
+    carried separately, so the stored timestamp and the clock the merge
+    compared can never drift apart.
+    """
+    record = log.get(_BUDGET_RECORD_ID)
+    if record is None:
+        return ()
+    entries = []
+    for name, (value, hlc) in record.fields.items():
+        if not name.startswith(_HISTORY_FIELD_PREFIX):
+            continue
+        if isinstance(value, bool) or not isinstance(value, int):
+            continue
+        edited = datetime.fromtimestamp(hlc.wall_time_ms / 1000, tz=timezone.utc)
+        entries.append(
+            BudgetEntry(
+                effective_from=name[len(_HISTORY_FIELD_PREFIX) :],
+                kcal=value,
+                edited_at=edited.astimezone().isoformat(timespec="seconds"),
+            ),
+        )
+    return tuple(sorted(entries, key=lambda e: e.effective_from))
 
 
 def log_to_budget(log: Log) -> dict[str, object] | None:
@@ -240,7 +332,120 @@ def log_to_budget(log: Log) -> dict[str, object] | None:
     if hlc is not None:
         winning_time = datetime.fromtimestamp(hlc.wall_time_ms / 1000, tz=timezone.utc)
         result["t"] = winning_time.astimezone().isoformat(timespec="seconds")
+    weight, _ = record.fields.get(_WEIGHT_FIELD, (None, None))
+    if isinstance(weight, (int, float)) and not isinstance(weight, bool):
+        result["w"] = float(weight)
     return result
+
+
+def food_bank_to_log(bank: Mapping[str, object]) -> Log:
+    """Convert the log-derived food bank into a ``crdt_sync.Log``.
+
+    The bank is *derived* -- both devices replay the same synced log and
+    compute the same records -- so this exists to make them agree
+    **immediately** rather than only after each has replayed, and to let a
+    device that is missing part of the log still autocomplete the other's
+    foods.
+
+    The clock is the record's own ``count``, not a wall time.  That makes
+    last-writer-wins mean *max-count-wins*, which is the right merge for a
+    derived counter: a device that has seen more of the log has the higher
+    count, and re-merging is idempotent because the count does not move
+    unless the log did.  It also avoids inventing an edit timestamp for a
+    record nobody edits.
+    """
+    log: Log = {}
+    for name, record in bank.items():
+        if not isinstance(record, dict):
+            continue
+        count = record.get("count")
+        ticks = int(count) if isinstance(count, (int, float)) else 0
+        hlc = Hlc.new_tick(SYNC_DEVICE_ID, wall_time_ms=ticks)
+        log[name] = Record(id=name, fields={"body": (dict(record), hlc)})
+    return log
+
+
+def log_to_food_bank(log: Log) -> dict[str, dict[str, object]]:
+    """Convert a merged food-bank ``Log`` back into on-disk bank shape."""
+    bank: dict[str, dict[str, object]] = {}
+    for name, record in log.items():
+        if record.deleted:
+            continue
+        body, _hlc = record.fields.get("body", ({}, None))
+        if isinstance(body, dict):
+            bank[name] = dict(body)
+    return bank
+
+
+def parse_remote_food_bank(text: str) -> Log:
+    """Parse one device's pushed ``food_bank.json`` into a ``crdt_sync.Log``.
+
+    Raises:
+        TypeError: If the top-level JSON isn't an object.
+        KeyError: Via ``Record.from_dict``, on a record missing a key.
+        ValueError: Via ``json.loads``/``Hlc.from_str`` on malformed input.
+    """
+    raw = json.loads(text)
+    if not isinstance(raw, dict):
+        msg = f"top-level food-bank payload is not a JSON object: {raw!r}"
+        raise TypeError(msg)
+    return {record_id: Record.from_dict(data) for record_id, data in raw.items()}
+
+
+def manual_bank_to_log(bank: Mapping[str, object]) -> Log:
+    """Convert the hand-curated food bank into a ``crdt_sync.Log``.
+
+    One record per normalized food name, carrying the whole bank record as an
+    opaque ``body`` -- the same shape food-log entries use.  Unlike an entry
+    a curated food is editable, so its Hlc comes from the record's own ``t``
+    edit stamp (like the budget's) rather than a fixed birth time.
+    """
+    log: Log = {}
+    for name, record in bank.items():
+        if not isinstance(record, dict):
+            continue
+        hlc = Hlc.new_tick(
+            SYNC_DEVICE_ID,
+            wall_time_ms=_wall_time_ms(record_edit_time(record)),
+        )
+        body = {k: v for k, v in record.items() if k != "t"}
+        log[name] = Record(id=name, fields={"body": (body, hlc)})
+    return log
+
+
+def log_to_manual_bank(log: Log) -> dict[str, dict[str, object]]:
+    """Convert a merged curated-bank ``Log`` back into on-disk bank shape."""
+    bank: dict[str, dict[str, object]] = {}
+    for name, record in log.items():
+        if record.deleted:
+            continue
+        body, hlc = record.fields.get("body", ({}, None))
+        if not isinstance(body, dict):
+            continue
+        stored = dict(body)
+        if hlc is not None:
+            winning = datetime.fromtimestamp(hlc.wall_time_ms / 1000, tz=timezone.utc)
+            stored["t"] = winning.astimezone().isoformat(timespec="seconds")
+        bank[name] = stored
+    return bank
+
+
+def parse_remote_manual_bank(text: str) -> Log:
+    """Parse one device's pushed curated-bank text into a ``crdt_sync.Log``.
+
+    Raises on malformed data; the caller logs-and-skips, matching every other
+    remote parser here.
+
+    Raises:
+        TypeError: If the top-level JSON isn't an object.
+        KeyError: Via ``Record.from_dict``, on a record missing a key.
+        ValueError: Via ``json.loads``/``Hlc.from_str`` on malformed input.
+    """
+    raw = json.loads(text)
+    if not isinstance(raw, dict):
+        msg = f"top-level curated-bank payload is not a JSON object: {raw!r}"
+        raise TypeError(msg)
+    return {record_id: Record.from_dict(data) for record_id, data in raw.items()}
 
 
 def parse_remote_budget(text: str) -> Log:

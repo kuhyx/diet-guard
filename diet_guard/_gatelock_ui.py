@@ -90,12 +90,10 @@ def make_vars(root: tk.Misc) -> GateVars:
         projection=tk.StringVar(master=root, value=""),
         cal_headline=tk.StringVar(master=root, value=""),
         dashboard=tk.StringVar(master=root, value=""),
-        meal_summary=tk.StringVar(master=root, value=""),
         unit=tk.StringVar(master=root, value=UNIT_GRAMS),
         entries=GateEntryVars(
             amount=tk.StringVar(master=root, value=""),
             per=tk.StringVar(master=root, value=f"{DEFAULT_PER_GRAMS:g}"),
-            meal_name=tk.StringVar(master=root, value=""),
             kcal=tk.StringVar(master=root, value=""),
             protein=tk.StringVar(master=root, value=""),
             carbs=tk.StringVar(master=root, value=""),
@@ -296,55 +294,6 @@ def _build_dashboard(parent: tk.Frame, vars_: GateVars) -> None:
     ).pack(pady=(XS, 0))
 
 
-def _build_meal_controls(
-    parent: tk.Frame,
-    vars_: GateVars,
-    on_add_item: Callable[[], None],
-) -> tk.Entry:
-    """Build the optional multi-item meal row; return the meal-name entry.
-
-    Logging stays one-tap for a single food; these controls only matter when a
-    meal has several separately-macroed parts (a dinner of salad + chicken +
-    rice).  "Add item" banks the part onto the meal-in-progress and clears the
-    form for the next one; "Log & Continue" then logs the summed meal.
-    """
-    row = tk.Frame(parent, bg=BG)
-    row.pack(pady=(XS, XS))
-    tk.Label(
-        row,
-        text="Meal name (optional):",
-        font=(_FONT, LABEL),
-        bg=BG,
-        fg=FG,
-    ).pack(side="left")
-    meal_name_entry = tk.Entry(
-        row,
-        textvariable=vars_.entries.meal_name,
-        font=(_FONT, BODY),
-        width=18,
-        bg=_FIELD_BG,
-        fg=FG,
-        insertbackground=FG,
-    )
-    meal_name_entry.pack(side="left", padx=(SM, SM), ipady=XS)
-    make_button(
-        row,
-        text="+ Add item",
-        variant="secondary",
-        command=on_add_item,
-    ).pack(side="left")
-    tk.Label(
-        parent,
-        textvariable=vars_.meal_summary,
-        font=(_FONT, LABEL),
-        bg=BG,
-        fg=_MUTED,
-        wraplength=900,
-        justify="center",
-    ).pack(pady=(0, XS))
-    return meal_name_entry
-
-
 def build_layout(
     root: tk.Misc,
     vars_: GateVars,
@@ -406,8 +355,6 @@ def build_layout(
         justify="center",
     ).pack(pady=(XS, SM))
 
-    meal_name_entry = _build_meal_controls(frame, vars_, callbacks.on_add_item)
-
     make_button(
         frame,
         text="Log & Continue",
@@ -455,6 +402,5 @@ def build_layout(
         basis_prefix=basis_prefix,
         macros=macros,
         suggestion_box=suggestion_box,
-        meal_name_entry=meal_name_entry,
         status_label=status_label,
     )

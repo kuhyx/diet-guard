@@ -37,7 +37,6 @@ class GateEntryVars:
 
     amount: tk.StringVar
     per: tk.StringVar
-    meal_name: tk.StringVar
     kcal: tk.StringVar
     protein: tk.StringVar
     carbs: tk.StringVar
@@ -54,7 +53,6 @@ class GateVars:
     projection: tk.StringVar
     cal_headline: tk.StringVar
     dashboard: tk.StringVar
-    meal_summary: tk.StringVar
     unit: tk.StringVar
     entries: GateEntryVars
 
@@ -70,7 +68,6 @@ class GateWidgets:
     basis_prefix: tk.Label
     macros: _MacroEntries
     suggestion_box: tk.Listbox
-    meal_name_entry: tk.Entry
     status_label: tk.Label
 
 
@@ -86,5 +83,4 @@ class GateCallbacks:
     on_unit_change: Callable[[str], None]
     on_submit: Callable[[], None]
     on_close: Callable[[], None]
-    on_add_item: Callable[[], None]
     on_fetch_sync: Callable[[], None]

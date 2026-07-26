@@ -1,7 +1,6 @@
 // Mirrors `test_sync.py`'s `TestRunSync` and `TestSyncBudget` cases
 // (own-id-skip, no-prior-push, non-object payload, corrupt JSON, remote
 // merge, food bank rebuild, budget last-writer-wins), plus one Dart-specific
-// case for the phone's `imagePath`-preserve-by-id step (plan decision 10)
 // that has no PC-side equivalent.
 
 import 'dart:convert';
@@ -12,6 +11,7 @@ import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_merge.dart';
@@ -125,12 +125,16 @@ void main() {
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
     await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
+    BudgetHistoryService.resetForTesting(
+      store: FileDocumentStore(tempDir),
+    );
   });
 
   tearDown(() async {
     LogStorageService.resetForTesting();
     FoodBankService.resetForTesting();
     AppSettingsService.resetForTesting();
+    BudgetHistoryService.resetForTesting();
     await tempDir.delete(recursive: true);
   });
 
@@ -140,9 +144,9 @@ void main() {
     final merged = await runSync(fake.buildClient());
 
     expect(merged.values.expand((e) => e).length, 1);
-    // One food_log.json push, plus one budget.json push (syncLog always
-    // pushes, even an empty merged budget when nothing's been set yet).
-    expect(fake.puts, hasLength(2));
+    // syncLog always pushes, even an empty merged result: food_log.json,
+    // budget.json, food_bank.json, food_bank_manual.json.
+    expect(fake.puts, hasLength(4));
   });
 
   test("skips its own device id ('phone') when listing", () async {
@@ -260,11 +264,10 @@ void main() {
     expect(bank.containsKey('oatmeal'), isTrue);
   });
 
-  test('pushes a payload without imagePath or hmac', () async {
+  test('pushes a payload without hmac', () async {
     await LogStorageService.instance.logMeal(
       'oatmeal',
       _manual,
-      imagePath: '/local/photo.jpg',
     );
     final fake = _FakeGitHub();
     await runSync(fake.buildClient());
@@ -272,7 +275,6 @@ void main() {
     final pushed =
         fake.putsByPath['diet-guard-sync/devices/phone/food_log.json']!;
     final pushedText = utf8.decode(base64.decode(pushed['content'] as String));
-    expect(pushedText, isNot(contains('imagePath')));
     expect(pushedText, isNot(contains('hmac')));
   });
 
@@ -300,53 +302,6 @@ void main() {
       'f-phone',
     );
   });
-
-  test(
-    'preserves a local imagePath even when a remote tombstone wins the merge',
-    () async {
-      await LogStorageService.instance.writeLog({
-        '2026-06-22': [
-          const FoodEntry(
-            id: 'x',
-            time: '2026-06-22T08:00:00',
-            desc: 'photo meal',
-            grams: 100,
-            kcal: 200,
-            proteinG: 10,
-            carbsG: 20,
-            fatG: 5,
-            source: 'manual',
-            imagePath: '/local/photo.jpg',
-          ),
-        ],
-      });
-      final remoteLog = jsonEncode({
-        '2026-06-22': [
-          {
-            'id': 'x',
-            'time': '2026-06-22T08:00:00',
-            'desc': 'photo meal',
-            'kcal': 200.0,
-            'protein_g': 10.0,
-            'carbs_g': 20.0,
-            'fat_g': 5.0,
-            'grams': 100.0,
-            'source': 'manual',
-            'deleted': true,
-          },
-        ],
-      });
-      final fake = _FakeGitHub(
-        deviceDirs: const ['pc'],
-        files: {'diet-guard-sync/devices/pc/food_log.json': remoteLog},
-      );
-      final merged = await runSync(fake.buildClient());
-
-      final entry = merged.values.expand((e) => e).single;
-      expect(entry.deleted, isTrue);
-      expect(entry.imagePath, '/local/photo.jpg');
-    },
-  );
 
   group('budget sync', () {
     test(

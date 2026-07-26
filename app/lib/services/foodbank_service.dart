@@ -220,9 +220,28 @@ class FoodBankService {
   /// previous entry.
   Future<void> addManualEntry(FoodBankRecord record) async {
     final bank = await _readManualBank();
-    bank[_normalize(record.desc)] = record;
+    bank[_normalize(record.desc)] = FoodBankRecord(
+      desc: record.desc,
+      kcal: record.kcal,
+      proteinG: record.proteinG,
+      carbsG: record.carbsG,
+      fatG: record.fatG,
+      grams: record.grams,
+      count: record.count,
+      components: record.components,
+      // Stamped here, not by callers: this is what the cross-device merge
+      // orders by, so it must be set on every write without exception.
+      editedAt: DateTime.now().toIso8601String(),
+    );
     await _writeManualBank(bank);
   }
+
+  /// Returns the hand-curated bank, for the sync layer.
+  Future<Map<String, FoodBankRecord>> readManualBank() => _readManualBank();
+
+  /// Replaces the hand-curated bank with a merge result from the sync layer.
+  Future<void> applyMergedManualBank(Map<String, FoodBankRecord> bank) =>
+      _writeManualBank(bank);
 
   /// All known food records: log-derived entries merged with manually-added
   /// ones, sorted by count descending.

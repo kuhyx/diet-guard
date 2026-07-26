@@ -12,10 +12,15 @@ DAY STATUS SPEC (keep in sync with ``app/lib/services/day_status_service.dart``)
 * the adherence streak breaks on a red or a not_logged day; yellow and green
   both keep it alive.
 
-Every function here is a pure function of an explicit ``log``/``status_map``
-argument (never reaching into on-disk state itself), so the boundary matrix
-above is trivially testable with synthetic data.  :func:`current_status_map`
-is the one exception: a thin convenience wrapper for real UI callers.
+Every function here is a pure function of its explicit ``log`` /
+``schedule`` / ``status_map`` arguments (never reaching into on-disk state
+itself), so the boundary matrix above is trivially testable with synthetic
+data.
+
+``budget`` is per-day, not a single number: :func:`status_map` resolves each
+day through a :class:`~diet_guard._budget_history.BudgetSchedule` so that
+lowering the budget today does not retroactively reclassify every past day
+(see :mod:`diet_guard._budget_history`).
 """
 
 from __future__ import annotations
@@ -25,11 +30,11 @@ from datetime import date, timedelta
 import enum
 from typing import TYPE_CHECKING
 
-from diet_guard._budget import daily_budget
 from diet_guard._constants import BUDGET_WARN_FRACTION
-from diet_guard._state import entry_kcal, load_log, now_local
+from diet_guard._state import entry_kcal, now_local
 
 if TYPE_CHECKING:
+    from diet_guard._budget_history import BudgetSchedule
     from diet_guard._state import DayLog
 
 
@@ -96,14 +101,17 @@ def day_status(log: DayLog, day: str, budget: int) -> DayStatus:
     return DayStatus.RED
 
 
-def status_map(log: DayLog, *, budget: int) -> dict[str, DayStatus]:
+def status_map(log: DayLog, *, schedule: BudgetSchedule) -> dict[str, DayStatus]:
     """Return a :class:`DayStatus` for every date key present in ``log``.
+
+    Each day is judged against the budget that applied *on that day*, so a
+    later budget change leaves earlier days classified exactly as before.
 
     Days with no log entries are simply absent from the result; a caller
     rendering a full calendar treats a missing key as
     :attr:`DayStatus.NOT_LOGGED`.
     """
-    return {day: day_status(log, day, budget) for day in log}
+    return {day: day_status(log, day, schedule.for_day(day)) for day in log}
 
 
 def _streak(
@@ -185,17 +193,3 @@ def year_to_date_tally(
         elapsed_days=elapsed_days,
         adherent_days=adherent_days,
     )
-
-
-def current_status_map() -> dict[str, DayStatus]:
-    """Return :func:`status_map` for the real on-disk log and budget.
-
-    Convenience wrapper for UI callers; the pure functions above take
-    explicit ``log``/``budget``/``status_map_`` arguments so they stay
-    trivially testable with synthetic data.
-
-    Raises:
-        BudgetNotInitializedError: If no budget has been set yet.
-        BudgetFileCorruptError: If the budget file is corrupt.
-    """
-    return status_map(load_log(), budget=daily_budget())

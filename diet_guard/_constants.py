@@ -26,12 +26,22 @@ FOOD_LOG_FILE: Path = DATA_DIR / "food_log.json"
 # searches -- Open Food Facts is used to *fill* a new food's macros, never to
 # search.  Local-only, git-ignored.
 FOOD_BANK_FILE: Path = DATA_DIR / "food_bank.json"
+# Hand-curated bank entries (see _foodbank_manual.py): foods added without
+# ever logging them, so they are NOT derivable from the food log and must
+# sync in their own right.  Kept separate from FOOD_BANK_FILE because that
+# one is rewritten wholesale on every log write.
+MANUAL_BANK_FILE: Path = DATA_DIR / "food_bank_manual.json"
 # The budget: a plain JSON dotfile alongside the log, freely editable on this
 # device or the phone app and synced between them (see _sync.py).
 # Git-ignored, never committed.  "Hidden" here means never-online (it lives
 # outside the repo) -- the number itself is shown freely in local CLI/GUI/app
 # output.
 BUDGET_FILE: Path = DATA_DIR / ".budget"
+# The effective-from history of that budget (see _budget_history.py), kept in
+# its own file so ``.budget``'s schema stays at v2 and every existing reader
+# of it is untouched.  Classifying a *past* day reads this; everything about
+# *today* still reads BUDGET_FILE.  Git-ignored, never committed.
+BUDGET_HISTORY_FILE: Path = DATA_DIR / ".budget_history"
 
 # --- Estimator (Open Food Facts) -------------------------------------------
 # The default backend is Open Food Facts' "Search-a-licious" full-text search:

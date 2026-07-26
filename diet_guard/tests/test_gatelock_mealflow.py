@@ -14,7 +14,6 @@ from unittest.mock import patch
 
 from diet_guard import _gatelock_mealflow
 from diet_guard._budget import write_budget
-from diet_guard._meal import MealItem
 from diet_guard._state import log_meal
 from diet_guard.tests.conftest import _nutrition
 
@@ -278,123 +277,8 @@ class TestDashboard:
         assert "after this item" in gate._vars.projection.get()
 
 
-class TestMealFlow:
-    """Building and logging a multi-item composite meal."""
-
-    def test_meal_name_trimmed(self, gate: MealGate) -> None:
-        """The meal name is read back trimmed."""
-        gate._widgets.meal_name_entry.insert(0, "  dinner  ")
-        assert gate._meal_name() == "dinner"
-
-    def test_summary_empty_with_no_items(self, gate: MealGate) -> None:
-        """With no accumulated items the running summary is blank."""
-        gate._refresh_meal_summary()
-        assert gate._vars.meal_summary.get() == ""
-
-    def test_summary_lists_items_and_total(self, gate: MealGate) -> None:
-        """The summary shows the item names and the running calorie total."""
-        gate._state.meal_items = [
-            MealItem("salad", _nutrition(80, 120)),
-            MealItem("chicken", _nutrition(330, 200)),
-        ]
-        gate._refresh_meal_summary()
-        summary = gate._vars.meal_summary.get()
-        assert "salad, chicken" in summary
-        assert "410 kcal" in summary
-
-    def test_add_item_requires_description(self, gate: MealGate) -> None:
-        """Adding with no description prompts for one."""
-        gate._on_add_item()
-        assert "Type the item first" in gate._vars.status.get()
-
-    def test_add_item_rejects_non_numeric(self, gate: MealGate) -> None:
-        """Non-numeric macros are rejected before adding."""
-        gate._set_desc("salad")
-        gate._widgets.macros.kcal.insert(0, "abc")
-        gate._on_add_item()
-        assert "must be numbers" in gate._vars.status.get()
-
-    def test_add_item_blank_calories_looks_up(self, gate: MealGate) -> None:
-        """A blank calorie field looks the item up rather than adding."""
-        gate._set_desc("salad")
-        with patch.object(gate, "_begin_lookup") as lookup:
-            gate._on_add_item()
-        lookup.assert_called_once()
-
-    def test_add_item_defensive_none_nutrition(self, gate: MealGate) -> None:
-        """A priced item that will not resolve prompts again (guard)."""
-        gate._set_desc("salad")
-        gate._widgets.macros.kcal.insert(0, "80")
-        with patch.object(gate, "_current_nutrition", return_value=None):
-            gate._on_add_item()
-        assert "add the item" in gate._vars.status.get()
-
-    def test_add_item_accumulates_and_clears(self, gate: MealGate) -> None:
-        """A valid item is appended, the form clears, the meal name is kept."""
-        gate._widgets.meal_name_entry.insert(0, "dinner")
-        gate._set_desc("salad")
-        gate._widgets.macros.kcal.insert(0, "80")
-        gate._on_add_item()
-        assert len(gate._state.meal_items) == 1
-        assert gate._state.meal_items[0].name == "salad"
-        assert gate._get_desc() == ""
-        assert gate._meal_name() == "dinner"
-        assert "Added salad" in gate._vars.status.get()
-
-    def test_submit_empty_form_logs_accumulated_meal(self, gate: MealGate) -> None:
-        """Submitting an empty form with items finalizes the meal."""
-        gate._state.meal_items = [MealItem("salad", _nutrition(80, 120))]
-        with patch.object(gate, "_log_meal") as log_meal_:
-            gate._on_submit()
-        log_meal_.assert_called_once()
-
-    def test_submit_completes_meal_with_final_item(self, gate: MealGate) -> None:
-        """A filled form plus existing items adds the form item, then logs."""
-        gate._state.meal_items = [MealItem("salad", _nutrition(80, 120))]
-        gate._set_desc("rice")
-        gate._widgets.macros.kcal.insert(0, "260")
-        with patch.object(gate, "_log_meal") as log_meal_:
-            gate._on_submit()
-        assert len(gate._state.meal_items) == 2
-        assert gate._state.meal_items[1].name == "rice"
-        log_meal_.assert_called_once()
-
-    def test_log_meal_calls_remember_and_advances(self, gate: MealGate) -> None:
-        """Logging a meal banks it under the typed name and advances the slot."""
-        gate._pending = [8, 12]
-        gate._widgets.meal_name_entry.insert(0, "dinner")
-        gate._state.meal_items = [
-            MealItem("salad", _nutrition(80, 120)),
-            MealItem("chicken", _nutrition(330, 200)),
-        ]
-        with (
-            patch.object(
-                _gatelock_mealflow,
-                "remember_meal",
-                return_value=_nutrition(410, 320),
-            ) as remember,
-            patch.object(_gatelock_mealflow, "log_meal") as log,
-        ):
-            gate._log_meal()
-        assert remember.call_args.args[0] == "dinner"
-        assert log.call_args.args[0] == "dinner"
-        assert gate._state.meal_items == []
-        assert gate._pending == [12]
-
-    def test_log_meal_uses_default_name(self, gate: MealGate) -> None:
-        """A blank meal name falls back to the default."""
-        gate._pending = [8, 12]
-        gate._state.meal_items = [MealItem("soup", _nutrition(150, 300))]
-        with (
-            patch.object(
-                _gatelock_mealflow,
-                "remember_meal",
-                return_value=_nutrition(150, 300),
-            ) as remember,
-            patch.object(_gatelock_mealflow, "log_meal"),
-        ):
-            gate._log_meal()
-        assert remember.call_args.args[0] == _gatelock_mealflow._DEFAULT_MEAL_NAME
+class TestSlotWalk:
+    """Slot tagging and the per-slot input reset."""
 
     def test_slot_for_log_demo_is_none(self, gate: MealGate) -> None:
         """A demo gate tags logs with no real slot."""
@@ -407,15 +291,13 @@ class TestMealFlow:
         gate._pending = [12]
         assert gate._slot_for_log() == 12
 
-    def test_clear_inputs_discards_meal(self, gate: MealGate) -> None:
-        """Clearing between slots drops the in-progress meal and its name."""
-        gate._state.meal_items = [MealItem("salad", _nutrition(80, 120))]
-        gate._widgets.meal_name_entry.insert(0, "dinner")
-        gate._vars.meal_summary.set("something")
+    def test_clear_inputs_resets_the_form(self, gate: MealGate) -> None:
+        """Clearing between slots empties the description and the macros."""
+        gate._set_desc("salad")
+        gate._widgets.macros.kcal.insert(0, "80")
         gate._clear_inputs()
-        assert gate._state.meal_items == []
-        assert gate._meal_name() == ""
-        assert gate._vars.meal_summary.get() == ""
+        assert gate._get_desc() == ""
+        assert gate._widgets.macros.kcal.get() == ""
 
     def test_finish_slot_unlocks_on_last(self, gate: MealGate) -> None:
         """Finishing the final slot triggers unlock."""

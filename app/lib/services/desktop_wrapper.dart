@@ -4,7 +4,7 @@ library;
 /// The fixed port the desktop wrapper serves on.
 ///
 /// **Do not change this casually.** IndexedDB (the food log, the food bank,
-/// the settings and the photo blobs) is keyed by origin, so a different port
+/// the settings) is keyed by origin, so a different port
 /// looks like a different app with no history at all. The launcher, the
 /// packaging and `bin/diet_guard_desktop.dart` must all use this value, and
 /// the Chrome `--user-data-dir` must stay equally fixed for the same reason.
@@ -23,9 +23,6 @@ const desktopWrapperOrigin = 'http://localhost:$desktopWrapperPort';
 abstract final class WrapperPaths {
   /// Prefix for document reads/writes: `/documents/<name>`.
   static const documents = '/documents/';
-
-  /// Prefix for photo-blob reads/writes: `/blobs/<key>`.
-  static const blobs = '/blobs/';
 
   /// Prefix for the GitHub proxy (see `wrapper_server.dart`).
   static const github = '/github/';

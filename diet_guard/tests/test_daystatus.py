@@ -4,13 +4,22 @@ from __future__ import annotations
 
 from datetime import date
 
-from diet_guard import _budget, _daystatus, _state
+from diet_guard import _daystatus, _state
+from diet_guard._budget_history import EPOCH_DAY, BudgetEntry, BudgetSchedule
 from diet_guard._daystatus import DayStatus
 from diet_guard._estimator import Nutrition
 
 
 def _entry(kcal: float) -> dict[str, object]:
     return {"kcal": kcal}
+
+
+def _flat(budget: int) -> BudgetSchedule:
+    """A schedule where one budget has applied since the beginning of time."""
+    return BudgetSchedule(
+        (BudgetEntry(EPOCH_DAY, budget, "1970-01-01T00:00:00+00:00"),),
+        default=budget,
+    )
 
 
 class TestDayTotalKcal:
@@ -71,14 +80,36 @@ class TestStatusMap:
             "2026-01-01": [_entry(1000)],
             "2026-01-02": [_entry(5000)],
         }
-        result = _daystatus.status_map(log, budget=2000)
+        result = _daystatus.status_map(log, schedule=_flat(2000))
         assert result == {
             "2026-01-01": DayStatus.GREEN,
             "2026-01-02": DayStatus.RED,
         }
 
     def test_empty_log_is_empty_map(self) -> None:
-        assert _daystatus.status_map({}, budget=2000) == {}
+        assert _daystatus.status_map({}, schedule=_flat(2000)) == {}
+
+    def test_each_day_uses_the_budget_in_force_that_day(self) -> None:
+        """The whole point: a budget cut must not reclassify earlier days.
+
+        Both days total exactly 2100 kcal.  Under the old 2200 budget that is
+        green; under the new 2000 budget it is yellow.  The day before the
+        change must stay green.
+        """
+        log = {
+            "2026-06-01": [_entry(2100)],
+            "2026-07-26": [_entry(2100)],
+        }
+        schedule = BudgetSchedule(
+            (
+                BudgetEntry(EPOCH_DAY, 2200, "1970-01-01T00:00:00+00:00"),
+                BudgetEntry("2026-07-26", 2000, "2026-07-26T10:00:00+02:00"),
+            ),
+            default=2200,
+        )
+        result = _daystatus.status_map(log, schedule=schedule)
+        assert result["2026-06-01"] == DayStatus.GREEN
+        assert result["2026-07-26"] == DayStatus.YELLOW
 
 
 class TestLoggingStreak:
@@ -174,12 +205,3 @@ class TestYearToDateTally:
         assert tally.logged_days == 0
         assert tally.elapsed_days == 60
         assert tally.adherent_days == 0
-
-
-class TestCurrentStatusMap:
-    def test_reads_real_log_and_budget(self) -> None:
-        _budget.write_budget(2000)
-        _state.log_meal("lunch", Nutrition(500, 30, 40, 10, 100, "manual"))
-        result = _daystatus.current_status_map()
-        assert len(result) == 1
-        assert next(iter(result.values())) == DayStatus.GREEN

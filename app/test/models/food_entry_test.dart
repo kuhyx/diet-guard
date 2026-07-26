@@ -28,7 +28,6 @@ void main() {
           },
         ],
         'deleted': true,
-        'imagePath': '/tmp/photo.jpg',
       });
       expect(entry.id, 'abc-123');
       expect(entry.desc, 'label_food');
@@ -38,7 +37,6 @@ void main() {
       expect(entry.components, hasLength(1));
       expect(entry.components!.first.name, 'rice');
       expect(entry.deleted, isTrue);
-      expect(entry.imagePath, '/tmp/photo.jpg');
     });
 
     test('defaults missing macro fields to 0 and source to manual', () {
@@ -54,7 +52,7 @@ void main() {
   });
 
   group('toLocalJson vs toSyncJson', () {
-    test('toLocalJson includes imagePath; toSyncJson excludes it and hmac', () {
+    test('toLocalJson matches toSyncJson; both exclude hmac', () {
       const entry = FoodEntry(
         id: 'id-1',
         time: '2026-06-22T08:00:00+02:00',
@@ -66,12 +64,9 @@ void main() {
         fatG: 2,
         source: 'manual',
         hmac: 'sig',
-        imagePath: '/local/photo.jpg',
       );
       final local = entry.toLocalJson();
       final sync = entry.toSyncJson();
-      expect(local['imagePath'], '/local/photo.jpg');
-      expect(sync.containsKey('imagePath'), isFalse);
       expect(sync.containsKey('hmac'), isFalse);
       expect(sync['desc'], 'toast');
     });
@@ -132,14 +127,6 @@ void main() {
         ),
       ],
     );
-
-    test('copyWithImagePath only changes imagePath', () {
-      final updated = base.copyWithImagePath('/new/path.jpg');
-      expect(updated.imagePath, '/new/path.jpg');
-      expect(updated.id, base.id);
-      expect(updated.deleted, isFalse);
-      expect(updated.components, base.components);
-    });
 
     test('copyWithDeleted sets deleted true and preserves everything else', () {
       final tombstoned = base.copyWithDeleted();

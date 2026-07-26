@@ -7,6 +7,7 @@ import 'dart:io';
 
 import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/background_sync_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
@@ -29,12 +30,16 @@ void main() {
     // .init() call short-circuits instead of hitting the real (unmocked in
     // this test) path_provider channel.
     AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
+    BudgetHistoryService.resetForTesting(
+      store: FileDocumentStore(tempDir),
+    );
   });
 
   tearDown(() async {
     LogStorageService.resetForTesting();
     FoodBankService.resetForTesting();
     AppSettingsService.resetForTesting();
+    BudgetHistoryService.resetForTesting();
     await tempDir.delete(recursive: true);
   });
 
@@ -75,9 +80,9 @@ void main() {
     final ok = await backgroundSyncPush(httpClient: mock);
 
     expect(ok, isTrue);
-    // One food_log.json push, plus one budget.json push (syncLog always
-    // pushes, even the empty merged budget when nothing's been set yet).
-    expect(puts, 2);
+    // syncLog always pushes, even an empty merged result: food_log.json,
+    // budget.json, food_bank.json, food_bank_manual.json.
+    expect(puts, 4);
   });
 
   test('reports failure (retry) when the push errors', () async {

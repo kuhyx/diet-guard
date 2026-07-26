@@ -44,8 +44,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _kcalGoalController = TextEditingController();
-  final _rewardLabelController = TextEditingController();
-  final _rewardUrlController = TextEditingController();
   final _ownerController = TextEditingController();
   final _repoController = TextEditingController();
   final _tokenController = TextEditingController();
@@ -72,8 +70,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     if (!mounted) return;
     _kcalGoalController.text = AppSettingsService.dailyKcalGoal.toString();
-    _rewardLabelController.text = AppSettingsService.rewardLabel ?? '';
-    _rewardUrlController.text = AppSettingsService.rewardUrl ?? '';
     _ownerController.text = settings.owner;
     _repoController.text = settings.repo;
     // On web the stored "token" is only a stand-in for one the desktop
@@ -89,9 +85,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    _kcalGoalDebounce?.cancel();
+    // Leaving the screen inside the debounce window must not silently drop
+    // the edit the user just typed.
+    _flushKcalGoal();
     _kcalGoalController.dispose();
-    _rewardLabelController.dispose();
-    _rewardUrlController.dispose();
     _ownerController.dispose();
     _repoController.dispose();
     _tokenController.dispose();
@@ -102,6 +100,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// The token as loaded, so a platform that cannot display it (web) still
   /// round-trips it instead of blanking it on the next save.
   String _storedToken = '';
+
+  Timer? _kcalGoalDebounce;
+  int? _pendingKcalGoal;
+
+  /// Persists the pending goal, if any, and clears it.
+  void _flushKcalGoal() {
+    final goal = _pendingKcalGoal;
+    if (goal == null) return;
+    _pendingKcalGoal = null;
+    unawaited(AppSettingsService.instance.saveDailyKcalGoal(goal));
+  }
+
+  /// Saves the typed goal once typing settles.
+  ///
+  /// Debounced because every keystroke would otherwise be a real edit:
+  /// typing "2000" saved 2, 20, 200, 2000 in turn, and a sync tick landing
+  /// between keystrokes would push a nonsense budget to the other device.
+  void _onKcalGoalChanged(String value) {
+    _kcalGoalDebounce?.cancel();
+    final goal = int.tryParse(value);
+    if (goal == null || goal <= 0) return;
+    _pendingKcalGoal = goal;
+    _kcalGoalDebounce = Timer(
+      const Duration(milliseconds: 600),
+      _flushKcalGoal,
+    );
+  }
 
   SyncSettings _currentSettings() {
     final typed = _tokenController.text.trim();
@@ -115,16 +140,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ? _storedToken
           : typed,
       clientId: _clientIdController.text.trim(),
-    );
-  }
-
-  /// Persists the temptation-bundling reward fields, blank -> null.
-  Future<void> _saveReward() async {
-    final label = _rewardLabelController.text.trim();
-    final url = _rewardUrlController.text.trim();
-    await AppSettingsService.instance.saveReward(
-      label: label.isEmpty ? null : label,
-      url: url.isEmpty ? null : url,
     );
   }
 
@@ -273,37 +288,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               helperText: 'Shown in the history day summary',
               suffixText: 'kcal',
             ),
-            onChanged: (v) {
-              final n = int.tryParse(v);
-              if (n != null && n > 0) {
-                unawaited(AppSettingsService.instance.saveDailyKcalGoal(n));
-              }
-            },
-          ),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 8),
-          Text('Reward', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text(
-            'Shown after a one-tap "repeat last meal" log, as a temptation '
-            'bundle. Leave blank to disable. Device-local, not synced.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _rewardLabelController,
-            decoration: const InputDecoration(
-              labelText: 'Reward label',
-              helperText: 'e.g. "Podcast episode"',
-            ),
-            onChanged: (v) => unawaited(_saveReward()),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _rewardUrlController,
-            decoration: const InputDecoration(labelText: 'Reward URL'),
-            onChanged: (v) => unawaited(_saveReward()),
+            onChanged: _onKcalGoalChanged,
           ),
           const SizedBox(height: 24),
           const Divider(),

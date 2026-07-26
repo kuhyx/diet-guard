@@ -26,6 +26,7 @@ from diet_guard._budget import (
     BudgetFileCorruptError,
     BudgetNotInitializedError,
     budget_weight,
+    current_schedule,
     daily_budget,
     write_budget,
 )
@@ -121,12 +122,20 @@ class _GateCalendar(_GateMealFlow):
     def _refresh_calendar(self) -> None:
         """Recompute the calendar grid, streaks, YTD tally, and budget field.
 
+        Each past day is judged against the budget that applied *then*
+        (:mod:`diet_guard._budget_history`), so changing the budget today
+        leaves the grid, the streaks, and the tally for earlier days alone.
+
         A budget that was never set defaults to
         :data:`_DEFAULT_BUDGET_KCAL`, matching the phone app, so the tab is
         meaningful from a fresh install with no setup ritual.  A genuinely
         corrupt budget file is a real problem, not just "unset" -- that
         still degrades to a neutral grid and an error message, instead of
         raising through the tab and crashing (or failing open) the lock.
+        Degradation is deliberately asymmetric: an unreadable *history*
+        silently falls back to today's scalar budget (the pre-history
+        behaviour), because that is a display nicety, whereas an unreadable
+        budget is the number itself.
         """
         log = load_log()
         try:
@@ -135,7 +144,11 @@ class _GateCalendar(_GateMealFlow):
             budget = _DEFAULT_BUDGET_KCAL
         except BudgetFileCorruptError:
             budget = None
-        status_map_ = status_map(log, budget=budget) if budget is not None else None
+        status_map_ = (
+            status_map(log, schedule=current_schedule(default=budget))
+            if budget is not None
+            else None
+        )
         self._render_month(status_map_)
         if status_map_ is None:
             self._cal_vars.streaks.set("Budget file is corrupt -- fix it below.")

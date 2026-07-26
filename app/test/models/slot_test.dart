@@ -74,6 +74,48 @@ void main() {
     });
   });
 
+  group('slotForLog', () {
+    // Keep in lockstep with `diet_guard/tests/test_slots.py`'s
+    // TestSlotForLog: a divergence means the PC and the phone disagree about
+    // which checkpoint a meal satisfied.
+    DateTime at(int hour) => DateTime(2026, 6, 22, hour, 0);
+
+    test('clamps to the first slot before the window opens', () {
+      expect(slotForLog(at(7)), 8);
+    });
+
+    test('clamps to the first slot in the small hours', () {
+      expect(slotForLog(at(0)), 8);
+    });
+
+    test('is unchanged exactly at the first slot', () {
+      expect(slotForLog(at(8)), 8);
+    });
+
+    test('matches currentSlot inside the window', () {
+      expect(slotForLog(at(13)), currentSlot(at(13)));
+      expect(slotForLog(at(13)), 12);
+    });
+
+    test('is unchanged at the last in-window hour', () {
+      expect(slotForLog(at(21)), 20);
+    });
+
+    test('clamps to the last slot once the window closes', () {
+      expect(slotForLog(at(22)), 20);
+    });
+
+    test('clamps to the last slot late in the evening', () {
+      expect(slotForLog(at(23)), 20);
+    });
+
+    test('never returns a slot outside the schedule', () {
+      for (var hour = 0; hour < 24; hour++) {
+        expect(daySlots(), contains(slotForLog(at(hour))));
+      }
+    });
+  });
+
   group('slotLabel', () {
     test('pads single-digit hours', () {
       expect(slotLabel(8), '08:00');
