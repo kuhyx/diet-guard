@@ -212,9 +212,20 @@ class DayStatusCalendar extends StatelessWidget {
                   ),
                 );
                 if (onDaySelected == null) return cellWidget;
-                return GestureDetector(
-                  onTap: () => onDaySelected!(DateTime(year, m, day)),
-                  child: cellWidget,
+                // InkWell, not a bare GestureDetector: tapping a day navigates
+                // to the date-filtered history, and a GestureDetector is not
+                // focusable, so that navigation had no keyboard route at all
+                // and no semantics for a screen reader. InkWell is a focus
+                // stop and is activated by Enter/Space.
+                final date = DateTime(year, m, day);
+                return Semantics(
+                  button: true,
+                  label: 'View $day/$m/$year',
+                  child: InkWell(
+                    onTap: () => onDaySelected!(date),
+                    customBorder: const CircleBorder(),
+                    child: cellWidget,
+                  ),
                 );
               }),
             );

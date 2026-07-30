@@ -61,11 +61,17 @@ def make_button(
     command: Callable[[], None],
     bold: bool = True,
 ) -> tk.Button:
-    """Build a button from the shared primary/secondary/danger palette."""
+    """Build a button from the shared primary/secondary/danger palette.
+
+    Binds ``<Return>`` as well as relying on ``command``. Tk's X11 class
+    bindings give ``tk.Button`` only ``<space>``; there is no ``<Return>``
+    binding, so without this every button in the gate is Space-only and Enter
+    silently does nothing -- which is not the key a user reaches for.
+    """
     fill, text_color = _BUTTON_FILLS[variant]
     size = _BUTTON_SIZE[variant]
     font = (_COLORS.font_family, size, "bold") if bold else (_COLORS.font_family, size)
-    return tk.Button(
+    button = tk.Button(
         parent,
         text=text,
         font=font,
@@ -76,4 +82,13 @@ def make_button(
         padx=_BUTTON_PADX,
         pady=_BUTTON_PADY,
         command=command,
+        **_COLORS.focus_kwargs(),
     )
+
+    def _activate(_event: tk.Event) -> str:
+        button.invoke()
+        return "break"
+
+    button.bind("<Return>", _activate, add="+")
+    button.bind("<KP_Enter>", _activate, add="+")
+    return button

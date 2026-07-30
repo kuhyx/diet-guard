@@ -14,6 +14,7 @@ import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/github_device_auth.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
+import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -274,132 +275,152 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text('Nutrition', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _kcalGoalController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(
-              labelText: 'Daily kcal goal',
-              helperText: 'Shown in the history day summary',
-              suffixText: 'kcal',
-            ),
-            onChanged: _onKcalGoalChanged,
-          ),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 8),
-          Text(
-            'Authorize in your browser — no token to paste. Syncs to '
-            'kuhyx/syncs by default.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: _connectGitHub,
-            icon: const Icon(Icons.login),
-            label: const Text('Connect GitHub'),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _ownerController,
-            decoration: const InputDecoration(labelText: 'GitHub owner'),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _repoController,
-            decoration: const InputDecoration(labelText: 'Repo'),
-          ),
-          const SizedBox(height: 8),
-          ExpansionTile(
-            title: const Text('Advanced'),
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: const EdgeInsets.only(bottom: 8),
+      // Centred and capped at the prose width. On the desktop surface this
+      // ListView spanned the full ~1366px window, so the explanatory
+      // paragraphs below ran ~180 characters per line -- roughly twice the
+      // readable limit (tokens.md rule 21) -- and every field stretched with
+      // them. Invisible on the phone, where the window is already narrow.
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: AppWidth.prose),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
             children: [
-              TextField(
-                controller: _clientIdController,
-                decoration: const InputDecoration(
-                  labelText: 'OAuth App client id',
-                  helperText: 'Needed for the Connect GitHub button',
+              Text('Nutrition', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              // A four-digit number: capped so the field does not read as a
+              // layout error by spanning the whole column.
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: AppWidth.field),
+                child: TextField(
+                  controller: _kcalGoalController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: const InputDecoration(
+                    labelText: 'Daily kcal goal',
+                    helperText: 'Shown in the history day summary',
+                    suffixText: 'kcal',
+                  ),
+                  onChanged: _onKcalGoalChanged,
                 ),
+              ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                'Authorize in your browser — no token to paste. Syncs to '
+                'kuhyx/syncs by default.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: _connectGitHub,
+                icon: const Icon(Icons.login),
+                label: const Text('Connect GitHub'),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _ownerController,
+                decoration: const InputDecoration(labelText: 'GitHub owner'),
               ),
               const SizedBox(height: 8),
               TextField(
-                controller: _tokenController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Personal access token (fallback)',
-                  // Both wrapper hints are web-only; a VM test always takes
-                  // the null branch.
-                  // coverage:ignore-start
-                  helperText: SyncSettings.exposesTokenValue
-                      ? null
-                      : _storedToken.isEmpty
-                      ? 'Stored by the desktop wrapper, never by the browser'
-                      : 'A token is stored by the desktop wrapper; type here '
-                            'only to replace it',
-                  // coverage:ignore-end
-                  helperMaxLines: 2,
+                controller: _repoController,
+                decoration: const InputDecoration(labelText: 'Repo'),
+              ),
+              const SizedBox(height: 8),
+              ExpansionTile(
+                title: const Text('Advanced'),
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.only(bottom: 8),
+                children: [
+                  TextField(
+                    controller: _clientIdController,
+                    decoration: const InputDecoration(
+                      labelText: 'OAuth App client id',
+                      helperText: 'Needed for the Connect GitHub button',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _tokenController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Personal access token (fallback)',
+                      // Both wrapper hints are web-only; a VM test always takes
+                      // the null branch.
+                      // coverage:ignore-start
+                      helperText: SyncSettings.exposesTokenValue
+                          ? null
+                          : _storedToken.isEmpty
+                          ? 'Stored by the desktop wrapper, never by the '
+                                'browser'
+                          : 'A token is stored by the desktop wrapper; '
+                                'type here only to replace it',
+                      // coverage:ignore-end
+                      helperMaxLines: 2,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                children: [
+                  ElevatedButton(
+                    onPressed: _busy ? null : _save,
+                    child: const Text('Save'),
+                  ),
+                  OutlinedButton(
+                    onPressed: _busy ? null : _testConnection,
+                    child: const Text('Test connection'),
+                  ),
+                  ElevatedButton(
+                    onPressed: _busy ? null : _syncNow,
+                    child: const Text('Sync now'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                'Notifications',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _isAndroid
+                    ? 'A background check nags you every ~15 min if a '
+                          'meal slot is overdue. Aggressive OEM battery '
+                          'optimization (MIUI, some Samsung configs) can '
+                          'delay this well past 15 min -- request an '
+                          'exemption for reliable nagging.'
+                    : 'A check runs every 5 min while this window is open and '
+                          'notifies you about an overdue meal slot. A browser '
+                          'cannot run anything once the window is closed -- on '
+                          'the PC the real backstop is the diet_guard gate, '
+                          'which locks the screen instead.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              // Battery-optimization exemption is Android-only, and
+              // `permission_handler` has no web implementation at all;
+              // the row would throw rather than degrade in the browser.
+              if (_isAndroid) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _requestBatteryExemption,
+                  icon: const Icon(Icons.battery_alert),
+                  label: const Text('Disable battery optimization'),
                 ),
-              ),
+              ],
+              if (_status != null) ...[
+                const SizedBox(height: 16),
+                Text(_status!, style: Theme.of(context).textTheme.bodyMedium),
+              ],
             ],
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            children: [
-              ElevatedButton(
-                onPressed: _busy ? null : _save,
-                child: const Text('Save'),
-              ),
-              OutlinedButton(
-                onPressed: _busy ? null : _testConnection,
-                child: const Text('Test connection'),
-              ),
-              ElevatedButton(
-                onPressed: _busy ? null : _syncNow,
-                child: const Text('Sync now'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 8),
-          Text('Notifications', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text(
-            _isAndroid
-                ? 'A background check nags you every ~15 min if a meal slot '
-                      'is overdue. Aggressive OEM battery optimization (MIUI, '
-                      'some Samsung configs) can delay this well past 15 min '
-                      '-- request an exemption for reliable nagging.'
-                : 'A check runs every 5 min while this window is open and '
-                      'notifies you about an overdue meal slot. A browser '
-                      'cannot run anything once the window is closed -- on '
-                      'the PC the real backstop is the diet_guard gate, '
-                      'which locks the screen instead.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          // Battery-optimization exemption is an Android-only concept, and
-          // `permission_handler` has no web implementation at all; the row
-          // would throw rather than degrade if it were shown in the browser.
-          if (_isAndroid) ...[
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _requestBatteryExemption,
-              icon: const Icon(Icons.battery_alert),
-              label: const Text('Disable battery optimization'),
-            ),
-          ],
-          if (_status != null) ...[
-            const SizedBox(height: 16),
-            Text(_status!, style: Theme.of(context).textTheme.bodyMedium),
-          ],
-        ],
+        ),
       ),
     );
   }

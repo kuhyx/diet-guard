@@ -20,12 +20,12 @@ are functional in-memory stand-ins, shared by ``test_gatelock.py`` and
 
 from __future__ import annotations
 
-from contextlib import ExitStack
-from types import SimpleNamespace
+from contextlib import ExitStack, contextmanager
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 from gatelock import Output, OutputRect
+from gatelock import _scrollable as _gatelock_scrollable
 import pytest
 
 from diet_guard import (
@@ -40,6 +40,44 @@ from diet_guard import (
 )
 from diet_guard._estimator import Nutrition
 from diet_guard._gatelock import MealGate
+from diet_guard.tests._tk_fakes import (
+    _FAKE_TK,
+    _FAKE_TTK,
+    FakeCanvas,
+    FakeEntry,
+    FakeListbox,
+    FakeNotebook,
+    FakeRadiobutton,
+    FakeScrollbar,
+    FakeStyle,
+    FakeText,
+    FakeVar,
+    FakeWidget,
+    _FakeTclError,
+)
+
+# Re-exported: the fake widgets moved into the package so this file stays
+# under the 500-line cap, but tests import them from conftest by name.
+__all__ = [
+    "FAKE_OUTPUTS",
+    "TWO_OUTPUTS",
+    "_FAKE_TK",
+    "_FAKE_TTK",
+    "FakeCanvas",
+    "FakeEntry",
+    "FakeListbox",
+    "FakeNotebook",
+    "FakeRadiobutton",
+    "FakeScrollbar",
+    "FakeStyle",
+    "FakeText",
+    "FakeVar",
+    "FakeWidget",
+    "_FakeTclError",
+    "dual_output",
+    "fake_tk",
+    "gate",
+]
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -180,192 +218,6 @@ def _hmac_key(tmp_path: Path) -> Iterator[None]:
 # in-memory widgets without ever opening a window or grabbing the keyboard.
 
 
-class _FakeTclError(Exception):
-    """Stand-in for ``tkinter.TclError`` (a real, catchable exception)."""
-
-
-class FakeVar:
-    """A functional ``StringVar``: stores and returns a string."""
-
-    def __init__(self, master: object = None, value: str = "") -> None:
-        self._value = value
-
-    def get(self) -> str:
-        return self._value
-
-    def set(self, value: str) -> None:
-        self._value = value
-
-
-class FakeEntry:
-    """A functional one-line entry (delete clears, insert appends).
-
-    ``configure``/``config`` record their kwargs into ``configured``, so a
-    test can assert on a read-only/editable state toggle the same way it
-    would with :class:`FakeWidget`.
-    """
-
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        self._value = ""
-        self.configured: dict[str, object] = dict(kwargs)
-
-    def get(self) -> str:
-        return self._value
-
-    def delete(self, first: object, last: object = None) -> None:
-        self._value = ""
-
-    def insert(self, index: object, text: str) -> None:
-        self._value += text
-
-    def pack(self, *args: object, **kwargs: object) -> FakeEntry:
-        return self
-
-    def bind(self, *args: object, **kwargs: object) -> None:
-        pass
-
-    def configure(self, *args: object, **kwargs: object) -> None:
-        self.configured.update(kwargs)
-
-    config = configure
-
-    def focus_set(self) -> None:
-        pass
-
-    def focus_force(self) -> None:
-        pass
-
-
-class FakeText(FakeEntry):
-    """A functional multi-line text box (``get`` ignores the index range)."""
-
-    def get(self, start: object = None, end: object = None) -> str:
-        return self._value
-
-
-class FakeListbox:
-    """A functional listbox tracking items and the current selection."""
-
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        self._items: list[str] = []
-        self._sel: tuple[int, ...] = ()
-
-    def delete(self, first: object, last: object = None) -> None:
-        self._items = []
-
-    def insert(self, index: object, text: str) -> None:
-        self._items.append(text)
-
-    def curselection(self) -> tuple[int, ...]:
-        return self._sel
-
-    def selection_set(self, index: int) -> None:
-        self._sel = (index,)
-
-    def selection_clear(self, first: object, last: object = None) -> None:
-        self._sel = ()
-
-    def pack(self, *args: object, **kwargs: object) -> FakeListbox:
-        return self
-
-    def bind(self, *args: object, **kwargs: object) -> None:
-        pass
-
-
-class FakeWidget:
-    """A generic no-op widget for Frame/Label/Button/OptionMenu.
-
-    ``configure``/``config`` record their kwargs into ``configured`` (rather
-    than discarding them) so a test can assert on a widget's last-set color
-    or text, e.g. the calendar's per-cell status coloring.
-    """
-
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        self.configured: dict[str, object] = dict(kwargs)
-
-    def pack(self, *args: object, **kwargs: object) -> FakeWidget:
-        return self
-
-    def place(self, *args: object, **kwargs: object) -> FakeWidget:
-        return self
-
-    def grid(self, *args: object, **kwargs: object) -> FakeWidget:
-        return self
-
-    def configure(self, *args: object, **kwargs: object) -> FakeWidget:
-        self.configured.update(kwargs)
-        return self
-
-    config = configure
-
-    def bind(self, *args: object, **kwargs: object) -> None:
-        pass
-
-    def register(self, func: object) -> object:
-        """Stand in for Tk's Tcl-command registration: return the callable as-is."""
-        return func
-
-
-class FakeNotebook(FakeWidget):
-    """A functional ``ttk.Notebook``: tracks added tabs and the selection."""
-
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        super().__init__(*args, **kwargs)
-        self.tabs: list[tuple[object, str]] = []
-        self._selected = 0
-
-    def add(self, child: object, *, text: str = "") -> None:
-        self.tabs.append((child, text))
-
-    def select(self, tab_id: object = None) -> int | None:
-        if tab_id is None:
-            return self._selected
-        if isinstance(tab_id, int):
-            self._selected = tab_id
-        else:
-            for index, (child, _label) in enumerate(self.tabs):
-                if child is tab_id:
-                    self._selected = index
-                    break
-        return None
-
-
-class FakeStyle:
-    """A no-op stand-in for ``ttk.Style`` -- records calls, applies nothing."""
-
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        self.theme: str | None = None
-        self.configured: dict[str, dict[str, object]] = {}
-
-    def theme_use(self, theme_name: str) -> None:
-        self.theme = theme_name
-
-    def configure(self, style_name: str, **kwargs: object) -> None:
-        self.configured.setdefault(style_name, {}).update(kwargs)
-
-    def map(self, style_name: str, **kwargs: object) -> None:
-        self.configured.setdefault(style_name, {}).update(kwargs)
-
-
-_FAKE_TK = SimpleNamespace(
-    END="end",
-    TclError=_FakeTclError,
-    StringVar=FakeVar,
-    Frame=FakeWidget,
-    Label=FakeWidget,
-    Button=FakeWidget,
-    OptionMenu=FakeWidget,
-    Entry=FakeEntry,
-    Text=FakeText,
-    Listbox=FakeListbox,
-    Event=object,
-)
-
-_FAKE_TTK = SimpleNamespace(Notebook=FakeNotebook, Style=FakeStyle)
-
-# Every mixin module the gate window is built from imports ``tkinter``
-# independently; all of them must see the fake so ``tk.TclError`` etc. are the
-# catchable ``_FakeTclError`` everywhere a test raises it.
 _GATE_TK_MODULES = (
     _gatelock,
     _gatelock_buttons,
@@ -375,17 +227,35 @@ _GATE_TK_MODULES = (
     _gatelock_nutrition,
     _gatelock_mealflow,
     _gatelock_ui,
+    # The gate's scroll viewport lives in gatelock, not here, and imports
+    # tkinter independently -- so it needs the fake too, or a real tk.Frame
+    # ends up parented to a FakeNotebook.
+    _gatelock_scrollable,
 )
 
 
-@pytest.fixture
-def gate() -> Iterator[MealGate]:
-    """Build a demo gate whose widgets are functional fakes."""
+@contextmanager
+def fake_tk() -> Iterator[None]:
+    """Patch every module that builds gate widgets to use the fakes.
+
+    Exposed so tests that construct a gate outside the :func:`gate` fixture
+    patch the *same* set. Hand-picking a subset is how a test ends up mixing a
+    real ``tk.Label`` with a fake parent: the widget tree spans several modules
+    plus ``gatelock``, and any module left real will try to talk to a fake
+    master.
+    """
     with ExitStack() as stack:
         for module in _GATE_TK_MODULES:
             stack.enter_context(patch.object(module, "tk", _FAKE_TK))
         stack.enter_context(patch.object(_gatelock_calendar, "ttk", _FAKE_TTK))
         stack.enter_context(patch.object(_gatelock_calendar_ui, "ttk", _FAKE_TTK))
+        yield
+
+
+@pytest.fixture
+def gate() -> Iterator[MealGate]:
+    """Build a demo gate whose widgets are functional fakes."""
+    with fake_tk():
         yield MealGate(demo_mode=True)
 
 

@@ -25,6 +25,9 @@ repos:
       - id: debug-statements
       - id: name-tests-test
         args: [--pytest-test-first]
+        # Shared fake widgets, not a test module. Split out of conftest.py only
+        # because that file passed the 500-line cap.
+        exclude: ^diet_guard/tests/_(tk_fakes|gate_layout_probe|gate_keyboard_probe)\.py$
       - id: check-ast
       - id: mixed-line-ending
         args: [--fix=lf]
@@ -98,7 +101,7 @@ repos:
         additional_dependencies:
           - pytest
           - requests
-          - gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.2.0#subdirectory=gatelock
+          - gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.3.0#subdirectory=gatelock
           - crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.1.0#subdirectory=crdt-sync
           - mcp
           - pydantic

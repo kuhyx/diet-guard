@@ -19,7 +19,7 @@ from __future__ import annotations
 import tkinter as tk
 from typing import TYPE_CHECKING
 
-from gatelock import LockConfig
+from gatelock import LockConfig, ScrollableSurface, escape_text_tab_trap
 
 from diet_guard._gatelock_buttons import make_button
 from diet_guard._gatelock_spacing import MD, SM, XS
@@ -65,6 +65,12 @@ UNIT_ITEMS = "items"
 # Per-basis label prefixes for the two measuring modes.
 BASIS_PREFIX_GRAMS = "Nutrition as on the label — per"
 BASIS_PREFIX_ITEMS = "Nutrition per 1 item ≈"
+# Wrap width for the gate's prose labels, in px. 640 is tokens.md's line-length
+# cap (rule 21, 40rem / ~65-70 characters). This was 900 at five call sites,
+# which both exceeded the cap and -- more practically -- forced a 900px-wide
+# layout on a 1024px screen, since a label's wrap width feeds its requested
+# width and therefore the whole centered column's.
+_WRAP_PX = 640
 
 
 __all__ = [
@@ -129,6 +135,7 @@ def _numeric_entry(
         justify="center",
         validate="key",
         validatecommand=vcmd,
+        **_COLORS.focus_kwargs(),
     )
 
 
@@ -142,6 +149,12 @@ def _macro_cell(
     entry = _numeric_entry(root, cell, width=7, variable=variable)
     entry.pack(ipady=XS)
     return entry
+
+
+# Re-exported from gatelock so the four lockers share one implementation of
+# this Tk-default workaround rather than each carrying a copy. Kept as a
+# module-level name because the gate's own tests bind to it here.
+_escape_text_tab_trap = escape_text_tab_trap
 
 
 def _build_desc(parent: tk.Frame) -> tk.Text:
@@ -167,10 +180,14 @@ def _build_desc(parent: tk.Frame) -> tk.Text:
         bg=_FIELD_BG,
         fg=FG,
         insertbackground=FG,
-        highlightthickness=1,
-        highlightbackground=_MUTED,
+        # focus_kwargs() sets highlightcolor (the *focused* ring). This
+        # previously set only highlightbackground, which is the UNFOCUSED ring
+        # -- so the box outlined while unfocused and went black (invisible on
+        # bg) the moment it took focus, exactly inverting the affordance.
+        **_COLORS.focus_kwargs(),
     )
     text.pack(pady=(XS, SM))
+    _escape_text_tab_trap(text)
     return text
 
 
@@ -186,7 +203,10 @@ def _build_suggestion_box(parent: tk.Frame) -> tk.Listbox:
         selectbackground=_ACCENT,
         selectforeground=_COLORS.on_fill,
         activestyle="none",
-        highlightthickness=0,
+        # Was highlightthickness=0, which removed the focus ring entirely. The
+        # list *is* arrow-key navigable, so it was keyboard-usable with no
+        # visual indication of where focus was.
+        **_COLORS.focus_kwargs(),
     )
     box.pack(pady=(0, SM))
     return box
@@ -210,22 +230,53 @@ def _build_amount_row(
     row.pack(pady=(XS, SM))
     amount_entry = _numeric_entry(root, row, width=10, variable=vars_.entries.amount)
     amount_entry.pack(side="left", ipady=XS)
-    unit_menu = tk.OptionMenu(
-        row,
-        vars_.unit,
-        UNIT_GRAMS,
-        UNIT_ITEMS,
-        command=on_unit_change,
-    )
-    unit_menu.configure(
-        font=(_FONT, LABEL),
-        bg=_FIELD_BG,
-        fg=FG,
-        activebackground=_ACCENT,
-        highlightthickness=0,
-    )
-    unit_menu.pack(side="left", padx=(SM, 0))
+    _build_unit_selector(row, vars_, on_unit_change)
     return amount_entry
+
+
+def _build_unit_selector(
+    row: tk.Frame,
+    vars_: GateVars,
+    on_unit_change: Callable[[str], None],
+) -> None:
+    """Build the grams/items selector as focusable radio buttons.
+
+    Deliberately **not** a ``tk.OptionMenu``, which this used to be, for two
+    independent reasons:
+
+    1. **It was unreachable by keyboard.** ``OptionMenu``'s underlying
+       ``Menubutton`` defaults to ``takefocus=0``, so ``::tk::FocusOK`` rejects
+       it and it never appears in the tab ring (verified: the ring ran
+       Entry -> Text -> Listbox -> Button -> TNotebook and skipped it). Since
+       the unit rescales the entire entry, a pointerless user could not switch
+       between "250 grams" and "3 items" inside a lock they cannot leave
+       without logging a meal.
+    2. **A posted menu is unsafe on a lock surface.** A dropped-down Tk menu is
+       a separate override-redirect toplevel that steals the Tk grab, which
+       gatelock's recovery tick then kills within a second. That is the
+       documented 2026-07-26 failure where a frozen sport selector logged a walk
+       as table tennis, and it is why screen-locker statically bans
+       ``OptionMenu`` on lock surfaces.
+
+    ``tk.Radiobutton`` avoids both: it is in the tab ring by default and accepts
+    **both** ``Space`` and ``Return`` (unlike ``tk.Button``, which on X11 binds
+    only ``Space``), and it posts nothing.
+    """
+    for unit in (UNIT_GRAMS, UNIT_ITEMS):
+        tk.Radiobutton(
+            row,
+            text=unit,
+            value=unit,
+            variable=vars_.unit,
+            command=lambda u=unit: on_unit_change(u),
+            font=(_FONT, LABEL),
+            bg=BG,
+            fg=FG,
+            selectcolor=_FIELD_BG,
+            activebackground=BG,
+            activeforeground=_ACCENT,
+            **_COLORS.focus_kwargs(),
+        ).pack(side="left", padx=(SM, 0))
 
 
 def _build_macro_section(
@@ -290,7 +341,7 @@ def _build_dashboard(parent: tk.Frame, vars_: GateVars) -> None:
         fg=_MUTED,
         justify="left",
         anchor="w",
-        wraplength=900,
+        wraplength=_WRAP_PX,
     ).pack(pady=(XS, 0))
 
 
@@ -305,58 +356,69 @@ def build_layout(
 
     The controller calls this once (after configuring the window) and is then
     responsible for binding per-keystroke events to the returned widgets.
+
+    The content lives inside a :class:`~gatelock.ScrollableSurface` rather than
+    a ``place``-centered frame. It has to: this tab requires ~700px even when
+    empty and grows a line per logged meal, so on a 1366x768 screen it exceeded
+    the notebook's content pane and a centered frame clipped it *symmetrically*
+    -- losing the "Diet Gate" title and the slot header off the top while the
+    calorie headline and dashboard went off the bottom, with no scrollbar to
+    recover either. The viewport also makes the overflow keyboard-reachable,
+    which matters because this is a hard lock the user cannot leave without
+    logging a meal. See ``tests/measure_gate_layout.py``.
     """
-    frame = tk.Frame(root, bg=BG)
-    frame.place(relx=0.5, rely=0.5, anchor="center")
+    surface = ScrollableSurface(root, _COLORS)
+    frame = surface.container
+    body = surface.content
 
     tk.Label(
-        frame,
+        body,
         text="🍽  Diet Gate",
         font=(_FONT, DISPLAY, "bold"),
         bg=BG,
         fg=_ACCENT,
     ).pack(pady=(0, XS))
     tk.Label(
-        frame,
+        body,
         textvariable=vars_.slot_header,
         font=(_FONT, SUBTITLE, "bold"),
         bg=BG,
         fg=FG,
-        wraplength=900,
+        wraplength=_WRAP_PX,
         justify="center",
     ).pack(pady=(0, MD))
 
-    desc_text = _build_desc(frame)
-    suggestion_box = _build_suggestion_box(frame)
+    desc_text = _build_desc(body)
+    suggestion_box = _build_suggestion_box(body)
     amount_entry = _build_amount_row(
         root,
-        frame,
+        body,
         vars_,
         callbacks.on_unit_change,
     )
-    basis_prefix, per_entry, macros = _build_macro_section(root, frame, vars_)
+    basis_prefix, per_entry, macros = _build_macro_section(root, body, vars_)
 
     tk.Label(
-        frame,
+        body,
         textvariable=vars_.projection,
         font=(_FONT, LABEL, "bold"),
         bg=BG,
         fg=FG,
-        wraplength=900,
+        wraplength=_WRAP_PX,
         justify="center",
     ).pack(pady=(XS, XS))
     tk.Label(
-        frame,
+        body,
         textvariable=vars_.preview,
         font=(_FONT, BODY, "bold"),
         bg=BG,
         fg=_ACCENT,
-        wraplength=900,
+        wraplength=_WRAP_PX,
         justify="center",
     ).pack(pady=(XS, SM))
 
     make_button(
-        frame,
+        body,
         text="Log & Continue",
         variant="primary",
         command=callbacks.on_submit,
@@ -365,7 +427,7 @@ def build_layout(
     # Manual pull for a meal already logged on another device (the phone) but
     # not yet propagated to this machine -- saves re-typing it to unlock.
     make_button(
-        frame,
+        body,
         text="⟳ Fetch from sync",
         variant="secondary",
         command=callbacks.on_fetch_sync,
@@ -373,17 +435,22 @@ def build_layout(
     ).pack(pady=(0, SM))
 
     status_label = tk.Label(
-        frame,
+        body,
         textvariable=vars_.status,
         font=(_FONT, LABEL),
         bg=BG,
         fg=FG,
-        wraplength=900,
+        wraplength=_WRAP_PX,
         justify="center",
     )
     status_label.pack()
 
-    _build_dashboard(frame, vars_)
+    _build_dashboard(body, vars_)
+
+    # Wire focus-following and reset the view now that the content exists.
+    # Without this, Tab walks onto fields scrolled out of sight -- clipping does
+    # not remove a widget from the tab chain.
+    surface.finalize()
 
     if demo_mode:
         make_button(

@@ -175,3 +175,30 @@ abstract final class AppTextSize {
   /// 32px.
   static const double display = 32;
 }
+
+/// Line-length and layout caps for the desktop surface.
+///
+/// The Linux desktop build is this same Dart running as Flutter **web** in a
+/// Chrome `--app` window, so every screen is laid out at whatever width that
+/// window happens to be — commonly 1366px on the laptop. Without a cap, a
+/// phone-width single-column design simply stretches: prose ran ~180 characters
+/// per line (roughly 2x the readable limit) and a four-digit calorie field
+/// spanned ~1334px. Neither is clipped, so nothing looks broken; it is just
+/// unusable to read.
+abstract final class AppWidth {
+  /// 640px — the prose/paragraph cap (tokens.md rule 21, 40rem, ~65-70 chars).
+  static const double prose = 640;
+
+  /// 420px — cap for a single-purpose input (a number, a short name).
+  ///
+  /// Narrower than [prose] because a field wider than its longest plausible
+  /// value reads as a layout error rather than an affordance.
+  static const double field = 420;
+
+  /// Viewport height below which the layout should switch to its compact form.
+  ///
+  /// 700px, i.e. 768 minus typical window chrome: the supported floor is a
+  /// 1366x768 panel, and these are *short* landscape viewports, which
+  /// phone-portrait test sizes never exercise.
+  static const double shortViewport = 700;
+}

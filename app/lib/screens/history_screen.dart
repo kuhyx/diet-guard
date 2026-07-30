@@ -562,15 +562,33 @@ class _EntryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final canDelete = entry.id != null;
     return ListTile(
       leading: const Icon(Icons.restaurant),
       title: Text(entry.desc),
       subtitle: Text('${entry.time}  •  ${entry.source}'),
-      trailing: Text('${entry.kcal.toStringAsFixed(0)} kcal'),
+      // Delete needs a focusable control, not just a long-press. Long-press has
+      // no keyboard equivalent at all, so on the desktop build (a Chrome --app
+      // window) deleting an entry was pointer-only: unreachable by keyboard and
+      // invisible to a screen reader. The trailing row keeps the kcal figure
+      // and adds an IconButton, which Tab reaches and Enter/Space activates.
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('${entry.kcal.toStringAsFixed(0)} kcal'),
+          if (canDelete)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Delete entry',
+              onPressed: () => _confirmDelete(context),
+            ),
+        ],
+      ),
       // Any entry can be edited (legacy null-id entries gain a UUID on save).
       // Delete remains id-only to avoid ambiguous time+desc matches.
       onTap: () => onEdit?.call(),
-      onLongPress: entry.id != null ? () => _confirmDelete(context) : null,
+      // Retained as a redundant pointer shortcut, never the only route.
+      onLongPress: canDelete ? () => _confirmDelete(context) : null,
     );
   }
 
@@ -629,10 +647,7 @@ class _FilterSheet extends StatelessWidget {
   final double maxCarbs;
   final double maxFat;
   final void Function(HistoryFilter) onFilterChanged;
-  final void Function({
-    required HistorySortField field,
-    required bool asc,
-  })
+  final void Function({required HistorySortField field, required bool asc})
   onSortChanged;
   final VoidCallback onApply;
   final VoidCallback onClear;
@@ -655,10 +670,7 @@ class _FilterSheet extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
-                TextButton(
-                  onPressed: onClear,
-                  child: const Text('Clear all'),
-                ),
+                TextButton(onPressed: onClear, child: const Text('Clear all')),
               ],
             ),
           ),
@@ -671,16 +683,8 @@ class _FilterSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Name search
-                  TextField(
-                    decoration: const InputDecoration(
-                      labelText: 'Search by name',
-                      prefixIcon: Icon(Icons.search),
-                      isDense: true,
-                    ),
-                    controller: TextEditingController(text: filter.nameQuery)
-                      ..selection = TextSelection.collapsed(
-                        offset: filter.nameQuery.length,
-                      ),
+                  _NameSearchField(
+                    initialQuery: filter.nameQuery,
                     onChanged: (v) {
                       filter.nameQuery = v;
                       onFilterChanged(filter);
@@ -798,10 +802,7 @@ class _FilterSheet extends StatelessWidget {
                       'Carbs range (g)',
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
-                    _SliderEndpointLabels(
-                      lo: '0',
-                      hi: '${maxCarbs.round()}g',
-                    ),
+                    _SliderEndpointLabels(lo: '0', hi: '${maxCarbs.round()}g'),
                     RangeSlider(
                       key: const Key('carbs-range-slider'),
                       max: maxCarbs,
@@ -832,10 +833,7 @@ class _FilterSheet extends StatelessWidget {
                       'Fat range (g)',
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
-                    _SliderEndpointLabels(
-                      lo: '0',
-                      hi: '${maxFat.round()}g',
-                    ),
+                    _SliderEndpointLabels(lo: '0', hi: '${maxFat.round()}g'),
                     RangeSlider(
                       key: const Key('fat-range-slider'),
                       max: maxFat,
@@ -861,10 +859,7 @@ class _FilterSheet extends StatelessWidget {
                   ],
 
                   // Source filter
-                  Text(
-                    'Source',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
+                  Text('Source', style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 4),
                   Wrap(
                     spacing: 8,
@@ -971,6 +966,53 @@ class _FilterSheet extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 /// Thin row showing the min (0) and max endpoint values for a range slider.
+/// The filter sheet's name-search field, owning a persistent controller.
+///
+/// Stateful on purpose. The controller used to be built inside
+/// `_FilterSheet.build` with the caret forced to the end of the text, and
+/// `onChanged` rebuilds the sheet — so every keystroke discarded the controller
+/// and re-slammed the caret to end-of-text. Appending worked, but Home/End and
+/// arrow-key editing in the middle of the query were silently undone on each
+/// character. Keeping the controller in State fixes that without changing how
+/// the filter is plumbed.
+class _NameSearchField extends StatefulWidget {
+  const _NameSearchField({required this.initialQuery, required this.onChanged});
+
+  /// Query text to seed the field with on first build only.
+  final String initialQuery;
+
+  /// Called on each edit with the new query.
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_NameSearchField> createState() => _NameSearchFieldState();
+}
+
+class _NameSearchFieldState extends State<_NameSearchField> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialQuery,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      decoration: const InputDecoration(
+        labelText: 'Search by name',
+        prefixIcon: Icon(Icons.search),
+        isDense: true,
+      ),
+      onChanged: widget.onChanged,
+    );
+  }
+}
+
 class _SliderEndpointLabels extends StatelessWidget {
   const _SliderEndpointLabels({required this.lo, required this.hi});
   final String lo;

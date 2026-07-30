@@ -113,6 +113,11 @@ class _GateCalendar(_GateMealFlow):
         )
         cal_widgets = build_calendar_frame(notebook, self._cal_vars, cal_callbacks)
         notebook.add(cal_widgets.frame, text="History")
+        # Ctrl+Tab / Ctrl+PageUp / Ctrl+PageDown and Alt+mnemonic tab switching
+        # all live in toplevel bindings that ttk only installs on request. The
+        # notebook is in the focus ring and Left/Right work once it holds focus,
+        # but without this the idioms a user actually reaches for are dead.
+        notebook.enable_traversal()
         self._cal_surfaces.append(cal_widgets)
         self._cal_widgets = cal_widgets
         return widgets

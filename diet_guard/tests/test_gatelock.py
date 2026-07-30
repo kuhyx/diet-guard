@@ -32,7 +32,11 @@ from diet_guard._gatelock_nutrition import _format_preview
 from diet_guard._gatelock_support import wait_for_display
 from diet_guard._gatelock_ui import DEFAULT_PER_GRAMS
 from diet_guard._portions import DEFAULT_ITEM_GRAMS
-from diet_guard.tests.conftest import _FAKE_TK, _FakeTclError, _nutrition
+from diet_guard.tests.conftest import (
+    _FakeTclError,
+    _nutrition,
+    fake_tk,
+)
 
 # --------------------------------------------------------------------------
 # Module-level helpers
@@ -120,7 +124,10 @@ class TestConstruction:
 
     def test_production_builds(self) -> None:
         """A production gate builds with a hard lock config."""
-        with patch.object(_gatelock, "tk", _FAKE_TK):
+        # Use the shared patch set: the widget tree spans several modules plus
+        # gatelock's scroll viewport, and leaving any of them real mixes a real
+        # widget with a fake master.
+        with fake_tk():
             gate = MealGate(demo_mode=False)
         assert gate.demo_mode is False
         assert gate._lock._config.mode == "hard"
