@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from diet_guard import _gatelock_buttons, _gatelock_ui
+from diet_guard import _gatelock_buttons, _gatelock_typography, _gatelock_ui
 from diet_guard._gatelock_ui import UNIT_GRAMS, UNIT_ITEMS
 from diet_guard.tests import _gate_keyboard_probe
 from diet_guard.tests.conftest import _FAKE_TK, FakeRadiobutton
@@ -194,11 +194,11 @@ class TestTypeScaleIsPixels:
     @pytest.mark.parametrize(
         "size",
         [
-            _gatelock_ui.DISPLAY,
-            _gatelock_ui.SUBTITLE,
-            _gatelock_ui.BODY,
-            _gatelock_ui.LABEL,
-            _gatelock_ui.CAPTION,
+            _gatelock_typography.DISPLAY,
+            _gatelock_typography.SUBTITLE,
+            _gatelock_typography.BODY,
+            _gatelock_typography.LABEL,
+            _gatelock_typography.CAPTION,
         ],
     )
     def test_sizes_are_negative(self, size: int) -> None:
@@ -211,12 +211,12 @@ class TestTypeScaleIsPixels:
 
     def test_scale_matches_the_design_system_magnitudes(self) -> None:
         """The magnitudes are still tokens.md's 32/24/20/16/14/12 scale."""
-        assert abs(_gatelock_ui.DISPLAY) == 32
-        assert abs(_gatelock_ui.TITLE) == 24
-        assert abs(_gatelock_ui.SUBTITLE) == 20
-        assert abs(_gatelock_ui.BODY) == 16
-        assert abs(_gatelock_ui.LABEL) == 14
-        assert abs(_gatelock_ui.CAPTION) == 12
+        assert abs(_gatelock_typography.DISPLAY) == 32
+        assert abs(_gatelock_typography.TITLE) == 24
+        assert abs(_gatelock_typography.SUBTITLE) == 20
+        assert abs(_gatelock_typography.BODY) == 16
+        assert abs(_gatelock_typography.LABEL) == 14
+        assert abs(_gatelock_typography.CAPTION) == 12
 
 
 class TestRealFocusRing:

@@ -22,11 +22,10 @@ from typing import TYPE_CHECKING
 from gatelock import LockConfig, ScrollableSurface, escape_text_tab_trap
 
 from diet_guard._gatelock_buttons import make_button
-from diet_guard._gatelock_spacing import MD, SM, XS
+from diet_guard._gatelock_spacing import SM, XS
 from diet_guard._gatelock_typography import (
     BODY,
     CAPTION,
-    DISPLAY,
     LABEL,
     SUBTITLE,
     TITLE,
@@ -186,7 +185,7 @@ def _build_desc(parent: tk.Frame) -> tk.Text:
         # bg) the moment it took focus, exactly inverting the affordance.
         **_COLORS.focus_kwargs(),
     )
-    text.pack(pady=(XS, SM))
+    text.pack(pady=(XS, XS))
     _escape_text_tab_trap(text)
     return text
 
@@ -208,7 +207,7 @@ def _build_suggestion_box(parent: tk.Frame) -> tk.Listbox:
         # visual indication of where focus was.
         **_COLORS.focus_kwargs(),
     )
-    box.pack(pady=(0, SM))
+    box.pack(pady=(0, XS))
     return box
 
 
@@ -227,7 +226,7 @@ def _build_amount_row(
         fg=FG,
     ).pack()
     row = tk.Frame(parent, bg=BG)
-    row.pack(pady=(XS, SM))
+    row.pack(pady=(XS, XS))
     amount_entry = _numeric_entry(root, row, width=10, variable=vars_.entries.amount)
     amount_entry.pack(side="left", ipady=XS)
     _build_unit_selector(row, vars_, on_unit_change)
@@ -310,7 +309,7 @@ def _build_macro_section(
     ).pack(side="left")
 
     row = tk.Frame(parent, bg=BG)
-    row.pack(pady=(XS, SM))
+    row.pack(pady=(XS, XS))
     macros = _MacroEntries(
         kcal=_macro_cell(root, row, "kcal", vars_.entries.kcal),
         protein=_macro_cell(root, row, "P", vars_.entries.protein),
@@ -332,7 +331,7 @@ def _build_dashboard(parent: tk.Frame, vars_: GateVars) -> None:
         font=(_FONT, TITLE, "bold"),
         bg=BG,
         fg=_ACCENT,
-    ).pack(pady=(MD, 0))
+    ).pack(pady=(SM, 0))
     tk.Label(
         parent,
         textvariable=vars_.dashboard,
@@ -374,7 +373,7 @@ def build_layout(
     tk.Label(
         body,
         text="🍽  Diet Gate",
-        font=(_FONT, DISPLAY, "bold"),
+        font=(_FONT, TITLE, "bold"),
         bg=BG,
         fg=_ACCENT,
     ).pack(pady=(0, XS))
@@ -386,7 +385,7 @@ def build_layout(
         fg=FG,
         wraplength=_WRAP_PX,
         justify="center",
-    ).pack(pady=(0, MD))
+    ).pack(pady=(0, SM))
 
     desc_text = _build_desc(body)
     suggestion_box = _build_suggestion_box(body)
@@ -415,14 +414,14 @@ def build_layout(
         fg=_ACCENT,
         wraplength=_WRAP_PX,
         justify="center",
-    ).pack(pady=(XS, SM))
+    ).pack(pady=(XS, XS))
 
     make_button(
         body,
         text="Log & Continue",
         variant="primary",
         command=callbacks.on_submit,
-    ).pack(pady=(XS, SM))
+    ).pack(pady=(XS, XS))
 
     # Manual pull for a meal already logged on another device (the phone) but
     # not yet propagated to this machine -- saves re-typing it to unlock.
@@ -432,7 +431,7 @@ def build_layout(
         variant="secondary",
         command=callbacks.on_fetch_sync,
         bold=False,
-    ).pack(pady=(0, SM))
+    ).pack(pady=(0, XS))
 
     status_label = tk.Label(
         body,

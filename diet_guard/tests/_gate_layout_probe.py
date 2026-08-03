@@ -239,6 +239,13 @@ def _probe_viewport(
     target = _deepest_focusable(inner)
     last_visible = False
     if target is not None:
+        # A real keypress first, then the focus it would have moved. Since
+        # 2026-08-03 gatelock only scrolls to follow focus the *user* moved:
+        # it used to follow programmatic focus too, and because the apps
+        # re-focus a widget on every repaint, the screen scrolled itself to
+        # mid-content and back while the user was doing nothing. A bare
+        # focus_set() here would therefore test a path no user can take.
+        target.event_generate("<Key-Tab>", when="now")
         target.focus_set()
         root.update()
         root.update_idletasks()

@@ -125,9 +125,15 @@ class FakeWidget:
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         self.configured: dict[str, object] = dict(kwargs)
+        self.packed = False
 
     def pack(self, *args: object, **kwargs: object) -> FakeWidget:
+        self.packed = True
         return self
+
+    def pack_forget(self, *args: object, **kwargs: object) -> None:
+        """Un-pack. The viewport hides its scrollbar whenever content fits."""
+        self.packed = False
 
     def place(self, *args: object, **kwargs: object) -> FakeWidget:
         return self
@@ -160,6 +166,9 @@ class FakeWidget:
 
     def cget(self, key: str) -> object:
         return self.configured.get(key, "")
+
+    def focus_get(self) -> None:
+        """Nothing holds focus in a fake tree."""
 
     # Geometry queries. The scroll viewport asks for these to size itself and
     # to decide whether content still fits; zero means "nothing measured yet",
@@ -312,6 +321,9 @@ class FakeCanvas(FakeWidget):
 
     def cget(self, key: str) -> object:
         return self.configured.get(key, "")
+
+    def focus_get(self) -> None:
+        """Nothing holds focus in a fake tree."""
 
 
 class FakeStyle:
