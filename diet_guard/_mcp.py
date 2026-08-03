@@ -37,7 +37,8 @@ import logging
 import sys
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
+from mcp.types import ToolAnnotations
 from pydantic import BaseModel
 
 from diet_guard._budget import BudgetError
@@ -65,7 +66,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("diet-guard")
+mcp = MCPServer("diet-guard")
+
+# Machine-readable versions of what the docstrings already say, so a client
+# can decide what to run unattended. The day a "read" tool starts writing,
+# these annotations are what has to change with it.
+_READS_ONLY = ToolAnnotations(
+    read_only_hint=True,
+    idempotent_hint=True,
+    open_world_hint=False,
+)
+# log_meal is the one tool that writes. It appends and never rewrites or
+# deletes, so it is not destructive; it is not idempotent either, because a
+# second confirmed call logs a second meal. It reaches Open Food Facts when
+# macros are not supplied, which is exactly what open_world means.
+_APPENDS = ToolAnnotations(
+    read_only_hint=False,
+    destructive_hint=False,
+    idempotent_hint=False,
+    open_world_hint=True,
+)
 
 
 def _entry_view(entry: dict[str, object]) -> dict[str, Any]:
@@ -98,7 +118,7 @@ def _entry_view(entry: dict[str, object]) -> dict[str, Any]:
 # ──────────────────────────────────────────────────────────────
 
 
-@mcp.tool()
+@mcp.tool(title="Today's intake status", annotations=_READS_ONLY)
 def get_status() -> dict[str, Any]:
     """Return today's intake status without ever revealing the daily budget.
 
@@ -126,7 +146,7 @@ def get_status() -> dict[str, Any]:
     }
 
 
-@mcp.tool()
+@mcp.tool(title="Meals logged today", annotations=_READS_ONLY)
 def list_today() -> dict[str, Any]:
     """List today's logged meals (valid entries only), newest last.
 
@@ -141,7 +161,7 @@ def list_today() -> dict[str, Any]:
     }
 
 
-@mcp.tool()
+@mcp.tool(title="Meal slots for the day", annotations=_READS_ONLY)
 def get_slots() -> dict[str, Any]:
     """Return the day's fixed meal slots and which one is current.
 
@@ -177,7 +197,7 @@ class Macros(BaseModel):
     fat: float = 0.0
 
 
-@mcp.tool()
+@mcp.tool(title="Log a meal (gated write)", annotations=_APPENDS)
 def log_meal(
     description: str,
     grams: float | None = None,

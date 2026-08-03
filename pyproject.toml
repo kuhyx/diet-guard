@@ -15,7 +15,7 @@ dependencies = [
 # so the systemd/CLI system-python path stays dependency-light and never has
 # to import the MCP SDK.
 [project.optional-dependencies]
-mcp = ["mcp>=1.9,<2"]
+mcp = ["mcp>=2,<3"]
 
 # Without this, setuptools' flat-layout auto-discovery treats the Flutter
 # app/ directory as a second top-level package and refuses to build.
