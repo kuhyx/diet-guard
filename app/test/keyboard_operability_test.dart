@@ -157,7 +157,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await LogStorageService.instance.writeLog({
+      await _pumpHistoryScreen(tester, {
         '2026-07-30': [
           const FoodEntry(
             id: 'has-id',
@@ -171,14 +171,6 @@ void main() {
             source: 'food bank',
           ),
         ],
-      });
-
-      // HistoryScreen loads via a fire-and-forget Future in initState that the
-      // frame scheduler does not track, so settle inside runAsync.
-      await tester.runAsync(() async {
-        await tester.pumpWidget(const MaterialApp(home: HistoryScreen()));
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-        await tester.pumpAndSettle();
       });
 
       // Delete used to be bound only to onLongPress, which has no keyboard
@@ -198,7 +190,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await LogStorageService.instance.writeLog({
+      await _pumpHistoryScreen(tester, {
         '2026-07-30': [
           const FoodEntry(
             time: '2026-07-30T09:00:00+02:00',
@@ -213,12 +205,6 @@ void main() {
         ],
       });
 
-      await tester.runAsync(() async {
-        await tester.pumpWidget(const MaterialApp(home: HistoryScreen()));
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-        await tester.pumpAndSettle();
-      });
-
       // Delete stays id-only to avoid ambiguous time+desc matches, so the
       // control must be absent rather than present-and-failing.
       expect(find.byTooltip('Delete entry'), findsNothing);
@@ -228,3 +214,27 @@ void main() {
 
 /// A do-nothing month-navigation callback.
 void _noop() {}
+
+/// Seed [log] to disk, then pump [HistoryScreen] until its load has painted.
+///
+/// Both halves must happen inside `runAsync`, and that is the whole point of
+/// this helper. `LogStorageService` here is backed by a `FileDocumentStore`,
+/// so `writeLog` awaits real `dart:io`; awaited from the test body it waits
+/// on a `Future` the fake-async zone never completes, and the test hangs
+/// rather than failing -- reported only as "did not complete" once the suite
+/// times out. `HistoryScreen` then loads through a fire-and-forget `Future`
+/// in `initState`, which needs the same real clock to resolve.
+///
+/// The pumping is a bounded manual loop rather than `pumpAndSettle()`, which
+/// inside `runAsync` waits on a frame scheduler this screen never reports as
+/// idle -- another hang, with the same unhelpful symptom.
+Future<void> _pumpHistoryScreen(WidgetTester tester, DayLog log) async {
+  await tester.runAsync(() async {
+    await LogStorageService.instance.writeLog(log);
+    await tester.pumpWidget(const MaterialApp(home: HistoryScreen()));
+    for (var i = 0; i < 10; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await tester.pump();
+    }
+  });
+}

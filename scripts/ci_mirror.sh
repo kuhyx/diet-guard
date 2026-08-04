@@ -85,7 +85,20 @@ run_precommit_all_files() {
 
 run_pytest_clean_venv() {
     log "pytest in the clean venv (mirrors the Tests workflow)"
-    "$VENV_DIR/bin/python" -m pytest "$@" || fail "pytest (clean requirements.txt venv)"
+    # Under xvfb-run, exactly as python-tests.yml does. The gate's real-Tk
+    # tests walk a focus ring via tk_focusNext, which consults mapped-ness
+    # and real focus: on a developer's live display the window never takes
+    # focus and the ring collapses to one widget, so TestRealFocusRing fails
+    # here while passing in CI. Mirroring the workflow's display is the whole
+    # point of this script -- without it the mirror reports red on a green
+    # tree, which is worse than not mirroring at all.
+    if ! command -v xvfb-run >/dev/null 2>&1; then
+        fail "xvfb-run is not on PATH (install xorg-server-xvfb); the real-Tk
+gate tests need the same virtual display the Tests workflow gives them"
+    fi
+    xvfb-run -a -s "-screen 0 1600x1200x24" \
+        "$VENV_DIR/bin/python" -m pytest "$@" \
+        || fail "pytest (clean requirements.txt venv)"
 }
 
 # Run flutter with the calling git hook's environment stripped.
