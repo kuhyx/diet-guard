@@ -1,9 +1,10 @@
-/// GitHub sync configuration. Primary path: "Connect GitHub" runs the OAuth
-/// **device flow** (authorize in a browser, no token pasting). A manually
-/// pasted PAT remains as a fallback under "Advanced". Auto-sync (app launch
-/// + lifecycle pause/resume) lives in [LogMealScreen] and is silent on
-/// failure -- this screen is where errors get surfaced, as inline status
-/// text.
+/// Sync configuration. Primary path: "Connect Firebase" — sign in with the
+/// shared sync account, whose password is kept in the OS keystore. GitHub is
+/// only the cutover mirror, so its whole setup (device-flow OAuth, owner/repo,
+/// client id, PAT fallback) sits under "Advanced (GitHub mirror)" rather than
+/// competing with Firebase as a visible choice. Auto-sync (app launch +
+/// lifecycle pause/resume) lives in [LogMealScreen] and is silent on failure
+/// -- this screen is where errors get surfaced, as inline status text.
 library;
 
 import 'dart:async';
@@ -232,9 +233,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final client = createGitHubClient(settings, httpClient: widget.httpClient);
     try {
       final ok = await client.canAccessRepo();
-      _showMessage(ok ? 'Connection OK.' : 'Connection failed.');
+      _showMessage(
+        ok ? 'GitHub connection OK.' : 'GitHub connection failed.',
+      );
     } on Exception catch (e) {
-      _showMessage('Connection failed: $e');
+      _showMessage('GitHub connection failed: $e');
     } finally {
       client.close();
       if (mounted) setState(() => _busy = false);
@@ -395,70 +398,94 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: _firebaseEmailController,
-                keyboardType: TextInputType.emailAddress,
-                autocorrect: false,
-                decoration: const InputDecoration(
-                  labelText: 'Sync account email',
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _firebasePasswordController,
-                obscureText: true,
-                autocorrect: false,
-                decoration: const InputDecoration(
-                  labelText: 'Sync account password',
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  FilledButton.icon(
-                    onPressed: _busy ? null : _saveFirebaseAccount,
-                    icon: const Icon(Icons.cloud_done),
-                    label: const Text('Connect Firebase'),
-                  ),
-                  if (_firebaseConfigured) ...[
+              // Once connected, the account is shown as read-only text rather
+              // than as prefilled inputs: an editable email box next to an
+              // empty password box reads as "you still have to enter this",
+              // which made a connected device look unconfigured.
+              if (_firebaseConfigured)
+                Row(
+                  children: [
+                    const Icon(Icons.cloud_done, size: 20),
                     const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _firebaseEmailController.text,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
                     TextButton(
                       onPressed: _busy ? null : _disconnectFirebase,
                       child: const Text('Disconnect'),
                     ),
                   ],
-                ],
-              ),
+                )
+              else ...[
+                TextField(
+                  controller: _firebaseEmailController,
+                  keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
+                  decoration: const InputDecoration(
+                    labelText: 'Sync account email',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _firebasePasswordController,
+                  obscureText: true,
+                  autocorrect: false,
+                  decoration: const InputDecoration(
+                    labelText: 'Sync account password',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: _busy ? null : _saveFirebaseAccount,
+                  icon: const Icon(Icons.cloud_done),
+                  label: const Text('Connect Firebase'),
+                ),
+              ],
               const SizedBox(height: 24),
               const Divider(),
               const SizedBox(height: 8),
-              Text(
-                'Authorize in your browser — no token to paste. Syncs to '
-                'kuhyx/syncs by default.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: _connectGitHub,
-                icon: const Icon(Icons.login),
-                label: const Text('Connect GitHub'),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _ownerController,
-                decoration: const InputDecoration(labelText: 'GitHub owner'),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _repoController,
-                decoration: const InputDecoration(labelText: 'Repo'),
-              ),
-              const SizedBox(height: 8),
+              // GitHub is a mirror during the cutover, not something to pick:
+              // its whole configuration lives under "Advanced" so the primary
+              // path stays a single choice. See CLAUDE.md "Cross-device sync".
               ExpansionTile(
-                title: const Text('Advanced'),
+                title: const Text('Advanced (GitHub mirror)'),
                 tilePadding: EdgeInsets.zero,
                 childrenPadding: const EdgeInsets.only(bottom: 8),
                 children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Syncs still mirror to GitHub until every device has '
+                      'moved to Firebase. Authorize in your browser — no '
+                      'token to paste.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.icon(
+                      onPressed: _connectGitHub,
+                      icon: const Icon(Icons.login),
+                      label: const Text('Connect GitHub'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _ownerController,
+                    decoration: const InputDecoration(
+                      labelText: 'GitHub owner',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _repoController,
+                    decoration: const InputDecoration(labelText: 'Repo'),
+                  ),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: _clientIdController,
                     decoration: const InputDecoration(
@@ -498,7 +525,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   OutlinedButton(
                     onPressed: _busy ? null : _testConnection,
-                    child: const Text('Test connection'),
+                    // Named for what it actually does: _testConnection builds a
+                    // GitHub client and calls canAccessRepo(). It says nothing
+                    // about Firebase, and the bare label implied otherwise.
+                    child: const Text('Test GitHub connection'),
                   ),
                   ElevatedButton(
                     onPressed: _busy ? null : _syncNow,

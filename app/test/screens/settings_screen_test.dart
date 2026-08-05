@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
+import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:flutter/material.dart';
@@ -77,6 +79,16 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Expands the "Advanced (GitHub mirror)" section.
+  ///
+  /// GitHub is the cutover mirror rather than a choice the user makes, so its
+  /// whole configuration (owner, repo, client id, PAT, "Connect GitHub") is
+  /// collapsed by default. Every GitHub-facing test has to open it first.
+  Future<void> openAdvanced(WidgetTester tester) async {
+    await tester.tap(find.text('Advanced (GitHub mirror)'));
+    await tester.pumpAndSettle();
+  }
+
   /// Drains the device flow's real `Future.delayed` poll (GitHubDeviceAuth
   /// injects no test delay, so under `runAsync` it is a genuine Timer, not
   /// the fake-clock one `tester.pump(duration)` advances) by interleaving
@@ -99,6 +111,9 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await settle(tester);
 
+      // owner/repo moved under the collapsed GitHub-mirror section.
+      await openAdvanced(tester);
+
       expect(find.widgetWithText(TextField, 'kuhyx'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'syncs'), findsOneWidget);
     });
@@ -109,8 +124,7 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await settle(tester);
 
-      await tester.tap(find.text('Advanced'));
-      await tester.pumpAndSettle();
+      await openAdvanced(tester);
       await tester.enterText(
         find.widgetWithText(TextField, 'Personal access token (fallback)'),
         'my-pat',
@@ -132,10 +146,12 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Test connection'));
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, 'Test GitHub connection'),
+      );
       await settle(tester);
 
-      expect(find.text('Connection OK.'), findsOneWidget);
+      expect(find.text('GitHub connection OK.'), findsOneWidget);
     });
   });
 
@@ -147,10 +163,12 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Test connection'));
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, 'Test GitHub connection'),
+      );
       await settle(tester);
 
-      expect(find.text('Connection failed.'), findsOneWidget);
+      expect(find.text('GitHub connection failed.'), findsOneWidget);
     });
   });
 
@@ -189,10 +207,12 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Test connection'));
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, 'Test GitHub connection'),
+      );
       await settle(tester);
 
-      expect(find.textContaining('Connection failed:'), findsOneWidget);
+      expect(find.textContaining('GitHub connection failed:'), findsOneWidget);
     });
   });
 
@@ -211,10 +231,59 @@ void main() {
     });
   });
 
-  testWidgets('shows the Connect GitHub button', (tester) async {
+  testWidgets('offers the account form when Firebase is not connected', (
+    tester,
+  ) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await settle(tester);
+
+      expect(
+        find.widgetWithText(TextField, 'Sync account email'),
+        findsOneWidget,
+      );
+      expect(
+        find.widgetWithText(TextField, 'Sync account password'),
+        findsOneWidget,
+      );
+      expect(find.text('Disconnect'), findsNothing);
+    });
+  });
+
+  testWidgets('shows the connected account as text, not as an empty form', (
+    tester,
+  ) async {
+    // An editable email box beside a blank password box reads as "you still
+    // have to enter this", so a connected device looked unconfigured.
+    await saveAccount(
+      const FirebaseAccount(email: 'sync@example.com', password: 'pw'),
+    );
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+      await settle(tester);
+
+      expect(find.text('sync@example.com'), findsOneWidget);
+      expect(find.text('Disconnect'), findsOneWidget);
+      expect(
+        find.widgetWithText(TextField, 'Sync account password'),
+        findsNothing,
+      );
+      expect(find.text('Connect Firebase'), findsNothing);
+    });
+  });
+
+  testWidgets('hides the Connect GitHub button until Advanced is expanded', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+      await settle(tester);
+
+      // GitHub is the cutover mirror, not a choice competing with Firebase,
+      // so nothing GitHub-facing is visible on the primary path.
+      expect(find.text('Connect GitHub'), findsNothing);
+
+      await openAdvanced(tester);
 
       expect(find.text('Connect GitHub'), findsOneWidget);
     });
@@ -222,7 +291,7 @@ void main() {
 
   /// Expands "Advanced" and types [clientId] into the client-id field.
   Future<void> enterClientId(WidgetTester tester, String clientId) async {
-    await tester.tap(find.text('Advanced'));
+    await tester.tap(find.text('Advanced (GitHub mirror)'));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextField, 'OAuth App client id'),
