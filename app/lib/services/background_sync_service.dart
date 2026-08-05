@@ -7,6 +7,7 @@ library;
 
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
+import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
@@ -46,7 +47,7 @@ Future<bool> backgroundSyncPush({http.Client? httpClient}) async {
   if (!settings.isConfigured) return true; // nothing to push; don't retry
   final client = createGitHubClient(settings, httpClient: httpClient);
   try {
-    await runSync(client);
+    await runSync(await syncBackend(client));
     return true;
   } on Exception {
     return false; // offline / transient GitHub error -> retry with backoff

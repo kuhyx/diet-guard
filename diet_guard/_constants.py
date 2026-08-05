@@ -21,6 +21,12 @@ BUDGET_WARN_FRACTION: float = 0.80
 # is deliberately NOT committed to git (unlike wake_state.json).
 DATA_DIR: Path = Path.home() / ".local" / "share" / "diet_guard"
 FOOD_LOG_FILE: Path = DATA_DIR / "food_log.json"
+
+# Revision cache for cross-device sync. Beside the log it describes and
+# cleared with it: skipping an unchanged peer is only sound because that
+# peer's records are already merged into the local log, so state that outlived
+# its log would skip peers whose data had been lost.
+SYNC_STATE_FILE: Path = DATA_DIR / "sync_state.json"
 # The user's personal "food bank": every food they have logged before, with its
 # full macros, keyed by name.  This is the ONLY corpus the gate's autocomplete
 # searches -- Open Food Facts is used to *fill* a new food's macros, never to

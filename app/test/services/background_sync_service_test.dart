@@ -82,7 +82,9 @@ void main() {
     expect(ok, isTrue);
     // syncLog always pushes, even an empty merged result: food_log.json,
     // budget.json, food_bank.json, food_bank_manual.json.
-    expect(puts, 4);
+    // Four data files plus this device's revision, which is what lets a
+    // later tick skip an unchanged peer.
+    expect(puts, 5);
   });
 
   test('reports failure (retry) when the push errors', () async {

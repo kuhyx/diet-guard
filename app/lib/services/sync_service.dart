@@ -20,6 +20,7 @@ import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_merge.dart';
+import 'package:diet_guard_app/services/sync_state_factory.dart';
 
 const _devicesDir = 'diet-guard-sync/devices';
 
@@ -28,7 +29,7 @@ const _devicesDir = 'diet-guard-sync/devices';
 /// Returns the merged log as it now sits on disk locally. Propagates any
 /// [GitHubSyncError] from the client for the caller (auto-sync / the manual
 /// "Sync now" action) to decide how to report.
-Future<DayLog> runSync(GitHubClient client) async {
+Future<DayLog> runSync(RemoteStore client, {SyncStateStore? stateStore}) async {
   final logService = LogStorageService.instance;
   final local = await logService.readLog();
 
@@ -41,6 +42,11 @@ Future<DayLog> runSync(GitHubClient client) async {
     decode: parseRemoteLog,
     filename: 'food_log.json',
     commitMessage: 'diet_guard_app sync',
+    // Without this every sync re-downloads every peer's whole food log --
+    // hundreds of KB -- whether or not anything changed, and re-pushes an
+    // unchanged one. That is the traffic the Firebase free tier's monthly
+    // budget depends on not happening.
+    stateStore: stateStore ?? await openSyncStateStore(),
   );
 
   final merged = logToDayLog(mergedLog);
@@ -58,7 +64,7 @@ Future<DayLog> runSync(GitHubClient client) async {
 /// Runs after the local rebuild above, so this device's records already
 /// reflect the merged log; the merge then unions in whatever another device
 /// knows, max-count winning per food. Mirrors `_sync._sync_food_bank`.
-Future<void> _syncFoodBank(GitHubClient client) async {
+Future<void> _syncFoodBank(RemoteStore client) async {
   final merged = await syncLog(
     client: client,
     deviceId: syncDeviceId,
@@ -78,7 +84,7 @@ Future<void> _syncFoodBank(GitHubClient client) async {
 /// the food log, so unlike `food_bank.json` they need a real merge:
 /// last-writer-wins per food name by edit time, union across devices. Mirrors
 /// `_sync._sync_manual_bank`.
-Future<void> _syncManualBank(GitHubClient client) async {
+Future<void> _syncManualBank(RemoteStore client) async {
   final local = await FoodBankService.instance.readManualBank();
   final merged = await syncLog(
     client: client,
@@ -102,7 +108,7 @@ Future<void> _syncManualBank(GitHubClient client) async {
 /// [AppSettingsService.dailyKcalGoalUpdatedAt]), so a fresh install's
 /// unset 2200 default can never spuriously outrank a real budget synced
 /// from elsewhere.
-Future<void> _syncBudget(GitHubClient client) async {
+Future<void> _syncBudget(RemoteStore client) async {
   final updatedAt = AppSettingsService.dailyKcalGoalUpdatedAt;
   final localRecord = updatedAt == null
       ? null

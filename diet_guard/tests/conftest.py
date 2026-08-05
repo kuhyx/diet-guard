@@ -116,6 +116,17 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
             "diet_guard._sync.SYNC_TOKEN_FILE",
             tmp_path / "sync_token",
         ),
+        patch(
+            "diet_guard._sync.SYNC_STATE_FILE",
+            tmp_path / "sync_state.json",
+        ),
+        # `run_sync` reads this to decide whether to build a Firebase-primary
+        # mirror. On a developer machine the real file exists, so without this
+        # every sync test would sign in and push to the live database.
+        patch(
+            "diet_guard._sync.CONFIG_FILE",
+            tmp_path / "nonexistent-firebase.json",
+        ),
     ):
         yield
 

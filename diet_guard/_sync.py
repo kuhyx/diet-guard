@@ -19,7 +19,21 @@ from __future__ import annotations
 import json
 import logging
 
-from crdt_sync import GitHubSyncClient, GitHubSyncError, Log, merge_logs
+from crdt_sync import (
+    CONFIG_FILE,
+    ConfigError,
+    FileSyncStateStore,
+    FirebaseAuthError,
+    GitHubSyncClient,
+    GitHubSyncError,
+    Log,
+    RemoteStore,
+    RemoteSyncError,
+    SyncState,
+    merge_logs,
+    mirror_client_for,
+    revision_of,
+)
 
 from diet_guard._budget import read_raw_record, write_raw_record
 from diet_guard._budget_history import (
@@ -31,6 +45,7 @@ from diet_guard._constants import (
     SYNC_DEVICE_ID,
     SYNC_REPO_NAME,
     SYNC_REPO_OWNER,
+    SYNC_STATE_FILE,
     SYNC_TIMEOUT_SECONDS,
     SYNC_TOKEN_FILE,
 )
@@ -56,10 +71,41 @@ from diet_guard._sync_merge import (
 _logger = logging.getLogger(__name__)
 
 _DEVICES_DIR = "diet-guard-sync/devices"
+# One small text node per device, each written only by its owner. Deliberately
+# not one shared map: a whole-map write would erase every other device's entry,
+# after which those peers would look permanently unchanged and never be
+# fetched again.
+_REVS_DIR = "diet-guard-sync/revs"
 
 
 class SyncError(Exception):
     """Raised when a sync run cannot even start (no usable PAT)."""
+
+
+def _remote_client(github: GitHubSyncClient) -> RemoteStore:
+    """Return the backend to sync against.
+
+    Firebase when ``~/.config/crdt-sync/`` is set up, with GitHub kept as a
+    mirror so a device that has not moved yet still converges; GitHub alone
+    otherwise. An unconfigured machine keeps syncing exactly as before.
+
+    Every sub-sync here (log, budget, food bank, manual bank) takes the client
+    as a parameter, so this one swap covers all of them.
+
+    The config file is checked before constructing anything, so an
+    unconfigured machine never reaches the network -- otherwise a suite that
+    blocks real sockets fails here rather than in the code under test.
+
+    Rolling back is deleting this function and passing ``github`` straight
+    through: no data moves either way.
+    """
+    if not CONFIG_FILE.is_file():
+        return github
+    try:
+        return mirror_client_for("diet_guard", github)
+    except (ConfigError, FirebaseAuthError, RemoteSyncError) as exc:
+        _logger.warning("Firebase unavailable, syncing via GitHub only: %s", exc)
+        return github
 
 
 def _device_log_path(device_id: str) -> str:
@@ -103,7 +149,30 @@ def _read_token() -> str:
     return token
 
 
-def _pull_remote_logs(client: GitHubSyncClient) -> list[Log]:
+def _remote_revisions(client: RemoteStore) -> dict[str, str]:
+    """Return every peer's published food-log revision, cheaply where possible.
+
+    Degrades to an empty map -- meaning "fetch everything", the old behaviour
+    -- on a backend without a bulk-map read, so correctness never depends on
+    the optimisation being available.
+    """
+    get_string_map = getattr(client, "get_string_map", None)
+    if get_string_map is None:
+        return {}
+    try:
+        return get_string_map(_REVS_DIR)
+    except (GitHubSyncError, RemoteSyncError):
+        # A revision map that cannot be read is not worth failing a sync
+        # over; without it every peer is simply fetched, as before.
+        return {}
+
+
+def _pull_remote_logs(
+    client: RemoteStore,
+    remote_revs: dict[str, str],
+    state: SyncState,
+    seen_revs: dict[str, str],
+) -> list[Log]:
     """Return every other device's last-pushed log, skipping this one.
 
     A device whose pushed file is corrupt, truncated, or otherwise
@@ -111,10 +180,21 @@ def _pull_remote_logs(client: GitHubSyncClient) -> list[Log]:
     that has never pushed at all -- GitHub is an external system boundary,
     and one bad device's file must not stall merging in every other
     device's.
+
+    A peer whose published revision matches the one already merged is skipped
+    without downloading it at all. This is the single largest traffic saving
+    in the fleet: these logs are hundreds of KB and this timer runs 96 times a
+    day, so re-reading an unchanged peer is pure waste.
     """
     remote_logs: list[Log] = []
     for device_id in client.list_directory(_DEVICES_DIR):
         if device_id == SYNC_DEVICE_ID:
+            continue
+        remote_rev = remote_revs.get(device_id)
+        if remote_rev is not None and remote_rev == state.peer_revs.get(device_id):
+            # Already merged, and that merge is in the local log. Carry the
+            # revision forward so it stays skipped next tick.
+            seen_revs[device_id] = remote_rev
             continue
         text = client.get_file_text(_device_log_path(device_id))
         if text is None:
@@ -122,7 +202,11 @@ def _pull_remote_logs(client: GitHubSyncClient) -> list[Log]:
         try:
             remote_logs.append(parse_remote_log(text))
         except (TypeError, KeyError, ValueError, json.JSONDecodeError):
+            # Deliberately not recorded as seen: a corrupt push must be
+            # retried next tick, not remembered as merged.
             _logger.warning("Unparsable log pushed by device %r, skipping", device_id)
+            continue
+        seen_revs[device_id] = remote_rev or revision_of(text)
     return remote_logs
 
 
@@ -289,12 +373,22 @@ def run_sync() -> DayLog:
             report it.
     """
     token = _read_token()
-    client = GitHubSyncClient(
-        SYNC_REPO_OWNER, SYNC_REPO_NAME, token, timeout_seconds=SYNC_TIMEOUT_SECONDS
+    client = _remote_client(
+        GitHubSyncClient(
+            SYNC_REPO_OWNER,
+            SYNC_REPO_NAME,
+            token,
+            timeout_seconds=SYNC_TIMEOUT_SECONDS,
+        )
     )
 
+    state_store = FileSyncStateStore(SYNC_STATE_FILE)
+    state = state_store.load()
+    remote_revs = _remote_revisions(client)
+    seen_revs: dict[str, str] = {}
+
     merged = daylog_to_log(read_raw_log())
-    for remote_log in _pull_remote_logs(client):
+    for remote_log in _pull_remote_logs(client, remote_revs, state, seen_revs):
         merged = merge_logs(merged, remote_log)
 
     merged_daylog = log_to_daylog(merged)
@@ -313,11 +407,21 @@ def run_sync() -> DayLog:
         {record_id: record.to_dict() for record_id, record in push_log.items()},
         indent=2,
     )
-    client.put_file_text(
-        _device_log_path(SYNC_DEVICE_ID),
-        push_json,
-        message="diet_guard sync",
-    )
+    revision = revision_of(push_json)
+    if revision != state.pushed_rev:
+        client.put_file_text(
+            _device_log_path(SYNC_DEVICE_ID),
+            push_json,
+            message="diet_guard sync",
+        )
+        # Published after the log, never before: a peer that cached "seen rev
+        # X" against a log it never received would skip it forever.
+        client.put_file_text(
+            f"{_REVS_DIR}/{SYNC_DEVICE_ID}",
+            revision,
+            message="diet_guard sync: revision",
+        )
+    state_store.save(SyncState(pushed_rev=revision, peer_revs=seen_revs))
     return resigned
 
 

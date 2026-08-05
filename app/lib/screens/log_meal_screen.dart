@@ -19,6 +19,7 @@ import 'package:diet_guard_app/services/background_tasks.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/day_status_service.dart';
 import 'package:diet_guard_app/services/due_slot_check.dart';
+import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
@@ -125,7 +126,7 @@ class _LogMealScreenState extends State<LogMealScreen>
         httpClient: widget.httpClient,
       );
       try {
-        await runSync(client);
+        await runSync(await syncBackend(client));
       } finally {
         client.close();
       }

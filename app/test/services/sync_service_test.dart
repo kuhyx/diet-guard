@@ -145,8 +145,10 @@ void main() {
 
     expect(merged.values.expand((e) => e).length, 1);
     // syncLog always pushes, even an empty merged result: food_log.json,
-    // budget.json, food_bank.json, food_bank_manual.json.
-    expect(fake.puts, hasLength(4));
+    // budget.json, food_bank.json, food_bank_manual.json -- plus this
+    // device's revision, published after the log so a peer can never cache
+    // "seen rev X" against a log it never received.
+    expect(fake.puts, hasLength(5));
   });
 
   test("skips its own device id ('phone') when listing", () async {

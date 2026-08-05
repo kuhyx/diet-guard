@@ -8,8 +8,10 @@ library;
 
 import 'dart:async';
 
+import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/github_device_auth.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
@@ -49,6 +51,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _repoController = TextEditingController();
   final _tokenController = TextEditingController();
   final _clientIdController = TextEditingController();
+  final _firebaseEmailController = TextEditingController();
+  final _firebasePasswordController = TextEditingController();
+  bool _firebaseConfigured = false;
   bool _loading = true;
   bool _busy = false;
   String? _status;
@@ -81,7 +86,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ? settings.token
         : '';
     _clientIdController.text = settings.clientId;
-    setState(() => _loading = false);
+    // Reflect a previously-stored account, so a returning user sees the
+    // real state instead of an empty form that looks unconfigured.
+    final account = await loadAccount();
+    if (!mounted) return;
+    if (account != null) _firebaseEmailController.text = account.email;
+    setState(() {
+      _firebaseConfigured = account != null;
+      _loading = false;
+    });
   }
 
   @override
@@ -94,6 +107,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _ownerController.dispose();
     _repoController.dispose();
     _tokenController.dispose();
+    _firebaseEmailController.dispose();
+    _firebasePasswordController.dispose();
     _clientIdController.dispose();
     super.dispose();
   }
@@ -194,7 +209,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final settings = _currentSettings();
     final client = createGitHubClient(settings, httpClient: widget.httpClient);
     try {
-      await runSync(client);
+      await runSync(await syncBackend(client));
       _showMessage('Connected and synced.');
     } on Exception catch (e) {
       _showMessage('Connected, but sync failed: $e');
@@ -232,7 +247,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await settings.save();
     final client = createGitHubClient(settings, httpClient: widget.httpClient);
     try {
-      await runSync(client);
+      await runSync(await syncBackend(client));
       _showMessage('Synced.');
     } on Exception catch (e) {
       _showMessage('Sync failed: $e');
@@ -267,6 +282,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// `dart:io` is a throwing stub in the desktop web build.
   bool get _isAndroid =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  /// Stores the Firebase account in the OS keystore and proves it works.
+  ///
+  /// Signing in here rather than only saving means a typo surfaces now, on
+  /// the screen where it can be fixed, instead of as a silently failed
+  /// background sync hours later.
+  Future<void> _saveFirebaseAccount() async {
+    final email = _firebaseEmailController.text.trim();
+    final password = _firebasePasswordController.text;
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _status = 'Enter the sync account email and password.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _status = null;
+    });
+    try {
+      await saveAccount(FirebaseAccount(email: email, password: password));
+      final client = await openFirebase();
+      if (client == null) {
+        throw Exception('could not reach Firebase');
+      }
+      final reachable = await client.canAccessRemote();
+      client.close();
+      if (!mounted) return;
+      setState(() {
+        _firebaseConfigured = reachable;
+        _status = reachable
+            ? 'Firebase connected - syncs now go there first.'
+            : 'Signed in, but the database refused the read.';
+      });
+    } on Object catch (error) {
+      // Broader than Exception: a missing platform binding raises an Error.
+      // A half-stored account is worse than none, so forget it.
+      await clearAccount();
+      if (!mounted) return;
+      setState(() {
+        _firebaseConfigured = false;
+        _status = 'Firebase sign-in failed: $error';
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Forgets the Firebase account, so sync falls back to GitHub alone.
+  Future<void> _disconnectFirebase() async {
+    await clearAccount();
+    _firebaseEmailController.clear();
+    _firebasePasswordController.clear();
+    if (!mounted) return;
+    setState(() {
+      _firebaseConfigured = false;
+      _status = 'Firebase disconnected - syncing over GitHub only.';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -303,6 +375,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   onChanged: _onKcalGoalChanged,
                 ),
+              ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                'Firebase sync',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _firebaseConfigured
+                    ? 'Connected. Syncs go to Firebase first, and still '
+                          'mirror to GitHub until every device has moved.'
+                    : 'Not connected - syncing over GitHub only. Enter the '
+                          'shared sync account to move this device over. The '
+                          'password is kept in the device keystore, never in '
+                          'the app or the repo.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _firebaseEmailController,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  labelText: 'Sync account email',
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _firebasePasswordController,
+                obscureText: true,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  labelText: 'Sync account password',
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _saveFirebaseAccount,
+                    icon: const Icon(Icons.cloud_done),
+                    label: const Text('Connect Firebase'),
+                  ),
+                  if (_firebaseConfigured) ...[
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: _busy ? null : _disconnectFirebase,
+                      child: const Text('Disconnect'),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 24),
               const Divider(),

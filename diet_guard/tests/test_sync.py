@@ -8,8 +8,10 @@ The GitHub layer is mocked (no network access); conftest.py's
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from crdt_sync import ConfigError, GitHubSyncError, SyncState
 import pytest
 
 from diet_guard import _sync
@@ -58,6 +60,11 @@ def _mock_client(
     client.list_directory.return_value = list(devices)
     resolved_files = files or {}
     client.get_file_text.side_effect = resolved_files.get
+    # The real GitHubSyncClient has no bulk-map read, and a MagicMock would
+    # otherwise auto-create one returning a Mock -- which then fails to
+    # serialise. Deleting it also exercises the documented degrade path:
+    # no revision map means every peer is fetched, exactly as before.
+    del client.get_string_map
     return client
 
 
@@ -94,14 +101,20 @@ class TestRunSync:
 
         assert sum(len(entries) for entries in merged.values()) == 1
         pushed = [call.args[0] for call in client.put_file_text.call_args_list]
-        # The log push, plus the derived bank rebuilt from that same log.
+        # The log push, the derived bank rebuilt from that same log, and this
+        # device's revision -- published *after* the log, so a peer can never
+        # cache "seen rev X" against a log it never received.
         assert pushed == [
             "diet-guard-sync/devices/pc/food_bank.json",
             "diet-guard-sync/devices/pc/food_log.json",
+            "diet-guard-sync/revs/pc",
         ]
-        pushed_path = client.put_file_text.call_args.args[0]
-        assert pushed_path == "diet-guard-sync/devices/pc/food_log.json"
-        pushed_json = client.put_file_text.call_args.args[1]
+        log_call = next(
+            call
+            for call in client.put_file_text.call_args_list
+            if call.args[0].endswith("food_log.json")
+        )
+        pushed_json = log_call.args[1]
         pushed = json.loads(pushed_json)
         (record,) = pushed.values()
         assert "fields" in record
@@ -357,3 +370,122 @@ class TestPullSharedLog:
             pytest.raises(KeyError),
         ):
             _sync.pull_shared_log()
+
+
+class TestRemoteClient:
+    """Which backend a sync tick runs against during the cutover."""
+
+    def test_stays_on_github_without_firebase_config(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An unconfigured machine must not reach the network at all."""
+        monkeypatch.setattr(_sync, "CONFIG_FILE", Path("/nonexistent/firebase.json"))
+        github = object()
+
+        assert _sync._remote_client(github) is github
+
+    def test_mirrors_to_github_when_configured(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Configured: Firebase is primary, GitHub keeps receiving writes."""
+        config = tmp_path / "firebase.json"
+        config.write_text("{}", encoding="utf-8")
+        monkeypatch.setattr(_sync, "CONFIG_FILE", config)
+        monkeypatch.setattr(
+            _sync, "mirror_client_for", lambda _app, client: ("mirror", client)
+        )
+        github = object()
+
+        assert _sync._remote_client(github) == ("mirror", github)
+
+    def test_falls_back_when_firebase_is_unusable(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A broken Firebase must degrade to GitHub, never fail the tick."""
+        config = tmp_path / "firebase.json"
+        config.write_text("{}", encoding="utf-8")
+        monkeypatch.setattr(_sync, "CONFIG_FILE", config)
+
+        def _boom(*_args: object, **_kwargs: object) -> None:
+            message = "no password"
+            raise ConfigError(message)
+
+        monkeypatch.setattr(_sync, "mirror_client_for", _boom)
+        github = object()
+
+        assert _sync._remote_client(github) is github
+
+
+class TestRemoteRevisions:
+    """Reading the peers' revision map, which gates the big downloads."""
+
+    def test_is_empty_without_a_bulk_map_read(self) -> None:
+        """GitHub has none; correctness must not depend on the optimisation."""
+        client = MagicMock()
+        del client.get_string_map
+
+        assert _sync._remote_revisions(client) == {}
+
+    def test_returns_the_published_revisions(self) -> None:
+        client = MagicMock()
+        client.get_string_map.return_value = {"phone": "abc"}
+
+        assert _sync._remote_revisions(client) == {"phone": "abc"}
+
+    def test_an_unreadable_map_degrades_to_fetching_everything(self) -> None:
+        """Not worth failing a sync over; every peer is simply fetched."""
+        client = MagicMock()
+        client.get_string_map.side_effect = GitHubSyncError("boom")
+
+        assert _sync._remote_revisions(client) == {}
+
+
+class TestPullSkipsUnchangedPeers:
+    """The single largest traffic saving in the fleet."""
+
+    def test_skips_a_peer_whose_revision_is_unchanged(self) -> None:
+        client = _mock_client(devices=("phone",))
+        state = SyncState(pushed_rev=None, peer_revs={"phone": "rev-1"})
+        seen: dict[str, str] = {}
+
+        logs = _sync._pull_remote_logs(client, {"phone": "rev-1"}, state, seen)
+
+        assert logs == []
+        assert seen == {"phone": "rev-1"}
+        client.get_file_text.assert_not_called()
+
+    def test_downloads_a_peer_whose_revision_moved(self) -> None:
+        text = json.dumps({})
+        client = _mock_client(
+            devices=("phone",),
+            files={"diet-guard-sync/devices/phone/food_log.json": text},
+        )
+        state = SyncState(pushed_rev=None, peer_revs={"phone": "rev-1"})
+        seen: dict[str, str] = {}
+
+        _sync._pull_remote_logs(client, {"phone": "rev-2"}, state, seen)
+
+        client.get_file_text.assert_called_once()
+        assert seen == {"phone": "rev-2"}
+
+
+class TestNoOpPushSuppression:
+    """88% of the old GitHub history was byte-identical no-op pushes."""
+
+    def test_a_second_unchanged_sync_pushes_no_log(self) -> None:
+        """The saving the free-tier budget depends on, at 96 ticks a day."""
+        _write_token()
+        client = _mock_client()
+
+        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+            _sync.run_sync()
+            pushed_first = [
+                call.args[0] for call in client.put_file_text.call_args_list
+            ]
+            client.put_file_text.reset_mock()
+            _sync.run_sync()
+
+        pushed_second = [call.args[0] for call in client.put_file_text.call_args_list]
+        assert "diet-guard-sync/devices/pc/food_log.json" in pushed_first
+        assert "diet-guard-sync/devices/pc/food_log.json" not in pushed_second
+        assert "diet-guard-sync/revs/pc" not in pushed_second
