@@ -7,6 +7,7 @@ import 'dart:io';
 
 import 'package:diet_guard_app/desktop/github_proxy.dart';
 import 'package:diet_guard_app/desktop/wrapper_server.dart';
+import 'package:crdt_sync/crdt_sync.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -20,7 +21,10 @@ void main() {
   late List<http.Request> outbound;
   late Map<String, http.Response> canned;
 
-  Future<void> startServer() async {
+  Future<void> startServer({
+    bool serveSyncAccount = false,
+    String? syncConfigDir,
+  }) async {
     outbound = [];
     canned = {};
     final proxy = GitHubProxy(
@@ -36,6 +40,8 @@ void main() {
       webRoot: webRoot,
       dataDir: dataDir,
       gitHubProxy: proxy,
+      serveSyncAccount: serveSyncAccount,
+      syncConfigDir: syncConfigDir,
     );
     await server.start(0);
   }
@@ -283,6 +289,61 @@ void main() {
       expect(typeOf('f.otf').mimeType, 'font/otf');
       expect(typeOf('f.woff2').mimeType, 'font/woff2');
       expect(typeOf('data.bin').mimeType, 'application/octet-stream');
+    });
+  });
+
+  group('sync-account provisioning', () {
+    /// Writes [files] into a temp config dir and restarts with the route on.
+    Future<String> enableWith(Map<String, String> files) async {
+      final configDir = Directory(p.join(tempDir.path, 'crdt-sync'))
+        ..createSync(recursive: true);
+      files.forEach((name, contents) {
+        File(p.join(configDir.path, name)).writeAsStringSync(contents);
+      });
+      await server.stop();
+      await startServer(serveSyncAccount: true, syncConfigDir: configDir.path);
+      return 'http://localhost:${server.port}';
+    }
+
+    test('is 404 when not enabled', () async {
+      // The default, and the whole security posture: a credential route must
+      // not be reachable just because the wrapper is running.
+      final response = await http.get(url(kSyncAccountPath));
+
+      expect(response.statusCode, HttpStatus.notFound);
+    });
+
+    test('serves the account when enabled', () async {
+      final origin = await enableWith({
+        'firebase.json': '{"email":"a@b.c"}',
+        'password': 'pw\n',
+      });
+
+      final response = await http.get(Uri.parse('$origin$kSyncAccountPath'));
+      final account = FirebaseAccount.tryParse(response.body);
+
+      expect(response.statusCode, HttpStatus.ok);
+      expect(account?.email, 'a@b.c');
+      expect(account?.password, 'pw');
+    });
+
+    test('is 404 when the config files are absent', () async {
+      final origin = await enableWith({});
+
+      final response = await http.get(Uri.parse('$origin$kSyncAccountPath'));
+
+      expect(response.statusCode, HttpStatus.notFound);
+    });
+
+    test('is 404 when firebase.json has no usable email', () async {
+      final origin = await enableWith({
+        'firebase.json': '{"apiKey":"x"}',
+        'password': 'pw',
+      });
+
+      final response = await http.get(Uri.parse('$origin$kSyncAccountPath'));
+
+      expect(response.statusCode, HttpStatus.notFound);
     });
   });
 }

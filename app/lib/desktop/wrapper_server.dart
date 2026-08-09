@@ -35,7 +35,20 @@ class WrapperServer {
     required this.webRoot,
     required this.dataDir,
     required this.gitHubProxy,
-  });
+    bool? serveSyncAccount,
+    String? syncConfigDir,
+  }) : serveSyncAccount =
+           serveSyncAccount ??
+           (Platform.environment[kSyncAccountEnvVar] ?? '').isNotEmpty,
+       syncConfigDir =
+           syncConfigDir ??
+           p.join(Platform.environment['HOME'] ?? '', '.config', 'crdt-sync');
+
+  /// Whether the sync-account route answers; off unless explicitly enabled.
+  final bool serveSyncAccount;
+
+  /// Directory holding `firebase.json` and `password`.
+  final String syncConfigDir;
 
   /// Directory holding the built Flutter web assets.
   final String webRoot;
@@ -114,17 +127,12 @@ class WrapperServer {
   /// the same reasoning that keeps the GitHub token in [gitHubProxy] instead
   /// of the browser.
   Future<void> _syncAccount(HttpRequest request) async {
-    if ((Platform.environment[kSyncAccountEnvVar] ?? '').isEmpty) {
+    if (!serveSyncAccount) {
       request.response.statusCode = HttpStatus.notFound;
       return;
     }
-    final configDir = p.join(
-      Platform.environment['HOME'] ?? '',
-      '.config',
-      'crdt-sync',
-    );
-    final configFile = File(p.join(configDir, 'firebase.json'));
-    final passwordFile = File(p.join(configDir, 'password'));
+    final configFile = File(p.join(syncConfigDir, 'firebase.json'));
+    final passwordFile = File(p.join(syncConfigDir, 'password'));
     if (!configFile.existsSync() || !passwordFile.existsSync()) {
       stderr.writeln(
         'Sync account requested but ~/.config/crdt-sync/ is incomplete — '
