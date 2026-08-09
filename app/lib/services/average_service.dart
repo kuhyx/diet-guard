@@ -48,20 +48,20 @@ AverageBand bandFor(double avgKcal, double avgBudget) {
 }
 
 /// Returns the last day whose log is finished: the day before [today].
-DateTime lastCompleteDay(DateTime today) =>
-    _dateOnly(today).subtract(const Duration(days: 1));
+DateTime lastCompleteDay(DateTime today) => _addDays(today, -1);
 
 /// Returns the Monday and Sunday of the ISO week containing [day].
 (DateTime, DateTime) weekBounds(DateTime day) {
-  final d = _dateOnly(day);
-  final monday = d.subtract(Duration(days: d.weekday - DateTime.monday));
-  return (monday, monday.add(const Duration(days: 6)));
+  final monday = _addDays(day, DateTime.monday - day.weekday);
+  return (monday, _addDays(monday, 6));
 }
 
 /// Returns the first and last dates of [day]'s calendar month.
 (DateTime, DateTime) monthBounds(DateTime day) => (
   DateTime(day.year, day.month),
-  DateTime(day.year, day.month + 1).subtract(const Duration(days: 1)),
+  // Day 0 of the *next* month is the last day of this one, resolved by
+  // DateTime's constructor rather than by subtracting 24 hours.
+  DateTime(day.year, day.month + 1, 0),
 );
 
 /// Returns the first of the month [months] before [day]'s month.
@@ -83,11 +83,7 @@ PeriodAverage periodAverage(
   var totalBudget = 0;
   var loggedDays = 0;
   var elapsedDays = 0;
-  for (
-    var day = from;
-    !day.isAfter(to);
-    day = day.add(const Duration(days: 1))
-  ) {
+  for (var day = from; !day.isAfter(to); day = _addDays(day, 1)) {
     elapsedDays++;
     final key = dateKey(day);
     final entries = (log[key] ?? const []).where((e) => !e.deleted);
@@ -131,7 +127,7 @@ PeriodAverage weeklyAverage(
   DateTime? today,
 }) {
   final ref = _dateOnly(today ?? DateTime.now());
-  final anchor = ref.subtract(Duration(days: DateTime.daysPerWeek * weeksAgo));
+  final anchor = _addDays(ref, -DateTime.daysPerWeek * weeksAgo);
   return _capped(log, schedule, weekBounds(anchor), ref);
 }
 
@@ -167,6 +163,20 @@ PeriodAverage _capped(
 }
 
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+/// Returns midnight [days] calendar days from [d], safely across DST.
+///
+/// Deliberately NOT `d.add(Duration(days: days))`: a [Duration] is an absolute
+/// span, so on a local [DateTime] it moves by 23 or 25 hours across a DST
+/// boundary and lands on the wrong wall-clock day.  In Europe/Warsaw that made
+/// `lastCompleteDay(2026-03-30)` return the day *before* yesterday, put the
+/// `weeksAgo` anchor in the wrong ISO week, and silently drop the last day of
+/// any period spanning spring-forward -- so the phone and the PC disagreed
+/// about the same log for two weeks a year.  Passing out-of-range components
+/// to the constructor normalizes on the *calendar* instead, which is what
+/// Python's `timedelta` on a `date` already does.
+DateTime _addDays(DateTime d, int days) =>
+    DateTime(d.year, d.month, d.day + days);
 
 /// Formats [d] as a `YYYY-MM-DD` log key.
 String dateKey(DateTime d) =>

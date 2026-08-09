@@ -112,6 +112,15 @@ Map<String, DayStatus> statusMap(
 
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
+/// Returns midnight [days] calendar days from [d], safely across DST.
+///
+/// See the note on `_addDays` in `average_service.dart`: a [Duration] is an
+/// absolute span, so stepping a local [DateTime] by `Duration(days: 1)` moves
+/// 23 or 25 hours across a DST boundary and yields the wrong [_dateKey] --
+/// which here would break a streak that should have held.
+DateTime _addDays(DateTime d, int days) =>
+    DateTime(d.year, d.month, d.day + days);
+
 String _dateKey(DateTime d) {
   final y = d.year.toString().padLeft(4, '0');
   final m = d.month.toString().padLeft(2, '0');
@@ -126,12 +135,12 @@ int _streak(
 }) {
   var day = _dateOnly(today ?? DateTime.now());
   if (statusMap[_dateKey(day)] == null) {
-    day = day.subtract(const Duration(days: 1));
+    day = _addDays(day, -1);
   }
   var count = 0;
   while (keeps.contains(statusMap[_dateKey(day)])) {
     count++;
-    day = day.subtract(const Duration(days: 1));
+    day = _addDays(day, -1);
   }
   return count;
 }

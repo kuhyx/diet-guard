@@ -231,4 +231,69 @@ void main() {
       expect(result.band, AverageBand.veryOver);
     });
   });
+
+  // Every other fixture in this file sits in a DST-free span, so none of them
+  // can see the bug these cover: stepping a local DateTime by
+  // Duration(days: 1) moves 23 or 25 hours across a DST boundary and lands on
+  // the wrong wall-clock day.  Under TZ=Europe/Warsaw (spring-forward
+  // 2026-03-29) that made the phone and the PC report different averages for
+  // the same log.  Assertions are on the calendar day, never on the DateTime,
+  // so they mean the same thing whatever zone the runner is in.
+  group('date arithmetic across a DST boundary', () {
+    test('lastCompleteDay is yesterday even across spring-forward', () {
+      final result = lastCompleteDay(DateTime(2026, 3, 30));
+      expect(
+        (result.year, result.month, result.day),
+        (2026, 3, 29),
+        reason: 'Duration-based arithmetic returned 2026-03-28 23:00 here',
+      );
+    });
+
+    test('a period spanning spring-forward keeps every day', () {
+      final result = periodAverage(
+        logOf({
+          '2026-03-27': 2000,
+          '2026-03-28': 2000,
+          '2026-03-29': 2000,
+          '2026-03-30': 2000,
+          '2026-03-31': 2000,
+        }),
+        schedule: flat(2000),
+        start: DateTime(2026, 3, 27),
+        end: DateTime(2026, 3, 31),
+      );
+      expect(result.elapsedDays, 5);
+      expect(
+        result.loggedDays,
+        5,
+        reason: 'the day-stepping loop used to drop 2026-03-31',
+      );
+    });
+
+    test('the weeksAgo anchor stays in the right ISO week', () {
+      // 2026-04-01 is a Wednesday; one week back is the Mon 03-23..Sun 03-29
+      // week, the one containing the clock change.
+      final result = weeklyAverage(
+        logOf({'2026-03-23': 2000, '2026-03-29': 2000}),
+        schedule: flat(2000),
+        weeksAgo: 1,
+        today: DateTime(2026, 4),
+      );
+      expect(result.start, '2026-03-23');
+      expect(result.end, '2026-03-29');
+      expect(result.loggedDays, 2);
+    });
+
+    test('weekBounds spans Monday to Sunday across the change', () {
+      final (monday, sunday) = weekBounds(DateTime(2026, 3, 29));
+      expect((monday.year, monday.month, monday.day), (2026, 3, 23));
+      expect((sunday.year, sunday.month, sunday.day), (2026, 3, 29));
+    });
+
+    test('monthBounds ends on the real last day of a DST month', () {
+      final (first, last) = monthBounds(DateTime(2026, 3, 15));
+      expect((first.year, first.month, first.day), (2026, 3, 1));
+      expect((last.year, last.month, last.day), (2026, 3, 31));
+    });
+  });
 }
