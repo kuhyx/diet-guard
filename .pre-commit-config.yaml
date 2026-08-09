@@ -142,6 +142,16 @@ repos:
 
   - repo: local
     hooks:
+      # Every commit ships its own patch bump, so the release workflow's clean
+      # vX.Y.Z tag tracks HEAD instead of whatever version was last hand-edited.
+      # The Flutter app lives in app/, so point the script at its pubspec.
+      - id: bump-patch-version
+        name: Bump patch version in app/pubspec.yaml
+        entry: bash scripts/bump_patch_version.sh --pubspec app/pubspec.yaml
+        language: system
+        pass_filenames: false
+        always_run: true
+        require_serial: true
       - id: shellcheck
         name: shellcheck
         entry: bash -c 'printf "%s\0" "$@" | xargs -0 -n 40 shellcheck --severity=warning' --
