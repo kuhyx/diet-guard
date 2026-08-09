@@ -1,4 +1,5 @@
 # Pre-commit Configuration for diet-guard
+# Run `pre-commit install` after cloning: pre-commit hooks are not automatic.
 # Install:  pre-commit install && pre-commit install --hook-type pre-push
 # Run:      pre-commit run --all-files
 # Update:   pre-commit autoupdate
