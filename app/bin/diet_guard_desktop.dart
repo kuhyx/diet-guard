@@ -103,7 +103,6 @@ Future<bool> _provisionSyncAccount(String home, int port) async {
     '--headless=new',
     '--disable-gpu',
     '--user-data-dir=${_profileDir(home)}',
-    '--virtual-time-budget=45000',
     // Surface the page's own log() output, so a failure inside the app
     // is visible in the terminal that started the provisioning run.
     '--enable-logging=stderr',

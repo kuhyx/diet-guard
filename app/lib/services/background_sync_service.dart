@@ -5,6 +5,7 @@
 /// reconnect and uploads the log without the app being reopened.
 library;
 
+import 'dart:developer';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/firebase_backend.dart';
@@ -41,16 +42,38 @@ Future<bool> backgroundSyncPush({http.Client? httpClient}) async {
   final SyncSettings settings;
   try {
     settings = await SyncSettings.load();
-  } on Exception {
-    return false; // couldn't read config in-isolate; let WorkManager retry
+  } on Exception catch (error, stackTrace) {
+    log(
+      'diet_guard background sync: cannot read config in-isolate',
+      level: 900,
+      error: error,
+      stackTrace: stackTrace,
+    );
+    return false; // let WorkManager retry
   }
-  if (!settings.isConfigured) return true; // nothing to push; don't retry
+  // Either backend counts. `isConfigured` means "has a GitHub token", so
+  // gating on it alone silently skips every background push on a device
+  // connected only to Firebase.
+  if (!settings.isConfigured && await openFirebase() == null) {
+    log(
+      'diet_guard background sync: no backend configured; nothing to push',
+      level: 900,
+    );
+    return true; // nothing to push; don't retry
+  }
   final client = createGitHubClient(settings, httpClient: httpClient);
   try {
     await runSync(await syncBackend(client));
     return true;
-  } on Exception {
-    return false; // offline / transient GitHub error -> retry with backoff
+  } on Exception catch (error, stackTrace) {
+    // Never silent: this is the only signal that a background push failed.
+    log(
+      'diet_guard background sync failed',
+      level: 1000,
+      error: error,
+      stackTrace: stackTrace,
+    );
+    return false; // offline / transient error -> retry with backoff
   } finally {
     client.close();
   }
