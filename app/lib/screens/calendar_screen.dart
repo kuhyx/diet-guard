@@ -10,11 +10,14 @@ library;
 import 'dart:async';
 
 import 'package:diet_guard_app/models/day_status.dart';
+import 'package:diet_guard_app/models/period_average.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/average_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/day_status_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/widgets/average_summary_row.dart';
 import 'package:diet_guard_app/widgets/day_status_calendar.dart';
 import 'package:diet_guard_app/widgets/streak_summary_row.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +43,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     elapsedDays: 0,
     adherentDays: 0,
   );
+  PeriodAverage _weekAverage = PeriodAverage.empty;
+  PeriodAverage _monthAverage = PeriodAverage.empty;
   bool _loading = true;
   bool _editingBudget = false;
   String? _budgetStatus;
@@ -62,21 +67,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
   /// their unsaved text is left untouched.
   ///
   /// Each past day is judged against the budget that applied *then*, so
-  /// changing the budget today leaves the grid, the streaks, and the tally
-  /// for earlier days alone.
+  /// changing the budget today leaves the grid, the streaks, the tally, and
+  /// the averages for earlier days alone.
   Future<void> _load() async {
     final log = await LogStorageService.instance.readLog();
     if (!mounted) return;
     final budget = AppSettingsService.dailyKcalGoal;
-    final statusByDate = statusMap(
-      log,
-      schedule: BudgetHistoryService.schedule,
-    );
+    final schedule = BudgetHistoryService.schedule;
+    final statusByDate = statusMap(log, schedule: schedule);
+    final week = weeklyAverage(log, schedule: schedule);
+    final month = monthlyAverage(log, schedule: schedule);
     setState(() {
       _statusByDate = statusByDate;
       _loggingStreak = loggingStreak(statusByDate);
       _adherenceStreak = adherenceStreak(statusByDate);
       _tally = yearToDateTally(statusByDate);
+      _weekAverage = week;
+      _monthAverage = month;
       _loading = false;
       if (!_editingBudget) {
         _budgetController.text = budget.toString();
@@ -185,6 +192,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               adherenceStreak: _adherenceStreak,
               tally: _tally,
             ),
+            const SizedBox(height: 4),
+            AverageSummaryRow(week: _weekAverage, month: _monthAverage),
           ],
         ),
       ),

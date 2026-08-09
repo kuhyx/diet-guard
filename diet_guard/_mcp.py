@@ -41,12 +41,19 @@ from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
 from pydantic import BaseModel
 
-from diet_guard._budget import BudgetError
+from diet_guard._averages import (
+    PeriodAverage,
+    band_label,
+    monthly_average,
+    weekly_average,
+)
+from diet_guard._budget import BudgetError, current_schedule, daily_budget
 from diet_guard._gate import due_slots
 from diet_guard._resolve import ManualMacros, resolve_nutrition
 from diet_guard._slots import current_slot, day_slots, slot_for_log, slot_label
 from diet_guard._state import (
     consumption_band,
+    load_log,
     logged_slots_today,
     now_local,
     today_entries,
@@ -158,6 +165,62 @@ def list_today() -> dict[str, Any]:
     return {
         "count": len(entries),
         "entries": [_entry_view(entry) for entry in entries],
+    }
+
+
+def _period_view(period: PeriodAverage) -> dict[str, Any]:
+    """Render one period for the wire, WITHOUT its average budget.
+
+    ``avg_budget`` is dropped on purpose: it is the daily budget by another
+    name, and the module invariant is that the number never leaves via this
+    interface. What remains -- the mean intake plus the qualitative band -- is
+    the same trade ``get_status`` already makes (a band plus a consumed number
+    bounds the budget loosely; the exact figure stays on the machine).
+    """
+    return {
+        "start": period.start,
+        "end": period.end,
+        "logged_days": period.logged_days,
+        "elapsed_days": period.elapsed_days,
+        "avg_kcal": period.avg_kcal,
+        "band": None if period.band is None else period.band.value,
+        "band_label": band_label(period.band),
+    }
+
+
+@mcp.tool(title="Weekly and monthly average intake", annotations=_READS_ONLY)
+def get_averages() -> dict[str, Any]:
+    """Return average kcal/day for this and last week, and this and last month.
+
+    Each period's average is over its *logged* days only and is classified
+    ``"under"`` / ``"slightly_over"`` / ``"very_over"`` against the mean of the
+    budgets that applied on those same days -- never against today's budget, so
+    a budget edit does not retroactively reclassify past weeks.
+
+    Every period ends at **yesterday**: today is still being logged, and a
+    half-logged day would drag the mean far enough to flip the band. A period
+    with no finished logged day yet reports ``avg_kcal: null`` rather than a
+    flattering zero.
+
+    The per-period average budget is deliberately not returned (see the module
+    docstring's budget invariant); only the intake and the band are.
+    """
+    try:
+        schedule = current_schedule(default=daily_budget())
+    except BudgetError:
+        # No budget set, or a corrupt file: no yardstick, so no bands.
+        return {"budget_initialized": False, "periods": {}}
+    log = load_log()
+    periods = {
+        "this_week": weekly_average(log, schedule=schedule, weeks_ago=0),
+        "last_week": weekly_average(log, schedule=schedule, weeks_ago=1),
+        "this_month": monthly_average(log, schedule=schedule, months_ago=0),
+        "last_month": monthly_average(log, schedule=schedule, months_ago=1),
+    }
+    return {
+        "budget_initialized": True,
+        "excludes_today": True,
+        "periods": {name: _period_view(period) for name, period in periods.items()},
     }
 
 

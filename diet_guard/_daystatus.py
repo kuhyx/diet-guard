@@ -49,8 +49,11 @@ class DayStatus(enum.Enum):
 
 # The top of the "yellow" band above budget: a margin as wide as
 # BUDGET_WARN_FRACTION's margin below 100% (the existing "approaching limit"
-# band), so the two bands are symmetric around the budget line.
-_OVER_BUDGET_YELLOW_CEILING = 1.0 + (1.0 - BUDGET_WARN_FRACTION)
+# band), so the two bands are symmetric around the budget line.  Public
+# within the package because :mod:`diet_guard._averages` classifies a
+# *period average* with the same boundary -- two copies of this number
+# would let the calendar and the averages line disagree about "over".
+OVER_BUDGET_YELLOW_CEILING = 1.0 + (1.0 - BUDGET_WARN_FRACTION)
 
 _LOGGED_STATUSES = frozenset(
     {DayStatus.GREEN, DayStatus.YELLOW, DayStatus.RED},
@@ -96,7 +99,7 @@ def day_status(log: DayLog, day: str, budget: int) -> DayStatus:
     total = day_total_kcal(log, day)
     if total <= budget:
         return DayStatus.GREEN
-    if total <= budget * _OVER_BUDGET_YELLOW_CEILING:
+    if total <= budget * OVER_BUDGET_YELLOW_CEILING:
         return DayStatus.YELLOW
     return DayStatus.RED
 

@@ -6,6 +6,7 @@ Examples:
     python -m diet_guard ate "two slices of pizza" --grams 240
     python -m diet_guard ate "protein shake" --kcal 180
     python -m diet_guard status
+    python -m diet_guard averages
     python -m diet_guard undo
 
 The daily budget lives outside the repo (so it is never exposed online) but is
@@ -18,6 +19,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 import sys
+from typing import TYPE_CHECKING
 
 from diet_guard._budget import (
     Biometrics,
@@ -28,6 +30,7 @@ from diet_guard._budget import (
     protein_target_g,
     write_budget,
 )
+from diet_guard._cli_averages import cmd_averages, register_averages_subparser
 from diet_guard._cli_gate import cmd_gate
 from diet_guard._cli_sync import cmd_sync, register_sync_subparser
 from diet_guard._foodbank import remember_food
@@ -48,6 +51,9 @@ from diet_guard._state import (
     today_total_macros,
     undo_last_today,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # Column width for a meal description in the status listing.
 _DESC_WIDTH = 24
@@ -173,6 +179,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 
     sub.add_parser("status", help="Show today's calories and budget band.")
     sub.add_parser("undo", help="Remove today's most recent entry.")
+    register_averages_subparser(sub)
     register_sync_subparser(sub)
 
     gate = sub.add_parser(
@@ -413,6 +420,39 @@ def _cmd_undo() -> int:
     return 0
 
 
+def _dispatch_ate(args: argparse.Namespace) -> int:
+    """Marshal ``ate``'s flags into value objects, then log the meal."""
+    return _cmd_ate(
+        args.description,
+        _Portion(grams=args.grams, count=args.count, per_grams=args.per),
+        _ManualMacros(
+            kcal=args.kcal,
+            protein=args.protein,
+            carbs=args.carbs,
+            fat=args.fat,
+        ),
+    )
+
+
+def _dispatch_gate(args: argparse.Namespace) -> int:
+    """Run the gate subcommand with its two flags."""
+    return cmd_gate(_emit, check=args.check, demo=args.demo)
+
+
+# A table rather than an if-chain: the chain grew a return per subcommand and
+# tripped ruff's return-count limit at the seventh, and a table also has no
+# unreachable trailing branch for the 100%-coverage gate to chase.
+_COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
+    "init": lambda _args: _cmd_init(),
+    "ate": _dispatch_ate,
+    "status": lambda _args: _cmd_status(),
+    "averages": lambda _args: cmd_averages(_emit),
+    "sync": lambda _args: cmd_sync(_emit),
+    "gate": _dispatch_gate,
+    "undo": lambda _args: _cmd_undo(),
+}
+
+
 def main(argv: list[str] | None = None) -> int:
     """Dispatch a diet_guard subcommand.
 
@@ -423,25 +463,4 @@ def main(argv: list[str] | None = None) -> int:
         A process exit code (0 on success).
     """
     args = _parse_args(sys.argv[1:] if argv is None else argv)
-    if args.command == "init":
-        return _cmd_init()
-    if args.command == "ate":
-        macros = _ManualMacros(
-            kcal=args.kcal,
-            protein=args.protein,
-            carbs=args.carbs,
-            fat=args.fat,
-        )
-        portion = _Portion(
-            grams=args.grams,
-            count=args.count,
-            per_grams=args.per,
-        )
-        return _cmd_ate(args.description, portion, macros)
-    if args.command == "status":
-        return _cmd_status()
-    if args.command == "sync":
-        return cmd_sync(_emit)
-    if args.command == "gate":
-        return cmd_gate(_emit, check=args.check, demo=args.demo)
-    return _cmd_undo()
+    return _COMMANDS[args.command](args)

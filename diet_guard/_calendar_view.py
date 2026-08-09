@@ -12,9 +12,16 @@ from __future__ import annotations
 import calendar
 from dataclasses import dataclass
 from datetime import date
+from typing import TYPE_CHECKING
 
 from gatelock import LockConfig
 
+from diet_guard._averages import (
+    PeriodAverage,
+    band_label,
+    monthly_average,
+    weekly_average,
+)
 from diet_guard._daystatus import (
     DayStatus,
     adherence_streak,
@@ -23,6 +30,10 @@ from diet_guard._daystatus import (
 )
 from diet_guard._gatelock_ui import BG, FG
 from diet_guard._state import now_local
+
+if TYPE_CHECKING:
+    from diet_guard._budget_history import BudgetSchedule
+    from diet_guard._state import DayLog
 
 _COLORS = LockConfig()
 # A "not logged" cell renders hollow -- background-colored fill, near-white
@@ -154,4 +165,35 @@ def ytd_text(status_map_: dict[str, DayStatus], *, today: date | None = None) ->
     return (
         f"This year: logged {tally.logged_days}/{tally.elapsed_days} days  ·  "
         f"{tally.adherent_days} within budget"
+    )
+
+
+def _average_part(period: PeriodAverage) -> str:
+    """Render one period as ``"NNNN kcal (band)"``, or ``"no data"``."""
+    if period.avg_kcal is None:
+        return band_label(period.band)
+    return f"{period.avg_kcal:.0f} kcal ({band_label(period.band)})"
+
+
+def averages_text(
+    log: DayLog,
+    *,
+    schedule: BudgetSchedule,
+    today: date | None = None,
+) -> str:
+    """Render the weekly/monthly average-intake line.
+
+    Both periods stop at yesterday (see :mod:`diet_guard._averages`), so the
+    line never swings every time a meal is logged today -- it answers "how has
+    this week gone", not "how am I doing right now", which is what the Log Meal
+    tab's remaining-budget readout is for.
+
+    ``today`` defaults to the real current date for live UI use; tests pass it
+    explicitly for deterministic period edges.
+    """
+    week = weekly_average(log, schedule=schedule, today=today)
+    month = monthly_average(log, schedule=schedule, today=today)
+    return (
+        f"Avg/day (to yesterday): week {_average_part(week)}  \u00b7  "
+        f"month {_average_part(month)}"
     )

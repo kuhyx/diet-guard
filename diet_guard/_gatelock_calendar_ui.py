@@ -55,6 +55,7 @@ class CalendarVars:
     month_label: tk.StringVar
     streaks: tk.StringVar
     ytd: tk.StringVar
+    averages: tk.StringVar
     budget_status: tk.StringVar
     budget: tk.StringVar
     """Backs the budget entry so its per-monitor copies cannot disagree."""
@@ -86,6 +87,7 @@ def make_calendar_vars(root: tk.Misc) -> CalendarVars:
         month_label=tk.StringVar(master=root, value=""),
         streaks=tk.StringVar(master=root, value=""),
         ytd=tk.StringVar(master=root, value=""),
+        averages=tk.StringVar(master=root, value=""),
         budget_status=tk.StringVar(master=root, value=""),
         budget=tk.StringVar(master=root, value=""),
     )
@@ -243,6 +245,13 @@ def build_calendar_frame(
     tk.Label(
         frame,
         textvariable=vars_.ytd,
+        font=(_COLORS.font_family, CAPTION),
+        bg=BG,
+        fg=_MUTED,
+    ).pack(pady=(XS, 0))
+    tk.Label(
+        frame,
+        textvariable=vars_.averages,
         font=(_COLORS.font_family, CAPTION),
         bg=BG,
         fg=_MUTED,

@@ -32,6 +32,7 @@ from diet_guard._budget import (
 )
 from diet_guard._calendar_view import (
     CalendarCell,
+    averages_text,
     build_month_cells,
     cell_style,
     streaks_text,
@@ -125,7 +126,7 @@ class _GateCalendar(_GateMealFlow):
     # -- refresh --------------------------------------------------------------
 
     def _refresh_calendar(self) -> None:
-        """Recompute the calendar grid, streaks, YTD tally, and budget field.
+        """Recompute the grid, streaks, YTD tally, averages, and budget field.
 
         Each past day is judged against the budget that applied *then*
         (:mod:`diet_guard._budget_history`), so changing the budget today
@@ -149,18 +150,18 @@ class _GateCalendar(_GateMealFlow):
             budget = _DEFAULT_BUDGET_KCAL
         except BudgetFileCorruptError:
             budget = None
-        status_map_ = (
-            status_map(log, schedule=current_schedule(default=budget))
-            if budget is not None
-            else None
-        )
-        self._render_month(status_map_)
-        if status_map_ is None:
+        schedule = current_schedule(default=budget) if budget is not None else None
+        if schedule is None:
+            self._render_month(None)
             self._cal_vars.streaks.set("Budget file is corrupt -- fix it below.")
             self._cal_vars.ytd.set("")
+            self._cal_vars.averages.set("")
         else:
+            status_map_ = status_map(log, schedule=schedule)
+            self._render_month(status_map_)
             self._cal_vars.streaks.set(streaks_text(status_map_))
             self._cal_vars.ytd.set(ytd_text(status_map_))
+            self._cal_vars.averages.set(averages_text(log, schedule=schedule))
         if not self._cal_editing_budget:
             self._refresh_budget_field(budget)
 

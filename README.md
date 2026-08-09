@@ -20,7 +20,31 @@ budget, and locks the budget file immutable.
 ```bash
 python -m diet_guard init          # one-time: compute and seal today's budget
 python -m diet_guard gate --demo   # test the lock window (safe, closeable)
+python -m diet_guard averages      # weekly/monthly average kcal vs budget
 ```
+
+### Averages
+
+`averages` prints the mean kcal/day for this week, last week, this month and
+last month, each labelled **under** / **slightly over** / **very over**.
+
+Three rules make the number honest, and all three are mirrored in the phone
+app and the gate's History tab:
+
+* the mean is over **logged days only** -- a day you forgot to log is not a
+  zero-calorie day, and averaging it in as one would make every gap in the log
+  read as "well under budget";
+* the yardstick is the **mean of the budgets that applied on those same days**,
+  not today's budget, so editing the budget never retroactively reclassifies a
+  past week (same reason the calendar uses `.budget_history`);
+* **today is excluded** -- every period ends at yesterday, because a
+  half-logged today drags the mean far enough to flip the band. On a Monday
+  "this week" therefore reports no logged days yet rather than a flattering
+  number.
+
+The band boundaries are the calendar's own (at or under budget / up to 20%
+over / more than 20% over), so a period and its day cells can never disagree
+about what "over" means.
 
 The timer runs the gate automatically every ~30 minutes; no manual
 invocation is needed once installed.
@@ -40,6 +64,9 @@ Tools:
   sealed), plus due / logged / current meal slots.
 - `list_today` — today's logged meals (description, kcal, macros, source, slot).
 - `get_slots` — the day's fixed meal slots and the current one.
+- `get_averages` — average kcal/day for this/last week and this/last month,
+  each with its band (`under` / `slightly_over` / `very_over`). Returns the
+  intake and the band only — never the period's average *budget*.
 - `log_meal(description, grams=, kcal=, protein=, carbs=, fat=, slot=,
   confirm=False)` — **gated write**: with `confirm=False` it previews the
   resolved nutrition and target slot and mutates nothing; only `confirm=True`

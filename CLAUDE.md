@@ -12,9 +12,10 @@ from biometrics at `init` time but freely editable afterward on either
 device (PC gate or phone app), synced last-edit-wins like the food log (see
 "Cross-device sync"). A second tab in the gate window ("History", built by
 `_gatelock_calendar.py`) and a matching screen in the phone app show a
-budget-adherence calendar, logging/adherence streaks, and a year-to-date
-tally, both derived from the same day-status classification
-(`_daystatus.py` / `day_status_service.dart`).
+budget-adherence calendar, logging/adherence streaks, a year-to-date
+tally, and weekly/monthly average intake, all derived from the same
+day-status classification (`_daystatus.py` / `day_status_service.dart`) and
+the averages built on it (`_averages.py` / `average_service.dart`).
 
 See `docs/design.md` for the original feature spec (meal-slot timing logic,
 the Tue/Wed/Thu "filled most of the day" catch-up rule). Note that the
@@ -193,12 +194,41 @@ Consequences worth knowing before touching `app/`:
 - Lint: `pre-commit run --all-files`
 - Test the lock manually (safe, closeable): `python -m diet_guard gate --demo`
 - Run one sync tick manually: `python -m diet_guard sync`
+- Weekly/monthly averages: `python -m diet_guard averages`
 - Install for production: `bash install.sh`
 - App tests: `cd app && flutter test`
 - Run the desktop app from the repo: `cd app && bash run.sh`
 - Install the desktop app (Arch package + .desktop entry):
   `cd app && bash install_arch.sh`
 - Build the phone app: `cd app && flutter build apk --release`
+
+## Averages (`_averages.py` / `average_service.dart`)
+
+Three rules are load-bearing; changing any of them silently changes what
+"under budget" means, so re-read this before touching them:
+
+- **Denominator is logged days, not elapsed days.** An unlogged day is not a
+  zero-kcal day. Averaging gaps in as zeros makes a badly-tracked week look
+  like the best week of the year, which is the exact failure the gate exists
+  to prevent.
+- **The yardstick is the mean of the per-day budgets over those same logged
+  days**, resolved through the `BudgetSchedule` -- never `daily_budget()`.
+  Using today's number would retroactively reclassify past weeks on every
+  budget edit, the same bug `_budget_history.py` was written to fix.
+- **Today is excluded.** Every period ends at `last_complete_day()`, i.e.
+  yesterday. A period ending "now" mixes finished days with one that is three
+  hours old, and a half-logged today drags the mean far enough to flip the
+  band. The visible cost is that "this week" is empty on a Monday; that is
+  correct, and it reports `no logged days yet` rather than a fake average.
+
+Band boundaries reuse `_daystatus.OVER_BUDGET_YELLOW_CEILING` /
+`kOverBudgetYellowCeiling` **by import, not by copy** -- two literals would let
+the averages line and the calendar disagree about what "over" means.
+
+The MCP `get_averages` tool returns `avg_kcal` and the band but deliberately
+drops `avg_budget`, keeping the module's budget-secrecy invariant. The CLI,
+the gate, and the phone all show both numbers, since the budget is hidden only
+from the network, not from the user.
 
 ## Do NOT
 
