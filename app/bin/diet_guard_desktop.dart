@@ -55,6 +55,16 @@ Future<void> main(List<String> args) async {
   await server.start(port);
   stdout.writeln('diet_guard desktop serving on http://localhost:$port');
 
+  // Provisioning is a setup step, not a session: load the app once in a
+  // headless browser so its own code can write the account into the
+  // origin-keyed localStorage only the page can reach, then exit. No window
+  // is ever mapped, so this never steals focus or lands on the wrong monitor.
+  if (args.contains('--provision-sync-account')) {
+    final ok = await _provisionSyncAccount(home, port);
+    await server.stop();
+    exit(ok ? 0 : 1);
+  }
+
   // A bare flag, not a valued option: requiring a dummy value meant passing a
   // stray positional, which the AOT runtime tries to interpret as a snapshot.
   if (!args.contains('--no-browser')) {
@@ -78,7 +88,45 @@ Future<void> main(List<String> args) async {
 /// Launches the app in a Chrome-family browser with a **stable** profile
 /// directory, since the food log, photos and settings live in that profile.
 /// Returns true when the browser ran long enough to have owned the session.
-Future<bool> _launchBrowser(String home, int port) async {
+/// Loads the app once headlessly so it provisions its own sync account.
+///
+/// The account lives in origin-keyed localStorage, which only code running in
+/// the page can write -- so the page has to run. `--headless` means it runs
+/// without ever mapping a window.
+Future<bool> _provisionSyncAccount(String home, int port) async {
+  final browser = _findBrowser();
+  if (browser.isEmpty) {
+    stderr.writeln('No Chrome-family browser found; cannot provision.');
+    return false;
+  }
+  final process = await Process.start(browser, [
+    '--headless=new',
+    '--disable-gpu',
+    '--user-data-dir=${_profileDir(home)}',
+    '--virtual-time-budget=45000',
+    '--dump-dom',
+    'http://localhost:$port',
+  ]);
+  final code = await process.exitCode;
+  if (code != 0) {
+    stderr.writeln('Headless provisioning run exited with $code.');
+    return false;
+  }
+  stdout.writeln(
+    'Provisioning run complete. Launch normally to confirm it is connected.',
+  );
+  return true;
+}
+
+/// The Chrome profile holding this app's IndexedDB and localStorage.
+///
+/// Must stay as stable as the port: IndexedDB is keyed by origin and lives
+/// inside this profile, so a changing path silently hides the whole food log.
+String _profileDir(String home) =>
+    p.join(home, '.local', 'share', 'diet-guard-desktop', 'profile');
+
+/// Returns the first Chrome-family browser on this machine, or ''.
+String _findBrowser() {
   // Ordered by preference, and deliberately broad: this machine runs Thorium
   // behind /opt/google/chrome, and has a policy that uninstalls the `chromium`
   // package, so assuming any single browser is wrong. DIET_GUARD_BROWSER
@@ -91,29 +139,23 @@ Future<bool> _launchBrowser(String home, int port) async {
     '/usr/bin/chromium',
     '/usr/bin/brave',
   ];
-  final browser = candidates.firstWhere(
+  return candidates.firstWhere(
     (path) => path.isNotEmpty && File(path).existsSync(),
     orElse: () => '',
   );
+}
+
+Future<bool> _launchBrowser(String home, int port) async {
+  final browser = _findBrowser();
   if (browser.isEmpty) {
     stderr.writeln(
       'No Chrome-family browser found; open http://localhost:$port manually.',
     );
     return false;
   }
-  // The profile directory must stay as stable as the port: IndexedDB is keyed
-  // by origin and lives inside this profile, so a changing path silently
-  // hides the entire food log.
-  final profile = p.join(
-    home,
-    '.local',
-    'share',
-    'diet-guard-desktop',
-    'profile',
-  );
   final process = await Process.start(browser, [
     '--app=http://localhost:$port',
-    '--user-data-dir=$profile',
+    '--user-data-dir=${_profileDir(home)}',
     // Sets WM_CLASS, which the .desktop entry matches on via StartupWMClass.
     // Without it the window inherits the browser's class and the taskbar shows
     // a browser icon instead of diet_guard's.

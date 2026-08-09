@@ -120,7 +120,11 @@ class _LogMealScreenState extends State<LogMealScreen>
     _autoSyncing = true;
     try {
       final settings = await SyncSettings.load();
-      if (!settings.isConfigured) return;
+      // Either backend counts. `isConfigured` means "has a GitHub token", so
+      // gating on it alone silently skips every sync on a device connected
+      // only to Firebase -- and once the mirror is retired that is every
+      // device. Same fix workout_app's push() already carries.
+      if (!settings.isConfigured && await openFirebase() == null) return;
       final client = createGitHubClient(
         settings,
         httpClient: widget.httpClient,
