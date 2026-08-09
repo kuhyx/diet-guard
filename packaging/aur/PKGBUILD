@@ -1,0 +1,97 @@
+# Maintainer: Krzysztof Rudnicki <krzysztofrudnicki0@gmail.com>
+pkgname=diet-guard-app
+# v1.0.0 already existed upstream on an older commit that predates the LICENSE,
+# so the first packageable tag is v1.0.1.
+pkgver=1.0.1
+pkgrel=1
+pkgdesc='Diet logging and budget companion (Flutter web in a Chrome app window)'
+arch=('x86_64')
+url='https://github.com/kuhyx/diet-guard'
+license=('MIT')
+# A Chrome-family browser renders the UI, but none is a hard dependency: the
+# wrapper discovers whichever is installed at run time (Chrome, Chromium,
+# Thorium, Brave) and reports clearly if none is present. The deps below are
+# the ones actually linked/executed: the Dart AOT binary needs glibc,
+# /usr/bin/diet-guard-app is a bash script, and the icons are installed into
+# the hicolor theme hierarchy.
+depends=('glibc' 'bash' 'hicolor-icon-theme')
+optdepends=('google-chrome: renders the app window'
+            'chromium: renders the app window')
+makedepends=('flutter')   # flutter-bin provides `flutter`; either satisfies this
+# !strip is LOAD-BEARING: the wrapper is a Dart AOT executable with its snapshot
+# embedded in the ELF. Stripping discards the snapshot and the binary degrades
+# to a bare dartaotruntime that refuses to run ("is not an AOT snapshot").
+# !debug because Flutter/Dart AOT release binaries carry no extractable DWARF.
+options=('!strip' '!debug')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('bfe51056e6b154890b86568d7462ec0f8caf47e4e826e246081eb158be45d22e')
+
+# The Flutter app lives in the repo's app/ subdirectory, so the tarball
+# extracts as diet-guard-$pkgver/app/ while LICENSE sits at the repo root.
+_srcdir="diet-guard-$pkgver"
+
+build() {
+  cd "$_srcdir/app"
+  # makepkg builds as an unprivileged user with no writable default pub cache;
+  # keep it inside $srcdir so the build is self-contained and leaves no trace.
+  export PUB_CACHE="$srcdir/.pub-cache"
+  flutter build web --release
+  # `dart build cli`, NOT `dart compile exe`: dependencies with native build
+  # hooks are something `dart compile` refuses to handle.
+  dart build cli -o build/cli
+}
+
+package() {
+  cd "$_srcdir/app"
+  local bundle="build/cli/bundle"
+
+  # Preserve the bundle's bin/ + lib/ layout: the executable resolves its
+  # native libraries from ../lib and the web assets from ../web.
+  install -dm755 "$pkgdir/opt/diet-guard-app"
+  cp -r "$bundle/bin" "$pkgdir/opt/diet-guard-app/bin"
+  # lib/ exists only when a dependency ships native code; this app has none,
+  # so the bundle is bin/-only and copying lib/ unconditionally would fail.
+  if [[ -d "$bundle/lib" ]]; then
+    cp -r "$bundle/lib" "$pkgdir/opt/diet-guard-app/lib"
+  fi
+  chmod 755 "$pkgdir/opt/diet-guard-app/bin/diet_guard_desktop"
+
+  install -dm755 "$pkgdir/opt/diet-guard-app/web"
+  cp -r build/web/. "$pkgdir/opt/diet-guard-app/web/"
+
+  install -dm755 "$pkgdir/usr/bin"
+  cat > "$pkgdir/usr/bin/diet-guard-app" <<'WRAPPER'
+#!/bin/bash
+exec /opt/diet-guard-app/bin/diet_guard_desktop "$@"
+WRAPPER
+  chmod 755 "$pkgdir/usr/bin/diet-guard-app"
+
+  # Desktop entry written inline. Do NOT call install_desktop_entry.sh: it
+  # targets ~/.local/share and its dev fallback points Exec at the repo's run.sh.
+  # StartupWMClass is diet_guard_app (underscores) while the icon is
+  # diet-guard-app (hyphens); they genuinely differ. The WM class must match
+  # what Chrome gets from the wrapper's --class flag.
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/diet-guard-app.desktop" <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=diet guard
+Comment=Diet logging and budget companion
+Exec=/usr/bin/diet-guard-app
+Icon=diet-guard-app
+Terminal=false
+Categories=Utility;
+StartupWMClass=diet_guard_app
+DESKTOP
+
+  local size
+  for size in 16 24 32 48 64 128 256 512; do
+    install -Dm644 "desktop/icons/$size/diet-guard-app.png" \
+      "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/diet-guard-app.png"
+  done
+  # No gtk-update-icon-cache / update-desktop-database here: pacman hooks own
+  # that, and namcap flags calling them from package().
+
+  # LICENSE lives at the repo root, not in app/ — reference it absolutely.
+  install -Dm644 "$srcdir/$_srcdir/LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

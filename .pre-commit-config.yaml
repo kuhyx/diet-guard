@@ -147,6 +147,10 @@ repos:
         entry: bash -c 'printf "%s\0" "$@" | xargs -0 -n 40 shellcheck --severity=warning' --
         language: system
         types: [shell]
+        # A PKGBUILD is a makepkg manifest, not a standalone script: it has no
+        # shebang (SC2148) and its variables are read by makepkg rather than by
+        # the file itself (SC2034). namcap is what actually lints these.
+        exclude: '^packaging/aur/PKGBUILD$'
       - id: max-file-length
         name: Max file length (500 lines)
         entry: python3 scripts/check_file_length.py
