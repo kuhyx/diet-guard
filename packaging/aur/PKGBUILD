@@ -24,7 +24,7 @@ makedepends=('flutter')   # flutter-bin provides `flutter`; either satisfies thi
 # !debug because Flutter/Dart AOT release binaries carry no extractable DWARF.
 options=('!strip' '!debug')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('bfe51056e6b154890b86568d7462ec0f8caf47e4e826e246081eb158be45d22e')
+sha256sums=('SKIP')  # placeholder: run updpkgsums in the AUR checkout after tagging
 
 # The Flutter app lives in the repo's app/ subdirectory, so the tarball
 # extracts as diet-guard-$pkgver/app/ while LICENSE sits at the repo root.
