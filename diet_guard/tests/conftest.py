@@ -120,6 +120,13 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
             "diet_guard._sync.SYNC_STATE_FILE",
             tmp_path / "sync_state.json",
         ),
+        # Without this a test that syncs mints a uuid into the REAL
+        # ~/.local/share/diet_guard/.device_id, and this machine's live sync
+        # identity is decided by whichever test happened to run first.
+        patch(
+            "diet_guard._device.SYNC_DEVICE_ID_FILE",
+            tmp_path / ".device_id",
+        ),
         # `run_sync` reads this to decide whether to build a Firebase-primary
         # mirror. On a developer machine the real file exists, so without this
         # every sync test would sign in and push to the live database.

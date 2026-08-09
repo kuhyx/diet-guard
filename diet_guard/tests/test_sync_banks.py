@@ -12,6 +12,7 @@ import json
 from unittest.mock import patch
 
 from diet_guard import _sync
+from diet_guard._device import device_id
 from diet_guard._estimator import Nutrition
 from diet_guard._foodbank import lookup_food, read_food_bank
 from diet_guard._foodbank_manual import add_manual_entry, read_manual_bank
@@ -33,7 +34,7 @@ class TestSyncFoodBank:
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed = [call.args[0] for call in client.put_file_text.call_args_list]
-        assert "diet-guard-sync/devices/pc/food_bank.json" in pushed
+        assert f"diet-guard-sync/devices/{device_id()}/food_bank.json" in pushed
 
     def test_a_food_the_phone_logged_reaches_the_gate(self) -> None:
         """The payoff: a food eaten on the phone autocompletes on the PC.
@@ -141,7 +142,7 @@ class TestSyncFoodBank:
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed = [call.args[0] for call in client.put_file_text.call_args_list]
-        assert "diet-guard-sync/devices/pc/food_bank.json" not in pushed
+        assert f"diet-guard-sync/devices/{device_id()}/food_bank.json" not in pushed
 
 
 class TestSyncManualBank:
@@ -162,7 +163,7 @@ class TestSyncManualBank:
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed = [call.args[0] for call in client.put_file_text.call_args_list]
-        assert "diet-guard-sync/devices/pc/food_bank_manual.json" in pushed
+        assert f"diet-guard-sync/devices/{device_id()}/food_bank_manual.json" in pushed
 
     def test_a_remote_curated_entry_is_adopted_locally(self) -> None:
         """The point of the whole feature: a food added on the phone is usable

@@ -88,7 +88,17 @@ GATE_LOCK_FILE: Path = DATA_DIR / ".gate.lock"
 # happens client-side (see _sync_merge.py), never via git.
 SYNC_REPO_OWNER: str = "kuhyx"
 SYNC_REPO_NAME: str = "syncs"
-SYNC_DEVICE_ID: str = "pc"
+# The id this machine pushed under before per-install uuids. The sync reader
+# still treats it as this device's own, so the log pushed under it is not
+# pulled back and re-merged as a peer's; drop to None once devices/pc/ has
+# been reclaimed. See SYNC_DEVICE_ID_FILE.
+SYNC_LEGACY_DEVICE_ID: str | None = "pc"
+# This device's sync id, minted once and persisted. A fixed "pc" collides the
+# moment a second machine takes the same role, and after a reinstall the new
+# install would inherit the old one's CRDT identity; a uuid makes both
+# impossible by construction. Lives beside the other state, not in ~/.config,
+# because losing it means being seen as a brand-new device.
+SYNC_DEVICE_ID_FILE: Path = DATA_DIR / ".device_id"
 # A fine-grained GitHub PAT, scoped to just SYNC_REPO_NAME's contents.  The
 # user creates this once via github.com (see CLAUDE.md) and saves it here,
 # mode 600.  Never committed -- this path is outside the repo entirely.

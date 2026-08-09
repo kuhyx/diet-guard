@@ -42,7 +42,7 @@ from typing import TYPE_CHECKING
 from crdt_sync import Hlc, Record
 
 from diet_guard._budget_history import BudgetEntry
-from diet_guard._constants import SYNC_DEVICE_ID
+from diet_guard._device import device_id
 from diet_guard._foodbank_manual import record_edit_time
 
 if TYPE_CHECKING:
@@ -80,7 +80,7 @@ def _entry_hlc(entry: dict[str, object]) -> Hlc:
     except ValueError:
         dt = _EPOCH
     wall_time_ms = int(dt.timestamp() * 1000)
-    return Hlc.new_tick(SYNC_DEVICE_ID, wall_time_ms=wall_time_ms)
+    return Hlc.new_tick(device_id(), wall_time_ms=wall_time_ms)
 
 
 def _legacy_entry_id(entry: dict[str, object]) -> str:
@@ -229,7 +229,7 @@ def _budget_hlc(record: dict[str, object]) -> Hlc:
     except ValueError:
         dt = _EPOCH
     wall_time_ms = int(dt.timestamp() * 1000)
-    return Hlc.new_tick(SYNC_DEVICE_ID, wall_time_ms=wall_time_ms)
+    return Hlc.new_tick(device_id(), wall_time_ms=wall_time_ms)
 
 
 def _history_hlc(entry: BudgetEntry) -> Hlc:
@@ -245,7 +245,7 @@ def _history_hlc(entry: BudgetEntry) -> Hlc:
         moment = datetime.fromisoformat(entry.edited_at)
     except ValueError:
         moment = _EPOCH
-    return Hlc.new_tick(SYNC_DEVICE_ID, wall_time_ms=int(moment.timestamp() * 1000))
+    return Hlc.new_tick(device_id(), wall_time_ms=int(moment.timestamp() * 1000))
 
 
 def budget_to_log(
@@ -360,7 +360,7 @@ def food_bank_to_log(bank: Mapping[str, object]) -> Log:
             continue
         count = record.get("count")
         ticks = int(count) if isinstance(count, (int, float)) else 0
-        hlc = Hlc.new_tick(SYNC_DEVICE_ID, wall_time_ms=ticks)
+        hlc = Hlc.new_tick(device_id(), wall_time_ms=ticks)
         log[name] = Record(id=name, fields={"body": (dict(record), hlc)})
     return log
 
@@ -405,7 +405,7 @@ def manual_bank_to_log(bank: Mapping[str, object]) -> Log:
         if not isinstance(record, dict):
             continue
         hlc = Hlc.new_tick(
-            SYNC_DEVICE_ID,
+            device_id(),
             wall_time_ms=_wall_time_ms(record_edit_time(record)),
         )
         body = {k: v for k, v in record.items() if k != "t"}

@@ -178,9 +178,29 @@ Consequences worth knowing before touching `app/`:
   lives in that profile: changing either hides the entire local food log.
 - **The wrapper holds the GitHub token**, not the browser, and proxies
   `api.github.com` plus the CORS-less device flow (`lib/desktop/github_proxy.dart`).
-- **The desktop pushes as device id `desktop`**, the phone as `phone`, the
-  Python side as `pc`. Sharing an id means two devices overwrite each other's
-  pushed log every tick.
+- **Every device pushes under a persisted per-install uuid**, not the old
+  fixed `pc`/`phone`/`desktop` role constants. A role constant collides the
+  moment a second machine takes the same role, and a reinstall silently
+  inherits the previous install's CRDT identity. The id lives in
+  `~/.local/share/diet_guard/.device_id` on the PC (`diet_guard/_device.py`)
+  and under SharedPreferences `crdt.nodeId` in the app
+  (`lib/services/sync_device_id.dart`), the same key `todo` and
+  `home_inventory` use.
+  - The old role constant survives as the **legacy id**
+    (`SYNC_LEGACY_DEVICE_ID` / `legacySyncDeviceId`), passed to `sync_log` /
+    `syncLog` so `devices/<legacy>/` is skipped as *this device's own*. Drop
+    it to `None`/null only after that path has been deleted — until then,
+    removing it makes every tick re-download and re-merge this device's own
+    pre-migration log as though a peer wrote it.
+  - The app resolves its id **asynchronously at startup**
+    (`initSyncDeviceId()` in `main.dart`, before `LogStorageService.init()`).
+    HLC stamping is synchronous, so `currentSyncDeviceId` falls back to the
+    compile-time role constant until that completes: a caller that stamps too
+    early gets a valid-but-pre-migration id rather than a crash. Don't move
+    that call later.
+  - **Tests must redirect `_device.SYNC_DEVICE_ID_FILE`** (conftest already
+    does). Without it a test mints a uuid into the real state dir and this
+    machine's live sync identity is decided by whichever test ran first.
 - **Desktop reminders only exist while the window is open.** A browser has no
   WorkManager equivalent; the PC's real backstop is `diet-guard-gate.timer`,
   which locks the screen. Don't "fix" this with a background service without

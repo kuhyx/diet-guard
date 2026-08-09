@@ -22,6 +22,7 @@ import logging
 from crdt_sync import (
     CONFIG_FILE,
     ConfigError,
+    DeviceIdentity,
     FileSyncStateStore,
     FirebaseAuthError,
     GitHubSyncClient,
@@ -42,13 +43,13 @@ from diet_guard._budget_history import (
     write_raw_history,
 )
 from diet_guard._constants import (
-    SYNC_DEVICE_ID,
     SYNC_REPO_NAME,
     SYNC_REPO_OWNER,
     SYNC_STATE_FILE,
     SYNC_TIMEOUT_SECONDS,
     SYNC_TOKEN_FILE,
 )
+from diet_guard._device import device_identity
 from diet_guard._foodbank import read_food_bank, rebuild_food_bank, write_food_bank
 from diet_guard._foodbank_manual import read_manual_bank, write_manual_bank
 from diet_guard._state import DayLog, read_raw_log, resign_entry, write_raw_log
@@ -172,6 +173,7 @@ def _pull_remote_logs(
     remote_revs: dict[str, str],
     state: SyncState,
     seen_revs: dict[str, str],
+    identity: DeviceIdentity,
 ) -> list[Log]:
     """Return every other device's last-pushed log, skipping this one.
 
@@ -188,7 +190,7 @@ def _pull_remote_logs(
     """
     remote_logs: list[Log] = []
     for device_id in client.list_directory(_DEVICES_DIR):
-        if device_id == SYNC_DEVICE_ID:
+        if identity.is_own(device_id):
             continue
         remote_rev = remote_revs.get(device_id)
         if remote_rev is not None and remote_rev == state.peer_revs.get(device_id):
@@ -231,10 +233,11 @@ def _sync_food_bank(client: GitHubSyncClient) -> None:
     contains fixes that, and stays identical across devices because that
     rebuild comes from the *merged* log both devices share.
     """
+    identity = device_identity()
     local = read_food_bank()
     merged = food_bank_to_log(local)
     for device_id in client.list_directory(_DEVICES_DIR):
-        if device_id == SYNC_DEVICE_ID:
+        if identity.is_own(device_id):
             continue
         text = client.get_file_text(_device_food_bank_path(device_id))
         if text is None:
@@ -257,7 +260,7 @@ def _sync_food_bank(client: GitHubSyncClient) -> None:
     write_food_bank(resolved)
     merged = food_bank_to_log(resolved)
     client.put_file_text(
-        _device_food_bank_path(SYNC_DEVICE_ID),
+        _device_food_bank_path(identity.device_id),
         json.dumps(
             {record_id: record.to_dict() for record_id, record in merged.items()},
             indent=2,
@@ -274,9 +277,10 @@ def _sync_manual_bank(client: GitHubSyncClient) -> None:
     ``food_bank.json`` they need a real merge: last-writer-wins per food name
     by edit time, union across devices.
     """
+    identity = device_identity()
     merged = manual_bank_to_log(read_manual_bank())
     for device_id in client.list_directory(_DEVICES_DIR):
-        if device_id == SYNC_DEVICE_ID:
+        if identity.is_own(device_id):
             continue
         text = client.get_file_text(_device_manual_bank_path(device_id))
         if text is None:
@@ -295,7 +299,7 @@ def _sync_manual_bank(client: GitHubSyncClient) -> None:
         return
     write_manual_bank(log_to_manual_bank(merged))
     client.put_file_text(
-        _device_manual_bank_path(SYNC_DEVICE_ID),
+        _device_manual_bank_path(identity.device_id),
         json.dumps(
             {record_id: record.to_dict() for record_id, record in merged.items()},
             indent=2,
@@ -315,9 +319,10 @@ def _sync_budget(client: GitHubSyncClient) -> None:
     to the merge nor overwrites a real budget pulled from elsewhere, and if
     *no* device has ever set one, nothing is written or pushed.
     """
+    identity = device_identity()
     merged = budget_to_log(read_raw_record(), load_entries())
     for device_id in client.list_directory(_DEVICES_DIR):
-        if device_id == SYNC_DEVICE_ID:
+        if identity.is_own(device_id):
             continue
         text = client.get_file_text(_device_budget_path(device_id))
         if text is None:
@@ -347,7 +352,7 @@ def _sync_budget(client: GitHubSyncClient) -> None:
         indent=2,
     )
     client.put_file_text(
-        _device_budget_path(SYNC_DEVICE_ID),
+        _device_budget_path(identity.device_id),
         push_json,
         message="diet_guard sync",
     )
@@ -382,13 +387,16 @@ def run_sync() -> DayLog:
         )
     )
 
+    identity = device_identity()
     state_store = FileSyncStateStore(SYNC_STATE_FILE)
     state = state_store.load()
     remote_revs = _remote_revisions(client)
     seen_revs: dict[str, str] = {}
 
     merged = daylog_to_log(read_raw_log())
-    for remote_log in _pull_remote_logs(client, remote_revs, state, seen_revs):
+    for remote_log in _pull_remote_logs(
+        client, remote_revs, state, seen_revs, identity
+    ):
         merged = merge_logs(merged, remote_log)
 
     merged_daylog = log_to_daylog(merged)
@@ -410,14 +418,14 @@ def run_sync() -> DayLog:
     revision = revision_of(push_json)
     if revision != state.pushed_rev:
         client.put_file_text(
-            _device_log_path(SYNC_DEVICE_ID),
+            _device_log_path(identity.device_id),
             push_json,
             message="diet_guard sync",
         )
         # Published after the log, never before: a peer that cached "seen rev
         # X" against a log it never received would skip it forever.
         client.put_file_text(
-            f"{_REVS_DIR}/{SYNC_DEVICE_ID}",
+            f"{_REVS_DIR}/{identity.device_id}",
             revision,
             message="diet_guard sync: revision",
         )

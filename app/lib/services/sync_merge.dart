@@ -29,15 +29,15 @@
 /// adapters field-for-field.
 library;
 
-import 'dart:convert';
 
+import 'dart:convert';
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:crypto/crypto.dart';
 import 'package:diet_guard_app/models/food_bank_record.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/services/budget_schedule.dart';
-import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/sync_device_id.dart';
 
 /// Derives a deterministic [Hlc] for [entry] from its own `time` field.
 ///
@@ -50,7 +50,7 @@ import 'package:diet_guard_app/services/log_storage_service.dart';
 /// survives a merge.
 Hlc entryHlc(FoodEntry entry) {
   final wallTimeMs = DateTime.tryParse(entry.time)?.millisecondsSinceEpoch ?? 0;
-  return Hlc.newTick(syncDeviceId, wallTimeMsOverride: wallTimeMs);
+  return Hlc.newTick(currentSyncDeviceId, wallTimeMsOverride: wallTimeMs);
 }
 
 /// Deterministic id for a pre-`id` legacy entry, from `(time, desc)`.
@@ -206,7 +206,7 @@ Log foodBankToLog(Map<String, FoodBankRecord> bank) {
         'body': (
           mapEntry.value.toJson(),
           Hlc.newTick(
-            syncDeviceId,
+            currentSyncDeviceId,
             wallTimeMsOverride: mapEntry.value.count.toInt(),
           ),
         ),
@@ -270,7 +270,7 @@ Log manualBankToLog(Map<String, FoodBankRecord> bank) {
       fields: {
         'body': (
           body,
-          Hlc.newTick(syncDeviceId, wallTimeMsOverride: wallTimeMs),
+          Hlc.newTick(currentSyncDeviceId, wallTimeMsOverride: wallTimeMs),
         ),
       },
     );
@@ -337,7 +337,7 @@ Hlc budgetHlc(Map<String, dynamic> record) {
         record['t'] as String? ?? '',
       )?.toUtc().millisecondsSinceEpoch ??
       0;
-  return Hlc.newTick(syncDeviceId, wallTimeMsOverride: wallTimeMs);
+  return Hlc.newTick(currentSyncDeviceId, wallTimeMsOverride: wallTimeMs);
 }
 
 /// Field-name prefix for the effective-from budget history, one field per
@@ -355,7 +355,7 @@ const budgetHistoryFieldPrefix = 'hist:';
 Hlc historyHlc(BudgetEntry entry) {
   final wallTimeMs =
       DateTime.tryParse(entry.editedAt)?.toUtc().millisecondsSinceEpoch ?? 0;
-  return Hlc.newTick(syncDeviceId, wallTimeMsOverride: wallTimeMs);
+  return Hlc.newTick(currentSyncDeviceId, wallTimeMsOverride: wallTimeMs);
 }
 
 /// Converts a raw local budget record plus its history into a [Log].

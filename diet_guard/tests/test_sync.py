@@ -17,6 +17,7 @@ import pytest
 from diet_guard import _sync
 from diet_guard._budget import budget_weight, daily_budget, write_budget
 from diet_guard._budget_history import load_entries
+from diet_guard._device import device_id, device_identity
 from diet_guard._estimator import Nutrition
 from diet_guard._foodbank import lookup_food
 from diet_guard._state import load_log, log_meal
@@ -105,9 +106,9 @@ class TestRunSync:
         # device's revision -- published *after* the log, so a peer can never
         # cache "seen rev X" against a log it never received.
         assert pushed == [
-            "diet-guard-sync/devices/pc/food_bank.json",
-            "diet-guard-sync/devices/pc/food_log.json",
-            "diet-guard-sync/revs/pc",
+            f"diet-guard-sync/devices/{device_id()}/food_bank.json",
+            f"diet-guard-sync/devices/{device_id()}/food_log.json",
+            f"diet-guard-sync/revs/{device_id()}",
         ]
         log_call = next(
             call
@@ -252,7 +253,7 @@ class TestSyncBudget:
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed_paths = {call.args[0] for call in client.put_file_text.call_args_list}
-        assert "diet-guard-sync/devices/pc/budget.json" in pushed_paths
+        assert f"diet-guard-sync/devices/{device_id()}/budget.json" in pushed_paths
 
     def test_nothing_pushed_when_no_budget_ever_set(self) -> None:
         """An uninitialized device contributes nothing -- no push, no crash."""
@@ -261,7 +262,7 @@ class TestSyncBudget:
         with patch.object(_sync, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed_paths = {call.args[0] for call in client.put_file_text.call_args_list}
-        assert "diet-guard-sync/devices/pc/budget.json" not in pushed_paths
+        assert f"diet-guard-sync/devices/{device_id()}/budget.json" not in pushed_paths
 
     def test_remote_only_budget_is_adopted_locally(self) -> None:
         """Only the phone has ever set a budget -- the PC adopts it."""
@@ -448,7 +449,9 @@ class TestPullSkipsUnchangedPeers:
         state = SyncState(pushed_rev=None, peer_revs={"phone": "rev-1"})
         seen: dict[str, str] = {}
 
-        logs = _sync._pull_remote_logs(client, {"phone": "rev-1"}, state, seen)
+        logs = _sync._pull_remote_logs(
+            client, {"phone": "rev-1"}, state, seen, device_identity()
+        )
 
         assert logs == []
         assert seen == {"phone": "rev-1"}
@@ -463,7 +466,9 @@ class TestPullSkipsUnchangedPeers:
         state = SyncState(pushed_rev=None, peer_revs={"phone": "rev-1"})
         seen: dict[str, str] = {}
 
-        _sync._pull_remote_logs(client, {"phone": "rev-2"}, state, seen)
+        _sync._pull_remote_logs(
+            client, {"phone": "rev-2"}, state, seen, device_identity()
+        )
 
         client.get_file_text.assert_called_once()
         assert seen == {"phone": "rev-2"}
@@ -486,6 +491,8 @@ class TestNoOpPushSuppression:
             _sync.run_sync()
 
         pushed_second = [call.args[0] for call in client.put_file_text.call_args_list]
-        assert "diet-guard-sync/devices/pc/food_log.json" in pushed_first
-        assert "diet-guard-sync/devices/pc/food_log.json" not in pushed_second
-        assert "diet-guard-sync/revs/pc" not in pushed_second
+        assert f"diet-guard-sync/devices/{device_id()}/food_log.json" in pushed_first
+        assert (
+            f"diet-guard-sync/devices/{device_id()}/food_log.json" not in pushed_second
+        )
+        assert f"diet-guard-sync/revs/{device_id()}" not in pushed_second

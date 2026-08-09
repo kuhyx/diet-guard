@@ -17,8 +17,8 @@ import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
-import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/sync_device_id.dart';
 import 'package:diet_guard_app/services/sync_merge.dart';
 import 'package:diet_guard_app/services/sync_state_factory.dart';
 
@@ -35,7 +35,8 @@ Future<DayLog> runSync(RemoteStore client, {SyncStateStore? stateStore}) async {
 
   final mergedLog = await syncLog(
     client: client,
-    deviceId: syncDeviceId,
+    deviceId: currentSyncDeviceId,
+    legacyDeviceId: legacySyncDeviceId,
     pathPrefix: _devicesDir,
     localLog: dayLogToLog(local),
     encode: encodeLogForPush,
@@ -67,7 +68,8 @@ Future<DayLog> runSync(RemoteStore client, {SyncStateStore? stateStore}) async {
 Future<void> _syncFoodBank(RemoteStore client) async {
   final merged = await syncLog(
     client: client,
-    deviceId: syncDeviceId,
+    deviceId: currentSyncDeviceId,
+    legacyDeviceId: legacySyncDeviceId,
     pathPrefix: _devicesDir,
     localLog: foodBankToLog(await FoodBankService.instance.readBank()),
     encode: encodeFoodBankForPush,
@@ -88,7 +90,8 @@ Future<void> _syncManualBank(RemoteStore client) async {
   final local = await FoodBankService.instance.readManualBank();
   final merged = await syncLog(
     client: client,
-    deviceId: syncDeviceId,
+    deviceId: currentSyncDeviceId,
+    legacyDeviceId: legacySyncDeviceId,
     pathPrefix: _devicesDir,
     localLog: manualBankToLog(local),
     encode: encodeManualBankForPush,
@@ -120,7 +123,8 @@ Future<void> _syncBudget(RemoteStore client) async {
 
   final mergedBudgetLog = await syncLog(
     client: client,
-    deviceId: syncDeviceId,
+    deviceId: currentSyncDeviceId,
+    legacyDeviceId: legacySyncDeviceId,
     pathPrefix: _devicesDir,
     localLog: budgetToLog(
       localRecord,

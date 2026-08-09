@@ -2,8 +2,8 @@
 /// background due-slot check, then shows the primary meal-logging screen.
 library;
 
-import 'dart:async';
 
+import 'dart:async';
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/background_tasks.dart';
@@ -12,11 +12,15 @@ import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/frame_stats.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/notification_service.dart';
+import 'package:diet_guard_app/services/sync_device_id.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Before anything that stamps an Hlc or syncs: until this resolves, the
+  // device id falls back to the pre-migration role constant.
+  await initSyncDeviceId();
   await LogStorageService.init();
   await AppSettingsService.init();
   await BudgetHistoryService.init();
