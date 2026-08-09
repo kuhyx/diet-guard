@@ -104,14 +104,17 @@ Future<bool> _provisionSyncAccount(String home, int port) async {
     '--disable-gpu',
     '--user-data-dir=${_profileDir(home)}',
     '--virtual-time-budget=45000',
-    '--dump-dom',
+    // Surface the page's own log() output, so a failure inside the app
+    // is visible in the terminal that started the provisioning run.
+    '--enable-logging=stderr',
     'http://localhost:$port',
   ]);
-  final code = await process.exitCode;
-  if (code != 0) {
-    stderr.writeln('Headless provisioning run exited with $code.');
-    return false;
-  }
+  // No --virtual-time-budget: it makes Chrome SIGKILL itself when the budget
+  // expires, which both reads as a failure and can cut the sync short. Give
+  // the page a real window of wall-clock time instead, then close it.
+  await Future<void>.delayed(const Duration(seconds: 40));
+  process.kill();
+  await process.exitCode;
   stdout.writeln(
     'Provisioning run complete. Launch normally to confirm it is connected.',
   );

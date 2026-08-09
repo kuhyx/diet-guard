@@ -2,8 +2,9 @@
 /// screen: "I can open the diet app on my phone and fill meal I ate."
 library;
 
-import 'dart:async';
 
+import 'dart:async';
+import 'dart:developer';
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/food_suggestion.dart';
@@ -136,9 +137,17 @@ class _LogMealScreenState extends State<LogMealScreen>
       }
       if (!mounted) return;
       await _refreshSlots();
-    } on Exception {
-      // Best-effort: ignore (offline, transient GitHub errors, unmocked
-      // platform channels under test, etc.).
+    } on Object catch (error, stackTrace) {
+      // Best-effort, but never silent: this swallowed the reason a desktop
+      // install could not publish at all, which looked identical to "nothing
+      // to sync". Offline and unmocked-platform-channel-under-test both land
+      // here too, so it stays non-fatal -- it just says why now.
+      log(
+        'diet_guard auto-sync failed',
+        level: 1000,
+        error: error,
+        stackTrace: stackTrace,
+      );
     } finally {
       _autoSyncing = false;
     }
