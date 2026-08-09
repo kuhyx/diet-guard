@@ -47,9 +47,18 @@ SecureCredentialStore credentialStore() => SecureCredentialStore(
 /// Reads the per-device account, or null when sync has not been set up.
 Future<FirebaseAccount?> loadAccount() async {
   try {
-    return FirebaseAccount.tryParse(
+    final stored = FirebaseAccount.tryParse(
       await _secure.read(key: kFirebaseAccountKey),
     );
+    if (stored != null) return stored;
+    // Disconnect must stick: without this the next launch would silently
+    // re-adopt the account and the button would look broken.
+    if (await _secure.read(key: kSyncAccountOptOutKey) != null) return null;
+    // Desktop only in practice: on Android the wrapper does not exist, the
+    // request fails, and this returns null exactly as before.
+    final provisioned = await accountFromWrapper(Uri.base);
+    if (provisioned != null) await saveAccount(provisioned);
+    return provisioned;
   } on Object {
     // No secret service available: behave as "not configured" rather than
     // crashing the settings screen.
@@ -64,6 +73,8 @@ Future<void> saveAccount(FirebaseAccount account) =>
 /// Forgets the account and any cached session.
 Future<void> clearAccount() async {
   await _secure.delete(key: kFirebaseAccountKey);
+  // Suppress wrapper re-provisioning; see loadAccount().
+  await _secure.write(key: kSyncAccountOptOutKey, value: 'true');
   await credentialStore().clear();
 }
 

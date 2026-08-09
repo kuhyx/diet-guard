@@ -18,7 +18,10 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+
+import 'package:crdt_sync/crdt_sync.dart';
 
 import 'package:diet_guard_app/desktop/github_proxy.dart';
 import 'package:diet_guard_app/services/desktop_wrapper.dart';
@@ -93,7 +96,58 @@ class WrapperServer {
         path.substring(WrapperPaths.documents.length),
       );
     }
+    if (path == kSyncAccountPath) {
+      return _syncAccount(request);
+    }
     return _static(request, path);
+  }
+
+  /// Serves the shared sync account so a desktop install can self-provision.
+  ///
+  /// Off unless CRDT_SYNC_SERVE_ACCOUNT is set: this hands out a credential
+  /// with database write access to anything that can reach the port, so it is
+  /// something you switch on once to set an install up, not a standing route.
+  /// 404 (rather than 403) when disabled, so a probe cannot tell it exists.
+  ///
+  /// Reads the same ~/.config/crdt-sync/ pair `diet_guard sync` already uses,
+  /// so the machine has one source of truth rather than a per-app copy —
+  /// the same reasoning that keeps the GitHub token in [gitHubProxy] instead
+  /// of the browser.
+  Future<void> _syncAccount(HttpRequest request) async {
+    if ((Platform.environment[kSyncAccountEnvVar] ?? '').isEmpty) {
+      request.response.statusCode = HttpStatus.notFound;
+      return;
+    }
+    final configDir = p.join(
+      Platform.environment['HOME'] ?? '',
+      '.config',
+      'crdt-sync',
+    );
+    final configFile = File(p.join(configDir, 'firebase.json'));
+    final passwordFile = File(p.join(configDir, 'password'));
+    if (!configFile.existsSync() || !passwordFile.existsSync()) {
+      stderr.writeln(
+        'Sync account requested but ~/.config/crdt-sync/ is incomplete — '
+        'the desktop app will keep asking for credentials.',
+      );
+      request.response.statusCode = HttpStatus.notFound;
+      return;
+    }
+    final email =
+        (jsonDecode(await configFile.readAsString())
+            as Map<String, dynamic>)['email'];
+    if (email is! String || email.isEmpty) {
+      stderr.writeln('firebase.json has no usable "email" — not serving it.');
+      request.response.statusCode = HttpStatus.notFound;
+      return;
+    }
+    request.response.headers.contentType = ContentType.json;
+    request.response.write(
+      jsonEncode({
+        'email': email,
+        'password': (await passwordFile.readAsString()).trim(),
+      }),
+    );
   }
 
   /// GET returns the stored bytes (404 when absent); POST overwrites them.
