@@ -2,7 +2,7 @@
 pkgname=diet-guard-app
 # v1.0.0 already existed upstream on an older commit that predates the LICENSE,
 # so the first packageable tag is v1.0.1.
-pkgver=1.0.1
+pkgver=1.0.2
 pkgrel=1
 pkgdesc='Calorie and macro logger with a daily budget (Flutter web app in a Chrome window)'
 arch=('x86_64')
