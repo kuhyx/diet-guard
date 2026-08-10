@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from crdt_sync import GitHubSyncError
+from crdt_sync import RemoteSyncError
 
 from diet_guard._sync import SyncError, run_sync
 
@@ -48,7 +48,10 @@ def cmd_sync(emit: Callable[[str], None]) -> int:
     except SyncError as exc:
         emit(f"sync not configured: {exc}")
         return 1
-    except GitHubSyncError as exc:
+    except RemoteSyncError as exc:
+        # The shared base, not GitHubSyncError: Firebase's errors are siblings
+        # of GitHub's, so catching only the latter let the primary backend's
+        # failures crash this timer-driven command with a traceback.
         emit(f"sync failed: {exc}")
         return 1
     total_entries = sum(len(entries) for entries in merged.values())

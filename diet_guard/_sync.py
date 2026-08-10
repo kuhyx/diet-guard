@@ -31,6 +31,7 @@ from crdt_sync import (
     RemoteStore,
     RemoteSyncError,
     SyncState,
+    firebase_client_for,
     merge_logs,
     mirror_client_for,
     revision_of,
@@ -107,6 +108,47 @@ def _remote_client(github: GitHubSyncClient) -> RemoteStore:
     except (ConfigError, FirebaseAuthError, RemoteSyncError) as exc:
         _logger.warning("Firebase unavailable, syncing via GitHub only: %s", exc)
         return github
+
+
+def _client_for_run() -> RemoteStore:
+    """Return the backend for one sync run, requiring only *one* to be set up.
+
+    The PAT is no longer mandatory. Firebase is the primary backend now, and
+    requiring a GitHub token before ever constructing it meant a
+    Firebase-configured machine with no PAT could not sync at all -- the
+    commits that fixed exactly this ("Auto-sync on a Firebase-only device")
+    changed only the Dart side, leaving the Python half behind.
+
+    A missing PAT is therefore fatal only when Firebase is *also* unconfigured,
+    which is the genuine "nothing is set up" case the caller must report.
+    """
+    try:
+        token = _read_token()
+    except SyncError:
+        if not CONFIG_FILE.is_file():
+            raise
+        # Firebase-only: there is no GitHub client to mirror to, so use the
+        # primary directly rather than failing the whole run.
+        #
+        # ConfigError is translated rather than propagated: it is *not* a
+        # RemoteSyncError (it subclasses Exception directly), so letting it out
+        # would escape every caller's catch tuple and raise a traceback out of
+        # the gate's fail-closed "Fetch from sync" button -- the exact failure
+        # the RemoteSyncError swap was made to stop. A config file that exists
+        # but is unusable is reached by precisely this branch.
+        try:
+            return firebase_client_for("diet_guard")
+        except ConfigError as exc:
+            message = f"Firebase config at {CONFIG_FILE} is unusable: {exc}"
+            raise SyncError(message) from exc
+    return _remote_client(
+        GitHubSyncClient(
+            SYNC_REPO_OWNER,
+            SYNC_REPO_NAME,
+            token,
+            timeout_seconds=SYNC_TIMEOUT_SECONDS,
+        )
+    )
 
 
 def _device_log_path(device_id: str) -> str:
@@ -372,20 +414,13 @@ def run_sync() -> DayLog:
         The merged log as it now sits on disk locally, post re-sign.
 
     Raises:
-        SyncError: If the local PAT is missing or empty.
-        crdt_sync.GitHubSyncError: Propagated from the GitHub client for any
-            transport failure -- the caller (CLI/timer) decides how to
+        SyncError: If *neither* backend is configured -- no Firebase config and
+            no usable PAT.
+        crdt_sync.RemoteSyncError: Propagated from whichever backend failed for
+            any transport failure -- the caller (CLI/timer) decides how to
             report it.
     """
-    token = _read_token()
-    client = _remote_client(
-        GitHubSyncClient(
-            SYNC_REPO_OWNER,
-            SYNC_REPO_NAME,
-            token,
-            timeout_seconds=SYNC_TIMEOUT_SECONDS,
-        )
-    )
+    client = _client_for_run()
 
     identity = device_identity()
     state_store = FileSyncStateStore(SYNC_STATE_FILE)
@@ -443,14 +478,21 @@ def pull_shared_log() -> str | None:
     its own lock decision rather than failing open.
 
     The three caught types are the whole realistic failure surface of a run:
-    :class:`SyncError` (no/empty token), :class:`~crdt_sync.GitHubSyncError`
-    (the client wraps every ``requests`` transport error in this), and
+    :class:`SyncError` (no/empty token), :class:`~crdt_sync.RemoteSyncError`
+    (the shared base of every backend's transport/auth failure), and
     :class:`OSError` (reading the token or writing the merged log back). A bug
     outside these is deliberately *not* swallowed -- it should surface, not be
     silently reported as a sync outage.
+
+    ``RemoteSyncError``, **not** ``GitHubSyncError``: since Firebase became the
+    primary backend, ``FirebaseSyncError``/``FirebaseAuthError`` are *siblings*
+    of ``GitHubSyncError`` under ``RemoteSyncError``, not subclasses. Catching
+    the GitHub type alone let every per-request Firebase failure escape, so
+    this fail-closed helper raised a traceback out of the gate's "Fetch from
+    sync" button instead of returning a reason and leaving the lock up.
     """
     try:
         run_sync()
-    except (SyncError, GitHubSyncError, OSError) as exc:
+    except (SyncError, RemoteSyncError, OSError) as exc:
         return f"sync unavailable ({exc})"
     return None

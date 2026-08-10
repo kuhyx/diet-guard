@@ -12,6 +12,8 @@ import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/sync_device_id.dart';
+import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
 import 'package:http/http.dart' as http;
@@ -34,6 +36,15 @@ const String syncPushTaskName = 'diet_guard.sync_push';
 /// budget, and applies a merge winner via `AppSettingsService.instance`,
 /// which throws if the singleton was never initialised in this isolate.
 Future<bool> backgroundSyncPush({http.Client? httpClient}) async {
+  // Must run here too, and before anything stamps an HLC: a fresh isolate has
+  // its own static state, so without this `currentSyncDeviceId` falls back to
+  // the compile-time role constant ('phone') and this tick publishes to
+  // `devices/phone/` instead of the persisted uuid. That splits the device
+  // across two directories, and because `sync_state` holds a single
+  // `pushedRev` with no notion of which identity wrote it, the next
+  // *foreground* push then sees `unchanged` and skips writing the uuid
+  // directory entirely.
+  await initSyncDeviceId();
   await LogStorageService.init();
   await FoodBankService.init();
   await AppSettingsService.init();
@@ -59,11 +70,13 @@ Future<bool> backgroundSyncPush({http.Client? httpClient}) async {
       'diet_guard background sync: no backend configured; nothing to push',
       level: 900,
     );
+    await SyncHealth.recordUnconfigured();
     return true; // nothing to push; don't retry
   }
   final client = createGitHubClient(settings, httpClient: httpClient);
   try {
     await runSync(await syncBackend(client));
+    await SyncHealth.recordSuccess();
     return true;
   } on Exception catch (error, stackTrace) {
     // Never silent: this is the only signal that a background push failed.
@@ -73,6 +86,7 @@ Future<bool> backgroundSyncPush({http.Client? httpClient}) async {
       error: error,
       stackTrace: stackTrace,
     );
+    await SyncHealth.recordFailure();
     return false; // offline / transient error -> retry with backoff
   } finally {
     client.close();

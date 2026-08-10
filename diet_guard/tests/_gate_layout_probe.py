@@ -281,6 +281,16 @@ def measure(
     """
     root = tk.Tk()
     try:
+        # Bypass the window manager. This measures whether the layout fits a
+        # given panel, so the window must actually BE that size -- but a
+        # tiling WM (i3 on the dev machine) retiles a managed toplevel to the
+        # workspace instead, and `winfo_height()` then reports 0/1px. Every
+        # measurement taken from that is noise, and the assertions fail on it
+        # rather than on any real layout regression. `overrideredirect` takes
+        # the window out of the WM's control, so the requested geometry is
+        # honoured exactly -- verified 1366x768 under i3, and unchanged under
+        # a bare Xvfb, which has no WM to bypass in the first place.
+        root.overrideredirect(boolean=True)
         root.geometry(f"{screen_w}x{screen_h}+0+0")
         _notebook_overhead(root)
         notebook = ttk.Notebook(root)

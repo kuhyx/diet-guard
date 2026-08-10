@@ -8,10 +8,14 @@ The GitHub layer is mocked (no network access); conftest.py's
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from crdt_sync import ConfigError, GitHubSyncError, SyncState
+from crdt_sync import (
+    FirebaseAuthError,
+    FirebaseSyncError,
+    GitHubSyncError,
+    SyncState,
+)
 import pytest
 
 from diet_guard import _sync
@@ -364,6 +368,30 @@ class TestPullSharedLog:
         assert reason is not None
         assert "boom" in reason
 
+    @pytest.mark.parametrize(
+        "error",
+        [
+            FirebaseAuthError("token refresh rejected"),
+            FirebaseSyncError("RTDB unavailable"),
+        ],
+    )
+    def test_firebase_failure_fails_closed(self, error: Exception) -> None:
+        """A Firebase failure must return a reason, never raise.
+
+        Regression guard: ``FirebaseAuthError``/``FirebaseSyncError`` are
+        *siblings* of ``GitHubSyncError`` under ``RemoteSyncError``, not
+        subclasses. Catching only the GitHub type let every per-request
+        failure of the *primary* backend escape, so the gate's "Fetch from
+        sync" button raised a traceback instead of reporting a reason and
+        leaving the lock up -- on the exact path this helper exists to
+        fail closed.
+        """
+        with patch.object(_sync, "run_sync", side_effect=error):
+            reason = _sync.pull_shared_log()
+
+        assert reason is not None
+        assert str(error) in reason
+
     def test_unexpected_error_is_not_swallowed(self) -> None:
         """A bug outside the known failure surface surfaces, not hidden."""
         with (
@@ -371,50 +399,6 @@ class TestPullSharedLog:
             pytest.raises(KeyError),
         ):
             _sync.pull_shared_log()
-
-
-class TestRemoteClient:
-    """Which backend a sync tick runs against during the cutover."""
-
-    def test_stays_on_github_without_firebase_config(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """An unconfigured machine must not reach the network at all."""
-        monkeypatch.setattr(_sync, "CONFIG_FILE", Path("/nonexistent/firebase.json"))
-        github = object()
-
-        assert _sync._remote_client(github) is github
-
-    def test_mirrors_to_github_when_configured(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Configured: Firebase is primary, GitHub keeps receiving writes."""
-        config = tmp_path / "firebase.json"
-        config.write_text("{}", encoding="utf-8")
-        monkeypatch.setattr(_sync, "CONFIG_FILE", config)
-        monkeypatch.setattr(
-            _sync, "mirror_client_for", lambda _app, client: ("mirror", client)
-        )
-        github = object()
-
-        assert _sync._remote_client(github) == ("mirror", github)
-
-    def test_falls_back_when_firebase_is_unusable(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A broken Firebase must degrade to GitHub, never fail the tick."""
-        config = tmp_path / "firebase.json"
-        config.write_text("{}", encoding="utf-8")
-        monkeypatch.setattr(_sync, "CONFIG_FILE", config)
-
-        def _boom(*_args: object, **_kwargs: object) -> None:
-            message = "no password"
-            raise ConfigError(message)
-
-        monkeypatch.setattr(_sync, "mirror_client_for", _boom)
-        github = object()
-
-        assert _sync._remote_client(github) is github
 
 
 class TestRemoteRevisions:

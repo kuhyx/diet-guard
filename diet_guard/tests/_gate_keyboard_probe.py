@@ -76,6 +76,13 @@ def probe(screen_w: int = 1366, screen_h: int = 768) -> RingReport:
     """Build the gate and probe its keyboard behaviour."""
     root = tk.Tk()
     try:
+        # Bypass the window manager -- see the same call in
+        # `_gate_layout_probe.measure`. A tiling WM retiles this toplevel
+        # instead of honouring the geometry, the widgets never realize at a
+        # usable size, and the focus ring then walks a single stop, failing
+        # every traversal assertion for reasons that have nothing to do with
+        # the focus order under test.
+        root.overrideredirect(boolean=True)
         root.geometry(f"{screen_w}x{screen_h}+0+0")
         notebook = ttk.Notebook(root)
         notebook.place(relx=0, rely=0, relwidth=1, relheight=1)

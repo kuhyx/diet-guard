@@ -54,16 +54,50 @@ log (`_sync_merge.merge_logs`: union by `id`, tombstone wins, legacy
 regardless of origin, rebuilds the food bank, then pushes this device's own
 merged log back up.
 
+**The phone's periodic tick must sync unconditionally.** `checkAndNotify`
+(`due_slot_check.dart`) once gated its sync on `due.isNotEmpty` — "only pull
+when a slot looks overdue". That is a trap: logging every meal promptly on the
+phone means nothing is ever due, so the phone never published, and the PC's
+gate kept locking for slots that *were* already logged (the only way through
+being to spam "nothing"). It publishes first, then computes due slots from the
+merged result, so a meal pulled from another device suppresses a nag instead of
+triggering one. Do not re-gate the sync on the notification's condition.
+
+**Anything running in a WorkManager background isolate must call
+`initSyncDeviceId()` itself.** A fresh isolate has its own static state, so
+without it `currentSyncDeviceId` silently falls back to the compile-time
+`'phone'`/`'desktop'` role constant and the tick publishes to
+`devices/phone/` instead of the persisted uuid. Because `sync_state` holds a
+single `pushedRev` with no notion of which identity wrote it, the next
+*foreground* push then sees `unchanged` and skips writing the uuid directory
+entirely. `background_sync_service.dart` does this alongside its other
+singleton re-inits; `background_sync_service_test.dart` guards it.
+
+**Catch `RemoteSyncError`, never `GitHubSyncError`, on any sync path.**
+`FirebaseSyncError`/`FirebaseAuthError` are *siblings* of `GitHubSyncError`
+under `RemoteSyncError`, not subclasses. Catching the GitHub type alone lets
+every per-request failure of the *primary* backend escape — which made
+`pull_shared_log` (the gate's "Fetch from sync" button, documented to fail
+closed with a reason string) raise a traceback instead.
+`ConfigError` is the one to watch: it subclasses `Exception` **directly**, so
+`RemoteSyncError` does not cover it either. Anything that builds a Firebase
+client must translate it (`_client_for_run` raises `SyncError`), or it escapes
+every caller's catch tuple by a different route.
+
 Re-signing on every merge (not just phone-origin entries) is the
 non-negotiable step: `_entry_is_valid()` drops any unsigned entry once a
 machine has the shared HMAC key, and the phone never holds that key, so
 skipping the re-sign would silently lose every phone-logged meal on the very
 next read.
 
-Requires a one-time manual setup `install.sh` does **not** automate: create a
-fine-grained GitHub PAT scoped to `syncs`'s contents (read/write),
-then save it to `~/.config/diet_guard/sync_token`, mode 600. Until that file
-exists, every sync tick is a harmless no-op that logs `sync not configured`.
+Needs **one** backend configured, not both. Either `~/.config/crdt-sync/`
+(Firebase, now the primary) or a fine-grained GitHub PAT scoped to `syncs`'s
+contents (read/write) at `~/.config/diet_guard/sync_token`, mode 600 —
+a one-time manual setup `install.sh` does **not** automate. A
+Firebase-configured machine with no PAT syncs against Firebase alone
+(`_client_for_run`); only when *neither* exists is the tick a harmless no-op
+that logs `sync not configured`. The PAT used to be required unconditionally,
+which left a Firebase-only PC unable to sync at all.
 
 **Both halves of the food bank sync.** The derived bank
 (`food_bank.json`) is still rebuilt locally from the merged log

@@ -108,7 +108,7 @@ void main() {
     );
   });
 
-  test('does not pull when nothing is due', () async {
+  test('still syncs when nothing is due', () async {
     await LogStorageService.instance.logMeal('breakfast', _manual, slot: 8);
     SharedPreferences.setMockInitialValues({
       'sync.owner': 'o',
@@ -123,9 +123,12 @@ void main() {
 
     await checkAndNotify(now: DateTime(2026, 1, 1, 8), httpClient: mock);
 
-    // Every due slot was already satisfied locally, so the network is never
-    // touched -- the check stays cheap on the overwhelmingly common tick.
-    expect(requests, 0);
+    // Regression guard. This asserted `requests == 0` -- "nothing due, so
+    // never touch the network" -- which is precisely the bug: logging every
+    // meal promptly on the phone left nothing ever due, so this periodic task
+    // never published and the PC kept locking for slots that WERE logged.
+    // This is the phone's only unconditional publish path; it must always run.
+    expect(requests, greaterThan(0));
   });
 
   test('pullWhenDue false skips the network even with a slot due', () async {

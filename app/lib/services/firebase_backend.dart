@@ -99,11 +99,21 @@ Future<FirebaseRestClient?> openFirebase() async {
       store: credentialStore(),
       password: account.password,
     );
-  } on Object {
+  } on Object catch (error, stackTrace) {
     // Unreachable keystore or a rejected sign-in must not fail the tick: the
     // app keeps syncing over GitHub, exactly as before the cutover.
     // Broader than Exception because an uninitialised platform binding
     // raises a FlutterError, which is an Error.
+    //
+    // Never silent, for the same reason loadAccount() above says why: a
+    // signed-in-but-failing device looked exactly like an unconfigured one,
+    // which is how the phone went days without publishing a single meal.
+    log(
+      'openFirebase failed; falling back to the GitHub mirror',
+      level: 1000,
+      error: error,
+      stackTrace: stackTrace,
+    );
     return null;
   }
 }

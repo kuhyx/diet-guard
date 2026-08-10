@@ -15,6 +15,7 @@ import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/github_device_auth.dart';
+import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
 import 'package:diet_guard_app/ui/theme.dart';
@@ -211,8 +212,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final client = createGitHubClient(settings, httpClient: widget.httpClient);
     try {
       await runSync(await syncBackend(client));
+      await SyncHealth.recordSuccess();
       _showMessage('Connected and synced.');
     } on Exception catch (e) {
+      await SyncHealth.recordFailure();
       _showMessage('Connected, but sync failed: $e');
     } finally {
       client.close();
@@ -251,8 +254,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final client = createGitHubClient(settings, httpClient: widget.httpClient);
     try {
       await runSync(await syncBackend(client));
+      // Clears any stored failure: this is the button a user reaches
+      // *because* the banner told them syncing had stopped, so a successful
+      // run here must dismiss the warning it caused.
+      await SyncHealth.recordSuccess();
       _showMessage('Synced.');
     } on Exception catch (e) {
+      await SyncHealth.recordFailure();
       _showMessage('Sync failed: $e');
     } finally {
       client.close();

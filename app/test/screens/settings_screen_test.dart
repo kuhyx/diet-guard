@@ -9,6 +9,7 @@ import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -196,6 +197,40 @@ void main() {
       await settle(tester);
 
       expect(find.text('Synced.'), findsOneWidget);
+    });
+  });
+
+  testWidgets('Sync now clears a stored failure so the banner lifts', (
+    tester,
+  ) async {
+    // "Sync now" is the button a user reaches *because* the log screen's
+    // banner told them syncing had stopped. If a successful run here left
+    // the recorded failure in place, the recovery action would not dismiss
+    // the warning it caused, and the banner would keep accusing a device
+    // that is now publishing fine.
+    await SyncHealth.recordFailure();
+    expect((await SyncHealth.read()).failureKind, SyncFailureKind.failed);
+
+    final mock = MockClient((req) async {
+      if (req.method == 'PUT') return http.Response('{}', 200);
+      if (req.method == 'GET' && req.url.pathSegments.length == 3) {
+        return http.Response('{}', 200);
+      }
+      return http.Response('', 404);
+    });
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        MaterialApp(home: SettingsScreen(httpClient: mock)),
+      );
+      await settle(tester);
+
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Sync now'));
+      await settle(tester);
+
+      expect(find.text('Synced.'), findsOneWidget);
+      final status = await SyncHealth.read();
+      expect(status.failureKind, isNull);
+      expect(status.isStalled, isFalse);
     });
   });
 

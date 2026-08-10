@@ -18,12 +18,20 @@ import 'package:http/http.dart' as http;
 /// Reads the local log, computes today's due-but-unlogged slots as of
 /// [now] (defaults to the real clock), and syncs notifications to match.
 ///
-/// Pulls from GitHub *only* when a slot looks due, then re-checks -- the
-/// local log alone cannot see a meal logged on the PC, so without this the
-/// phone re-fires "you haven't logged your 12:00 meal" every background tick
-/// until the app is next opened. Deliberately mirrors `_cli_gate._should_lock`
-/// on the Python side: cheap local check first, network only when it would
-/// change the answer, then decide on the merged result.
+/// Syncs on every tick it is asked to ([pullWhenDue], the WorkManager
+/// caller's default), then computes due slots from the merged result.
+///
+/// Deliberately NOT gated on "a slot looks due": for the periodic caller this
+/// is the phone's only publish path, mirroring the PC's
+/// `diet-guard-sync.timer`.
+/// Gating the sync on `due.isNotEmpty` meant that promptly logging every meal
+/// on the phone left nothing ever due, so the phone never pushed and the PC
+/// kept locking for slots that were already logged -- the exact failure this
+/// check exists to prevent. A notification job that happens to sync is not a
+/// sync timer.
+///
+/// Order matters: the sync runs *before* [missingSlots], so a meal pulled from
+/// another device suppresses a nag rather than triggering one.
 ///
 /// Set [pullWhenDue] false when the caller has just written to the local log
 /// itself (the log screen). There the local copy is by definition the freshest
@@ -41,17 +49,16 @@ Future<void> checkAndNotify({
 }) async {
   await LogStorageService.init();
   final at = now ?? DateTime.now();
-  var due = missingSlots(
-    at,
-    await LogStorageService.instance.loggedSlotsToday(),
-  );
-  if (pullWhenDue && due.isNotEmpty) {
+  if (pullWhenDue) {
     // Reuses backgroundSyncPush's settings/isConfigured/try-catch guard rather
     // than reimplementing it: that path is already proven to work from a
     // WorkManager isolate, including the token read and singleton init.
     await backgroundSyncPush(httpClient: httpClient);
-    due = missingSlots(at, await LogStorageService.instance.loggedSlotsToday());
   }
+  final due = missingSlots(
+    at,
+    await LogStorageService.instance.loggedSlotsToday(),
+  );
   await _reconcileNotifications(due);
 }
 

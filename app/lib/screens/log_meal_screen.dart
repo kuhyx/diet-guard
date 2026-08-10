@@ -24,12 +24,14 @@ import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/autocomplete_suggestion_list.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
 import 'package:diet_guard_app/widgets/slot_selector_row.dart';
+import 'package:diet_guard_app/widgets/sync_health_banner.dart';
 import 'package:diet_guard_app/widgets/today_progress_card.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -62,6 +64,9 @@ class _LogMealScreenState extends State<LogMealScreen>
   /// Single-flight guard so a launch sync and a lifecycle sync never overlap.
   bool _autoSyncing = false;
 
+  /// Latest sync health, driving the "not syncing" banner. Null until read.
+  SyncHealthStatus? _syncHealth;
+
   @override
   void initState() {
     super.initState();
@@ -80,6 +85,9 @@ class _LogMealScreenState extends State<LogMealScreen>
     _selectedSlot = slotForLog(DateTime.now());
     unawaited(_refreshSlots());
     unawaited(_onDescChanged());
+    // Read health before the first sync finishes, so a device that stalled in
+    // a previous session says so immediately rather than only after a tick.
+    unawaited(_refreshSyncHealth());
     unawaited(_autoSync());
   }
 
@@ -125,18 +133,31 @@ class _LogMealScreenState extends State<LogMealScreen>
       // gating on it alone silently skips every sync on a device connected
       // only to Firebase -- and once the mirror is retired that is every
       // device. Same fix workout_app's push() already carries.
-      if (!settings.isConfigured && await openFirebase() == null) return;
+      if (!settings.isConfigured && await openFirebase() == null) {
+        // Never a silent return: an unconfigured device looked exactly like a
+        // healthy one with nothing to send, which is how meals sat unpublished
+        // for days. Recorded so the banner can say so.
+        log(
+          'diet_guard auto-sync: no backend configured; nothing to push',
+          level: 900,
+        );
+        await SyncHealth.recordUnconfigured();
+        if (mounted) await _refreshSyncHealth();
+        return;
+      }
       final client = createGitHubClient(
         settings,
         httpClient: widget.httpClient,
       );
       try {
         await runSync(await syncBackend(client));
+        await SyncHealth.recordSuccess();
       } finally {
         client.close();
       }
       if (!mounted) return;
       await _refreshSlots();
+      await _refreshSyncHealth();
     } on Object catch (error, stackTrace) {
       // Best-effort, but never silent: this swallowed the reason a desktop
       // install could not publish at all, which looked identical to "nothing
@@ -148,9 +169,18 @@ class _LogMealScreenState extends State<LogMealScreen>
         error: error,
         stackTrace: stackTrace,
       );
+      await SyncHealth.recordFailure();
+      if (mounted) await _refreshSyncHealth();
     } finally {
       _autoSyncing = false;
     }
+  }
+
+  /// Re-reads sync health so the banner reflects the tick that just ran.
+  Future<void> _refreshSyncHealth() async {
+    final status = await SyncHealth.read();
+    if (!mounted) return;
+    setState(() => _syncHealth = status);
   }
 
   /// Queues the platform's offline push backstop so a meal logged while
@@ -359,6 +389,7 @@ class _LogMealScreenState extends State<LogMealScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            SyncHealthBanner(status: _syncHealth),
             SlotSelectorRow(
               now: DateTime.now(),
               loggedSlots: _loggedSlots,
