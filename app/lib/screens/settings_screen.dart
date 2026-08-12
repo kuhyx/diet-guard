@@ -15,6 +15,7 @@ import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/github_device_auth.dart';
+import 'package:diet_guard_app/services/google_sign_in_backend.dart';
 import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
@@ -33,6 +34,10 @@ class SettingsScreen extends StatefulWidget {
     super.key,
     this.httpClient,
     this.requestBatteryExemption,
+    this.googleFirebaseFactory,
+    this.googleAvailable,
+    this.accountLoader,
+    this.sessionProbe,
   });
 
   /// Injectable HTTP client; tests pass a [MockClient].
@@ -42,6 +47,27 @@ class SettingsScreen extends StatefulWidget {
   /// Production defaults to
   /// `Permission.ignoreBatteryOptimizations.request()`.
   final Future<PermissionStatus> Function()? requestBatteryExemption;
+
+  /// Builds the Firebase backend via Google sign-in. Injected so tests need
+  /// no platform channel -- the plugin reaches the OS account picker.
+  final Future<FirebaseRestClient?> Function()? googleFirebaseFactory;
+
+  /// Whether to offer the Google button. Defaults to what the platform
+  /// supports; injected by tests, whose host reports unsupported.
+  final bool? googleAvailable;
+
+  /// Reads the stored Firebase account. Injected for the same reason as
+  /// [googleFirebaseFactory]: the keystore is a platform channel.
+  final Future<FirebaseAccount?> Function()? accountLoader;
+
+  /// Whether a Firebase session is stored. See [accountLoader].
+  ///
+  /// Separate from [accountLoader] because the two answer different
+  /// questions: the account marker is bookkeeping, the session is the
+  /// credential. A device can hold the second without the first, and
+  /// reporting only the first is what made a syncing phone read as
+  /// "not connected".
+  final Future<bool> Function()? sessionProbe;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -91,10 +117,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Reflect a previously-stored account, so a returning user sees the
     // real state instead of an empty form that looks unconfigured.
     final account = await loadAccount();
+    // The stored session, not the account marker, decides "connected": a
+    // Google sign-in leaves a refresh token that authenticates every request
+    // even when no marker was written beside it.
+    final configured = await (widget.sessionProbe ?? isFirebaseConfigured)();
     if (!mounted) return;
     if (account != null) _firebaseEmailController.text = account.email;
     setState(() {
-      _firebaseConfigured = account != null;
+      _firebaseConfigured = configured;
       _loading = false;
     });
   }
@@ -299,6 +329,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Signing in here rather than only saving means a typo surfaces now, on
   /// the screen where it can be fixed, instead of as a silently failed
   /// background sync hours later.
+
+  /// Signs in by picking a Google account -- the one-tap path.
+  ///
+  /// A dismissed picker is not an error; a wrong-account sign-in reports why,
+  /// because that is the failure that otherwise looks like a working sync
+  /// which silently never syncs.
+  Future<void> _connectGoogle() async {
+    setState(() {
+      _busy = true;
+      _status = 'Signing in...';
+    });
+    try {
+      final client =
+          await (widget.googleFirebaseFactory ?? openFirebaseWithGoogle)();
+      if (!mounted) return;
+      if (client == null) {
+        setState(() {
+          _busy = false;
+          _status = 'Google sign-in was cancelled.';
+        });
+        return;
+      }
+      // openFirebaseWithGoogle stored the account under the email Firebase
+      // reported; reflect it rather than reading the (empty) form field.
+      //
+      // Read it back rather than trusting the returned client: this banner
+      // claimed "Connected to Firebase" on four apps that were not connected,
+      // because a non-null client only means the sign-in call succeeded in
+      // that moment, not that anything survives a restart. Reporting the
+      // persisted state is the whole point -- if the read-back is empty the
+      // next launch will sync over GitHub, and the user needs to know now.
+      final account = await (widget.accountLoader ?? storedAccount)();
+      final configured = await (widget.sessionProbe ?? isFirebaseConfigured)();
+      if (!mounted) return;
+      if (account != null) _firebaseEmailController.text = account.email;
+      setState(() {
+        _busy = false;
+        _firebaseConfigured = configured;
+        _status = configured
+            ? 'Connected to Firebase.'
+            : 'Signed in, but this device did not save the session - it will '
+                  'sync over GitHub after a restart. Try connecting again.';
+      });
+    } on FirebaseAuthError catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _firebaseConfigured = false;
+        _status = error.message;
+      });
+    }
+  }
+
   Future<void> _saveFirebaseAccount() async {
     final email = _firebaseEmailController.text.trim();
     final password = _firebasePasswordController.text;
@@ -451,6 +534,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: const Icon(Icons.cloud_done),
                   label: const Text('Connect Firebase'),
                 ),
+                // One tap, no typing -- the path that matters after a
+                // reinstall. Hidden where the platform has no programmatic
+                // Google flow (see google_platform.dart); a button that
+                // always failed would be worse than none.
+                if (widget.googleAvailable ?? googleSignInSupported) ...[
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _connectGoogle,
+                    icon: const Icon(Icons.account_circle),
+                    label: const Text('Sign in with Google'),
+                  ),
+                ],
               ],
               const SizedBox(height: 24),
               const Divider(),

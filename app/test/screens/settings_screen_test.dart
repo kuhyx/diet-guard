@@ -293,6 +293,17 @@ void main() {
     await saveAccount(
       const FirebaseAccount(email: 'sync@example.com', password: 'pw'),
     );
+    // A live session too, not just the marker: since 2026-08-11 a marker with
+    // no session behind it is treated as stale and cleared, because that is
+    // the state a revoked refresh token leaves behind and it used to report
+    // "Connected" while every sync failed with TOKEN_EXPIRED.
+    await credentialStore().save(
+      FirebaseCredentials(
+        idToken: 'id',
+        refreshToken: 'refresh',
+        expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
+      ),
+    );
     await tester.runAsync(() async {
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await settle(tester);
