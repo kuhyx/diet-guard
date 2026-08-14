@@ -7,10 +7,15 @@ import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 
-/// One row of [ChoiceChip]s: one per today's slot hour plus a fixed
-/// "Snack" chip. Each hour chip is simultaneously selectable (tap to log
-/// for that slot) and status-colored (green+check = logged, red = due,
-/// grey = upcoming), so no separate status bar or caption text is needed.
+/// One row of [ChoiceChip]s, one per today's slot hour. Each chip is
+/// simultaneously selectable (tap to log for that slot) and status-colored
+/// (green+check = logged, red = due, grey = upcoming), so no separate status
+/// bar or caption text is needed.
+///
+/// There used to be a fifth "Snack" chip that selected no slot at all,
+/// removed 2026-08-14. Entries with a null slot still exist in storage and
+/// still arrive over sync, so the nullable types below are deliberate -- but
+/// this widget no longer produces one.
 class SlotSelectorRow extends StatelessWidget {
   /// Creates a [SlotSelectorRow].
   const SlotSelectorRow({
@@ -27,10 +32,11 @@ class SlotSelectorRow extends StatelessWidget {
   /// Slot hours already satisfied by today's log.
   final Set<int> loggedSlots;
 
-  /// The slot currently chosen to log for, or null for "Snack".
+  /// The slot currently chosen to log for. Nullable for historical reasons
+  /// (see the class doc); no chip in this row selects null any more.
   final int? selectedSlot;
 
-  /// Called with the tapped slot's hour, or null for the "Snack" chip.
+  /// Called with the tapped slot's hour. Never called with null.
   final ValueChanged<int?> onSlotSelected;
 
   @override
@@ -43,14 +49,6 @@ class SlotSelectorRow extends StatelessWidget {
     final statusColors =
         Theme.of(context).extension<AppStatusColors>() ?? AppStatusColors.dark;
     final elapsed = elapsedSlots(now).toSet();
-    // Snack has no logged/due/upcoming status like the hour chips, so it
-    // uses `accent` as its "color" instead of a status color -- but still
-    // needs every property below set explicitly like the hour chips are.
-    // Leaving any of them unset falls through to Flutter's own ChoiceChip
-    // default, a literal pure-white border (the one banned value in this
-    // system) -- the open finding the unified-design-system doc flagged.
-    final snackSelected = selectedSlot == null;
-    final snackColor = snackSelected ? scheme.primary : scheme.onSurfaceVariant;
     return Wrap(
       spacing: AppSpacing.xs + 2,
       runSpacing: AppSpacing.xs,
@@ -86,27 +84,6 @@ class SlotSelectorRow extends StatelessWidget {
             onSelected: (_) => onSlotSelected(slot),
           );
         }),
-        ChoiceChip(
-          label: const Text('Snack'),
-          // Icon reads lighter than the label text (rule 28): reduced
-          // opacity instead of the label's full-strength color.
-          avatar: Icon(
-            Icons.fastfood,
-            size: 14,
-            color: snackColor.withValues(alpha: 0.72),
-          ),
-          selected: snackSelected,
-          backgroundColor: scheme.onSurfaceVariant.withValues(alpha: 0.15),
-          selectedColor: scheme.primary.withValues(alpha: 0.35),
-          labelStyle: TextStyle(color: snackColor),
-          side: BorderSide(
-            width: snackSelected ? 2 : 1,
-            color: snackSelected
-                ? snackColor
-                : snackColor.withValues(alpha: 0.4),
-          ),
-          onSelected: (_) => onSlotSelected(null),
-        ),
       ],
     );
   }

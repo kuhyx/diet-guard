@@ -81,6 +81,13 @@ class FoodEntry {
 
   /// The meal-slot hour this entry satisfies (8/12/16/20), or null for a
   /// snack that counts toward calories but satisfies no slot.
+  ///
+  /// Nothing writes null any more -- the "Snack" chip was removed on
+  /// 2026-08-14 and every remaining writer resolves a concrete hour through
+  /// `slotForLog`/`slot_for_log` -- but entries already on disk and arriving
+  /// over sync still carry no `slot` key, so the null case and every
+  /// `slot != null` filter built on it are load-bearing. Dropping them would
+  /// make those historical entries retroactively satisfy meal slots.
   final int? slot;
 
   /// HMAC signature, present on entries that have passed through the PC's

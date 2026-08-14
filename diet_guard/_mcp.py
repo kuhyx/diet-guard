@@ -290,8 +290,9 @@ def log_meal(
         macros: Manually-entered nutrition (``kcal`` plus optional
             protein/carbs/fat). When given, lookups are skipped and the meal is
             logged exactly as specified.
-        slot: The meal-slot hour to satisfy; defaults to the current elapsed
-            slot (may be ``None`` early in the day, logging calories only).
+        slot: The meal-slot hour to satisfy; when omitted (or None) it falls
+            back to ``slot_for_log``, which clamps to a real hour rather than
+            returning None, so the entry always satisfies some slot.
         confirm: Set ``True`` to actually append the entry; otherwise preview.
 
     Returns:

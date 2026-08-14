@@ -233,6 +233,15 @@ def logged_slots_today() -> set[int]:
     direction.  An entry without a ``slot`` field (e.g. a snack logged with no
     checkpoint) contributes calories but satisfies no slot.
 
+    Nothing produces a slot-less entry any more: the phone's "Snack" chip was
+    removed on 2026-08-14, and every remaining writer resolves a concrete hour
+    through ``slot_for_log`` -- the CLI (:mod:`_cli`), the gate
+    (:mod:`_gatelock_mealflow`) and the MCP tool (:mod:`_mcp`, which falls back
+    to it whenever its ``slot`` argument is omitted or None).  The check below
+    is still load-bearing for entries already on disk and arriving over sync --
+    removing it would make every historical snack retroactively satisfy a meal
+    slot.
+
     Returns:
         The distinct integer slot hours logged today (possibly empty).
     """
