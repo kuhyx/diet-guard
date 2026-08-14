@@ -101,12 +101,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   /// Opens [HistoryScreen] pre-filtered to the tapped day.
   void _onDaySelected(DateTime day) {
-    unawaited(
-      Navigator.of(context).push<void>(
-        MaterialPageRoute(
-          builder: (_) => HistoryScreen(
-            initialDateRange: DateTimeRange(start: day, end: day),
-          ),
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => HistoryScreen(
+          initialDateRange: DateTimeRange(start: day, end: day),
         ),
       ),
     );

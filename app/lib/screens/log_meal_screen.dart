@@ -2,7 +2,6 @@
 /// screen: "I can open the diet app on my phone and fill meal I ate."
 library;
 
-
 import 'dart:async';
 import 'dart:developer';
 import 'package:crdt_sync/crdt_sync.dart';
@@ -323,35 +322,27 @@ class _LogMealScreenState extends State<LogMealScreen>
   }
 
   void _onOpenHistory() {
-    unawaited(
-      Navigator.of(context).push<void>(
-        MaterialPageRoute(builder: (_) => const HistoryScreen()),
-      ),
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const HistoryScreen()),
     );
   }
 
   void _onOpenCalendar() {
-    unawaited(
-      Navigator.of(context).push<void>(
-        MaterialPageRoute(builder: (_) => const CalendarScreen()),
-      ),
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const CalendarScreen()),
     );
   }
 
   void _onOpenFoodBank() {
-    unawaited(
-      Navigator.of(context).push<void>(
-        MaterialPageRoute(builder: (_) => const FoodBankScreen()),
-      ),
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const FoodBankScreen()),
     );
   }
 
   void _onOpenSettings() {
-    unawaited(
-      Navigator.of(context).push<void>(
-        MaterialPageRoute(
-          builder: (_) => SettingsScreen(httpClient: widget.httpClient),
-        ),
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => SettingsScreen(httpClient: widget.httpClient),
       ),
     );
   }
