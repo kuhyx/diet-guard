@@ -1,33 +1,29 @@
-/// Sync configuration. Primary path: "Connect Firebase" — sign in with the
-/// shared sync account, whose password is kept in the OS keystore. GitHub is
-/// only the cutover mirror, so its whole setup (device-flow OAuth, owner/repo,
-/// client id, PAT fallback) sits under "Advanced (GitHub mirror)" rather than
-/// competing with Firebase as a visible choice. Auto-sync (app launch +
-/// lifecycle pause/resume) lives in [LogMealScreen] and is silent on failure
-/// -- this screen is where errors get surfaced, as inline status text.
+/// App settings: kcal goal, notifications, and links to the two sync
+/// surfaces.
+///
+/// "Sync settings" is the shared `sync_settings_ui` package (Firebase
+/// only -- diet_guard has no local backup format, so `BackupSlot` is null).
+/// "Advanced sync (GitHub)" stays app-local ([GitHubMirrorScreen]) because
+/// connecting it also triggers a real log sync via `runSync`, which the
+/// shared package's Firebase section does not do -- it only saves settings.
 library;
 
 import 'dart:async';
 
 import 'package:crdt_sync/crdt_sync.dart';
-import 'package:diet_guard_app/screens/log_meal_screen.dart';
+import 'package:diet_guard_app/screens/github_mirror_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/firebase_backend.dart';
-import 'package:diet_guard_app/services/github_client_factory.dart';
-import 'package:diet_guard_app/services/github_device_auth.dart';
 import 'package:diet_guard_app/services/google_sign_in_backend.dart';
-import 'package:diet_guard_app/services/sync_health.dart';
-import 'package:diet_guard_app/services/sync_service.dart';
-import 'package:diet_guard_app/services/sync_settings.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:sync_settings_ui/sync_settings_ui.dart';
 
-/// Screen for configuring and triggering cross-device sync.
+/// Screen for app-specific settings and links to sync configuration.
 class SettingsScreen extends StatefulWidget {
   /// Creates a [SettingsScreen].
   const SettingsScreen({
@@ -37,10 +33,14 @@ class SettingsScreen extends StatefulWidget {
     this.googleFirebaseFactory,
     this.googleAvailable,
     this.accountLoader,
+    this.accountSaver,
+    this.accountClearer,
     this.sessionProbe,
+    this.firebaseFactory,
   });
 
-  /// Injectable HTTP client; tests pass a [MockClient].
+  /// Injectable HTTP client for the linked [GitHubMirrorScreen]; tests pass
+  /// a [MockClient].
   final http.Client? httpClient;
 
   /// Injectable battery-optimization-exemption request; tests pass a fake.
@@ -48,8 +48,9 @@ class SettingsScreen extends StatefulWidget {
   /// `Permission.ignoreBatteryOptimizations.request()`.
   final Future<PermissionStatus> Function()? requestBatteryExemption;
 
-  /// Builds the Firebase backend via Google sign-in. Injected so tests need
-  /// no platform channel -- the plugin reaches the OS account picker.
+  /// Builds the Firebase backend via Google sign-in, for the shared Sync
+  /// settings screen. Injected so tests need no platform channel -- the
+  /// plugin reaches the OS account picker.
   final Future<FirebaseRestClient?> Function()? googleFirebaseFactory;
 
   /// Whether to offer the Google button. Defaults to what the platform
@@ -58,16 +59,29 @@ class SettingsScreen extends StatefulWidget {
 
   /// Reads the stored Firebase account. Injected for the same reason as
   /// [googleFirebaseFactory]: the keystore is a platform channel.
+  ///
+  /// Deliberately backed by [storedAccount], not [loadAccount]: the shared
+  /// `SyncSettingsScreen` uses this single closure both to display the
+  /// status and to read back the account right after a Google sign-in.
+  /// [loadAccount]'s desktop-wrapper fallback resolves to `file:///` on
+  /// Android and throws -- verified on the phone, where it turned a
+  /// successful sign-in into "Google sign-in failed". `storedAccount` is the
+  /// keystore-only read [firebase_backend.dart] documents for exactly this
+  /// read-back case.
   final Future<FirebaseAccount?> Function()? accountLoader;
 
+  /// Persists the account. See [accountLoader].
+  final Future<void> Function(FirebaseAccount)? accountSaver;
+
+  /// Forgets the account and any cached session. See [accountLoader].
+  final Future<void> Function()? accountClearer;
+
   /// Whether a Firebase session is stored. See [accountLoader].
-  ///
-  /// Separate from [accountLoader] because the two answer different
-  /// questions: the account marker is bookkeeping, the session is the
-  /// credential. A device can hold the second without the first, and
-  /// reporting only the first is what made a syncing phone read as
-  /// "not connected".
   final Future<bool> Function()? sessionProbe;
+
+  /// Builds the Firebase backend from the stored account. Injected so tests
+  /// can supply a fake.
+  final Future<FirebaseRestClient?> Function()? firebaseFactory;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -75,58 +89,11 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _kcalGoalController = TextEditingController();
-  final _ownerController = TextEditingController();
-  final _repoController = TextEditingController();
-  final _tokenController = TextEditingController();
-  final _clientIdController = TextEditingController();
-  final _firebaseEmailController = TextEditingController();
-  final _firebasePasswordController = TextEditingController();
-  bool _firebaseConfigured = false;
-  bool _loading = true;
-  bool _busy = false;
-  String? _status;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_load());
-  }
-
-  /// Loads saved settings, defaulting to blank fields if loading itself
-  /// fails (e.g. no secret service available yet) -- the screen must still
-  /// render, not spin forever, so the user can fill them in from scratch.
-  Future<void> _load() async {
-    SyncSettings settings;
-    try {
-      settings = await SyncSettings.load();
-    } on Exception {
-      settings = const SyncSettings(owner: '', repo: '', token: '');
-    }
-    if (!mounted) return;
     _kcalGoalController.text = AppSettingsService.dailyKcalGoal.toString();
-    _ownerController.text = settings.owner;
-    _repoController.text = settings.repo;
-    // On web the stored "token" is only a stand-in for one the desktop
-    // wrapper holds (see TokenVault); showing it would invite the user to
-    // edit a literal. [_storedToken] keeps it for round-tripping.
-    _storedToken = settings.token;
-    _tokenController.text = SyncSettings.exposesTokenValue
-        ? settings.token
-        : '';
-    _clientIdController.text = settings.clientId;
-    // Reflect a previously-stored account, so a returning user sees the
-    // real state instead of an empty form that looks unconfigured.
-    final account = await loadAccount();
-    // The stored session, not the account marker, decides "connected": a
-    // Google sign-in leaves a refresh token that authenticates every request
-    // even when no marker was written beside it.
-    final configured = await (widget.sessionProbe ?? isFirebaseConfigured)();
-    if (!mounted) return;
-    if (account != null) _firebaseEmailController.text = account.email;
-    setState(() {
-      _firebaseConfigured = configured;
-      _loading = false;
-    });
   }
 
   @override
@@ -136,18 +103,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // the edit the user just typed.
     _flushKcalGoal();
     _kcalGoalController.dispose();
-    _ownerController.dispose();
-    _repoController.dispose();
-    _tokenController.dispose();
-    _firebaseEmailController.dispose();
-    _firebasePasswordController.dispose();
-    _clientIdController.dispose();
     super.dispose();
   }
-
-  /// The token as loaded, so a platform that cannot display it (web) still
-  /// round-trips it instead of blanking it on the next save.
-  String _storedToken = '';
 
   Timer? _kcalGoalDebounce;
   int? _pendingKcalGoal;
@@ -176,128 +133,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  SyncSettings _currentSettings() {
-    final typed = _tokenController.text.trim();
-    return SyncSettings(
-      owner: _ownerController.text.trim(),
-      repo: _repoController.text.trim(),
-      // The `_storedToken` side is web-only (the wrapper holds the real
-      // token), so it is unreachable from a VM test.
-      token: typed.isEmpty && !SyncSettings.exposesTokenValue
-          // coverage:ignore-line
-          ? _storedToken
-          : typed,
-      clientId: _clientIdController.text.trim(),
-    );
-  }
-
-  void _showMessage(String message) {
-    if (!mounted) return;
-    setState(() => _status = message);
-  }
-
-  /// Runs the OAuth device flow and, on success, fills in the token field.
-  Future<void> _connectGitHub() async {
-    var clientId = _clientIdController.text.trim();
-    if (clientId.isEmpty) {
-      final entered = await showDialog<String>(
-        context: context,
-        builder: (_) => const _ClientIdSetupDialog(),
-      );
-      if (entered == null || entered.isEmpty) return;
-      clientId = entered;
-      if (!mounted) return;
-      setState(() => _clientIdController.text = clientId);
-      await _currentSettings().save();
-    }
-    final auth = createDeviceAuth(clientId, httpClient: widget.httpClient);
-    try {
-      final device = await auth.requestDeviceCode();
-      if (!mounted) return;
-      final token = await showDialog<String>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => _DeviceCodeDialog(device: device, auth: auth),
-      );
-      if (token != null && token.isNotEmpty) {
-        setState(() {
-          _storedToken = token;
-          if (SyncSettings.exposesTokenValue) _tokenController.text = token;
-        });
-        _showMessage('Connected — syncing…');
-        await _currentSettings().save();
-        await _syncAfterConnect();
-      }
-    } on Exception catch (e) {
-      _showMessage('Could not start device flow: $e');
-    } finally {
-      auth.close();
-    }
-  }
-
-  /// Runs a sync right after connecting so the device-flow token is proven
-  /// to work immediately, with clear confirmation either way.
-  Future<void> _syncAfterConnect() async {
-    final settings = _currentSettings();
-    final client = createGitHubClient(settings, httpClient: widget.httpClient);
-    try {
-      await runSync(await syncBackend(client));
-      await SyncHealth.recordSuccess();
-      _showMessage('Connected and synced.');
-    } on Exception catch (e) {
-      await SyncHealth.recordFailure();
-      _showMessage('Connected, but sync failed: $e');
-    } finally {
-      client.close();
-    }
-  }
-
-  Future<void> _save() async {
-    setState(() => _busy = true);
-    await _currentSettings().save();
-    if (!mounted) return;
-    setState(() => _busy = false);
-    _showMessage('Saved.');
-  }
-
-  Future<void> _testConnection() async {
-    setState(() => _busy = true);
-    final settings = _currentSettings();
-    final client = createGitHubClient(settings, httpClient: widget.httpClient);
-    try {
-      final ok = await client.canAccessRepo();
-      _showMessage(
-        ok ? 'GitHub connection OK.' : 'GitHub connection failed.',
-      );
-    } on Exception catch (e) {
-      _showMessage('GitHub connection failed: $e');
-    } finally {
-      client.close();
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _syncNow() async {
-    setState(() => _busy = true);
-    final settings = _currentSettings();
-    await settings.save();
-    final client = createGitHubClient(settings, httpClient: widget.httpClient);
-    try {
-      await runSync(await syncBackend(client));
-      // Clears any stored failure: this is the button a user reaches
-      // *because* the banner told them syncing had stopped, so a successful
-      // run here must dismiss the warning it caused.
-      await SyncHealth.recordSuccess();
-      _showMessage('Synced.');
-    } on Exception catch (e) {
-      await SyncHealth.recordFailure();
-      _showMessage('Sync failed: $e');
-    } finally {
-      client.close();
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
   /// Requests exemption from OEM battery optimization (MIUI, some Samsung
   /// configs), which can otherwise degrade the 15-minute background-check
   /// reliability well past its accepted ±15 min target.
@@ -317,6 +152,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  String? _status;
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    setState(() => _status = message);
+  }
+
   /// True on the one platform with OEM battery optimization to exempt from.
   ///
   /// Uses [defaultTargetPlatform] rather than `Platform.isAndroid` because
@@ -324,121 +166,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool get _isAndroid =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
-  /// Stores the Firebase account in the OS keystore and proves it works.
-  ///
-  /// Signing in here rather than only saving means a typo surfaces now, on
-  /// the screen where it can be fixed, instead of as a silently failed
-  /// background sync hours later.
-
-  /// Signs in by picking a Google account -- the one-tap path.
-  ///
-  /// A dismissed picker is not an error; a wrong-account sign-in reports why,
-  /// because that is the failure that otherwise looks like a working sync
-  /// which silently never syncs.
-  Future<void> _connectGoogle() async {
-    setState(() {
-      _busy = true;
-      _status = 'Signing in...';
-    });
-    try {
-      final client =
-          await (widget.googleFirebaseFactory ?? openFirebaseWithGoogle)();
-      if (!mounted) return;
-      if (client == null) {
-        setState(() {
-          _busy = false;
-          _status = 'Google sign-in was cancelled.';
-        });
-        return;
-      }
-      // openFirebaseWithGoogle stored the account under the email Firebase
-      // reported; reflect it rather than reading the (empty) form field.
-      //
-      // Read it back rather than trusting the returned client: this banner
-      // claimed "Connected to Firebase" on four apps that were not connected,
-      // because a non-null client only means the sign-in call succeeded in
-      // that moment, not that anything survives a restart. Reporting the
-      // persisted state is the whole point -- if the read-back is empty the
-      // next launch will sync over GitHub, and the user needs to know now.
-      final account = await (widget.accountLoader ?? storedAccount)();
-      final configured = await (widget.sessionProbe ?? isFirebaseConfigured)();
-      if (!mounted) return;
-      if (account != null) _firebaseEmailController.text = account.email;
-      setState(() {
-        _busy = false;
-        _firebaseConfigured = configured;
-        _status = configured
-            ? 'Connected to Firebase.'
-            : 'Signed in, but this device did not save the session - it will '
-                  'sync over GitHub after a restart. Try connecting again.';
-      });
-    } on FirebaseAuthError catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _firebaseConfigured = false;
-        _status = error.message;
-      });
-    }
+  Future<void> _openSyncSettings() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => SyncSettingsScreen(
+          accountLoader: widget.accountLoader ?? storedAccount,
+          accountSaver: widget.accountSaver ?? saveAccount,
+          accountClearer: widget.accountClearer ?? clearAccount,
+          sessionProbe: widget.sessionProbe ?? isFirebaseConfigured,
+          firebaseFactory: widget.firebaseFactory ?? openFirebase,
+          googleFirebaseFactory:
+              widget.googleFirebaseFactory ?? openFirebaseWithGoogle,
+          googleAvailable: widget.googleAvailable ?? googleSignInSupported,
+        ),
+      ),
+    );
   }
 
-  Future<void> _saveFirebaseAccount() async {
-    final email = _firebaseEmailController.text.trim();
-    final password = _firebasePasswordController.text;
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => _status = 'Enter the sync account email and password.');
-      return;
-    }
-    setState(() {
-      _busy = true;
-      _status = null;
-    });
-    try {
-      await saveAccount(FirebaseAccount(email: email, password: password));
-      final client = await openFirebase();
-      if (client == null) {
-        throw Exception('could not reach Firebase');
-      }
-      final reachable = await client.canAccessRemote();
-      client.close();
-      if (!mounted) return;
-      setState(() {
-        _firebaseConfigured = reachable;
-        _status = reachable
-            ? 'Firebase connected - syncs now go there first.'
-            : 'Signed in, but the database refused the read.';
-      });
-    } on Object catch (error) {
-      // Broader than Exception: a missing platform binding raises an Error.
-      // A half-stored account is worse than none, so forget it.
-      await clearAccount();
-      if (!mounted) return;
-      setState(() {
-        _firebaseConfigured = false;
-        _status = 'Firebase sign-in failed: $error';
-      });
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  /// Forgets the Firebase account, so sync falls back to GitHub alone.
-  Future<void> _disconnectFirebase() async {
-    await clearAccount();
-    _firebaseEmailController.clear();
-    _firebasePasswordController.clear();
-    if (!mounted) return;
-    setState(() {
-      _firebaseConfigured = false;
-      _status = 'Firebase disconnected - syncing over GitHub only.';
-    });
+  Future<void> _openGitHubMirror() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => GitHubMirrorScreen(httpClient: widget.httpClient),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       // Centred and capped at the prose width. On the desktop surface this
@@ -472,172 +226,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 24),
               const Divider(),
-              const SizedBox(height: 8),
-              Text(
-                'Firebase sync',
-                style: Theme.of(context).textTheme.titleMedium,
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Sync settings'),
+                subtitle: const Text('Firebase sync'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => unawaited(_openSyncSettings()),
               ),
-              const SizedBox(height: 8),
-              Text(
-                _firebaseConfigured
-                    ? 'Connected. Syncs go to Firebase first, and still '
-                          'mirror to GitHub until every device has moved.'
-                    : 'Not connected - syncing over GitHub only. Enter the '
-                          'shared sync account to move this device over. The '
-                          'password is kept in the device keystore, never in '
-                          'the app or the repo.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 12),
-              // Once connected, the account is shown as read-only text rather
-              // than as prefilled inputs: an editable email box next to an
-              // empty password box reads as "you still have to enter this",
-              // which made a connected device look unconfigured.
-              if (_firebaseConfigured)
-                Row(
-                  children: [
-                    const Icon(Icons.cloud_done, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _firebaseEmailController.text,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: _busy ? null : _disconnectFirebase,
-                      child: const Text('Disconnect'),
-                    ),
-                  ],
-                )
-              else ...[
-                TextField(
-                  controller: _firebaseEmailController,
-                  keyboardType: TextInputType.emailAddress,
-                  autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Sync account email',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _firebasePasswordController,
-                  obscureText: true,
-                  autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Sync account password',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: _busy ? null : _saveFirebaseAccount,
-                  icon: const Icon(Icons.cloud_done),
-                  label: const Text('Connect Firebase'),
-                ),
-                // One tap, no typing -- the path that matters after a
-                // reinstall. Hidden where the platform has no programmatic
-                // Google flow (see google_platform.dart); a button that
-                // always failed would be worse than none.
-                if (widget.googleAvailable ?? googleSignInSupported) ...[
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: _busy ? null : _connectGoogle,
-                    icon: const Icon(Icons.account_circle),
-                    label: const Text('Sign in with Google'),
-                  ),
-                ],
-              ],
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 8),
-              // GitHub is a mirror during the cutover, not something to pick:
-              // its whole configuration lives under "Advanced" so the primary
-              // path stays a single choice. See CLAUDE.md "Cross-device sync".
-              ExpansionTile(
-                title: const Text('Advanced (GitHub mirror)'),
-                tilePadding: EdgeInsets.zero,
-                childrenPadding: const EdgeInsets.only(bottom: 8),
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Syncs still mirror to GitHub until every device has '
-                      'moved to Firebase. Authorize in your browser — no '
-                      'token to paste.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: FilledButton.icon(
-                      onPressed: _connectGitHub,
-                      icon: const Icon(Icons.login),
-                      label: const Text('Connect GitHub'),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _ownerController,
-                    decoration: const InputDecoration(
-                      labelText: 'GitHub owner',
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _repoController,
-                    decoration: const InputDecoration(labelText: 'Repo'),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _clientIdController,
-                    decoration: const InputDecoration(
-                      labelText: 'OAuth App client id',
-                      helperText: 'Needed for the Connect GitHub button',
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _tokenController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: 'Personal access token (fallback)',
-                      // Both wrapper hints are web-only; a VM test always takes
-                      // the null branch.
-                      // coverage:ignore-start
-                      helperText: SyncSettings.exposesTokenValue
-                          ? null
-                          : _storedToken.isEmpty
-                          ? 'Stored by the desktop wrapper, never by the '
-                                'browser'
-                          : 'A token is stored by the desktop wrapper; '
-                                'type here only to replace it',
-                      // coverage:ignore-end
-                      helperMaxLines: 2,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                children: [
-                  ElevatedButton(
-                    onPressed: _busy ? null : _save,
-                    child: const Text('Save'),
-                  ),
-                  OutlinedButton(
-                    onPressed: _busy ? null : _testConnection,
-                    // Named for what it actually does: _testConnection builds a
-                    // GitHub client and calls canAccessRepo(). It says nothing
-                    // about Firebase, and the bare label implied otherwise.
-                    child: const Text('Test GitHub connection'),
-                  ),
-                  ElevatedButton(
-                    onPressed: _busy ? null : _syncNow,
-                    child: const Text('Sync now'),
-                  ),
-                ],
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Advanced sync (GitHub)'),
+                subtitle: const Text('Cutover mirror — not recommended'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => unawaited(_openGitHubMirror()),
               ),
               const SizedBox(height: 24),
               const Divider(),
@@ -680,171 +281,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Dialog shown when "Connect GitHub" is tapped with no OAuth App client id
-/// configured yet. Explains what it is, how to get one, and lets the user
-/// paste it in directly — rather than leaving them to discover a buried
-/// "Advanced" field on their own. Pops the trimmed client id, or null if
-/// cancelled.
-class _ClientIdSetupDialog extends StatefulWidget {
-  const _ClientIdSetupDialog();
-
-  @override
-  State<_ClientIdSetupDialog> createState() => _ClientIdSetupDialogState();
-}
-
-class _ClientIdSetupDialogState extends State<_ClientIdSetupDialog> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('One-time GitHub setup needed'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Diet Guard signs in via a GitHub OAuth App (no password '
-              'typed into this app). You only have to set this up once:',
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              '1. On any device, open '
-              'github.com/settings/developers → "New OAuth App".\n'
-              '2. Name/Homepage/Callback URL can be anything (device flow '
-              "doesn't use the callback) — e.g. "
-              '"Diet Guard" and your GitHub profile URL.\n'
-              '3. Check "Enable Device Flow", then click "Register '
-              'application".\n'
-              "4. Copy the Client ID shown on the app's page and paste it "
-              'below.',
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'When you connect below, log in with the GitHub account that '
-              'has write access to kuhyx/syncs.',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              decoration: const InputDecoration(labelText: 'Client ID'),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () {
-            final id = _controller.text.trim();
-            if (id.isNotEmpty) Navigator.of(context).pop(id);
-          },
-          child: const Text('Continue'),
-        ),
-      ],
-    );
-  }
-}
-
-/// Dialog shown during the device flow: displays the user code, opens the
-/// verification page, and polls until authorized — popping the token (or
-/// null if cancelled / failed).
-class _DeviceCodeDialog extends StatefulWidget {
-  const _DeviceCodeDialog({required this.device, required this.auth});
-
-  final DeviceCodeResponse device;
-  final GitHubDeviceAuth auth;
-
-  @override
-  State<_DeviceCodeDialog> createState() => _DeviceCodeDialogState();
-}
-
-class _DeviceCodeDialogState extends State<_DeviceCodeDialog> {
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_poll());
-  }
-
-  Future<void> _poll() async {
-    try {
-      final token = await widget.auth.pollForToken(widget.device);
-      if (mounted) Navigator.of(context).pop(token);
-    } on Exception catch (e) {
-      if (mounted) setState(() => _error = '$e');
-    }
-  }
-
-  Future<void> _openPage() async {
-    await Clipboard.setData(ClipboardData(text: widget.device.userCode));
-    await launchUrl(
-      Uri.parse(widget.device.verificationUri),
-      mode: LaunchMode.externalApplication,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Authorize on GitHub'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Enter this code on GitHub:'),
-          const SizedBox(height: 8),
-          SelectableText(
-            widget.device.userCode,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 16),
-          if (_error == null)
-            const Row(
-              children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 12),
-                Expanded(child: Text('Waiting for authorization…')),
-              ],
-            )
-          else
-            Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton.icon(
-          onPressed: _openPage,
-          icon: const Icon(Icons.open_in_new),
-          label: const Text('Open GitHub & copy code'),
-        ),
-      ],
     );
   }
 }

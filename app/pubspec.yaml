@@ -2,7 +2,7 @@ name: diet_guard_app
 description: "Companion phone app for diet_guard: log meals on the go."
 publish_to: 'none'
 
-version: 1.0.5+1
+version: 1.0.6+1
 
 environment:
   sdk: ^3.12.2
@@ -28,6 +28,16 @@ dependencies:
   path_provider: ^2.1.5
   permission_handler: ^12.0.3
   shared_preferences: ^2.5.5
+
+  # Shared "Sync settings" screen (Firebase + optional local backup), reused
+  # across every kuhy app that syncs. GitHub mirror stays app-local (see
+  # lib/screens/github_mirror_screen.dart) since connecting it here also
+  # triggers a real log sync, not just a settings save.
+  sync_settings_ui:
+    git:
+      url: https://github.com/kuhyx/utils
+      ref: sync_settings_ui-v0.1.0
+      path: sync_settings_ui
   url_launcher: ^6.3.2
   uuid: ^4.5.3
   web: ^1.1.1

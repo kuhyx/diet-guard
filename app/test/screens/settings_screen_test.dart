@@ -1,47 +1,19 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:crdt_sync/crdt_sync.dart';
-import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
+import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
-import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher_platform_interface/link.dart';
-import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 import '../fake_secure_storage.dart';
-
-/// Stub launcher that records the URL instead of opening it, so the device
-/// dialog's "Open GitHub & copy code" can be exercised without a real
-/// platform channel.
-class _FakeUrlLauncher extends UrlLauncherPlatform
-    with MockPlatformInterfaceMixin {
-  String? launched;
-
-  @override
-  final LinkDelegate? linkDelegate = null;
-
-  @override
-  Future<bool> supportsMode(PreferredLaunchMode mode) async => true;
-
-  @override
-  Future<bool> launchUrl(String url, LaunchOptions options) async {
-    launched = url;
-    return true;
-  }
-}
 
 void main() {
   late Directory tempDir;
@@ -66,9 +38,11 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  // SettingsScreen loads its settings via a fire-and-forget Future in
-  // initState that Flutter's frame scheduler does not track -- same pitfall
-  // as HistoryScreen/LogMealScreen. Also grows the test viewport: the
+  // SettingsScreen loads its settings via real (non-fake-clocked) I/O
+  // through FileDocumentStore, so every test body runs under
+  // tester.runAsync() -- without it, those Futures never get a chance to
+  // complete inside TestWidgetsFlutterBinding's fake-clocked zone, and
+  // pumpAndSettle spins forever. Also grows the test viewport: the
   // Notifications section pushes earlier fields/buttons below the default
   // 800x600 fold, making them unreachable to tester.tap otherwise.
   Future<void> settle(WidgetTester tester) async {
@@ -80,525 +54,143 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Expands the "Advanced (GitHub mirror)" section.
-  ///
-  /// GitHub is the cutover mirror rather than a choice the user makes, so its
-  /// whole configuration (owner, repo, client id, PAT, "Connect GitHub") is
-  /// collapsed by default. Every GitHub-facing test has to open it first.
-  Future<void> openAdvanced(WidgetTester tester) async {
-    await tester.tap(find.text('Advanced (GitHub mirror)'));
-    await tester.pumpAndSettle();
-  }
-
-  /// Drains the device flow's real `Future.delayed` poll (GitHubDeviceAuth
-  /// injects no test delay, so under `runAsync` it is a genuine Timer, not
-  /// the fake-clock one `tester.pump(duration)` advances) by interleaving
-  /// real waits with frame pumps until [done] is true or [maxTries] is hit.
-  Future<void> pumpUntil(
-    WidgetTester tester,
-    bool Function() done, {
-    int maxTries = 200,
-  }) async {
-    for (var i = 0; i < maxTries && !done(); i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      await tester.pump();
-    }
-  }
-
-  testWidgets('shows the kuhyx/syncs defaults on a fresh install', (
-    tester,
-  ) async {
+  testWidgets('shows the current kcal goal on load', (tester) async {
     await tester.runAsync(() async {
+      await AppSettingsService.instance.saveDailyKcalGoal(1800);
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await settle(tester);
 
-      // owner/repo moved under the collapsed GitHub-mirror section.
-      await openAdvanced(tester);
-
-      expect(find.widgetWithText(TextField, 'kuhyx'), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'syncs'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '1800'), findsOneWidget);
     });
   });
 
-  testWidgets('Save persists the entered token', (tester) async {
+  testWidgets('typing a kcal goal debounces the save', (tester) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await settle(tester);
 
-      await openAdvanced(tester);
       await tester.enterText(
-        find.widgetWithText(TextField, 'Personal access token (fallback)'),
-        'my-pat',
+        find.widgetWithText(TextField, 'Daily kcal goal'),
+        '2100',
       );
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Save'));
-      await settle(tester);
+      // Immediately after typing, the debounce has not fired yet.
+      expect(AppSettingsService.dailyKcalGoal, isNot(2100));
 
-      expect(find.text('Saved.'), findsOneWidget);
-    });
-  });
-
-  testWidgets('Test connection reports success', (tester) async {
-    final mock = MockClient(
-      (_) async => http.Response('{}', 200),
-    );
-    await tester.runAsync(() async {
-      await tester.pumpWidget(
-        MaterialApp(home: SettingsScreen(httpClient: mock)),
-      );
-      await settle(tester);
-
-      await tester.tap(
-        find.widgetWithText(OutlinedButton, 'Test GitHub connection'),
-      );
-      await settle(tester);
-
-      expect(find.text('GitHub connection OK.'), findsOneWidget);
-    });
-  });
-
-  testWidgets('Test connection reports failure', (tester) async {
-    final mock = MockClient((_) async => http.Response('', 403));
-    await tester.runAsync(() async {
-      await tester.pumpWidget(
-        MaterialApp(home: SettingsScreen(httpClient: mock)),
-      );
-      await settle(tester);
-
-      await tester.tap(
-        find.widgetWithText(OutlinedButton, 'Test GitHub connection'),
-      );
-      await settle(tester);
-
-      expect(find.text('GitHub connection failed.'), findsOneWidget);
-    });
-  });
-
-  testWidgets('Sync now runs a sync tick and reports success', (
-    tester,
-  ) async {
-    final mock = MockClient((req) async {
-      if (req.method == 'PUT') return http.Response('{}', 200);
-      // A bare `/repos/<owner>/<repo>` GET is crdt_sync's GitHubClient
-      // probing whether the repo itself exists (vs. a content path just
-      // being unused) -- must succeed so an empty repo isn't mistaken for
-      // a missing one.
-      if (req.method == 'GET' && req.url.pathSegments.length == 3) {
-        return http.Response('{}', 200);
-      }
-      return http.Response('', 404);
-    });
-    await tester.runAsync(() async {
-      await tester.pumpWidget(
-        MaterialApp(home: SettingsScreen(httpClient: mock)),
-      );
-      await settle(tester);
-
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Sync now'));
-      await settle(tester);
-
-      expect(find.text('Synced.'), findsOneWidget);
-    });
-  });
-
-  testWidgets('Sync now clears a stored failure so the banner lifts', (
-    tester,
-  ) async {
-    // "Sync now" is the button a user reaches *because* the log screen's
-    // banner told them syncing had stopped. If a successful run here left
-    // the recorded failure in place, the recovery action would not dismiss
-    // the warning it caused, and the banner would keep accusing a device
-    // that is now publishing fine.
-    await SyncHealth.recordFailure();
-    expect((await SyncHealth.read()).failureKind, SyncFailureKind.failed);
-
-    final mock = MockClient((req) async {
-      if (req.method == 'PUT') return http.Response('{}', 200);
-      if (req.method == 'GET' && req.url.pathSegments.length == 3) {
-        return http.Response('{}', 200);
-      }
-      return http.Response('', 404);
-    });
-    await tester.runAsync(() async {
-      await tester.pumpWidget(
-        MaterialApp(home: SettingsScreen(httpClient: mock)),
-      );
-      await settle(tester);
-
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Sync now'));
-      await settle(tester);
-
-      expect(find.text('Synced.'), findsOneWidget);
-      final status = await SyncHealth.read();
-      expect(status.failureKind, isNull);
-      expect(status.isStalled, isFalse);
-    });
-  });
-
-  testWidgets('Test connection reports a network exception', (tester) async {
-    final mock = MockClient((_) async => throw const FormatException('no net'));
-    await tester.runAsync(() async {
-      await tester.pumpWidget(
-        MaterialApp(home: SettingsScreen(httpClient: mock)),
-      );
-      await settle(tester);
-
-      await tester.tap(
-        find.widgetWithText(OutlinedButton, 'Test GitHub connection'),
-      );
-      await settle(tester);
-
-      expect(find.textContaining('GitHub connection failed:'), findsOneWidget);
-    });
-  });
-
-  testWidgets('Sync now reports a GitHub error', (tester) async {
-    final mock = MockClient((_) async => http.Response('boom', 500));
-    await tester.runAsync(() async {
-      await tester.pumpWidget(
-        MaterialApp(home: SettingsScreen(httpClient: mock)),
-      );
-      await settle(tester);
-
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Sync now'));
-      await settle(tester);
-
-      expect(find.textContaining('Sync failed:'), findsOneWidget);
-    });
-  });
-
-  testWidgets('offers the account form when Firebase is not connected', (
-    tester,
-  ) async {
-    await tester.runAsync(() async {
-      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
-      await settle(tester);
-
-      expect(
-        find.widgetWithText(TextField, 'Sync account email'),
-        findsOneWidget,
-      );
-      expect(
-        find.widgetWithText(TextField, 'Sync account password'),
-        findsOneWidget,
-      );
-      expect(find.text('Disconnect'), findsNothing);
-    });
-  });
-
-  testWidgets('shows the connected account as text, not as an empty form', (
-    tester,
-  ) async {
-    // An editable email box beside a blank password box reads as "you still
-    // have to enter this", so a connected device looked unconfigured.
-    await saveAccount(
-      const FirebaseAccount(email: 'sync@example.com', password: 'pw'),
-    );
-    // A live session too, not just the marker: since 2026-08-11 a marker with
-    // no session behind it is treated as stale and cleared, because that is
-    // the state a revoked refresh token leaves behind and it used to report
-    // "Connected" while every sync failed with TOKEN_EXPIRED.
-    await credentialStore().save(
-      FirebaseCredentials(
-        idToken: 'id',
-        refreshToken: 'refresh',
-        expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
-      ),
-    );
-    await tester.runAsync(() async {
-      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
-      await settle(tester);
-
-      expect(find.text('sync@example.com'), findsOneWidget);
-      expect(find.text('Disconnect'), findsOneWidget);
-      expect(
-        find.widgetWithText(TextField, 'Sync account password'),
-        findsNothing,
-      );
-      expect(find.text('Connect Firebase'), findsNothing);
-    });
-  });
-
-  testWidgets('hides the Connect GitHub button until Advanced is expanded', (
-    tester,
-  ) async {
-    await tester.runAsync(() async {
-      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
-      await settle(tester);
-
-      // GitHub is the cutover mirror, not a choice competing with Firebase,
-      // so nothing GitHub-facing is visible on the primary path.
-      expect(find.text('Connect GitHub'), findsNothing);
-
-      await openAdvanced(tester);
-
-      expect(find.text('Connect GitHub'), findsOneWidget);
-    });
-  });
-
-  /// Expands "Advanced" and types [clientId] into the client-id field.
-  Future<void> enterClientId(WidgetTester tester, String clientId) async {
-    await tester.tap(find.text('Advanced (GitHub mirror)'));
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'OAuth App client id'),
-      clientId,
-    );
-  }
-
-  testWidgets('Connect GitHub without a client id opens setup guidance', (
-    tester,
-  ) async {
-    await tester.runAsync(() async {
-      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
-      await settle(tester);
-      await enterClientId(tester, '');
-
-      await tester.tap(find.text('Connect GitHub'));
-      await settle(tester);
-
-      expect(find.text('One-time GitHub setup needed'), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'Client ID'), findsOneWidget);
-    });
-  });
-
-  testWidgets('cancelling the client id setup dialog aborts the connect', (
-    tester,
-  ) async {
-    await tester.runAsync(() async {
-      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
-      await settle(tester);
-      await enterClientId(tester, '');
-
-      await tester.tap(find.text('Connect GitHub'));
-      await settle(tester);
-      await tester.tap(find.text('Cancel'));
-      await settle(tester);
-
-      expect(find.text('One-time GitHub setup needed'), findsNothing);
-    });
-  });
-
-  testWidgets(
-    'entering a client id in the setup dialog saves it and proceeds',
-    (tester) async {
-      final mock = MockClient((_) async => http.Response('nope', 422));
-      await tester.runAsync(() async {
-        await tester.pumpWidget(
-          MaterialApp(home: SettingsScreen(httpClient: mock)),
-        );
-        await settle(tester);
-        await enterClientId(tester, '');
-
-        await tester.tap(find.text('Connect GitHub'));
-        await settle(tester);
-        await tester.enterText(
-          find.widgetWithText(TextField, 'Client ID'),
-          'cid',
-        );
-        await tester.tap(find.text('Continue'));
-        await settle(tester);
-
-        expect(
-          find.textContaining('Could not start device flow'),
-          findsOneWidget,
-        );
-        expect(
-          find.widgetWithText(TextField, 'OAuth App client id'),
-          findsOneWidget,
-        );
-        expect(
-          (tester.widget(
-                    find.widgetWithText(TextField, 'OAuth App client id'),
-                  )
-                  as TextField)
-              .controller!
-              .text,
-          'cid',
-        );
-      });
-    },
-  );
-
-  testWidgets('device flow failure to start shows a message', (tester) async {
-    final mock = MockClient((_) async => http.Response('nope', 422));
-    await tester.runAsync(() async {
-      await tester.pumpWidget(
-        MaterialApp(home: SettingsScreen(httpClient: mock)),
-      );
-      await settle(tester);
-      await enterClientId(tester, 'cid');
-
-      await tester.tap(find.text('Connect GitHub'));
-      await settle(tester);
-
-      expect(
-        find.textContaining('Could not start device flow'),
-        findsOneWidget,
-      );
-    });
-  });
-
-  testWidgets('device flow happy path saves the token and syncs', (
-    tester,
-  ) async {
-    final mock = MockClient((req) async {
-      if (req.url.path.contains('device/code')) {
-        return http.Response(
-          jsonEncode({
-            'device_code': 'dev123',
-            'user_code': 'WXYZ-1234',
-            'verification_uri': 'https://github.com/login/device',
-            'interval': 0,
-            'expires_in': 900,
-          }),
-          200,
-        );
-      }
-      if (req.url.path.contains('login/oauth/access_token')) {
-        return http.Response(jsonEncode({'access_token': 'gho_test'}), 200);
-      }
-      if (req.method == 'PUT') return http.Response('{}', 200);
-      // A bare `/repos/<owner>/<repo>` GET is crdt_sync's GitHubClient
-      // probing whether the repo itself exists (vs. a content path just
-      // being unused) -- must succeed so an empty repo isn't mistaken for
-      // a missing one.
-      if (req.method == 'GET' && req.url.pathSegments.length == 3) {
-        return http.Response('{}', 200);
-      }
-      return http.Response('', 404); // sync's pull-side list/read calls
-    });
-
-    await tester.runAsync(() async {
-      await tester.pumpWidget(
-        MaterialApp(home: SettingsScreen(httpClient: mock)),
-      );
-      await settle(tester);
-      await enterClientId(tester, 'cid');
-
-      await tester.tap(find.text('Connect GitHub'));
-      await pumpUntil(
-        tester,
-        () => find.text('WXYZ-1234').evaluate().isNotEmpty,
-      );
-      expect(find.text('WXYZ-1234'), findsOneWidget);
-
-      // Let the dialog poll (interval 0) and resolve the token, then the
-      // post-connect sync runs against the mock.
-      await pumpUntil(
-        tester,
-        () => find.textContaining('Connected and synced').evaluate().isNotEmpty,
-      );
-
-      expect(find.textContaining('Connected and synced'), findsOneWidget);
-    });
-  });
-
-  testWidgets(
-    'device flow connects but surfaces a post-connect sync failure',
-    (tester) async {
-      final mock = MockClient((req) async {
-        if (req.url.path.contains('device/code')) {
-          return http.Response(
-            jsonEncode({
-              'device_code': 'dev123',
-              'user_code': 'WXYZ-1234',
-              'verification_uri': 'https://github.com/login/device',
-              'interval': 0,
-              'expires_in': 900,
-            }),
-            200,
-          );
-        }
-        if (req.url.path.contains('login/oauth/access_token')) {
-          return http.Response(jsonEncode({'access_token': 'gho_test'}), 200);
-        }
-        return http.Response('boom', 500); // the sync's repo calls fail
-      });
-
-      await tester.runAsync(() async {
-        await tester.pumpWidget(
-          MaterialApp(home: SettingsScreen(httpClient: mock)),
-        );
-        await settle(tester);
-        await enterClientId(tester, 'cid');
-
-        await tester.tap(find.text('Connect GitHub'));
-        await pumpUntil(
-          tester,
-          () => find.textContaining('sync failed').evaluate().isNotEmpty,
-        );
-
-        expect(find.textContaining('sync failed'), findsOneWidget);
-      });
-    },
-  );
-
-  testWidgets('device dialog: failed poll shows the error and Open launches', (
-    tester,
-  ) async {
-    final launcher = _FakeUrlLauncher();
-    UrlLauncherPlatform.instance = launcher;
-
-    // The dialog's Open button copies the code to the clipboard first;
-    // there's no clipboard plugin in the test host, so stub the channel.
-    final messenger =
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    messenger.setMockMethodCallHandler(
-      SystemChannels.platform,
-      (call) async => null,
-    );
-    addTearDown(
-      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
-    );
-
-    final mock = MockClient((req) async {
-      if (req.url.path.contains('device/code')) {
-        return http.Response(
-          jsonEncode({
-            'device_code': 'dev123',
-            'user_code': 'WXYZ-1234',
-            'verification_uri': 'https://github.com/login/device',
-            'interval': 0,
-            'expires_in': 900,
-          }),
-          200,
-        );
-      }
-      return http.Response(
-        jsonEncode({'error': 'access_denied', 'error_description': 'no'}),
-        200,
-      );
-    });
-
-    await tester.runAsync(() async {
-      await tester.pumpWidget(
-        MaterialApp(home: SettingsScreen(httpClient: mock)),
-      );
-      await settle(tester);
-      await enterClientId(tester, 'cid');
-
-      await tester.tap(find.text('Connect GitHub'));
-      await pumpUntil(
-        tester,
-        () => find.text('WXYZ-1234').evaluate().isNotEmpty,
-      );
-      expect(find.text('WXYZ-1234'), findsOneWidget);
-
-      await pumpUntil(
-        tester,
-        () => find.textContaining('access_denied').evaluate().isNotEmpty,
-      );
-
-      expect(find.textContaining('access_denied'), findsOneWidget);
-
-      await tester.tap(find.text('Open GitHub & copy code'));
+      await Future<void>.delayed(const Duration(milliseconds: 700));
       await tester.pump();
-      expect(launcher.launched, 'https://github.com/login/device');
-
-      await tester.tap(find.text('Cancel'));
-      await settle(tester);
+      expect(AppSettingsService.dailyKcalGoal, 2100);
     });
   });
+
+  testWidgets('an invalid kcal goal is not saved', (tester) async {
+    await tester.runAsync(() async {
+      final initial = AppSettingsService.dailyKcalGoal;
+      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+      await settle(tester);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Daily kcal goal'),
+        '0',
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      await tester.pump();
+
+      expect(AppSettingsService.dailyKcalGoal, initial);
+    });
+  });
+
+  testWidgets('disposing mid-debounce still flushes the pending goal', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+      await settle(tester);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Daily kcal goal'),
+        '1950',
+      );
+      // Leave before the 600ms debounce fires. dispose()'s flush fires the
+      // persist unawaited (the framework cannot await dispose()), so the
+      // in-memory value updates synchronously but the disk write is still a
+      // real pending Future -- give it a moment to finish before tearDown
+      // deletes the temp dir out from under it.
+      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      await tester.pump();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(AppSettingsService.dailyKcalGoal, 1950);
+    });
+  });
+
+  testWidgets('tapping Sync settings opens the shared SyncSettingsScreen', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettingsScreen(
+            accountLoader: () async => null,
+            sessionProbe: () async => false,
+            googleAvailable: false,
+          ),
+        ),
+      );
+      await settle(tester);
+
+      await tester.tap(find.text('Sync settings'));
+      await settle(tester);
+
+      expect(find.text('Firebase sync'), findsOneWidget);
+    });
+  });
+
+  testWidgets(
+    'Sync settings wires storedAccount, not loadAccount, as the '
+    'default accountLoader',
+    (tester) async {
+      // Verifies the read-back fix documented on SettingsScreen.accountLoader:
+      // on a device with a stored account and a live session, the shared
+      // screen must show it as connected using the injected default, with no
+      // fake required to prove the wiring compiles and runs end-to-end.
+      await tester.runAsync(() async {
+        await saveAccount(
+          const FirebaseAccount(email: 'sync@example.com', password: 'pw'),
+        );
+        await credentialStore().save(
+          FirebaseCredentials(
+            idToken: 'id',
+            refreshToken: 'refresh',
+            expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
+          ),
+        );
+        await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+        await settle(tester);
+
+        await tester.tap(find.text('Sync settings'));
+        await settle(tester);
+
+        expect(find.text('sync@example.com'), findsOneWidget);
+        expect(find.text('Disconnect'), findsOneWidget);
+      });
+    },
+  );
+
+  testWidgets(
+    'tapping Advanced sync (GitHub) opens the local GitHubMirrorScreen',
+    (tester) async {
+      await tester.runAsync(() async {
+        await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+        await settle(tester);
+
+        await tester.tap(find.text('Advanced sync (GitHub)'));
+        await settle(tester);
+
+        expect(find.text('Advanced sync (GitHub)'), findsWidgets);
+        expect(find.text('Connect GitHub'), findsOneWidget);
+      });
+    },
+  );
 
   testWidgets('battery exemption button reports a granted status', (
     tester,
