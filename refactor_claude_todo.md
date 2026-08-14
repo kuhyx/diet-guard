@@ -13,14 +13,15 @@ enforced by a gate that fails the commit, not by a note anyone can ignore.
 Why: a file that cannot be read in one piece forces re-reads and partial edits,
 which is the single largest avoidable cost in an LLM-assisted workflow. Aim by
 churn, not size alone — refactoring pays where code is read and changed often
-(Fowler, *refactoring economic benefit*).
+(Fowler, _refactoring economic benefit_).
 
 ## Scope in this repo
 
-- **56 files** currently exceed 250 lines (of 244 eligible files).
-- **22,916 lines** sit in violation; longest file is **1101 lines**.
+- **53 files** currently exceed 250 lines (of 222 eligible files).
+- **21,714 lines** sit in violation; longest file is **1101 lines**.
 
 Exempt (do NOT split these):
+
 - generated files — `*.g.dart`, `*.freezed.dart`, `*.gr.dart`, `**/l10n/generated/**`,
   anything with a `GENERATED` header
 - markup — `.html`, `.css`, `.scss`
@@ -32,25 +33,25 @@ Exempt (do NOT split these):
 ROI = lines x commits in the last year. Work top-down; a long file nobody edits
 has near-zero payoff and should not be first.
 
-| lines | commits/yr | kind | file |
-|------:|-----------:|:-----|:-----|
-| 1101 | 12 | prose | `CLAUDE.md` |
-| 440 | 15 | code | `app/lib/screens/log_meal_screen.dart` |
-| 1052 | 6 | code | `app/lib/screens/history_screen.dart` |
-| 1017 | 6 | code | `app/test/screens/history_screen_test.dart` |
-| 498 | 10 | code | `diet_guard/_sync.py` |
-| 286 | 16 | code | `app/lib/screens/settings_screen.dart` |
-| 482 | 9 | code | `diet_guard/tests/test_sync.py` |
-| 694 | 5 | code | `app/test/services/sync_merge_test.dart` |
-| 472 | 7 | code | `diet_guard/_gatelock_ui.py` |
-| 466 | 7 | code | `diet_guard/_cli.py` |
-| 282 | 11 | code | `diet_guard/tests/conftest.py` |
-| 274 | 11 | code | `app/test/screens/settings_screen_test.dart` |
-| 362 | 8 | code | `app/test/screens/log_meal_screen_test.dart` |
-| 357 | 8 | code | `diet_guard/_state.py` |
-| 475 | 6 | code | `app/lib/services/sync_merge.dart` |
+| lines | commits/yr | kind  | file                                         |
+| ----: | ---------: | :---- | :------------------------------------------- |
+|  1101 |         12 | prose | `CLAUDE.md`                                  |
+|   440 |         15 | code  | `app/lib/screens/log_meal_screen.dart`       |
+|  1052 |          6 | code  | `app/lib/screens/history_screen.dart`        |
+|  1017 |          6 | code  | `app/test/screens/history_screen_test.dart`  |
+|   498 |         10 | code  | `diet_guard/_sync.py`                        |
+|   286 |         16 | code  | `app/lib/screens/settings_screen.dart`       |
+|   482 |          9 | code  | `diet_guard/tests/test_sync.py`              |
+|   694 |          5 | code  | `app/test/services/sync_merge_test.dart`     |
+|   472 |          7 | code  | `diet_guard/_gatelock_ui.py`                 |
+|   466 |          7 | code  | `diet_guard/_cli.py`                         |
+|   282 |         11 | code  | `diet_guard/tests/conftest.py`               |
+|   274 |         11 | code  | `app/test/screens/settings_screen_test.dart` |
+|   362 |          8 | code  | `app/test/screens/log_meal_screen_test.dart` |
+|   357 |          8 | code  | `diet_guard/_state.py`                       |
+|   475 |          6 | code  | `app/lib/services/sync_merge.dart`           |
 
-_(41 further files over 250 lines not listed — re-run the survey for the full set.)_
+_(38 further files over 250 lines not listed — re-run the survey for the full set.)_
 
 ## How to split
 
