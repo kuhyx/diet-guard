@@ -16,4 +16,18 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      # The file-length hook delegates to the shared gate in kuhyx/utils, which
+      # a runner does not have at $HOME/utils. Check it out and point the shim
+      # at it via UTILS_ROOT, or `pre-commit run --all-files` fails on a
+      # missing checker rather than on anything in this repo. `.utils` is in
+      # the gate's own EXCLUDED_DIRS, so it does not lint itself.
+      - name: Check out the shared gate
+        uses: actions/checkout@v4
+        with:
+          repository: kuhyx/utils
+          path: .utils
+
       - uses: pre-commit/action@v3.0.1
+        env:
+          UTILS_ROOT: ${{ github.workspace }}/.utils

@@ -27,7 +27,7 @@ repos:
       - id: name-tests-test
         args: [--pytest-test-first]
         # Shared fake widgets, not a test module. Split out of conftest.py only
-        # because that file passed the 500-line cap.
+        # because that file passed the 250-line cap.
         exclude: ^diet_guard/tests/_(tk_fakes|gate_layout_probe|gate_keyboard_probe)\.py$
       - id: check-ast
       - id: mixed-line-ending
@@ -170,8 +170,28 @@ repos:
         # shebang (SC2148) and its variables are read by makepkg rather than by
         # the file itself (SC2034). namcap is what actually lints these.
         exclude: '^packaging/aur/PKGBUILD$'
-      - id: max-file-length
-        name: Max file length (500 lines)
-        entry: python3 scripts/check_file_length.py
+      # The shared 250-line cap. Checks only the files in the commit, so an
+      # unrelated commit never breaks; exits 1 rather than warning. No
+      # baseline and no allowlist -- those are suppressions. The exemption
+      # list (generated/vendored/data files) lives with the checker in
+      # ~/utils/file_length/config.py so the gate and the survey cannot
+      # disagree.
+      #
+      # Deliberately unfiltered: no types_or and no files. The cap applies to
+      # Dart and prose too, and a type filter here is what would silently
+      # exempt the whole Flutter app and every .md.
+      - id: file-length
+        name: file length <= 250 lines
+        entry: scripts/check_file_length.sh
         language: system
-        types_or: [python, shell]
+
+      # unittest.mock.patch fails OPEN: once a refactor moves a name, a patch
+      # target that still imports redirects nothing, the test passes, and the
+      # suite writes to the real ~/.local/share/diet_guard. This resolves every
+      # patch target statically so a stale path fails the commit instead.
+      - id: patch-targets
+        name: test patch targets resolve
+        entry: python3 scripts/check_patch_targets.py
+        language: system
+        pass_filenames: false
+        files: ^diet_guard/
