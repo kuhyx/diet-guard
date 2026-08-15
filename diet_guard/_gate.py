@@ -18,7 +18,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from diet_guard._slots import missing_slots, slot_label
-from diet_guard._state import logged_slots_today, now_local
+from diet_guard._state import (
+    now_local,
+)
+from diet_guard._state_today import (
+    logged_slots_today,
+)
 
 if TYPE_CHECKING:
     from datetime import datetime

@@ -15,6 +15,8 @@ from diet_guard._budget import BudgetError, daily_budget, protein_target_g
 from diet_guard._gatelock_nutrition import _GateNutrition
 from diet_guard._state import (
     entry_kcal,
+)
+from diet_guard._state_today import (
     today_entries,
     today_total_kcal,
     today_total_macros,

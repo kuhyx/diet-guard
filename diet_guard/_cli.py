@@ -35,11 +35,15 @@ from diet_guard._gate import due_slots
 from diet_guard._slots import day_slots, slot_label
 from diet_guard._state import (
     entry_kcal,
+)
+from diet_guard._state_sync import (
+    undo_last_today,
+)
+from diet_guard._state_today import (
     logged_slots_today,
     today_entries,
     today_total_kcal,
     today_total_macros,
-    undo_last_today,
 )
 
 if TYPE_CHECKING:

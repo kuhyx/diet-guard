@@ -26,10 +26,12 @@ from diet_guard._gate import due_slots
 from diet_guard._mcp_server import READS_ONLY, mcp
 from diet_guard._slots import current_slot, day_slots, slot_label
 from diet_guard._state import (
-    consumption_band,
     load_log,
-    logged_slots_today,
     now_local,
+)
+from diet_guard._state_today import (
+    consumption_band,
+    logged_slots_today,
     today_entries,
     today_total_kcal,
     today_total_macros,

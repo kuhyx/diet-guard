@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from diet_guard import _daystatus, _state
+from diet_guard import _daystatus, _state, _state_sync
 from diet_guard._budget_history import EPOCH_DAY, BudgetEntry, BudgetSchedule
 from diet_guard._daystatus import DayStatus
 from diet_guard._estimator import Nutrition
@@ -65,7 +65,7 @@ class TestDayStatus:
         # day is entirely absent from the filtered log rather than present
         # with an empty list -- confirm that reads as NOT_LOGGED, not GREEN.
         _state.log_meal("snack", Nutrition(300, 5, 40, 10, 100, "manual"))
-        _state.undo_last_today()
+        _state_sync.undo_last_today()
         today = _state._today()
         assert today not in _state.load_log()
         assert (

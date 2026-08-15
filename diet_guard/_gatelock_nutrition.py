@@ -24,7 +24,9 @@ from diet_guard._gatelock_ui import (
 )
 from diet_guard._portions import DEFAULT_ITEM_GRAMS, estimate_unit_grams
 from diet_guard._resolve import suggest_foods
-from diet_guard._state import today_total_kcal
+from diet_guard._state_today import (
+    today_total_kcal,
+)
 
 
 def _format_preview(nutrition: Nutrition) -> str:

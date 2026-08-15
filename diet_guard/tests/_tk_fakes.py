@@ -22,6 +22,35 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from diet_guard.tests._tk_fakes_canvas import FakeCanvas, FakeScrollbar
+from diet_guard.tests._tk_fakes_containers import (
+    FakeNotebook,
+    FakeRadiobutton,
+    FakeStyle,
+    FakeWidget,
+)
+
+# Imported by name so `from _tk_fakes import X` keeps working for every fake,
+# and so `_gate_fixtures`'s `_FAKE_TK`/`_FAKE_TTK` import has one home. Listed
+# explicitly (rather than left as incidental imports) because ruff would
+# otherwise strip the re-exports as unused -- and the identity assertion in
+# `test_gate_tk_modules.py` is what catches it if one ever goes missing.
+__all__ = [
+    "_FAKE_TK",
+    "_FAKE_TTK",
+    "FakeCanvas",
+    "FakeEntry",
+    "FakeListbox",
+    "FakeNotebook",
+    "FakeRadiobutton",
+    "FakeScrollbar",
+    "FakeStyle",
+    "FakeText",
+    "FakeVar",
+    "FakeWidget",
+    "_FakeTclError",
+]
+
 
 class _FakeTclError(Exception):
     """Stand-in for ``tkinter.TclError`` (a real, catchable exception)."""
@@ -113,234 +142,6 @@ class FakeListbox:
 
     def bind(self, *args: object, **kwargs: object) -> None:
         pass
-
-
-class FakeWidget:
-    """A generic no-op widget for Frame/Label/Button/OptionMenu.
-
-    ``configure``/``config`` record their kwargs into ``configured`` (rather
-    than discarding them) so a test can assert on a widget's last-set color
-    or text, e.g. the calendar's per-cell status coloring.
-    """
-
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        self.configured: dict[str, object] = dict(kwargs)
-        self.packed = False
-
-    def pack(self, *args: object, **kwargs: object) -> FakeWidget:
-        self.packed = True
-        return self
-
-    def pack_forget(self, *args: object, **kwargs: object) -> None:
-        """Un-pack. The viewport hides its scrollbar whenever content fits."""
-        self.packed = False
-
-    def place(self, *args: object, **kwargs: object) -> FakeWidget:
-        return self
-
-    def grid(self, *args: object, **kwargs: object) -> FakeWidget:
-        return self
-
-    def configure(self, *args: object, **kwargs: object) -> FakeWidget:
-        self.configured.update(kwargs)
-        return self
-
-    config = configure
-
-    def bind(self, *args: object, **kwargs: object) -> None:
-        pass
-
-    def register(self, func: object) -> object:
-        """Stand in for Tk's Tcl-command registration: return the callable as-is."""
-        return func
-
-    def winfo_children(self) -> list[object]:
-        """No children: the fakes are not a real widget tree."""
-        return []
-
-    def winfo_toplevel(self) -> FakeWidget:
-        return self
-
-    def update_idletasks(self) -> None:
-        pass
-
-    def cget(self, key: str) -> object:
-        return self.configured.get(key, "")
-
-    def focus_get(self) -> None:
-        """Nothing holds focus in a fake tree."""
-
-    # Geometry queries. The scroll viewport asks for these to size itself and
-    # to decide whether content still fits; zero means "nothing measured yet",
-    # which is the honest answer for a fake with no layout.
-    def winfo_reqwidth(self) -> int:
-        return 0
-
-    def winfo_reqheight(self) -> int:
-        return 0
-
-    def winfo_width(self) -> int:
-        return 0
-
-    def winfo_height(self) -> int:
-        return 0
-
-    def winfo_rooty(self) -> int:
-        return 0
-
-    def winfo_screenwidth(self) -> int:
-        return 1366
-
-    def winfo_screenheight(self) -> int:
-        return 768
-
-
-class FakeNotebook(FakeWidget):
-    """A functional ``ttk.Notebook``: tracks added tabs and the selection."""
-
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        super().__init__(*args, **kwargs)
-        self.tabs: list[tuple[object, str]] = []
-        self._selected = 0
-        self.traversal_enabled = False
-
-    def add(self, child: object, *, text: str = "") -> None:
-        self.tabs.append((child, text))
-
-    def enable_traversal(self) -> None:
-        """Record that Ctrl+Tab / Ctrl+PageDown traversal was requested.
-
-        Tracked rather than ignored so a test can assert it happened: ttk only
-        installs those toplevel bindings on request, and forgetting the call
-        leaves the tab-switching keys silently dead.
-        """
-        self.traversal_enabled = True
-
-    def select(self, tab_id: object = None) -> int | None:
-        if tab_id is None:
-            return self._selected
-        if isinstance(tab_id, int):
-            self._selected = tab_id
-        else:
-            for index, (child, _label) in enumerate(self.tabs):
-                if child is tab_id:
-                    self._selected = index
-                    break
-        return None
-
-
-class FakeRadiobutton(FakeWidget):
-    """A functional ``tk.Radiobutton``: selecting sets the var and fires.
-
-    Functional rather than a no-op because this is the gate's grams/items unit
-    selector, which used to be a keyboard-unreachable ``OptionMenu``. A test
-    needs to be able to drive it the way a keyboard user now can.
-    """
-
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        super().__init__(*args, **kwargs)
-        self.value = kwargs.get("value")
-        self._variable = kwargs.get("variable")
-        self._command = kwargs.get("command")
-
-    def invoke(self) -> None:
-        """Select this option, as Space/Return does on a real Radiobutton."""
-        if self._variable is not None and hasattr(self._variable, "set"):
-            self._variable.set(self.value)
-        if callable(self._command):
-            self._command()
-
-    select = invoke
-
-
-class FakeScrollbar(FakeWidget):
-    """A ``tk.Scrollbar`` stand-in that records the thumb position."""
-
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        super().__init__(*args, **kwargs)
-        self.fractions: tuple[str, ...] = ()
-
-    def set(self, *fractions: str) -> None:
-        self.fractions = fractions
-
-
-class FakeCanvas(FakeWidget):
-    """A functional ``tk.Canvas`` stand-in for ``gatelock.ScrollableSurface``.
-
-    Tracks the scroll offset so a test can assert the viewport actually moved,
-    which is the whole point of the widget being there: the gate's content can
-    exceed a 768px screen, and before the viewport existed the overflow was
-    silently clipped off both edges at once.
-    """
-
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        super().__init__(*args, **kwargs)
-        self.items: list[object] = []
-        self.offset = 0.0
-        self._children: list[object] = []
-
-    def create_window(self, *args: object, **kwargs: object) -> int:
-        window = kwargs.get("window")
-        if window is not None:
-            self.items.append(window)
-            self._children.append(window)
-        return len(self.items)
-
-    def itemconfigure(self, *args: object, **kwargs: object) -> None:
-        pass
-
-    def coords(self, *args: object, **kwargs: object) -> None:
-        pass
-
-    def bbox(self, *_args: object) -> tuple[int, int, int, int]:
-        return (0, 0, 0, 0)
-
-    def yview(self) -> tuple[float, float]:
-        return (self.offset, 1.0)
-
-    def yview_scroll(self, number: int, _what: str) -> None:
-        self.offset = max(0.0, self.offset + number)
-
-    def yview_moveto(self, fraction: float) -> None:
-        self.offset = fraction
-
-    def canvasy(self, screen_y: float) -> float:
-        return screen_y
-
-    def winfo_children(self) -> list[object]:
-        return list(self._children)
-
-    def winfo_height(self) -> int:
-        return 0
-
-    def winfo_toplevel(self) -> FakeWidget:
-        return self
-
-    def update_idletasks(self) -> None:
-        pass
-
-    def cget(self, key: str) -> object:
-        return self.configured.get(key, "")
-
-    def focus_get(self) -> None:
-        """Nothing holds focus in a fake tree."""
-
-
-class FakeStyle:
-    """A no-op stand-in for ``ttk.Style`` -- records calls, applies nothing."""
-
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        self.theme: str | None = None
-        self.configured: dict[str, dict[str, object]] = {}
-
-    def theme_use(self, theme_name: str) -> None:
-        self.theme = theme_name
-
-    def configure(self, style_name: str, **kwargs: object) -> None:
-        self.configured.setdefault(style_name, {}).update(kwargs)
-
-    def map(self, style_name: str, **kwargs: object) -> None:
-        self.configured.setdefault(style_name, {}).update(kwargs)
 
 
 _FAKE_TK = SimpleNamespace(

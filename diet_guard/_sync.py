@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import TYPE_CHECKING
 
 from crdt_sync import (
     DeviceIdentity,
@@ -36,7 +37,11 @@ from diet_guard._constants import (
 )
 from diet_guard._device import device_identity
 from diet_guard._foodbank import rebuild_food_bank
-from diet_guard._state import DayLog, read_raw_log, resign_entry, write_raw_log
+from diet_guard._state_sync import (
+    read_raw_log,
+    resign_entry,
+    write_raw_log,
+)
 from diet_guard._sync_banks import _sync_budget, _sync_food_bank, _sync_manual_bank
 from diet_guard._sync_client import _client_for_run
 from diet_guard._sync_errors import SyncError
@@ -46,6 +51,11 @@ from diet_guard.sync_merge import (
     log_to_daylog,
     parse_remote_log,
 )
+
+if TYPE_CHECKING:
+    from diet_guard._state import (
+        DayLog,
+    )
 
 _logger = logging.getLogger(__name__)
 
