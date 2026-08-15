@@ -1,7 +1,7 @@
 """This machine's persisted sync identity.
 
 Its own module rather than living in :mod:`diet_guard._sync`, because
-:mod:`diet_guard._sync_merge` needs it too for HLC stamping and importing
+:mod:`diet_guard.sync_merge` needs it too for HLC stamping and importing
 ``_sync`` from there would be a cycle.
 """
 

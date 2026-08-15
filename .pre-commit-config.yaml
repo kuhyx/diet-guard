@@ -26,9 +26,9 @@ repos:
       - id: debug-statements
       - id: name-tests-test
         args: [--pytest-test-first]
-        # Shared fake widgets, not a test module. Split out of conftest.py only
-        # because that file passed the 250-line cap.
-        exclude: ^diet_guard/tests/_(tk_fakes|gate_layout_probe|gate_keyboard_probe)\.py$
+        # Shared fakes and fixtures, not test modules. Split out of conftest.py
+        # and test_sync.py only because those files passed the 250-line cap.
+        exclude: ^diet_guard/tests/_(tk_fakes|gate_layout_probe|gate_keyboard_probe|gate_fixtures|sync_fakes)\.py$
       - id: check-ast
       - id: mixed-line-ending
         args: [--fix=lf]

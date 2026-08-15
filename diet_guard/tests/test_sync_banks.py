@@ -11,14 +11,14 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
-from diet_guard import _sync
+from diet_guard import _sync, _sync_client
 from diet_guard._device import device_id
 from diet_guard._estimator import Nutrition
 from diet_guard._foodbank import lookup_food, read_food_bank
 from diet_guard._foodbank_manual import add_manual_entry, read_manual_bank
 from diet_guard._state import log_meal
-from diet_guard._sync_merge import food_bank_to_log, manual_bank_to_log
-from diet_guard.tests.test_sync import _mock_client, _write_token
+from diet_guard.sync_merge import food_bank_to_log, manual_bank_to_log
+from diet_guard.tests._sync_fakes import _mock_client, _write_token
 
 
 class TestSyncFoodBank:
@@ -31,7 +31,7 @@ class TestSyncFoodBank:
         # behind it is (correctly) discarded before the push.
         log_meal("apple", Nutrition(95, 0.5, 25, 0.3, 180, "manual"), 8)
         client = _mock_client(devices=())
-        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+        with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed = [call.args[0] for call in client.put_file_text.call_args_list]
         assert f"diet-guard-sync/devices/{device_id()}/food_bank.json" in pushed
@@ -65,7 +65,7 @@ class TestSyncFoodBank:
             devices=("phone",),
             files={"diet-guard-sync/devices/phone/food_log.json": remote_log_json},
         )
-        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+        with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         found = lookup_food("Skyr")
         assert found is not None
@@ -93,7 +93,7 @@ class TestSyncFoodBank:
             devices=("phone",),
             files={"diet-guard-sync/devices/phone/food_bank.json": remote},
         )
-        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+        with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
 
         assert lookup_food("Skyr") is None
@@ -121,7 +121,7 @@ class TestSyncFoodBank:
             devices=("phone",),
             files={"diet-guard-sync/devices/phone/food_bank.json": remote},
         )
-        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+        with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         assert read_food_bank()["apple"]["count"] == 99
 
@@ -132,14 +132,14 @@ class TestSyncFoodBank:
             devices=("phone",),
             files={"diet-guard-sync/devices/phone/food_bank.json": "{not json"},
         )
-        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+        with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         assert lookup_food("apple") is not None
 
     def test_nothing_pushed_when_no_device_has_a_bank(self) -> None:
         _write_token()
         client = _mock_client(devices=())
-        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+        with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed = [call.args[0] for call in client.put_file_text.call_args_list]
         assert f"diet-guard-sync/devices/{device_id()}/food_bank.json" not in pushed
@@ -151,7 +151,7 @@ class TestSyncManualBank:
     def test_nothing_pushed_when_no_device_has_curated_anything(self) -> None:
         _write_token()
         client = _mock_client(devices=())
-        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+        with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed = [call.args[0] for call in client.put_file_text.call_args_list]
         assert not any("food_bank_manual" in path for path in pushed)
@@ -160,7 +160,7 @@ class TestSyncManualBank:
         _write_token()
         add_manual_entry("Skyr", {"desc": "Skyr", "kcal": 120.0, "count": 0})
         client = _mock_client(devices=())
-        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+        with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed = [call.args[0] for call in client.put_file_text.call_args_list]
         assert f"diet-guard-sync/devices/{device_id()}/food_bank_manual.json" in pushed
@@ -192,7 +192,7 @@ class TestSyncManualBank:
             devices=("phone",),
             files={"diet-guard-sync/devices/phone/food_bank_manual.json": remote},
         )
-        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+        with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         assert "skyr" in read_manual_bank()
         found = lookup_food("Skyr")
@@ -221,7 +221,7 @@ class TestSyncManualBank:
             devices=("phone",),
             files={"diet-guard-sync/devices/phone/food_bank_manual.json": remote},
         )
-        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+        with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         assert read_manual_bank()["skyr"]["kcal"] == 999.0
 
@@ -234,7 +234,7 @@ class TestSyncManualBank:
                 "diet-guard-sync/devices/phone/food_bank_manual.json": "{not json",
             },
         )
-        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+        with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         assert read_manual_bank()["skyr"]["kcal"] == 120.0
 
@@ -242,6 +242,6 @@ class TestSyncManualBank:
         _write_token()
         add_manual_entry("Skyr", {"desc": "Skyr", "kcal": 120.0, "count": 0})
         client = _mock_client(devices=("phone",))
-        with patch.object(_sync, "GitHubSyncClient", return_value=client):
+        with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         assert read_manual_bank()["skyr"]["kcal"] == 120.0

@@ -12,7 +12,7 @@ import json
 from crdt_sync import Record, merge_logs
 import pytest
 
-from diet_guard._sync_merge import (
+from diet_guard.sync_merge import (
     _budget_hlc,
     food_bank_to_log,
     log_to_food_bank,

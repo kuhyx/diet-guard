@@ -16,7 +16,7 @@ Storage and sync are deliberately split:
 * the entries live in their own file (``.budget_history``), leaving
   :mod:`diet_guard._budget`'s ``.budget`` schema untouched at v2;
 * they travel as extra ``hist:<YYYY-MM-DD>`` *fields* on the existing
-  ``budget`` CRDT record (see :mod:`diet_guard._sync_merge`).
+  ``budget`` CRDT record (see :mod:`diet_guard.sync_merge`).
 
 That second point is the load-bearing one.  ``crdt_sync``'s ``merge_record``
 does per-field last-writer-wins over the *union* of field names, and both
