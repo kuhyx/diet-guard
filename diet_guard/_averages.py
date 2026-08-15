@@ -38,14 +38,12 @@ boundaries and the period edges are testable with synthetic data.
 
 from __future__ import annotations
 
-import calendar
 from dataclasses import dataclass
 from datetime import date, timedelta
 import enum
 from typing import TYPE_CHECKING
 
 from diet_guard._daystatus import OVER_BUDGET_YELLOW_CEILING, day_total_kcal
-from diet_guard._state import now_local
 
 if TYPE_CHECKING:
     from diet_guard._budget_history import BudgetSchedule
@@ -118,30 +116,6 @@ def band_for(avg_kcal: float, avg_budget: float) -> AverageBand:
     return AverageBand.VERY_OVER
 
 
-def last_complete_day(today: date) -> date:
-    """Return the last day whose log is finished: the day before ``today``."""
-    return today - timedelta(days=1)
-
-
-def week_bounds(day: date) -> tuple[date, date]:
-    """Return the Monday and Sunday of the ISO week containing ``day``."""
-    monday = day - timedelta(days=day.weekday())
-    return monday, monday + timedelta(days=_DAYS_PER_WEEK - 1)
-
-
-def month_bounds(day: date) -> tuple[date, date]:
-    """Return the first and last dates of ``day``'s calendar month."""
-    last = calendar.monthrange(day.year, day.month)[1]
-    return day.replace(day=1), day.replace(day=last)
-
-
-def _shift_months(day: date, months: int) -> date:
-    """Return the first of the month ``months`` before ``day``'s month."""
-    index = day.year * _MONTHS_PER_YEAR + (day.month - 1) - months
-    year, month = divmod(index, _MONTHS_PER_YEAR)
-    return date(year, month + 1, 1)
-
-
 def period_average(
     log: DayLog,
     *,
@@ -193,106 +167,4 @@ def period_average(
         avg_kcal=avg_kcal,
         avg_budget=avg_budget,
         band=band_for(avg_kcal, avg_budget),
-    )
-
-
-def _resolve_today(today: date | None) -> date:
-    """Return ``today`` or the real current local date when it is None."""
-    return today if today is not None else now_local().date()
-
-
-def _capped(
-    log: DayLog,
-    schedule: BudgetSchedule,
-    bounds: tuple[date, date],
-    ref: date,
-) -> PeriodAverage:
-    """Average ``bounds``, truncated so it never includes ``ref`` itself.
-
-    The single place the "today is excluded" rule is applied, so a caller
-    cannot construct a period that half-counts an unfinished day.
-    """
-    start, end = bounds
-    return period_average(
-        log,
-        schedule=schedule,
-        start=start,
-        end=min(end, last_complete_day(ref)),
-    )
-
-
-def weekly_average(
-    log: DayLog,
-    *,
-    schedule: BudgetSchedule,
-    weeks_ago: int = 0,
-    today: date | None = None,
-) -> PeriodAverage:
-    """Return the average for an ISO week, ``weeks_ago`` weeks back.
-
-    Args:
-        log: A filtered log (see :func:`period_average`).
-        schedule: Resolves each day's budget.
-        weeks_ago: 0 for the current week (through yesterday), 1 for the
-            previous complete week, and so on.
-        today: The reference "today"; defaults to the real current date.
-
-    Returns:
-        That week's :class:`PeriodAverage`.
-    """
-    ref = _resolve_today(today)
-    anchor = ref - timedelta(weeks=weeks_ago)
-    return _capped(log, schedule, week_bounds(anchor), ref)
-
-
-def monthly_average(
-    log: DayLog,
-    *,
-    schedule: BudgetSchedule,
-    months_ago: int = 0,
-    today: date | None = None,
-) -> PeriodAverage:
-    """Return the average for a calendar month, ``months_ago`` months back.
-
-    Args:
-        log: A filtered log (see :func:`period_average`).
-        schedule: Resolves each day's budget.
-        months_ago: 0 for the current month (through yesterday), 1 for the
-            previous complete month, and so on.
-        today: The reference "today"; defaults to the real current date.
-
-    Returns:
-        That month's :class:`PeriodAverage`.
-    """
-    ref = _resolve_today(today)
-    return _capped(log, schedule, month_bounds(_shift_months(ref, months_ago)), ref)
-
-
-def recent_weeks(
-    log: DayLog,
-    *,
-    schedule: BudgetSchedule,
-    count: int,
-    today: date | None = None,
-) -> tuple[PeriodAverage, ...]:
-    """Return the last ``count`` weekly averages, most recent first."""
-    ref = _resolve_today(today)
-    return tuple(
-        weekly_average(log, schedule=schedule, weeks_ago=back, today=ref)
-        for back in range(count)
-    )
-
-
-def recent_months(
-    log: DayLog,
-    *,
-    schedule: BudgetSchedule,
-    count: int,
-    today: date | None = None,
-) -> tuple[PeriodAverage, ...]:
-    """Return the last ``count`` monthly averages, most recent first."""
-    ref = _resolve_today(today)
-    return tuple(
-        monthly_average(log, schedule=schedule, months_ago=back, today=ref)
-        for back in range(count)
     )

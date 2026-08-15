@@ -36,7 +36,7 @@ from diet_guard._constants import (
     SYNC_STATE_FILE,
 )
 from diet_guard._device import device_identity
-from diet_guard._foodbank import rebuild_food_bank
+from diet_guard._foodbank_rebuild import rebuild_food_bank
 from diet_guard._state_sync import (
     read_raw_log,
     resign_entry,

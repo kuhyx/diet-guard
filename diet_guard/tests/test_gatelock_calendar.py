@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from diet_guard import _budget
-from diet_guard._budget import budget_weight, daily_budget, write_budget
+from diet_guard._budget import daily_budget, write_budget
+from diet_guard._budget_derived import budget_weight
 from diet_guard._state import log_meal
 from diet_guard.tests.conftest import _nutrition
 

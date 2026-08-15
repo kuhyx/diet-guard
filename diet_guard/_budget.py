@@ -19,7 +19,6 @@ keeps up to date on every edit.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 import logging
@@ -81,65 +80,6 @@ class BudgetFileCorruptError(BudgetError):
     def __init__(self) -> None:
         """Initialize with a fixed, side-effect-free message."""
         super().__init__("daily budget file is corrupt")
-
-
-@dataclass(frozen=True)
-class Biometrics:
-    """Body metrics that feed the Mifflin-St Jeor budget formula.
-
-    Grouped into one value object so the budget calculation stays under the
-    repo's five-argument lint ceiling and so the inputs travel together.
-
-    Attributes:
-        weight_kg: Body mass in kilograms.
-        height_cm: Height in centimetres.
-        age_years: Age in years.
-        is_male: True for the male BMR constant (+5), False for female (-161).
-    """
-
-    weight_kg: float
-    height_cm: float
-    age_years: float
-    is_male: bool
-
-
-def mifflin_st_jeor_bmr(bio: Biometrics) -> float:
-    """Return resting metabolic rate via the Mifflin-St Jeor equation.
-
-    Args:
-        bio: The person's body metrics.
-
-    Returns:
-        Basal metabolic rate in kcal/day.
-    """
-    base = 10.0 * bio.weight_kg + 6.25 * bio.height_cm - 5.0 * bio.age_years
-    return base + 5.0 if bio.is_male else base - 161.0
-
-
-def compute_target_budget(
-    bio: Biometrics,
-    *,
-    activity_factor: float,
-    deficit_kcal: float,
-) -> int:
-    """Return the daily kcal target: TDEE minus a deficit, floored for safety.
-
-    TDEE (total daily energy expenditure) is the BMR scaled by an activity
-    factor; subtracting a deficit yields a target that drives gradual loss.
-
-    Args:
-        bio: The person's body metrics.
-        activity_factor: Multiplier for daily activity (e.g. 1.2 sedentary,
-            1.375 light, 1.55 moderate, 1.725 very active).
-        deficit_kcal: Calories subtracted from TDEE for weight loss.
-
-    Returns:
-        The target budget in kcal, never below ``_MIN_SANE_BUDGET``.
-    """
-    bmr = mifflin_st_jeor_bmr(bio)
-    tdee = bmr * activity_factor
-    target = round(tdee - deficit_kcal)
-    return max(target, _MIN_SANE_BUDGET)
 
 
 def is_initialized() -> bool:
@@ -252,43 +192,6 @@ def daily_budget() -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise BudgetFileCorruptError
     return value
-
-
-def budget_weight() -> float | None:
-    """Return the body weight stored with the budget, or None if unavailable.
-
-    Returns:
-        The stored weight in kg, or None for a pre-v2 (budget-only) record.
-
-    Raises:
-        BudgetNotInitializedError: If no budget has been set yet.
-        BudgetFileCorruptError: If the file exists but cannot be parsed.
-    """
-    record = _read_record()
-    value = record.get("w")
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return None
-    return float(value)
-
-
-def protein_target_g() -> float | None:
-    """Return the daily protein target in grams, or None if it cannot be derived.
-
-    Derived from the stored body weight at :data:`PROTEIN_G_PER_KG`.  Returns
-    None -- rather than raising -- whenever the target is simply unavailable
-    (no budget set, a pre-v2 record without weight, or a corrupt file), so
-    the dashboard can show calories and quietly omit the protein line.
-
-    Returns:
-        The protein target in grams, or None when weight is unknown.
-    """
-    try:
-        weight = budget_weight()
-    except BudgetError:
-        return None
-    if weight is None:
-        return None
-    return round(weight * PROTEIN_G_PER_KG, 1)
 
 
 def read_raw_record() -> dict[str, object] | None:

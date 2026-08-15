@@ -20,53 +20,84 @@ from __future__ import annotations
 import ast
 import pathlib
 
-from diet_guard import _state
-from diet_guard._constants import FOOD_LOG_FILE as REAL_FOOD_LOG_FILE
+from diet_guard import _budget, _budget_history, _state
+from diet_guard._constants import (
+    BUDGET_FILE as REAL_BUDGET_FILE,
+)
+from diet_guard._constants import (
+    BUDGET_HISTORY_FILE as REAL_BUDGET_HISTORY_FILE,
+)
+from diet_guard._constants import (
+    FOOD_LOG_FILE as REAL_FOOD_LOG_FILE,
+)
 
 _PACKAGE_DIR = pathlib.Path(__file__).resolve().parent.parent
 
-#: The one module allowed to open the food log. Everything else must go
-#: through its ``_read_raw_log`` / ``_write_log``.
-_LOG_FILE_OWNER = "_state"
+#: Each on-disk state path conftest redirects, mapped to the single package
+#: module allowed to name it. Anything else naming one means the redirect no
+#: longer covers every reader.
+_REDIRECTED_CONSTANTS = {
+    "FOOD_LOG_FILE": "_state",
+    "BUDGET_FILE": "_budget",
+    "BUDGET_HISTORY_FILE": "_budget_history",
+    "FOOD_BANK_FILE": "_foodbank",
+    "MANUAL_BANK_FILE": "_foodbank_manual",
+}
 
 
-def _names_food_log_file(path: pathlib.Path) -> bool:
-    """Whether ``path`` mentions ``FOOD_LOG_FILE`` at all."""
+def _names(path: pathlib.Path, constant: str) -> bool:
+    """Whether ``path`` mentions ``constant`` at all."""
     tree = ast.parse(path.read_text(encoding="utf-8"), str(path))
     return any(
-        (isinstance(node, ast.Name) and node.id == "FOOD_LOG_FILE")
-        or (isinstance(node, ast.Attribute) and node.attr == "FOOD_LOG_FILE")
+        (isinstance(node, ast.Name) and node.id == constant)
+        or (isinstance(node, ast.Attribute) and node.attr == constant)
         for node in ast.walk(tree)
     )
 
 
-def test_only_state_names_the_log_file() -> None:
-    """``FOOD_LOG_FILE`` is referenced from exactly one package module.
+def test_only_owners_name_redirected_paths() -> None:
+    """Each redirected state path is referenced from exactly one module.
 
-    Fails closed: a split that moves a log reader into a sibling shows up here
-    as a named module, instead of as a test run quietly writing to the real
-    food log.
+    Fails closed: a split that moves a reader of one of these constants into a
+    sibling shows up here as a named module, instead of as a test run quietly
+    writing to the real ``~/.local/share/diet_guard``.
     """
-    namers = sorted(
-        path.stem for path in _PACKAGE_DIR.glob("*.py") if _names_food_log_file(path)
-    )
-    assert set(namers) <= {_LOG_FILE_OWNER, "_constants"}, (
-        "FOOD_LOG_FILE must be named only by _constants (its definition) and "
-        f"_state (the sole reader conftest patches); found: {namers}"
-    )
+    for constant, owner in _REDIRECTED_CONSTANTS.items():
+        namers = sorted(
+            path.stem for path in _PACKAGE_DIR.glob("*.py") if _names(path, constant)
+        )
+        assert set(namers) <= {owner, "_constants"}, (
+            f"{constant} must be named only by _constants (its definition) "
+            f"and {owner} (the sole reader conftest patches); found: {namers}"
+        )
 
 
-def test_redirect_moves_writes_off_the_live_log() -> None:
-    """Under the conftest redirect, a real write misses the live path.
+def test_redirect_moves_writes_off_the_live_paths() -> None:
+    """Under the conftest redirect, real writes miss the live paths.
 
-    The complement of the static check: proves the patched constant is the one
-    the write path actually resolves, not merely that the name is in the right
-    file.
+    The complement of the static check: proves each patched constant is the
+    one the write path actually resolves, not merely that the name sits in the
+    right file.
     """
-    assert _state.FOOD_LOG_FILE != REAL_FOOD_LOG_FILE, (
-        "conftest._isolate_state is not redirecting diet_guard._state."
-        "FOOD_LOG_FILE -- tests would write to the real food log"
-    )
+    live = {
+        "_state.FOOD_LOG_FILE": (_state.FOOD_LOG_FILE, REAL_FOOD_LOG_FILE),
+        "_budget.BUDGET_FILE": (_budget.BUDGET_FILE, REAL_BUDGET_FILE),
+        "_budget_history.BUDGET_HISTORY_FILE": (
+            _budget_history.BUDGET_HISTORY_FILE,
+            REAL_BUDGET_HISTORY_FILE,
+        ),
+    }
+    for name, (patched, real) in live.items():
+        assert patched != real, (
+            f"conftest._isolate_state is not redirecting {name} -- "
+            "tests would write to real user data"
+        )
 
     _state._write_log({"2026-06-22": []})
     assert _state.FOOD_LOG_FILE.exists(), "write did not land on the redirect"
+
+    _budget.write_budget(2000)
+    assert _budget.BUDGET_FILE.exists(), "budget write did not land on the redirect"
+    assert _budget_history.BUDGET_HISTORY_FILE.exists(), (
+        "budget-history write did not land on the redirect"
+    )

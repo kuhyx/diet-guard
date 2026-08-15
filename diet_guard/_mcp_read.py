@@ -15,12 +15,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from diet_guard._averages import (
-    PeriodAverage,
-    band_label,
-    monthly_average,
-    weekly_average,
-)
+from diet_guard._averages import PeriodAverage, band_label
+from diet_guard._averages_report import monthly_average, weekly_average
 from diet_guard._budget import BudgetError, current_schedule, daily_budget
 from diet_guard._gate import due_slots
 from diet_guard._mcp_server import READS_ONLY, mcp

@@ -10,7 +10,8 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from diet_guard import _sync, _sync_client
-from diet_guard._budget import budget_weight, daily_budget, write_budget
+from diet_guard._budget import daily_budget, write_budget
+from diet_guard._budget_derived import budget_weight
 from diet_guard._budget_history import load_entries
 from diet_guard._device import device_id
 from diet_guard.tests._sync_fakes import (

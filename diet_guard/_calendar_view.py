@@ -16,12 +16,8 @@ from typing import TYPE_CHECKING
 
 from gatelock import LockConfig
 
-from diet_guard._averages import (
-    PeriodAverage,
-    band_label,
-    monthly_average,
-    weekly_average,
-)
+from diet_guard._averages import PeriodAverage, band_label
+from diet_guard._averages_report import monthly_average, weekly_average
 from diet_guard._daystatus import (
     DayStatus,
     adherence_streak,

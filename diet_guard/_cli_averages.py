@@ -16,11 +16,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from diet_guard._averages import (
-    band_label,
-    monthly_average,
-    weekly_average,
-)
+from diet_guard._averages import band_label
+from diet_guard._averages_report import monthly_average, weekly_average
 from diet_guard._budget import (
     BudgetFileCorruptError,
     BudgetNotInitializedError,

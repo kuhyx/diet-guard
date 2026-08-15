@@ -8,15 +8,16 @@ from __future__ import annotations
 
 import json
 
-from diet_guard import _foodbank, _foodbank_manual
+from diet_guard import _foodbank_manual, _foodbank_rebuild
 from diet_guard._estimator import Nutrition
-from diet_guard._foodbank import lookup_food, remember_food, search_foods
+from diet_guard._foodbank import remember_food
 from diet_guard._foodbank_manual import (
     add_manual_entry,
     read_manual_bank,
     record_edit_time,
     write_manual_bank,
 )
+from diet_guard._foodbank_search import lookup_food, search_foods
 
 _SKYR = {
     "desc": "Skyr",
@@ -120,5 +121,5 @@ class TestVisibleToTheBank:
         """The derived bank is rewritten on every log write; curated entries
         live in their own file precisely so that cannot wipe them."""
         add_manual_entry("Skyr", dict(_SKYR))
-        _foodbank.rebuild_food_bank({})
+        _foodbank_rebuild.rebuild_food_bank({})
         assert lookup_food("Skyr") is not None

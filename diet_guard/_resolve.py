@@ -19,14 +19,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from diet_guard._estimator import (
-    Nutrition,
-    estimate_off,
-    manual,
-    off_candidates,
-    scale_nutrition,
-)
-from diet_guard._foodbank import lookup_food, search_foods
+from diet_guard._estimator import Nutrition, manual, scale_nutrition
+from diet_guard._estimator_off import estimate_off, off_candidates
+from diet_guard._foodbank_search import lookup_food, search_foods
 from diet_guard._portions import staple_nutrition, suggest_staples
 
 

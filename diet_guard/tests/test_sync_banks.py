@@ -14,8 +14,9 @@ from unittest.mock import patch
 from diet_guard import _sync, _sync_client
 from diet_guard._device import device_id
 from diet_guard._estimator import Nutrition
-from diet_guard._foodbank import lookup_food, read_food_bank
+from diet_guard._foodbank import read_food_bank
 from diet_guard._foodbank_manual import add_manual_entry, read_manual_bank
+from diet_guard._foodbank_search import lookup_food
 from diet_guard._state import log_meal
 from diet_guard.sync_merge import food_bank_to_log, manual_bank_to_log
 from diet_guard.tests._sync_fakes import _mock_client, _write_token

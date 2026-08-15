@@ -14,7 +14,7 @@ import pytest
 
 from diet_guard import _sync, _sync_client
 from diet_guard._device import device_id
-from diet_guard._foodbank import lookup_food
+from diet_guard._foodbank_search import lookup_food
 from diet_guard._state import load_log, log_meal
 from diet_guard.tests._sync_fakes import _mock_client, _nutrition, _write_token
 

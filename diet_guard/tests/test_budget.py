@@ -11,17 +11,18 @@ import pytest
 
 from diet_guard import _budget
 from diet_guard._budget import (
-    Biometrics,
     BudgetFileCorruptError,
     BudgetNotInitializedError,
-    budget_weight,
-    compute_target_budget,
     daily_budget,
     is_initialized,
-    mifflin_st_jeor_bmr,
-    protein_target_g,
     write_budget,
 )
+from diet_guard._budget_biometrics import (
+    Biometrics,
+    compute_target_budget,
+    mifflin_st_jeor_bmr,
+)
+from diet_guard._budget_derived import budget_weight, protein_target_g
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator

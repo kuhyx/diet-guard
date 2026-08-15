@@ -10,16 +10,10 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
-from diet_guard import _estimator
+from diet_guard import _estimator, _estimator_off
 from diet_guard._constants import DEFAULT_PORTION_GRAMS
-from diet_guard._estimator import (
-    Nutrition,
-    estimate,
-    estimate_off,
-    manual,
-    off_candidates,
-    scale_nutrition,
-)
+from diet_guard._estimator import Nutrition, manual, scale_nutrition
+from diet_guard._estimator_off import estimate, estimate_off, off_candidates
 
 _GOOD = {
     "product_name": "Big Mac",
@@ -38,7 +32,7 @@ def _patch_get(payload: object) -> object:
     response = MagicMock()
     response.raise_for_status = MagicMock()
     response.json = MagicMock(return_value=payload)
-    return patch.object(_estimator.requests, "get", return_value=response)
+    return patch.object(_estimator_off.requests, "get", return_value=response)
 
 
 def _hits(*products: object) -> dict[str, object]:
@@ -176,7 +170,7 @@ class TestOffCandidates:
     def test_request_exception_returns_empty(self) -> None:
         """A network failure degrades to an empty candidate list."""
         with patch.object(
-            _estimator.requests,
+            _estimator_off.requests,
             "get",
             side_effect=requests.RequestException("boom"),
         ):

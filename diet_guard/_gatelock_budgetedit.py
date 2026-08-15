@@ -18,7 +18,8 @@ import contextlib
 import tkinter as tk
 from typing import TYPE_CHECKING
 
-from diet_guard._budget import BudgetError, budget_weight, write_budget
+from diet_guard._budget import BudgetError, write_budget
+from diet_guard._budget_derived import budget_weight
 from diet_guard._gatelock_mealflow import _GateMealFlow
 from diet_guard._gatelock_ui import ERR, FG
 

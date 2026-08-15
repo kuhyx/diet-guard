@@ -11,7 +11,8 @@ in the meal flow.
 
 from __future__ import annotations
 
-from diet_guard._budget import BudgetError, daily_budget, protein_target_g
+from diet_guard._budget import BudgetError, daily_budget
+from diet_guard._budget_derived import protein_target_g
 from diet_guard._gatelock_nutrition import _GateNutrition
 from diet_guard._state import (
     entry_kcal,

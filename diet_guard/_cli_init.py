@@ -13,7 +13,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from diet_guard._budget import Biometrics, compute_target_budget, write_budget
+from diet_guard._budget import write_budget
+from diet_guard._budget_biometrics import Biometrics, compute_target_budget
 
 if TYPE_CHECKING:
     from collections.abc import Callable

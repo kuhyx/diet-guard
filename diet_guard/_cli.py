@@ -23,8 +23,8 @@ from diet_guard._budget import (
     BudgetFileCorruptError,
     BudgetNotInitializedError,
     daily_budget,
-    protein_target_g,
 )
+from diet_guard._budget_derived import protein_target_g
 from diet_guard._cli_args import parse_args
 from diet_guard._cli_averages import cmd_averages
 from diet_guard._cli_gate import cmd_gate
