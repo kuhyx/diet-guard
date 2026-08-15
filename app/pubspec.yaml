@@ -2,7 +2,7 @@ name: diet_guard_app
 description: "Companion phone app for diet_guard: log meals on the go."
 publish_to: 'none'
 
-version: 1.0.23+1
+version: 1.0.24+1
 
 environment:
   sdk: ^3.12.2
@@ -57,6 +57,7 @@ dev_dependencies:
   url_launcher_platform_interface: ^2.3.2
   very_good_analysis: ^10.2.0
 
+  plugin_platform_interface: any
 flutter:
   uses-material-design: true
 
