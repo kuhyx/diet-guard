@@ -18,10 +18,16 @@ from __future__ import annotations
 import ast
 import pathlib
 import tkinter as tk
+from unittest.mock import MagicMock
 
-from diet_guard import _gatelock_calendar, _gatelock_calendar_ui, _gatelock_ui
+from diet_guard import (
+    _gatelock_calendar,
+    _gatelock_calendar_ui,
+    _gatelock_ui,
+    _gatelock_widgetgroups,
+)
 from diet_guard.tests._gate_fixtures import _GATE_TK_MODULES, fake_tk
-from diet_guard.tests._tk_fakes import _FAKE_TK, _FAKE_TTK
+from diet_guard.tests._tk_fakes import _FAKE_TK, _FAKE_TTK, _FakeTclError
 
 #: Modules that bind ``tk`` but build no part of the gate's widget tree, so
 #: they never need the shared fake. Each is exempt for a stated reason -- this
@@ -29,8 +35,9 @@ from diet_guard.tests._tk_fakes import _FAKE_TK, _FAKE_TTK
 _NO_WIDGETS = frozenset(
     {
         # Mirror/adapter layer over widgets built elsewhere; constructs none
-        # of its own, but does bind ``tk`` at runtime for its ``TclError``
-        # suppressions.
+        # of its own. It binds real ``tk`` only to name ``tk.TclError`` in
+        # its dead-copy suppressions, which is why ``_FakeTclError``
+        # subclasses the real one -- see the last test in this file.
         "diet_guard._gatelock_widgetgroups",
         # Display-readiness probe. Builds a throwaway ``tk.Tk()`` to test
         # whether X is reachable -- deliberately NOT part of the gate's widget
@@ -145,3 +152,24 @@ def test_fake_tk_actually_replaces_real_tkinter() -> None:
 
     # ...and is restored afterwards, so the fake cannot leak into other tests.
     assert _gatelock_ui.tk is tk
+
+
+def test_fake_tclerror_is_catchable_as_the_real_one() -> None:
+    """The fake ``TclError`` must satisfy ``except tkinter.TclError``.
+
+    Not every module that catches a dead-widget error is in the patch set:
+    ``_gatelock_widgetgroups`` is deliberately exempt (it constructs no
+    widgets), so its ``contextlib.suppress(tk.TclError)`` names the genuine
+    class. If the fake did not inherit from it, a fake-tk test raising
+    ``_FakeTclError`` would sail straight through that suppression -- the
+    "a monitor vanished mid-update" paths would be untested against the error
+    the tests actually raise, and would raise through the gate instead.
+    """
+    assert issubclass(_FakeTclError, tk.TclError)
+
+    dead, alive = MagicMock(), MagicMock()
+    dead.configure.side_effect = _FAKE_TK.TclError("bad window path name")
+    # Must not raise: the group has to skip the dead copy and configure the
+    # live one, exactly as it does on a real monitor going dark.
+    _gatelock_widgetgroups.WidgetGroup([dead, alive]).config(fg="#ff0000")
+    alive.configure.assert_called_once_with(fg="#ff0000")

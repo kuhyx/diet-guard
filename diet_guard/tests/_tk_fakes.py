@@ -20,6 +20,7 @@ rather than merely asserting that a widget was constructed.
 
 from __future__ import annotations
 
+import tkinter as tk
 from types import SimpleNamespace
 
 from diet_guard.tests._tk_fakes_canvas import FakeCanvas, FakeScrollbar
@@ -52,8 +53,18 @@ __all__ = [
 ]
 
 
-class _FakeTclError(Exception):
-    """Stand-in for ``tkinter.TclError`` (a real, catchable exception)."""
+class _FakeTclError(tk.TclError):
+    """Stand-in for ``tkinter.TclError`` (a real, catchable exception).
+
+    Subclasses the *real* ``tkinter.TclError`` rather than ``Exception``.
+    Not every module that catches a dead-widget error is in the fake-tk patch
+    set -- ``_gatelock_widgetgroups`` deliberately is not, since it constructs
+    no widgets -- so its ``contextlib.suppress(tk.TclError)`` refers to the
+    genuine class. With a bare ``Exception`` base the fake escaped that
+    suppression, meaning the "a monitor vanished mid-update" paths were only
+    ever exercised against the real error and would have raised through the
+    gate in a fake-tk test. Inheriting keeps both spellings catchable.
+    """
 
 
 class FakeVar:
