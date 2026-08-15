@@ -17,8 +17,11 @@ from __future__ import annotations
 
 import ast
 import pathlib
+import tkinter as tk
 
-from diet_guard.tests._gate_fixtures import _GATE_TK_MODULES
+from diet_guard import _gatelock_calendar, _gatelock_calendar_ui, _gatelock_ui
+from diet_guard.tests._gate_fixtures import _GATE_TK_MODULES, fake_tk
+from diet_guard.tests._tk_fakes import _FAKE_TK, _FAKE_TTK
 
 #: Modules that bind ``tk`` but build no part of the gate's widget tree, so
 #: they never need the shared fake. Each is exempt for a stated reason -- this
@@ -117,3 +120,28 @@ def test_no_widgets_declarations_are_live() -> None:
         "stale _NO_WIDGETS entries (no longer bind `tk`): "
         f"{sorted(_NO_WIDGETS - importers)}"
     )
+
+
+def test_fake_tk_actually_replaces_real_tkinter() -> None:
+    """Inside ``fake_tk()``, every listed module's ``tk`` really is the fake.
+
+    The list-completeness test above proves each module is *named* in the patch
+    set. It cannot prove the patch swaps in something that is not real tkinter:
+    if ``_FAKE_TK`` were ever imported from the wrong place after a split of
+    ``_tk_fakes.py``, or silently became an alias of the real module, every
+    listed module would still be "patched" and the suite would still pass --
+    while building real widgets. So assert the identity directly, inside the
+    context manager, which is the only place it is true.
+    """
+    assert _FAKE_TK is not tk, "_FAKE_TK must not be the real tkinter module"
+
+    with fake_tk():
+        wrong = [
+            module.__name__ for module in _GATE_TK_MODULES if module.tk is not _FAKE_TK
+        ]
+        assert not wrong, f"fake_tk() left real tkinter in place for: {wrong}"
+        assert _gatelock_calendar.ttk is _FAKE_TTK
+        assert _gatelock_calendar_ui.ttk is _FAKE_TTK
+
+    # ...and is restored afterwards, so the fake cannot leak into other tests.
+    assert _gatelock_ui.tk is tk
