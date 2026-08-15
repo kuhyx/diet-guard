@@ -3,6 +3,7 @@
 /// directly and scaled to the amount actually eaten.
 library;
 
+import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:flutter/material.dart';
 
 /// Text controllers for one macro-entry row, owned by the calling screen so
@@ -37,6 +38,19 @@ class MacroControllers {
   /// Portion weight actually eaten (g). Blank assumes the eaten amount
   /// equals [perGrams].
   final TextEditingController grams;
+
+  /// Fills every macro field from [nutrition], as a food-bank pick does.
+  ///
+  /// Both [perGrams] and [grams] are set to the suggestion's own weight, so
+  /// the row starts out describing exactly the portion that was banked.
+  void fillFrom(Nutrition nutrition) {
+    kcal.text = nutrition.kcal.toStringAsFixed(0);
+    protein.text = nutrition.proteinG.toStringAsFixed(0);
+    carbs.text = nutrition.carbsG.toStringAsFixed(0);
+    fat.text = nutrition.fatG.toStringAsFixed(0);
+    perGrams.text = nutrition.grams.toStringAsFixed(0);
+    grams.text = nutrition.grams.toStringAsFixed(0);
+  }
 
   /// Clears every field's text.
   void clear() {

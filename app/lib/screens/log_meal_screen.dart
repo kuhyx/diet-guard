@@ -3,29 +3,18 @@
 library;
 
 import 'dart:async';
-import 'dart:developer';
+
 import 'package:crdt_sync/crdt_sync.dart';
-import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/food_suggestion.dart';
-import 'package:diet_guard_app/models/local_time.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/models/slot.dart';
-import 'package:diet_guard_app/screens/calendar_screen.dart';
-import 'package:diet_guard_app/screens/food_bank_screen.dart';
-import 'package:diet_guard_app/screens/history_screen.dart';
-import 'package:diet_guard_app/screens/settings_screen.dart';
-import 'package:diet_guard_app/services/app_settings_service.dart';
-import 'package:diet_guard_app/services/background_tasks.dart';
-import 'package:diet_guard_app/services/budget_history_service.dart';
-import 'package:diet_guard_app/services/day_status_service.dart';
+import 'package:diet_guard_app/screens/log_meal_actions.dart';
+import 'package:diet_guard_app/screens/log_meal_nav_mixin.dart';
+import 'package:diet_guard_app/screens/log_meal_progress.dart';
+import 'package:diet_guard_app/screens/log_meal_sync_mixin.dart';
 import 'package:diet_guard_app/services/due_slot_check.dart';
-import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
-import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
-import 'package:diet_guard_app/services/sync_health.dart';
-import 'package:diet_guard_app/services/sync_service.dart';
-import 'package:diet_guard_app/services/sync_settings.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/autocomplete_suggestion_list.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
@@ -50,21 +39,22 @@ class LogMealScreen extends StatefulWidget {
 }
 
 class _LogMealScreenState extends State<LogMealScreen>
-    with WidgetsBindingObserver {
+    with
+        WidgetsBindingObserver,
+        LogMealSyncMixin<LogMealScreen>,
+        LogMealNavMixin<LogMealScreen> {
+  @override
+  http.Client? get syncHttpClient => widget.httpClient;
+
   final TextEditingController _descController = TextEditingController();
   final MacroControllers _macros = MacroControllers();
   List<FoodSuggestion> _suggestions = const [];
-  Set<int> _loggedSlots = {};
   int? _selectedSlot;
   String _source = 'manual';
   String? _status;
   TodayProgress? _progress;
 
-  /// Single-flight guard so a launch sync and a lifecycle sync never overlap.
-  bool _autoSyncing = false;
 
-  /// Latest sync health, driving the "not syncing" banner. Null until read.
-  SyncHealthStatus? _syncHealth;
 
   @override
   void initState() {
@@ -82,12 +72,12 @@ class _LogMealScreenState extends State<LogMealScreen>
       controller.addListener(_onMacroEdited);
     }
     _selectedSlot = slotForLog(DateTime.now());
-    unawaited(_refreshSlots());
+    unawaited(refreshSlots());
     unawaited(_onDescChanged());
     // Read health before the first sync finishes, so a device that stalled in
     // a previous session says so immediately rather than only after a tick.
-    unawaited(_refreshSyncHealth());
-    unawaited(_autoSync());
+    unawaited(refreshSyncHealth());
+    unawaited(autoSync());
   }
 
   @override
@@ -98,144 +88,36 @@ class _LogMealScreenState extends State<LogMealScreen>
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Pull on resume (catch up on what another device logged while this one
-    // was backgrounded) and push on pause (keep the remote near-current).
-    final isResumeOrPause =
-        state == AppLifecycleState.resumed || state == AppLifecycleState.paused;
-    if (isResumeOrPause) {
-      unawaited(_autoSync());
-    }
-  }
-
-  /// Best-effort background sync: silent, skips when unconfigured, and never
-  /// overlaps itself. Failures are swallowed -- the Settings screen's manual
-  /// "Sync now" is where errors get surfaced. The try wraps even loading
-  /// [SyncSettings] itself: under `flutter test`, the shared_preferences and
-  /// secure-storage platform channels are unmocked by default and throw
-  /// [MissingPluginException], which must degrade exactly like "offline"
-  /// rather than crash every screen that mounts this widget.
-  ///
-  /// [_refreshSlots] only runs after an actual sync (not on the unconfigured
-  /// path, which every existing screen test takes): a fire-and-forget tail
-  /// await here can resolve after a *later* test's `tearDown` has already
-  /// reset [LogStorageService]'s singleton -- `mounted` alone doesn't bound
-  /// that, since widget disposal between tests isn't synchronized with a
-  /// still-pending Future from an earlier one.
-  Future<void> _autoSync() async {
-    if (_autoSyncing) return;
-    _autoSyncing = true;
-    try {
-      final settings = await SyncSettings.load();
-      // Either backend counts. `isConfigured` means "has a GitHub token", so
-      // gating on it alone silently skips every sync on a device connected
-      // only to Firebase -- and once the mirror is retired that is every
-      // device. Same fix workout_app's push() already carries.
-      if (!settings.isConfigured && await openFirebase() == null) {
-        // Never a silent return: an unconfigured device looked exactly like a
-        // healthy one with nothing to send, which is how meals sat unpublished
-        // for days. Recorded so the banner can say so.
-        log(
-          'diet_guard auto-sync: no backend configured; nothing to push',
-          level: 900,
-        );
-        await SyncHealth.recordUnconfigured();
-        if (mounted) await _refreshSyncHealth();
-        return;
-      }
-      final client = createGitHubClient(
-        settings,
-        httpClient: widget.httpClient,
-      );
-      try {
-        await runSync(await syncBackend(client));
-        await SyncHealth.recordSuccess();
-      } finally {
-        client.close();
-      }
-      if (!mounted) return;
-      await _refreshSlots();
-      await _refreshSyncHealth();
-    } on Object catch (error, stackTrace) {
-      // Best-effort, but never silent: this swallowed the reason a desktop
-      // install could not publish at all, which looked identical to "nothing
-      // to sync". Offline and unmocked-platform-channel-under-test both land
-      // here too, so it stays non-fatal -- it just says why now.
-      log(
-        'diet_guard auto-sync failed',
-        level: 1000,
-        error: error,
-        stackTrace: stackTrace,
-      );
-      await SyncHealth.recordFailure();
-      if (mounted) await _refreshSyncHealth();
-    } finally {
-      _autoSyncing = false;
-    }
-  }
-
-  /// Re-reads sync health so the banner reflects the tick that just ran.
-  Future<void> _refreshSyncHealth() async {
-    final status = await SyncHealth.read();
-    if (!mounted) return;
-    setState(() => _syncHealth = status);
-  }
-
-  /// Queues the platform's offline push backstop so a meal logged while
-  /// offline still uploads on reconnect. The in-process [_autoSync] covers
-  /// the online case; this is the backstop (a no-op on web, which has no
-  /// out-of-page scheduler -- see background_tasks.dart).
-  // coverage:ignore-start
-  Future<void> _enqueueSyncBackstop() => enqueueSyncBackstop();
-
-  // coverage:ignore-end
-
-  Future<void> _refreshSlots() async {
-    final logged = await LogStorageService.instance.loggedSlotsToday();
-    if (!mounted) return;
-    setState(() => _loggedSlots = logged);
-  }
-
   void _onMacroEdited() {
     if (_source == 'food bank') {
       setState(() => _source = 'manual');
     }
   }
 
+  /// Re-runs the food-bank search and dismisses the previous progress card.
+  ///
+  /// The card is cleared only when the field is non-empty because
+  /// [_onLogMeal]'s own `clear()` fires this listener too: without the guard
+  /// the two async chains race and the clear can null the card right after
+  /// [_onLogMeal] set it, so it never appears on device (in-memory test
+  /// stores resolve fast enough to hide this).
   Future<void> _onDescChanged() async {
-    final matches = await FoodBankService.instance.search(
-      _descController.text,
-    );
+    final matches = await FoodBankService.instance.search(_descController.text);
     if (!mounted) return;
     setState(() {
       _suggestions = matches;
-      // Typing the *next* meal dismisses the previous log's progress card.
-      // Guarded on non-empty text because _onLogMeal's own
-      // `_descController.clear()` also fires this listener: without the
-      // guard the two async chains race and the clear can null the card
-      // right after _onLogMeal set it, so the card never appears on device
-      // (in-memory test stores resolve fast enough to hide this).
       if (_descController.text.isNotEmpty) _progress = null;
     });
   }
 
   void _onSuggestionSelected(FoodSuggestion suggestion) {
     _descController.text = suggestion.name;
-    _macros.kcal.text = suggestion.nutrition.kcal.toStringAsFixed(0);
-    _macros.protein.text = suggestion.nutrition.proteinG.toStringAsFixed(0);
-    _macros.carbs.text = suggestion.nutrition.carbsG.toStringAsFixed(0);
-    _macros.fat.text = suggestion.nutrition.fatG.toStringAsFixed(0);
-    _macros.perGrams.text = suggestion.nutrition.grams.toStringAsFixed(0);
-    _macros.grams.text = suggestion.nutrition.grams.toStringAsFixed(0);
+    _macros.fillFrom(suggestion.nutrition);
     setState(() {
       _source = 'food bank';
       _suggestions = const [];
     });
   }
-
-  double _parse(TextEditingController controller) =>
-      double.tryParse(controller.text.trim()) ?? 0;
 
   Future<void> _onLogMeal() async {
     final desc = _descController.text.trim();
@@ -247,12 +129,12 @@ class _LogMealScreenState extends State<LogMealScreen>
       return;
     }
     final nutrition = nutritionForPortion(
-      kcal: _parse(_macros.kcal),
-      proteinG: _parse(_macros.protein),
-      carbsG: _parse(_macros.carbs),
-      fatG: _parse(_macros.fat),
-      perGrams: _parse(_macros.perGrams),
-      ateGrams: _parse(_macros.grams),
+      kcal: parseMacroField(_macros.kcal),
+      proteinG: parseMacroField(_macros.protein),
+      carbsG: parseMacroField(_macros.carbs),
+      fatG: parseMacroField(_macros.fat),
+      perGrams: parseMacroField(_macros.perGrams),
+      ateGrams: parseMacroField(_macros.grams),
       source: _source,
     );
     await LogStorageService.instance.logMeal(
@@ -264,11 +146,11 @@ class _LogMealScreenState extends State<LogMealScreen>
     await FoodBankService.instance.rebuildAndPersist(log);
     // Push the new meal now instead of waiting for the next lifecycle event,
     // so the PC gate can see it in seconds. Fire-and-forget and best-effort:
-    // _autoSync is single-flight and swallows offline/transient failures.
-    unawaited(_autoSync());
+    // autoSync is single-flight and swallows offline/transient failures.
+    unawaited(autoSync());
     // Offline backstop: if the push above fails (no connectivity), a
     // connectivity-gated WorkManager task uploads the meal on reconnect.
-    unawaited(_enqueueSyncBackstop());
+    unawaited(enqueueSyncBackstopTask());
     await _dismissStaleReminder();
     if (!mounted) return;
     _descController.clear();
@@ -277,11 +159,11 @@ class _LogMealScreenState extends State<LogMealScreen>
       _source = 'manual';
       _selectedSlot = slotForLog(DateTime.now());
     });
-    await _refreshSlots();
+    await refreshSlots();
     if (!mounted) return;
     setState(() {
       _status = null;
-      _progress = _buildProgress(log, desc);
+      _progress = buildTodayProgress(log, desc);
     });
   }
 
@@ -290,62 +172,13 @@ class _LogMealScreenState extends State<LogMealScreen>
   /// Without this a notification already on screen survives until the next
   /// background tick (up to 15 minutes), which reads as a false alarm even
   /// though the meal was logged on this very device. Passes
-  /// `pullWhenDue: false` because [_autoSync] above already owns the network
+  /// `pullWhenDue: false` because [autoSync] above already owns the network
   /// here and the local log is by definition the freshest copy.
   ///
   /// [checkAndNotify] already swallows notification-platform failures, so
   /// the meal -- written before this runs -- can never be lost to one.
   Future<void> _dismissStaleReminder() => checkAndNotify(pullWhenDue: false);
 
-  /// Summarises today from the log just written.
-  ///
-  /// Takes the already-read [log] rather than re-reading, so the card can
-  /// never disagree with the write that produced it.
-  TodayProgress _buildProgress(DayLog log, String desc) {
-    final budget = AppSettingsService.dailyKcalGoal;
-    final today = localDateKey(DateTime.now());
-    final entries = (log[today] ?? const <FoodEntry>[])
-        .where((entry) => !entry.deleted)
-        .toList();
-    final macros = sumMacros(entries);
-    return TodayProgress(
-      justLogged: desc,
-      consumedKcal: sumKcal(entries),
-      budgetKcal: budget,
-      proteinG: macros.proteinG,
-      carbsG: macros.carbsG,
-      fatG: macros.fatG,
-      adherenceStreak: adherenceStreak(
-        statusMap(log, schedule: BudgetHistoryService.schedule),
-      ),
-    );
-  }
-
-  void _onOpenHistory() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const HistoryScreen()),
-    );
-  }
-
-  void _onOpenCalendar() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const CalendarScreen()),
-    );
-  }
-
-  void _onOpenFoodBank() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const FoodBankScreen()),
-    );
-  }
-
-  void _onOpenSettings() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => SettingsScreen(httpClient: widget.httpClient),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -353,25 +186,11 @@ class _LogMealScreenState extends State<LogMealScreen>
       appBar: AppBar(
         title: const Text('Diet Guard'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.restaurant_menu),
-            tooltip: 'Food bank',
-            onPressed: _onOpenFoodBank,
-          ),
-          IconButton(
-            icon: const Icon(Icons.history),
-            tooltip: 'History',
-            onPressed: _onOpenHistory,
-          ),
-          IconButton(
-            icon: const Icon(Icons.calendar_month),
-            tooltip: 'Calendar',
-            onPressed: _onOpenCalendar,
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Sync settings',
-            onPressed: _onOpenSettings,
+          ...logMealAppBarActions(
+            onFoodBank: onOpenFoodBank,
+            onHistory: onOpenHistory,
+            onCalendar: onOpenCalendar,
+            onSettings: onOpenSettings,
           ),
         ],
       ),
@@ -380,10 +199,10 @@ class _LogMealScreenState extends State<LogMealScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SyncHealthBanner(status: _syncHealth),
+            SyncHealthBanner(status: syncHealth),
             SlotSelectorRow(
               now: DateTime.now(),
-              loggedSlots: _loggedSlots,
+              loggedSlots: loggedSlots,
               selectedSlot: _selectedSlot,
               onSlotSelected: (slot) => setState(() => _selectedSlot = slot),
             ),
