@@ -54,10 +54,10 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_test:
     sdk: flutter
+  plugin_platform_interface: any
   url_launcher_platform_interface: ^2.3.2
   very_good_analysis: ^10.2.0
 
-  plugin_platform_interface: any
 flutter:
   uses-material-design: true
 
