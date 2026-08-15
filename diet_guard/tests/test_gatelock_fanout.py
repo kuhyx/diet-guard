@@ -163,7 +163,40 @@ class TestGroupsInIsolation:
 
         WidgetGroup([dead, alive]).bind("<Return>", handler)
 
-        alive.bind.assert_called_once_with("<Return>", handler)
+        # ``add=""`` is Tk's own spelling for "replace any existing binding",
+        # which is what this gate needs: _wire_events runs once per surface
+        # *and* again on rebuild, so an additive bind would stack a second
+        # handler on every surviving widget and submit the meal twice.
+        alive.bind.assert_called_once_with("<Return>", handler, add="")
+
+    def test_first_on_an_empty_group_raises(self) -> None:
+        """The gate always builds a copy before reading one.
+
+        gatelock's ``first`` returns ``None`` for the zero-output case, which
+        is right for a library. Here it is re-narrowed to the widget type so
+        the specialized groups can read it without a None check, so the empty
+        case has to be an explicit error rather than a ``None`` that would
+        surface later as an ``AttributeError`` somewhere unrelated.
+        """
+        with pytest.raises(IndexError, match="empty"):
+            _ = WidgetGroup([]).first
+
+    def test_rebinding_replaces_rather_than_stacking(self) -> None:
+        """``_wire_events`` runs again on rebuild; it must stay idempotent.
+
+        gatelock's own ``WidgetGroup.bind`` defaults to *additive*, because its
+        callers bind once and must not clobber someone else's handler. This
+        gate is the other case: every re-wire would otherwise leave a second
+        ``<Return>`` handler attached and log the meal twice.
+        """
+        widget = MagicMock()
+        handler = MagicMock()
+        group = WidgetGroup([widget])
+
+        group.bind("<Return>", handler)
+        group.bind("<Return>", handler)
+
+        assert [call.kwargs["add"] for call in widget.bind.call_args_list] == ["", ""]
 
     def test_focus_when_every_copy_is_gone(self) -> None:
         """All surfaces destroyed: nothing to focus, and no exception."""

@@ -9,74 +9,25 @@ which is why these are correctness tests rather than polish.
 The reachability and height side of the same requirement is covered by
 ``measure_gate_layout.py``; the real focus-ring walk lives in
 ``probe_gate_keyboard.py``.
+
+The "<Return> activates a button" check moved to gatelock with the button
+itself (``gatelock/tests/test_widgets.py``), where it runs against real Tk
+rather than a fake widget that can only report the binding it was handed.
 """
 
 from __future__ import annotations
 
 import tkinter as tk
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
-from diet_guard import _gatelock_buttons, _gatelock_typography, _gatelock_ui
+from diet_guard import _gatelock_typography, _gatelock_ui
 from diet_guard._gatelock_ui import UNIT_GRAMS, UNIT_ITEMS
 from diet_guard.tests import _gate_keyboard_probe
-from diet_guard.tests.conftest import _FAKE_TK, FakeRadiobutton
 
 if TYPE_CHECKING:
     from diet_guard._gatelock import MealGate
-
-
-class TestButtonReturnKey:
-    """Enter must activate a button; Tk binds only Space on X11."""
-
-    def test_return_invokes_the_button(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """The <Return> handler invokes the button and swallows the event."""
-        monkeypatch.setattr(_gatelock_buttons, "tk", _FAKE_TK)
-        fired: list[str] = []
-        bound: dict[str, Any] = {}
-
-        class _Button(FakeRadiobutton):
-            # Signature mirrors FakeWidget.bind so the override type-checks.
-            def bind(self, *args: object, **_kwargs: object) -> None:
-                bound[str(args[0])] = args[1]
-
-            def invoke(self) -> None:
-                fired.append("hit")
-
-        monkeypatch.setattr(_FAKE_TK, "Button", _Button)
-        _gatelock_buttons.make_button(
-            _FAKE_TK.Frame(),
-            text="Log & Continue",
-            variant="primary",
-            command=lambda: None,
-        )
-
-        assert bound["<Return>"](None) == "break"
-        assert fired == ["hit"]
-
-    def test_keypad_enter_is_bound_too(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """The numeric keypad's Enter is a separate keysym from Return."""
-        monkeypatch.setattr(_gatelock_buttons, "tk", _FAKE_TK)
-        bound: dict[str, Any] = {}
-
-        class _Button(FakeRadiobutton):
-            # Signature mirrors FakeWidget.bind so the override type-checks.
-            def bind(self, *args: object, **_kwargs: object) -> None:
-                bound[str(args[0])] = args[1]
-
-            def invoke(self) -> None:
-                pass
-
-        monkeypatch.setattr(_FAKE_TK, "Button", _Button)
-        _gatelock_buttons.make_button(
-            _FAKE_TK.Frame(),
-            text="Close",
-            variant="danger",
-            command=lambda: None,
-        )
-
-        assert "<KP_Enter>" in bound
 
 
 class TestUnitSelectorIsKeyboardReachable:

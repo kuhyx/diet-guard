@@ -24,10 +24,12 @@ from __future__ import annotations
 
 import contextlib
 import tkinter as tk
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, TypeVar
+
+from gatelock import WidgetGroup as SharedWidgetGroup
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable
 
     from diet_guard._gatelock_ui_types import GateVars, GateWidgets
 
@@ -35,60 +37,57 @@ _W = TypeVar("_W", bound=tk.Misc)
 """The widget each group mirrors, so a subclass keeps its own methods typed."""
 
 
-class WidgetGroup(Generic[_W]):
-    """One logical widget, mirrored onto every monitor."""
+class WidgetGroup(SharedWidgetGroup[_W]):
+    """One logical widget, mirrored onto every monitor.
+
+    The fan-out itself -- iteration, ``configure``, ``bind``, singular focus,
+    and skipping copies whose surface has been destroyed -- now lives in
+    :class:`gatelock.WidgetGroup`, which four apps had each reimplemented.
+    This subclass exists only to keep the positional ``list[_W]``
+    construction the gate's own builders and specialized groups use; gatelock
+    stores ``(output_name, widget)`` pairs, because the parallel-list form the
+    donors shared could be built with widgets but no names.
+
+    ``first`` is re-narrowed to ``_W``: the gate always builds at least one
+    copy before anything reads one, and the specialized groups below index
+    into it without a None check.
+    """
 
     def __init__(self, widgets: list[_W]) -> None:
         """Wrap the per-monitor copies of one widget."""
-        self._widgets = widgets
-
-    def __iter__(self) -> Iterator[_W]:
-        """Iterate the per-monitor copies."""
-        return iter(self._widgets)
+        super().__init__([("", widget) for widget in widgets])
 
     @property
     def first(self) -> _W:
         """The primary monitor's copy, for reads that cannot fan out."""
-        return self._widgets[0]
-
-    def config(self, **kwargs: str) -> None:
-        """Apply the same configuration to every copy."""
-        for widget in self._widgets:
-            with contextlib.suppress(tk.TclError):
-                widget.configure(**kwargs)
-
-    configure = config
+        widget = super().first
+        if widget is None:
+            message = "widget group is empty"
+            raise IndexError(message)
+        return widget
 
     def bind(
-        self, sequence: str, callback: Callable[[tk.Event[tk.Misc]], object]
+        self,
+        sequence: str,
+        func: Callable[[tk.Event], object],
+        *,
+        add: bool = False,
     ) -> None:
-        """Bind the same handler on every copy.
+        """Bind the same handler on every copy, *replacing* any previous one.
 
-        Tk's ``bind`` replaces an existing binding for the same sequence, so
-        re-wiring after an output comes back is idempotent rather than
-        stacking duplicate handlers.
+        Only the default differs from :meth:`gatelock.WidgetGroup.bind`, and
+        it is inverted deliberately. ``MealGate._wire_events`` runs once per
+        ``build_surface`` **and** again on rebuild, so with an additive bind
+        every output change would stack a second handler on every surviving
+        widget -- and ``<Return>`` would submit the meal twice. Replacing
+        makes re-wiring idempotent, which is what this gate needs; gatelock
+        defaults the other way because its callers bind once and must not
+        clobber a handler someone else set.
         """
-        for widget in self._widgets:
-            with contextlib.suppress(tk.TclError):
-                widget.bind(sequence, callback)
-
-    def focus_set(self) -> None:
-        """Focus the first copy that still exists.
-
-        Focus is singular by nature: there is one keyboard, so this picks the
-        first live copy rather than fanning out.
-        """
-        for widget in self._widgets:
-            with contextlib.suppress(tk.TclError):
-                widget.focus_set()
-                return
-
-    def focus_force(self) -> None:
-        """Force focus onto the first copy that still exists."""
-        for widget in self._widgets:
-            with contextlib.suppress(tk.TclError):
-                widget.focus_force()
-                return
+        # Spelled out rather than delegated: an inherited signature with a
+        # flipped default is invisible at the call site, and this one is
+        # load-bearing enough to be worth reading in place.
+        self._each(lambda widget: widget.bind(sequence, func, add="+" if add else ""))
 
 
 class EntryGroup(WidgetGroup[tk.Entry]):
@@ -131,22 +130,22 @@ class TextGroup(WidgetGroup[tk.Text]):
 
     def get(self, start: str, end: str) -> str:
         """Return the content of whichever copy was actually typed into."""
-        for widget in self._widgets:
+        for widget in self:
             with contextlib.suppress(tk.TclError):
                 content = widget.get(start, end)
                 if content.strip():
                     return str(content)
-        return str(self._widgets[0].get(start, end))
+        return str(self.first.get(start, end))
 
     def delete(self, start: str, end: str) -> None:
         """Clear every copy."""
-        for widget in self._widgets:
+        for widget in self:
             with contextlib.suppress(tk.TclError):
                 widget.delete(start, end)
 
     def insert(self, index: str, value: str) -> None:
         """Write the same content into every copy."""
-        for widget in self._widgets:
+        for widget in self:
             with contextlib.suppress(tk.TclError):
                 widget.insert(index, value)
 
@@ -160,13 +159,13 @@ class ListboxGroup(WidgetGroup[tk.Listbox]):
 
     def delete(self, first: int | str, last: int | str | None = None) -> None:
         """Clear every copy."""
-        for widget in self._widgets:
+        for widget in self:
             with contextlib.suppress(tk.TclError):
                 widget.delete(first, last)
 
     def insert(self, index: int | str, *values: str) -> None:
         """Append the same entries to every copy."""
-        for widget in self._widgets:
+        for widget in self:
             with contextlib.suppress(tk.TclError):
                 widget.insert(index, *values)
 
@@ -177,7 +176,7 @@ class ListboxGroup(WidgetGroup[tk.Listbox]):
         of them; a *mouse* pick lands on one copy, which is what
         ``curselection`` reads back.
         """
-        for widget in self._widgets:
+        for widget in self:
             with contextlib.suppress(tk.TclError):
                 if last is None:
                     widget.selection_set(first)
@@ -186,7 +185,7 @@ class ListboxGroup(WidgetGroup[tk.Listbox]):
 
     def selection_clear(self, first: int, last: int | None = None) -> None:
         """Clear the selection on every copy."""
-        for widget in self._widgets:
+        for widget in self:
             with contextlib.suppress(tk.TclError):
                 if last is None:
                     widget.selection_clear(first)
@@ -195,7 +194,7 @@ class ListboxGroup(WidgetGroup[tk.Listbox]):
 
     def curselection(self) -> tuple[int, ...]:
         """Return the selection from whichever copy the user clicked."""
-        for widget in self._widgets:
+        for widget in self:
             with contextlib.suppress(tk.TclError):
                 selection = widget.curselection()
                 if selection:
@@ -204,7 +203,7 @@ class ListboxGroup(WidgetGroup[tk.Listbox]):
 
     def size(self) -> int:
         """Number of rows; identical on every copy, so read the primary."""
-        return int(self._widgets[0].size())
+        return int(self.first.size())
 
 
 class MacroGroup:

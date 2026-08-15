@@ -19,9 +19,14 @@ from __future__ import annotations
 import tkinter as tk
 from typing import TYPE_CHECKING
 
-from gatelock import LockConfig, ScrollableSurface, escape_text_tab_trap
+from gatelock import (
+    ButtonStyle,
+    LockConfig,
+    ScrollableSurface,
+    escape_text_tab_trap,
+    make_button,
+)
 
-from diet_guard._gatelock_buttons import make_button
 from diet_guard._gatelock_spacing import SM, XS
 from diet_guard._gatelock_typography import (
     BODY,
@@ -418,19 +423,19 @@ def build_layout(
 
     make_button(
         body,
-        text="Log & Continue",
-        variant="primary",
-        command=callbacks.on_submit,
+        _COLORS,
+        "Log & Continue",
+        callbacks.on_submit,
     ).pack(pady=(XS, XS))
 
     # Manual pull for a meal already logged on another device (the phone) but
     # not yet propagated to this machine -- saves re-typing it to unlock.
     make_button(
         body,
-        text="⟳ Fetch from sync",
-        variant="secondary",
-        command=callbacks.on_fetch_sync,
-        bold=False,
+        _COLORS,
+        "⟳ Fetch from sync",
+        callbacks.on_fetch_sync,
+        ButtonStyle(variant="secondary", bold=False),
     ).pack(pady=(0, XS))
 
     status_label = tk.Label(
@@ -454,10 +459,10 @@ def build_layout(
     if demo_mode:
         make_button(
             root,
-            text="✕ Close Demo",
-            variant="danger",
-            command=callbacks.on_close,
-            bold=False,
+            _COLORS,
+            "✕ Close Demo",
+            callbacks.on_close,
+            ButtonStyle(variant="danger", bold=False),
         ).place(x=10, y=10)
 
     return GateWidgets(

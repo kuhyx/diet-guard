@@ -13,9 +13,8 @@ import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING
 
-from gatelock import LockConfig
+from gatelock import ButtonStyle, LockConfig, make_button
 
-from diet_guard._gatelock_buttons import make_button
 from diet_guard._gatelock_spacing import MD, SM, XS
 from diet_guard._gatelock_typography import BODY, CAPTION, LABEL, TITLE
 from diet_guard._gatelock_ui import (
@@ -130,9 +129,9 @@ def _build_budget_row(
     entry.pack(side="left", padx=(SM, SM), ipady=XS)
     edit_button = make_button(
         row,
-        text="Edit",
-        variant="primary",
-        command=on_edit_or_save_budget,
+        _COLORS,
+        "Edit",
+        on_edit_or_save_budget,
     )
     edit_button.pack(side="left")
     status_label = tk.Label(
@@ -156,9 +155,10 @@ def _build_month_nav(
     row.pack(pady=(XS, XS))
     make_button(
         row,
-        text="◀",
-        variant="secondary",
-        command=callbacks.on_prev_month,
+        _COLORS,
+        "◀",
+        callbacks.on_prev_month,
+        ButtonStyle(variant="secondary"),
     ).pack(side="left", padx=XS)
     tk.Label(
         row,
@@ -171,9 +171,10 @@ def _build_month_nav(
     ).pack(side="left")
     make_button(
         row,
-        text="▶",
-        variant="secondary",
-        command=callbacks.on_next_month,
+        _COLORS,
+        "▶",
+        callbacks.on_next_month,
+        ButtonStyle(variant="secondary"),
     ).pack(side="left", padx=XS)
 
 

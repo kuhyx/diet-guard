@@ -26,11 +26,11 @@ from unittest.mock import MagicMock, patch
 
 from gatelock import Output, OutputRect
 from gatelock import _scrollable as _gatelock_scrollable
+from gatelock import widgets as _gatelock_widgets
 import pytest
 
 from diet_guard import (
     _gatelock,
-    _gatelock_buttons,
     _gatelock_calendar,
     _gatelock_calendar_ui,
     _gatelock_core,
@@ -238,7 +238,9 @@ def _hmac_key(tmp_path: Path) -> Iterator[None]:
 
 _GATE_TK_MODULES = (
     _gatelock,
-    _gatelock_buttons,
+    # The gate's buttons are built by gatelock now, so its widget module
+    # needs the fake tk too -- otherwise the gate tests open real windows.
+    _gatelock_widgets,
     _gatelock_calendar,
     _gatelock_calendar_ui,
     _gatelock_core,
