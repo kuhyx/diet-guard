@@ -8,7 +8,7 @@ library;
 
 import 'dart:async';
 
-import 'package:diet_guard_app/services/firebase_backend.dart';
+import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
@@ -17,6 +17,9 @@ import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:github_device_auth/github_device_auth.dart';
 import 'package:http/http.dart' as http;
+
+part 'github_client_id_dialog.dart';
+part 'github_mirror_actions.dart';
 
 /// Screen for configuring and triggering the GitHub mirror sync.
 class GitHubMirrorScreen extends StatefulWidget {
@@ -30,14 +33,17 @@ class GitHubMirrorScreen extends StatefulWidget {
   State<GitHubMirrorScreen> createState() => _GitHubMirrorScreenState();
 }
 
-class _GitHubMirrorScreenState extends State<GitHubMirrorScreen> {
+class _GitHubMirrorScreenState extends State<GitHubMirrorScreen>
+    with _GitHubMirrorActions {
+  @override
   final _ownerController = TextEditingController();
+  @override
   final _repoController = TextEditingController();
+  @override
   final _tokenController = TextEditingController();
+  @override
   final _clientIdController = TextEditingController();
   bool _loading = true;
-  bool _busy = false;
-  String? _status;
 
   @override
   void initState() {
@@ -87,129 +93,13 @@ class _GitHubMirrorScreenState extends State<GitHubMirrorScreen> {
 
   /// The token as loaded, so a platform that cannot display it (web) still
   /// round-trips it instead of blanking it on the next save.
-  String _storedToken = '';
 
-  SyncSettings _currentSettings() {
-    final typed = _tokenController.text.trim();
-    return SyncSettings(
-      owner: _ownerController.text.trim(),
-      repo: _repoController.text.trim(),
-      // The `_storedToken` side is web-only (the wrapper holds the real
-      // token), so it is unreachable from a VM test.
-      token: typed.isEmpty && !SyncSettings.exposesTokenValue
-          // coverage:ignore-line
-          ? _storedToken
-          : typed,
-      clientId: _clientIdController.text.trim(),
-    );
-  }
 
-  void _showMessage(String message) {
-    if (!mounted) return;
-    setState(() => _status = message);
-  }
+
+
 
   /// Runs the OAuth device flow and, on success, fills in the token field.
-  Future<void> _connectGitHub() async {
-    var clientId = _clientIdController.text.trim();
-    if (clientId.isEmpty) {
-      final entered = await showDialog<String>(
-        context: context,
-        builder: (_) => const _ClientIdSetupDialog(),
-      );
-      if (entered == null || entered.isEmpty) return;
-      clientId = entered;
-      if (!mounted) return;
-      setState(() => _clientIdController.text = clientId);
-      await _currentSettings().save();
-    }
-    final auth = createDeviceAuth(clientId, httpClient: widget.httpClient);
-    try {
-      final device = await auth.requestDeviceCode();
-      if (!mounted) return;
-      final token = await showDialog<String>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => DeviceCodeDialog(device: device, auth: auth),
-      );
-      if (token != null && token.isNotEmpty) {
-        setState(() {
-          _storedToken = token;
-          if (SyncSettings.exposesTokenValue) _tokenController.text = token;
-        });
-        _showMessage('Connected — syncing…');
-        await _currentSettings().save();
-        await _syncAfterConnect();
-      }
-    } on Exception catch (e) {
-      _showMessage('Could not start device flow: $e');
-    } finally {
-      auth.close();
-    }
-  }
 
-  /// Runs a sync right after connecting so the device-flow token is proven
-  /// to work immediately, with clear confirmation either way.
-  Future<void> _syncAfterConnect() async {
-    final settings = _currentSettings();
-    final client = createGitHubClient(settings, httpClient: widget.httpClient);
-    try {
-      await runSync(await syncBackend(client));
-      await SyncHealth.recordSuccess();
-      _showMessage('Connected and synced.');
-    } on Exception catch (e) {
-      await SyncHealth.recordFailure();
-      _showMessage('Connected, but sync failed: $e');
-    } finally {
-      client.close();
-    }
-  }
-
-  Future<void> _save() async {
-    setState(() => _busy = true);
-    await _currentSettings().save();
-    if (!mounted) return;
-    setState(() => _busy = false);
-    _showMessage('Saved.');
-  }
-
-  Future<void> _testConnection() async {
-    setState(() => _busy = true);
-    final settings = _currentSettings();
-    final client = createGitHubClient(settings, httpClient: widget.httpClient);
-    try {
-      final ok = await client.canAccessRepo();
-      _showMessage(
-        ok ? 'GitHub connection OK.' : 'GitHub connection failed.',
-      );
-    } on Exception catch (e) {
-      _showMessage('GitHub connection failed: $e');
-    } finally {
-      client.close();
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _syncNow() async {
-    setState(() => _busy = true);
-    final settings = _currentSettings();
-    await settings.save();
-    final client = createGitHubClient(settings, httpClient: widget.httpClient);
-    try {
-      await runSync(await syncBackend(client));
-      // Clears any stored failure: this is the button a user reaches
-      // *because* the banner told them syncing had stopped, so a successful
-      // run here must dismiss the warning it caused.
-      await SyncHealth.recordSuccess();
-      _showMessage('Synced.');
-    } on Exception catch (e) {
-      await SyncHealth.recordFailure();
-      _showMessage('Sync failed: $e');
-    } finally {
-      client.close();
-      if (mounted) setState(() => _busy = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -310,82 +200,6 @@ class _GitHubMirrorScreenState extends State<GitHubMirrorScreen> {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Dialog shown when "Connect GitHub" is tapped with no OAuth App client id
-/// configured yet. Explains what it is, how to get one, and lets the user
-/// paste it in directly — rather than leaving them to discover a buried
-/// field on their own. Pops the trimmed client id, or null if cancelled.
-class _ClientIdSetupDialog extends StatefulWidget {
-  const _ClientIdSetupDialog();
-
-  @override
-  State<_ClientIdSetupDialog> createState() => _ClientIdSetupDialogState();
-}
-
-class _ClientIdSetupDialogState extends State<_ClientIdSetupDialog> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('One-time GitHub setup needed'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Diet Guard signs in via a GitHub OAuth App (no password '
-              'typed into this app). You only have to set this up once:',
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              '1. On any device, open '
-              'github.com/settings/developers → "New OAuth App".\n'
-              '2. Name/Homepage/Callback URL can be anything (device flow '
-              "doesn't use the callback) — e.g. "
-              '"Diet Guard" and your GitHub profile URL.\n'
-              '3. Check "Enable Device Flow", then click "Register '
-              'application".\n'
-              "4. Copy the Client ID shown on the app's page and paste it "
-              'below.',
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'When you connect below, log in with the GitHub account that '
-              'has write access to kuhyx/syncs.',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              decoration: const InputDecoration(labelText: 'Client ID'),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () {
-            final id = _controller.text.trim();
-            if (id.isNotEmpty) Navigator.of(context).pop(id);
-          },
-          child: const Text('Continue'),
-        ),
-      ],
     );
   }
 }

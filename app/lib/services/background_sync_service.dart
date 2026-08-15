@@ -8,7 +8,7 @@ library;
 import 'dart:developer';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
-import 'package:diet_guard_app/services/firebase_backend.dart';
+import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';

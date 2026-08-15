@@ -10,7 +10,7 @@ library;
 import 'dart:io';
 
 import 'package:crdt_sync/crdt_sync.dart';
-import 'package:diet_guard_app/services/firebase_backend.dart';
+import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/sync_state_factory_io.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;

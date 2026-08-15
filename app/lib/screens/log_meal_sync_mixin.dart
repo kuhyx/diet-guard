@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:diet_guard_app/services/background_tasks.dart';
-import 'package:diet_guard_app/services/firebase_backend.dart';
+import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_health.dart';

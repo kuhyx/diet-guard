@@ -14,6 +14,7 @@ import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/screens/github_mirror_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/firebase_backend.dart';
+import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/google_sign_in_backend.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/foundation.dart';
@@ -22,6 +23,8 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sync_settings_ui/sync_settings_ui.dart';
+
+part 'settings_kcal_goal.dart';
 
 /// Screen for app-specific settings and links to sync configuration.
 class SettingsScreen extends StatefulWidget {
@@ -87,7 +90,8 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends State<SettingsScreen>
+    with _SettingsKcalGoal {
   final _kcalGoalController = TextEditingController();
 
   @override
@@ -104,59 +108,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _flushKcalGoal();
     _kcalGoalController.dispose();
     super.dispose();
-  }
-
-  Timer? _kcalGoalDebounce;
-  int? _pendingKcalGoal;
-
-  /// Persists the pending goal, if any, and clears it.
-  void _flushKcalGoal() {
-    final goal = _pendingKcalGoal;
-    if (goal == null) return;
-    _pendingKcalGoal = null;
-    unawaited(AppSettingsService.instance.saveDailyKcalGoal(goal));
-  }
-
-  /// Saves the typed goal once typing settles.
-  ///
-  /// Debounced because every keystroke would otherwise be a real edit:
-  /// typing "2000" saved 2, 20, 200, 2000 in turn, and a sync tick landing
-  /// between keystrokes would push a nonsense budget to the other device.
-  void _onKcalGoalChanged(String value) {
-    _kcalGoalDebounce?.cancel();
-    final goal = int.tryParse(value);
-    if (goal == null || goal <= 0) return;
-    _pendingKcalGoal = goal;
-    _kcalGoalDebounce = Timer(
-      const Duration(milliseconds: 600),
-      _flushKcalGoal,
-    );
-  }
-
-  /// Requests exemption from OEM battery optimization (MIUI, some Samsung
-  /// configs), which can otherwise degrade the 15-minute background-check
-  /// reliability well past its accepted ±15 min target.
-  Future<void> _requestBatteryExemption() async {
-    final request =
-        widget.requestBatteryExemption ??
-        () => Permission.ignoreBatteryOptimizations.request();
-    try {
-      final status = await request();
-      _showMessage(
-        status.isGranted
-            ? 'Battery optimization exemption granted.'
-            : 'Exemption not granted -- notifications may be delayed.',
-      );
-    } on Exception catch (e) {
-      _showMessage('Could not request exemption: $e');
-    }
-  }
-
-  String? _status;
-
-  void _showMessage(String message) {
-    if (!mounted) return;
-    setState(() => _status = message);
   }
 
   /// True on the one platform with OEM battery optimization to exempt from.

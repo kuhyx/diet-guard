@@ -1,11 +1,11 @@
 import 'dart:convert';
 
 import 'package:crdt_sync/crdt_sync.dart';
+import 'package:diet_guard_app/services/firebase_client.dart';
+import 'package:diet_guard_app/services/google_sign_in_backend.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart' as http_testing;
-import 'package:diet_guard_app/services/firebase_backend.dart';
-import 'package:diet_guard_app/services/google_sign_in_backend.dart';
 
 import 'fake_secure_storage.dart';
 
