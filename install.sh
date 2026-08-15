@@ -27,7 +27,6 @@ readonly REPO_DIR="$SCRIPT_DIR"
 readonly SERVICE_SRC="$SCRIPT_DIR/diet-guard-gate.service"
 readonly TIMER_SRC="$SCRIPT_DIR/diet-guard-gate.timer"
 readonly SYNC_SERVICE_SRC="$SCRIPT_DIR/diet-guard-sync.service"
-readonly SYNC_TIMER_SRC="$SCRIPT_DIR/diet-guard-sync.timer"
 readonly SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
 readonly DATA_DIR="$HOME/.local/share/diet_guard"
 readonly BUDGET_FILE="$DATA_DIR/.budget"
@@ -60,18 +59,26 @@ systemctl --user daemon-reload
 systemctl --user enable --now diet-guard-gate.timer
 echo "  Timer enabled and started (fires the gate every ~30 min)."
 
-# 4. systemd user timer + service (sync) -------------------------------------
-echo "[4/5] Installing the sync's systemd user timer + service..."
+# 4. Retire the old periodic sync timer ---------------------------------------
+# Sync is event-driven now (before a lock, after a meal is logged -- see
+# diet_guard/_sync_events.py), so the ~15 min timer is gone. Removing the unit
+# from the repo does NOT stop an already-installed copy: without this block it
+# would keep firing forever from $SYSTEMD_USER_DIR with no unit file in git to
+# explain it. `|| true` because a fresh machine has no such unit and `disable`
+# exits non-zero there, which would abort the install under `set -euo pipefail`.
+echo "[4/5] Removing the retired periodic sync timer (sync is event-driven)..."
+systemctl --user disable --now diet-guard-sync.timer 2>/dev/null || true
+rm -f "$SYSTEMD_USER_DIR/diet-guard-sync.timer"
+# The *service* stays: it is how a manual one-off tick is run
+# (`systemctl --user start diet-guard-sync`). Only the timer is retired.
 cp "$SYNC_SERVICE_SRC" "$SYSTEMD_USER_DIR/diet-guard-sync.service"
-cp "$SYNC_TIMER_SRC" "$SYSTEMD_USER_DIR/diet-guard-sync.timer"
 systemctl --user daemon-reload
-systemctl --user enable --now diet-guard-sync.timer
-echo "  Timer enabled and started (syncs the log every ~15 min)."
+echo "  Periodic sync timer removed; 'python -m diet_guard sync' still works."
 if [[ -e "$SYNC_TOKEN_FILE" ]]; then
     echo "  Sync token already present at $SYNC_TOKEN_FILE."
 else
     echo "  No sync token yet at $SYNC_TOKEN_FILE -- sync will no-op (and log a"
-    echo "  failure) on every tick until you create a fine-grained GitHub PAT"
+    echo "  failure) after every meal you log, until you create a GitHub PAT"
     echo "  scoped to the diet-guard-sync repo's contents and save it there,"
     echo "  mode 600: chmod 600 \"$SYNC_TOKEN_FILE\""
 fi

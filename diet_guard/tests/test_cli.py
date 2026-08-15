@@ -11,13 +11,14 @@ import io
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-from diet_guard import _cli
+from diet_guard import _cli, _cli_log
 from diet_guard._budget import (
     BudgetFileCorruptError,
     BudgetNotInitializedError,
     write_budget,
 )
-from diet_guard._cli import _eaten_grams, _Portion, main
+from diet_guard._cli import main
+from diet_guard._cli_log import Portion, eaten_grams
 from diet_guard._estimator import Nutrition
 
 if TYPE_CHECKING:
@@ -37,23 +38,21 @@ class TestEatenGrams:
 
     def test_count_of_known_staple(self) -> None:
         """A count of a known staple multiplies by its unit weight, no note."""
-        grams, note = _eaten_grams(
-            "apple", _Portion(grams=None, count=5, per_grams=None)
-        )
+        grams, note = eaten_grams("apple", Portion(grams=None, count=5, per_grams=None))
         assert grams == 5 * 182
         assert note is None
 
     def test_count_of_unknown_item_warns(self) -> None:
         """A count of an unknown item uses the default and flags the assumption."""
-        grams, note = _eaten_grams(
-            "mystery", _Portion(grams=None, count=3, per_grams=None)
+        grams, note = eaten_grams(
+            "mystery", Portion(grams=None, count=3, per_grams=None)
         )
         assert grams is not None
         assert note is not None
 
     def test_explicit_grams(self) -> None:
         """An explicit gram portion passes straight through."""
-        grams, note = _eaten_grams("x", _Portion(grams=300, count=None, per_grams=None))
+        grams, note = eaten_grams("x", Portion(grams=300, count=None, per_grams=None))
         assert grams == 300
         assert note is None
 
@@ -113,22 +112,46 @@ class TestAte:
     def test_logs_and_summarizes(self, capsys: pytest.CaptureFixture[str]) -> None:
         """A resolved meal is logged, banked, and summarized."""
         write_budget(2000)
-        with patch.object(_cli, "resolve_nutrition", return_value=_NUT):
+        with patch.object(_cli_log, "resolve_nutrition", return_value=_NUT):
             assert main(["ate", "big mac"]) == 0
         assert "logged:" in capsys.readouterr().out
+
+    def test_publishes_after_logging(self) -> None:
+        """The meal is published immediately, not left for a periodic tick."""
+        write_budget(2000)
+        with (
+            patch.object(_cli_log, "resolve_nutrition", return_value=_NUT),
+            patch.object(_cli_log, "publish_after_log", return_value=None) as publish,
+        ):
+            assert main(["ate", "big mac"]) == 0
+        publish.assert_called_once_with()
+
+    def test_sync_outage_still_logs_locally(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A failed publish reports itself without failing the local log."""
+        write_budget(2000)
+        with (
+            patch.object(_cli_log, "resolve_nutrition", return_value=_NUT),
+            patch.object(_cli_log, "publish_after_log", return_value="no token"),
+        ):
+            assert main(["ate", "big mac"]) == 0
+        out = capsys.readouterr().out
+        assert "logged:" in out
+        assert "not yet published (no token)" in out
 
     def test_note_printed_for_assumed_weight(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """An assumed per-item weight prints its caveat."""
         write_budget(2000)
-        with patch.object(_cli, "resolve_nutrition", return_value=_NUT):
+        with patch.object(_cli_log, "resolve_nutrition", return_value=_NUT):
             main(["ate", "mystery", "--count", "3"])
         assert "assumed" in capsys.readouterr().out
 
     def test_unresolved_food(self, capsys: pytest.CaptureFixture[str]) -> None:
         """An unresolvable food returns a failure and a manual-entry hint."""
-        with patch.object(_cli, "resolve_nutrition", return_value=None):
+        with patch.object(_cli_log, "resolve_nutrition", return_value=None):
             assert main(["ate", "nonsense"]) == 1
         assert "--kcal" in capsys.readouterr().out
 

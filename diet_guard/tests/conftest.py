@@ -144,6 +144,14 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
             "diet_guard._sync_client.CONFIG_FILE",
             tmp_path / "nonexistent-firebase.json",
         ),
+        # Logging a meal now publishes immediately (`_sync_events`), so every
+        # test that logs one would otherwise open a real connection through a
+        # path that has nothing to do with what it is asserting. Patched at the
+        # *call sites* rather than on `_sync_events`, so a test that imports
+        # `publish_after_log` directly still exercises the real helper.
+        patch("diet_guard._cli_log.publish_after_log", return_value=None),
+        patch("diet_guard._cli_gate.publish_after_log", return_value=None),
+        patch("diet_guard._mcp.publish_after_log", return_value=None),
     ):
         yield
 

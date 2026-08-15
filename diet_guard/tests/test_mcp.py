@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from diet_guard import _mcp
+from diet_guard import _mcp, _mcp_read
 from diet_guard._budget import BudgetNotInitializedError
 from diet_guard._estimator import Nutrition
 
@@ -29,14 +29,16 @@ def _nutrition(kcal: float = 250.0) -> Nutrition:
 class TestGetStatus:
     def test_band_and_intake(self) -> None:
         with (
-            patch.object(_mcp, "today_total_kcal", return_value=640.0),
-            patch.object(_mcp, "today_total_macros", return_value=(30.0, 50.0, 12.0)),
-            patch.object(_mcp, "consumption_band", return_value="on track"),
-            patch.object(_mcp, "due_slots", return_value=(12,)),
-            patch.object(_mcp, "logged_slots_today", return_value={8}),
-            patch.object(_mcp, "current_slot", return_value=12),
+            patch.object(_mcp_read, "today_total_kcal", return_value=640.0),
+            patch.object(
+                _mcp_read, "today_total_macros", return_value=(30.0, 50.0, 12.0)
+            ),
+            patch.object(_mcp_read, "consumption_band", return_value="on track"),
+            patch.object(_mcp_read, "due_slots", return_value=(12,)),
+            patch.object(_mcp_read, "logged_slots_today", return_value={8}),
+            patch.object(_mcp_read, "current_slot", return_value=12),
             patch.object(_mcp, "now_local"),
-            patch.object(_mcp, "slot_label", return_value="12:00"),
+            patch.object(_mcp_read, "slot_label", return_value="12:00"),
         ):
             out = _mcp.get_status()
         assert out["consumed_kcal"] == 640.0
@@ -49,16 +51,16 @@ class TestGetStatus:
 
     def test_no_budget_hides_band(self) -> None:
         with (
-            patch.object(_mcp, "today_total_kcal", return_value=0.0),
-            patch.object(_mcp, "today_total_macros", return_value=(0.0, 0.0, 0.0)),
+            patch.object(_mcp_read, "today_total_kcal", return_value=0.0),
+            patch.object(_mcp_read, "today_total_macros", return_value=(0.0, 0.0, 0.0)),
             patch.object(
-                _mcp,
+                _mcp_read,
                 "consumption_band",
                 side_effect=BudgetNotInitializedError(),
             ),
-            patch.object(_mcp, "due_slots", return_value=()),
-            patch.object(_mcp, "logged_slots_today", return_value=set()),
-            patch.object(_mcp, "current_slot", return_value=None),
+            patch.object(_mcp_read, "due_slots", return_value=()),
+            patch.object(_mcp_read, "logged_slots_today", return_value=set()),
+            patch.object(_mcp_read, "current_slot", return_value=None),
             patch.object(_mcp, "now_local"),
         ):
             out = _mcp.get_status()
@@ -84,7 +86,7 @@ class TestListToday:
                 "hmac": "deadbeef",
             },
         ]
-        with patch.object(_mcp, "today_entries", return_value=entries):
+        with patch.object(_mcp_read, "today_entries", return_value=entries):
             out = _mcp.list_today()
         assert out["count"] == 1
         view = out["entries"][0]
@@ -94,7 +96,7 @@ class TestListToday:
         assert "hmac" not in view
 
     def test_empty(self) -> None:
-        with patch.object(_mcp, "today_entries", return_value=[]):
+        with patch.object(_mcp_read, "today_entries", return_value=[]):
             out = _mcp.list_today()
         assert out == {"count": 0, "entries": []}
 
@@ -102,10 +104,10 @@ class TestListToday:
 class TestGetSlots:
     def test_lists_slots_and_current(self) -> None:
         with (
-            patch.object(_mcp, "day_slots", return_value=(8, 12, 16, 20)),
-            patch.object(_mcp, "current_slot", return_value=16),
+            patch.object(_mcp_read, "day_slots", return_value=(8, 12, 16, 20)),
+            patch.object(_mcp_read, "current_slot", return_value=16),
             patch.object(_mcp, "now_local"),
-            patch.object(_mcp, "slot_label", side_effect=lambda s: f"{s:02d}:00"),
+            patch.object(_mcp_read, "slot_label", side_effect=lambda s: f"{s:02d}:00"),
         ):
             out = _mcp.get_slots()
         assert out["current_slot"] == 16
@@ -178,6 +180,28 @@ class TestLogMealGate:
             out = _mcp.log_meal("apple", slot=8, confirm=True)
         assert out["applied"] is True
         assert out["signed"] is False
+
+    def test_confirm_publishes_and_reports_it(self) -> None:
+        """A successful write publishes immediately and says so."""
+        with (
+            patch.object(_mcp, "resolve_nutrition", return_value=_nutrition()),
+            patch.object(_mcp, "record_meal", return_value={"desc": "apple"}),
+            patch.object(_mcp, "publish_after_log", return_value=None) as publish,
+        ):
+            out = _mcp.log_meal("apple", slot=8, confirm=True)
+        publish.assert_called_once_with()
+        assert out["published"] is True
+
+    def test_confirm_applies_even_when_publish_fails(self) -> None:
+        """A sync outage leaves the local write applied, flagged unpublished."""
+        with (
+            patch.object(_mcp, "resolve_nutrition", return_value=_nutrition()),
+            patch.object(_mcp, "record_meal", return_value={"desc": "apple"}),
+            patch.object(_mcp, "publish_after_log", return_value="offline"),
+        ):
+            out = _mcp.log_meal("apple", slot=8, confirm=True)
+        assert out["applied"] is True
+        assert out["published"] is False
 
     def test_confirm_write_failure_returns_gracefully(self) -> None:
         with (

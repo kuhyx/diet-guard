@@ -80,6 +80,50 @@ class TestCmdGate:
         factory.assert_not_called()
         assert "no lock needed" in lines[0]
 
+    def test_publishes_only_after_the_window_closes(self) -> None:
+        """The publish must not run while the lock is still up.
+
+        A network call on the Tk thread would keep the user locked in behind a
+        successful log, so ordering here is the actual guarantee, not the call.
+        """
+        calls: list[str] = []
+        gate = MagicMock()
+        gate.run.side_effect = lambda: calls.append("run")
+        with (
+            patch.object(_cli_gate, "gate_is_due", return_value=True),
+            _no_sync(),
+            patch.object(_cli_gate, "MealGate", return_value=gate),
+            patch.object(_cli_gate, "acquire_gate_lock", return_value=MagicMock()),
+            patch.object(
+                _cli_gate,
+                "release_gate_lock",
+                side_effect=lambda _h: calls.append("release"),
+            ),
+            patch.object(_cli_gate, "wait_for_display", return_value=True),
+            patch.object(
+                _cli_gate,
+                "publish_after_log",
+                side_effect=lambda: calls.append("publish"),
+            ),
+        ):
+            assert cmd_gate([].append, check=False, demo=False) == 0
+        assert calls == ["run", "release", "publish"]
+
+    def test_publish_outage_reported_after_unlock(self) -> None:
+        """A failed post-unlock publish reports without re-trapping the user."""
+        lines: list[str] = []
+        with (
+            patch.object(_cli_gate, "gate_is_due", return_value=True),
+            _no_sync(),
+            patch.object(_cli_gate, "MealGate", return_value=MagicMock()),
+            patch.object(_cli_gate, "acquire_gate_lock", return_value=MagicMock()),
+            patch.object(_cli_gate, "release_gate_lock"),
+            patch.object(_cli_gate, "wait_for_display", return_value=True),
+            patch.object(_cli_gate, "publish_after_log", return_value="offline"),
+        ):
+            assert cmd_gate(lines.append, check=False, demo=False) == 0
+        assert "not yet published (offline)" in lines[-1]
+
     def test_gate_already_running(self) -> None:
         """A held single-instance lock means a second window is not opened."""
         lines: list[str] = []

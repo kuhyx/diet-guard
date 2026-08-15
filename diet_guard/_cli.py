@@ -16,36 +16,26 @@ are left of the day's budget, plus which meal slots still need logging.
 
 from __future__ import annotations
 
-import argparse
-from dataclasses import dataclass
 import sys
 from typing import TYPE_CHECKING
 
 from diet_guard._budget import (
-    Biometrics,
     BudgetFileCorruptError,
     BudgetNotInitializedError,
-    compute_target_budget,
     daily_budget,
     protein_target_g,
-    write_budget,
 )
-from diet_guard._cli_averages import cmd_averages, register_averages_subparser
+from diet_guard._cli_args import parse_args
+from diet_guard._cli_averages import cmd_averages
 from diet_guard._cli_gate import cmd_gate
-from diet_guard._cli_sync import cmd_sync, register_sync_subparser
-from diet_guard._foodbank import remember_food
+from diet_guard._cli_init import cmd_init
+from diet_guard._cli_log import ManualMacroArgs, Portion, cmd_ate
+from diet_guard._cli_sync import cmd_sync
 from diet_guard._gate import due_slots
-from diet_guard._portions import (
-    DEFAULT_ITEM_GRAMS,
-    estimate_unit_grams,
-)
-from diet_guard._resolve import ManualMacros, resolve_nutrition
-from diet_guard._slots import day_slots, slot_for_log, slot_label
+from diet_guard._slots import day_slots, slot_label
 from diet_guard._state import (
     entry_kcal,
-    log_meal,
     logged_slots_today,
-    now_local,
     today_entries,
     today_total_kcal,
     today_total_macros,
@@ -53,53 +43,13 @@ from diet_guard._state import (
 )
 
 if TYPE_CHECKING:
+    import argparse
     from collections.abc import Callable
 
 # Column width for a meal description in the status listing.
 _DESC_WIDTH = 24
 # An ISO timestamp formats as "YYYY-MM-DDTHH:MM:SS"; HH:MM is chars 11..16.
 _TIME_SLICE = slice(11, 16)
-# Accepted answers for the sex prompt that map to the male BMR constant.
-_MALE_ANSWERS = {"m", "male"}
-_FEMALE_ANSWERS = {"f", "female"}
-
-
-@dataclass(frozen=True)
-class _ManualMacros:
-    """User-supplied calories/macros for ``ate``, all optional.
-
-    Grouping these keeps :func:`_cmd_ate` within the argument-count limit and
-    makes "manual values were supplied" a single, testable value object.
-
-    Attributes:
-        kcal: Calories entered manually (None means look the food up instead).
-        protein: Protein grams, recorded alongside ``kcal``.
-        carbs: Carbohydrate grams, recorded alongside ``kcal``.
-        fat: Fat grams, recorded alongside ``kcal``.
-    """
-
-    kcal: float | None
-    protein: float | None
-    carbs: float | None
-    fat: float | None
-
-
-@dataclass(frozen=True)
-class _Portion:
-    """How much was eaten and the basis for any typed macros.
-
-    Grouped so :func:`_cmd_ate` stays within the argument-count limit.
-
-    Attributes:
-        grams: Explicit grams eaten, or None.
-        count: Number of items eaten (an alternative to ``grams``), or None.
-        per_grams: Reference weight the typed macros are stated for (e.g. 100
-            for a per-100 g label), or None to treat the macros as totals.
-    """
-
-    grams: float | None
-    count: float | None
-    per_grams: float | None
 
 
 def _emit(text: str = "") -> None:
@@ -115,88 +65,6 @@ def _ask(label: str) -> str:
     """Print a prompt label and return one trimmed line from stdin."""
     _emit(label)
     return sys.stdin.readline().strip()
-
-
-def _parse_args(argv: list[str]) -> argparse.Namespace:
-    """Parse diet_guard CLI arguments."""
-    parser = argparse.ArgumentParser(
-        prog="diet_guard",
-        description="Log calories and check your daily budget.",
-    )
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    sub.add_parser(
-        "init",
-        help="Compute your starting daily budget from biometrics.",
-    )
-
-    ate = sub.add_parser("ate", help="Log a meal you just ate.")
-    ate.add_argument("description", help='What you ate, e.g. "big mac".')
-    ate.add_argument(
-        "--grams",
-        type=float,
-        default=None,
-        help="Portion size in grams (default: OFF serving size, else 100 g).",
-    )
-    ate.add_argument(
-        "--kcal",
-        type=float,
-        default=None,
-        help="Calories entered manually; skips the food bank and OFF lookup.",
-    )
-    ate.add_argument(
-        "--protein",
-        type=float,
-        default=None,
-        help="Protein in grams (recorded with --kcal to seed the food bank).",
-    )
-    ate.add_argument(
-        "--carbs",
-        type=float,
-        default=None,
-        help="Carbohydrate in grams (recorded with --kcal).",
-    )
-    ate.add_argument(
-        "--fat",
-        type=float,
-        default=None,
-        help="Fat in grams (recorded with --kcal).",
-    )
-    ate.add_argument(
-        "--per",
-        type=float,
-        default=None,
-        help="Grams the macros are stated for (e.g. 100 for a per-100 g label);"
-        " the typed macros are scaled from this to how much you ate.",
-    )
-    ate.add_argument(
-        "--count",
-        type=float,
-        default=None,
-        help="Number of items eaten (e.g. 5 apples) instead of --grams;"
-        " multiplied by the staple's unit weight.",
-    )
-
-    sub.add_parser("status", help="Show today's calories and budget band.")
-    sub.add_parser("undo", help="Remove today's most recent entry.")
-    register_averages_subparser(sub)
-    register_sync_subparser(sub)
-
-    gate = sub.add_parser(
-        "gate",
-        help="Log-to-unlock screen gate (intended to be run by a timer).",
-    )
-    gate.add_argument(
-        "--check",
-        action="store_true",
-        help="Headless: exit 0 if NOT due, 1 if a lock is due. Prints, no window.",
-    )
-    gate.add_argument(
-        "--demo",
-        action="store_true",
-        help="Show the lock in safe demo mode (local grab + close button).",
-    )
-    return parser.parse_args(argv)
 
 
 def _print_summary() -> None:
@@ -230,137 +98,6 @@ def _print_entry_line(entry: dict[str, object]) -> None:
         f"  {time_str:>5}  {desc:<{_DESC_WIDTH}.{_DESC_WIDTH}}  "
         f"{entry_kcal(entry):>6.0f} kcal  ({source})",
     )
-
-
-def _read_init_inputs() -> tuple[Biometrics, float, float] | None:
-    """Prompt for biometrics on stdin; return (bio, activity, deficit) or None.
-
-    Returns None (after printing why) on any unparsable or out-of-range input,
-    so a typo never sets a wrong budget.
-    """
-    try:
-        weight = float(_ask("weight in kg:"))
-        height = float(_ask("height in cm:"))
-        age = float(_ask("age in years:"))
-        sex_raw = _ask("sex (m/f):").lower()
-        activity = float(
-            _ask(
-                "activity factor "
-                "(1.2 sedentary / 1.375 light / 1.55 moderate / 1.725 active):",
-            ),
-        )
-        deficit = float(_ask("daily deficit in kcal (e.g. 200):"))
-    except ValueError:
-        _emit("that was not a number; nothing was set.")
-        return None
-
-    if sex_raw in _MALE_ANSWERS:
-        is_male = True
-    elif sex_raw in _FEMALE_ANSWERS:
-        is_male = False
-    else:
-        _emit('sex must be "m" or "f"; nothing was set.')
-        return None
-
-    bio = Biometrics(
-        weight_kg=weight,
-        height_cm=height,
-        age_years=age,
-        is_male=is_male,
-    )
-    return bio, activity, deficit
-
-
-def _cmd_init() -> int:
-    """Compute the starting budget from biometrics and write it."""
-    inputs = _read_init_inputs()
-    if inputs is None:
-        return 2
-    bio, activity, deficit = inputs
-    budget = compute_target_budget(
-        bio,
-        activity_factor=activity,
-        deficit_kcal=deficit,
-    )
-    write_budget(budget, weight_kg=bio.weight_kg)
-    _emit(f"budget computed from your biometrics: {budget:g} kcal/day.")
-    _emit("edit it any time from the gate's calendar tab or the phone app.")
-    return 0
-
-
-def _eaten_grams(
-    description: str,
-    portion: _Portion,
-) -> tuple[float | None, str | None]:
-    """Resolve how many grams were eaten, plus a note if a weight was assumed.
-
-    A count of items is turned into grams via the staple's unit weight; an
-    unknown item falls back to a default weight, with a note so the estimate is
-    never silent.
-
-    Args:
-        description: The food name (used to look up a per-item weight).
-        portion: The user's portion inputs.
-
-    Returns:
-        ``(grams, note)`` where ``grams`` may be None (no portion given) and
-        ``note`` is a one-line caveat to print, or None.
-    """
-    if portion.count is not None:
-        unit = estimate_unit_grams(description)
-        if unit is None:
-            return (
-                portion.count * DEFAULT_ITEM_GRAMS,
-                f"(assumed {DEFAULT_ITEM_GRAMS:g} g per item; "
-                "pass --grams to be exact)",
-            )
-        return portion.count * unit, None
-    return portion.grams, None
-
-
-def _cmd_ate(description: str, portion: _Portion, macros: _ManualMacros) -> int:
-    """Resolve and log a meal, tag its slot, bank it, then print the total.
-
-    Resolution order is manual, then food bank, then the staple table, then
-    Open Food Facts (see :func:`resolve_nutrition`).  A per-item count or a
-    per-reference macro basis is converted to the amount actually eaten first,
-    and the food is remembered so next time it is served from local history.
-    """
-    eaten, note = _eaten_grams(description, portion)
-    if note is not None:
-        _emit(note)
-    manual_macros = (
-        ManualMacros(
-            kcal=macros.kcal,
-            protein=macros.protein or 0.0,
-            carbs=macros.carbs or 0.0,
-            fat=macros.fat or 0.0,
-            per_grams=portion.per_grams,
-        )
-        if macros.kcal is not None
-        else None
-    )
-    nutrition = resolve_nutrition(
-        description,
-        grams=eaten,
-        manual_macros=manual_macros,
-    )
-    if nutrition is None:
-        _emit(
-            f'no food bank, staple, or Open Food Facts match for "{description}". '
-            "re-run with --kcal <number> to log it manually.",
-        )
-        return 1
-    log_meal(description, nutrition, slot_for_log(now_local()))
-    remember_food(description, nutrition)
-    macro_str = f"P{nutrition.protein_g:g} C{nutrition.carbs_g:g} F{nutrition.fat_g:g}"
-    portion_str = f"{nutrition.grams:g} g" if nutrition.grams else "portion n/a"
-    _emit(
-        f"logged: {description}  {nutrition.kcal:g} kcal  "
-        f"({macro_str})  [{nutrition.source}, {portion_str}]",
-    )
-    _print_summary()
-    return 0
 
 
 def _print_slot_status() -> None:
@@ -422,10 +159,12 @@ def _cmd_undo() -> int:
 
 def _dispatch_ate(args: argparse.Namespace) -> int:
     """Marshal ``ate``'s flags into value objects, then log the meal."""
-    return _cmd_ate(
+    return cmd_ate(
+        _emit,
+        _print_summary,
         args.description,
-        _Portion(grams=args.grams, count=args.count, per_grams=args.per),
-        _ManualMacros(
+        Portion(grams=args.grams, count=args.count, per_grams=args.per),
+        ManualMacroArgs(
             kcal=args.kcal,
             protein=args.protein,
             carbs=args.carbs,
@@ -443,7 +182,7 @@ def _dispatch_gate(args: argparse.Namespace) -> int:
 # tripped ruff's return-count limit at the seventh, and a table also has no
 # unreachable trailing branch for the 100%-coverage gate to chase.
 _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
-    "init": lambda _args: _cmd_init(),
+    "init": lambda _args: cmd_init(_emit, _ask),
     "ate": _dispatch_ate,
     "status": lambda _args: _cmd_status(),
     "averages": lambda _args: cmd_averages(_emit),
@@ -462,5 +201,5 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         A process exit code (0 on success).
     """
-    args = _parse_args(sys.argv[1:] if argv is None else argv)
+    args = parse_args(sys.argv[1:] if argv is None else argv)
     return _COMMANDS[args.command](args)

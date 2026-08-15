@@ -14,6 +14,7 @@ from diet_guard._gate import gate_is_due
 from diet_guard._gatelock import MealGate, acquire_gate_lock, release_gate_lock
 from diet_guard._gatelock_support import wait_for_display
 from diet_guard._sync import pull_shared_log
+from diet_guard._sync_events import publish_after_log
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -79,4 +80,13 @@ def cmd_gate(emit: Callable[[str], None], *, check: bool, demo: bool) -> int:
         MealGate(demo_mode=demo).run()
     finally:
         release_gate_lock(handle)
+    # Publish only once ``run()`` has returned -- i.e. the mainloop has ended and
+    # the window is gone. Deliberately NOT inside the unlock handler: that runs
+    # on the Tk thread with the lock still up, so a slow or hanging network call
+    # would keep the user locked in behind a successful log. Here the worst case
+    # is a late publish. One call site covers every unlock reason, including the
+    # "Synced from another device" path, which hooking the log itself would miss.
+    reason = publish_after_log()
+    if reason is not None:
+        emit(f"logged locally, not yet published ({reason}).")
     return 0

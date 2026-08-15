@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from diet_guard import _mcp
+from diet_guard import _mcp, _mcp_read
 from diet_guard._averages import AverageBand, PeriodAverage
 from diet_guard._budget import BudgetNotInitializedError
 
@@ -28,12 +28,12 @@ def _period(
 class TestPeriodView:
     def test_never_carries_the_average_budget(self) -> None:
         # The module invariant: no tool hands an automated caller the budget.
-        view = _mcp._period_view(_period())
+        view = _mcp_read._period_view(_period())
         assert "avg_budget" not in view
         assert 2000.0 not in view.values()
 
     def test_carries_intake_band_and_coverage(self) -> None:
-        view = _mcp._period_view(_period())
+        view = _mcp_read._period_view(_period())
         assert view["avg_kcal"] == 2100.0
         assert view["band"] == "slightly_over"
         assert view["band_label"] == "slightly over"
@@ -43,7 +43,7 @@ class TestPeriodView:
         assert view["end"] == "2026-01-11"
 
     def test_empty_period_serializes_as_null_not_zero(self) -> None:
-        view = _mcp._period_view(_period(avg_kcal=None, band=None))
+        view = _mcp_read._period_view(_period(avg_kcal=None, band=None))
         assert view["avg_kcal"] is None
         assert view["band"] is None
         assert view["band_label"] == "no data"
@@ -52,11 +52,11 @@ class TestPeriodView:
 class TestGetAverages:
     def test_returns_all_four_periods(self) -> None:
         with (
-            patch.object(_mcp, "daily_budget", return_value=2000),
-            patch.object(_mcp, "current_schedule"),
-            patch.object(_mcp, "load_log", return_value={}),
-            patch.object(_mcp, "weekly_average", return_value=_period()),
-            patch.object(_mcp, "monthly_average", return_value=_period()),
+            patch.object(_mcp_read, "daily_budget", return_value=2000),
+            patch.object(_mcp_read, "current_schedule"),
+            patch.object(_mcp_read, "load_log", return_value={}),
+            patch.object(_mcp_read, "weekly_average", return_value=_period()),
+            patch.object(_mcp_read, "monthly_average", return_value=_period()),
         ):
             out = _mcp.get_averages()
         assert out["budget_initialized"] is True
@@ -70,7 +70,7 @@ class TestGetAverages:
 
     def test_no_budget_degrades_to_empty_periods(self) -> None:
         with patch.object(
-            _mcp,
+            _mcp_read,
             "daily_budget",
             side_effect=BudgetNotInitializedError,
         ):
@@ -79,11 +79,11 @@ class TestGetAverages:
 
     def test_no_response_field_leaks_the_budget_number(self) -> None:
         with (
-            patch.object(_mcp, "daily_budget", return_value=2000),
-            patch.object(_mcp, "current_schedule"),
-            patch.object(_mcp, "load_log", return_value={}),
-            patch.object(_mcp, "weekly_average", return_value=_period()),
-            patch.object(_mcp, "monthly_average", return_value=_period()),
+            patch.object(_mcp_read, "daily_budget", return_value=2000),
+            patch.object(_mcp_read, "current_schedule"),
+            patch.object(_mcp_read, "load_log", return_value={}),
+            patch.object(_mcp_read, "weekly_average", return_value=_period()),
+            patch.object(_mcp_read, "monthly_average", return_value=_period()),
         ):
             out = _mcp.get_averages()
         flat = repr(out)

@@ -36,12 +36,42 @@ see the unit file's comments and `wait_for_display()`.
 
 ## Cross-device sync
 
-`diet-guard-sync.timer` runs `python -m diet_guard sync` every ~15 min,
-headless. It pulls every other device's log from `kuhyx/syncs`
+A sync tick pulls every other device's log from `kuhyx/syncs`
 (`diet-guard-sync/`, dumb file storage via the REST Contents API), merges
 (`_sync_merge.merge_logs`: union by `id`, tombstone wins, legacy
 `(time, desc)` dedup), **re-signs every persisted entry**, rebuilds the food
 bank, pushes back.
+
+**On the PC, sync is event-driven — there is no periodic timer.** The old
+`diet-guard-sync.timer` (~15 min) was deleted: it paid a network round-trip on
+every idle tick to approximate the two moments state actually changes here.
+
+- **Before a lock** — `_cli_gate._should_lock` runs the cheap local
+  `gate_is_due()` first and pulls *only* when a lock is otherwise due, so a
+  meal just logged on the phone clears the lock and a not-due tick never
+  touches the network.
+- **After a meal is logged** — `_sync_events.publish_after_log`, called from
+  all three write paths (`_cli`, `_cli_gate`, `_mcp`). This is what stops the
+  *phone* nagging for a slot already logged on the PC.
+- The gate's publish lives in `cmd_gate` **after `MealGate.run()` returns**,
+  never in the unlock handler: that runs on the Tk thread with the window still
+  up, so a hanging network call would keep the user locked in behind a
+  successful log. It also covers the "Synced from another device" unlock, which
+  hooking `log_meal` would miss.
+- Accepted trade: a PC that is on but neither logging nor locking does not
+  pull, so an inbound phone edit lands at the next log or lock rather than
+  within 15 min. Bounded by slot spacing — an unlogged day raises a lock.
+- **`gate --demo` publishes too.** The call sits after the `finally`, so it
+  runs in demo as well. "Safe, closeable" means it cannot trap you at the
+  keyboard — not that it is offline: demo already writes real entries through
+  `log_meal` (only the *slot* is synthetic), so publishing them is consistent
+  rather than a new leak.
+- `pull_shared_log()` is misnamed: it runs a *full* tick (pull, merge, re-sign,
+  persist, **push**, plus budget and both food banks), not just a pull.
+- Every test that logs a meal would otherwise hit the network through these new
+  call sites; `conftest._isolate_state` patches `publish_after_log` at each of
+  the three call sites (not on `_sync_events`, so a direct test still exercises
+  the real helper).
 
 - **Re-sign on every merge, not just phone-origin entries.** `_entry_is_valid()`
   drops unsigned entries once a machine has the HMAC key, and the phone never
