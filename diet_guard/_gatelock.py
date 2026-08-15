@@ -28,7 +28,7 @@ prominent, with macros and the protein target beneath.  The unlock condition is
 offline, so a dead OFF endpoint can never trap you behind the lock.
 
 Building ``MealGate`` spans several sibling modules to keep each under the
-repo's 500-line limit: :mod:`._gatelock_core` provides the shared leaf
+repo's 250-line limit: :mod:`._gatelock_core` provides the shared leaf
 widget/field helpers and state (``_GateCore``, ``_GateState``);
 :mod:`._gatelock_nutrition` provides the reference->total nutrition maths and
 food lookup (``_GateNutrition``); :mod:`._gatelock_mealflow` provides the
@@ -42,11 +42,8 @@ construction, layout, and event binding.
 
 from __future__ import annotations
 
-import contextlib
-import fcntl
 import sys
 import tkinter as tk
-from typing import TYPE_CHECKING
 
 from gatelock import (
     RANK_DIET_GUARD,
@@ -57,11 +54,11 @@ from gatelock import (
     SurfaceInfo,
 )
 
-from diet_guard._constants import GATE_LOCK_FILE
 from diet_guard._gate import due_slots
 from diet_guard._gatelock_calendar import _GateCalendar, make_calendar_vars
 from diet_guard._gatelock_core import _GateState
 from diet_guard._gatelock_groups import GateWidgetsGroup
+from diet_guard._gatelock_lockfile import acquire_gate_lock, release_gate_lock
 from diet_guard._gatelock_ui import (
     GateCallbacks,
     make_vars,
@@ -69,8 +66,11 @@ from diet_guard._gatelock_ui import (
 from diet_guard._slots import current_slot, day_slots
 from diet_guard._state import now_local
 
-if TYPE_CHECKING:
-    from typing import TextIO
+__all__ = [
+    "MealGate",
+    "acquire_gate_lock",
+    "release_gate_lock",
+]
 
 
 def _assert_not_under_pytest() -> None:
@@ -83,31 +83,6 @@ def _assert_not_under_pytest() -> None:
     if "pytest" in sys.modules and getattr(tk, "__name__", "") == "tkinter":
         msg = "SAFETY: MealGate built under pytest with real tkinter (tk.Tk unmocked)"
         raise RuntimeError(msg)
-
-
-def acquire_gate_lock() -> TextIO | None:
-    """Acquire the gate's single-instance ``flock``.
-
-    Returns:
-        An open file handle that must be kept alive for the gate's lifetime
-        (closing it releases the lock), or None if another gate already holds
-        it -- in which case the caller must not open a second window.
-    """
-    GATE_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
-    handle = GATE_LOCK_FILE.open("w", encoding="utf-8")
-    try:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except OSError:
-        handle.close()
-        return None
-    return handle
-
-
-def release_gate_lock(handle: TextIO) -> None:
-    """Release the single-instance lock and close its handle."""
-    with contextlib.suppress(OSError):
-        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-    handle.close()
 
 
 def _pending_slots(*, demo_mode: bool) -> list[int]:

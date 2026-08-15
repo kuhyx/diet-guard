@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from diet_guard import _gatelock_typography, _gatelock_ui
+from diet_guard import _gatelock_fields, _gatelock_typography, _gatelock_ui
 from diet_guard._gatelock_ui import UNIT_GRAMS, UNIT_ITEMS
 from diet_guard.tests import _gate_keyboard_probe
 
@@ -57,7 +57,7 @@ class TestUnitSelectorIsKeyboardReachable:
         try:
             selector_row = tk.Frame(root)
             vars_ = _gatelock_ui.make_vars(root)
-            _gatelock_ui._build_unit_selector(selector_row, vars_, lambda _u: None)
+            _gatelock_fields._build_unit_selector(selector_row, vars_, lambda _u: None)
             classes = [child.winfo_class() for child in selector_row.winfo_children()]
             assert classes == ["Radiobutton", "Radiobutton"]
             assert "Menubutton" not in classes
@@ -71,7 +71,7 @@ class TestUnitSelectorIsKeyboardReachable:
             row = tk.Frame(root)
             row.pack()
             vars_ = _gatelock_ui.make_vars(root)
-            _gatelock_ui._build_unit_selector(row, vars_, lambda _u: None)
+            _gatelock_fields._build_unit_selector(row, vars_, lambda _u: None)
             root.focus_force()
             root.update()
             root.update_idletasks()
@@ -87,7 +87,7 @@ class TestUnitSelectorIsKeyboardReachable:
             row = tk.Frame(root)
             vars_ = _gatelock_ui.make_vars(root)
             seen: list[str] = []
-            _gatelock_ui._build_unit_selector(row, vars_, seen.append)
+            _gatelock_fields._build_unit_selector(row, vars_, seen.append)
             items = [
                 child
                 for child in row.winfo_children()

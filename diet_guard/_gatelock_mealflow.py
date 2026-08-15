@@ -1,10 +1,11 @@
-"""Submit/record flow and dashboard for the MealGate gate.
+"""Submit/record flow for the MealGate gate.
 
-Split out of :mod:`._gatelock` to keep that module under the repo's 500-line
+Split out of :mod:`._gatelock` to keep that module under the repo's 250-line
 limit.  ``_GateMealFlow`` extends
-:class:`~diet_guard._gatelock_nutrition._GateNutrition` with the
-submit/lookup/log flow, the per-slot input reset, and the running
-calorie/macro dashboard.
+:class:`~diet_guard._gatelock_dashboard._GateDashboard` (itself over
+:class:`~diet_guard._gatelock_nutrition._GateNutrition`) with the
+submit/lookup/log flow and the per-slot input reset.  The read-only
+calorie/macro dashboard it calls into lives in :mod:`._gatelock_dashboard`.
 """
 
 from __future__ import annotations
@@ -13,20 +14,13 @@ import contextlib
 import tkinter as tk
 from typing import TYPE_CHECKING
 
-from diet_guard._budget import BudgetError, daily_budget, protein_target_g
 from diet_guard._foodbank import remember_food
 from diet_guard._gate import due_slots
-from diet_guard._gatelock_nutrition import _GateNutrition
+from diet_guard._gatelock_dashboard import _GateDashboard
 from diet_guard._gatelock_ui import ERR, FG, UNIT_GRAMS
 from diet_guard._resolve import lookup_candidates
 from diet_guard._slots import slot_label
-from diet_guard._state import (
-    entry_kcal,
-    log_meal,
-    today_entries,
-    today_total_kcal,
-    today_total_macros,
-)
+from diet_guard._state import log_meal
 from diet_guard._sync import pull_shared_log
 
 if TYPE_CHECKING:
@@ -34,15 +28,9 @@ if TYPE_CHECKING:
 
 # How long the "unlocking..." confirmation lingers before the window tears down.
 _UNLOCK_DELAY_MS = 1200
-# How many recent meals the dashboard lists.
-_DASHBOARD_ROWS = 5
-# ISO timestamp "YYYY-MM-DDTHH:MM:SS": HH:MM is characters 11..16.
-_TIME_SLICE = slice(11, 16)
-# Width a meal description is truncated to in the dashboard.
-_DASH_DESC_WIDTH = 22
 
 
-class _GateMealFlow(_GateNutrition):
+class _GateMealFlow(_GateDashboard):
     """Submit/lookup/log flow for a logged food."""
 
     # -- slot walk ------------------------------------------------------------
@@ -208,46 +196,6 @@ class _GateMealFlow(_GateNutrition):
         meal_word = "meal" if count == 1 else "meals"
         self._set_status(f"Pulled {count} {meal_word} — next meal, please.")
         self._widgets.desc_text.focus_set()
-
-    # -- dashboard --------------------------------------------------------------
-
-    def _refresh_dashboard(self) -> None:
-        """Recompute the prominent calorie headline and the detail panel."""
-        self._vars.cal_headline.set(self._cal_headline_text())
-        self._vars.dashboard.set(self._dashboard_text())
-
-    def _cal_headline_text(self) -> str:
-        """Return the big calories-today line: consumed, target, and remaining."""
-        consumed = today_total_kcal()
-        try:
-            budget = daily_budget()
-        except (BudgetError, OSError):
-            return f"{consumed:g} kcal today"
-        return (
-            f"{consumed:g} / {budget:g} kcal   ·   {round(budget - consumed, 1):g} left"
-        )
-
-    def _dashboard_text(self) -> str:
-        """Build the detail panel: recent meals, then macros and protein."""
-        lines = ["── Today ───────────────────────────────"]
-        entries = today_entries()
-        if entries:
-            for entry in entries[-_DASHBOARD_ROWS:]:
-                clock = str(entry.get("time", ""))[_TIME_SLICE]
-                desc = str(entry.get("desc", "?"))[:_DASH_DESC_WIDTH]
-                lines.append(
-                    f"  {clock:>5}  {desc:<{_DASH_DESC_WIDTH}}  "
-                    f"{entry_kcal(entry):>5.0f} kcal",
-                )
-        else:
-            lines.append("  (nothing logged yet today)")
-        protein, carbs, fat = today_total_macros()
-        lines.append(f"  macros so far:  P{protein:g}  C{carbs:g}  F{fat:g}  g")
-        target = protein_target_g()
-        if target is not None:
-            left = round(target - protein, 1)
-            lines.append(f"  protein {protein:g} / {target:g} g  ({left:g} g left)")
-        return "\n".join(lines)
 
     def on_callback_error(self) -> None:
         """Surface an unexpected callback error without dropping the grab."""

@@ -119,7 +119,7 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
             tmp_path / "food_bank_manual.json",
         ),
         patch(
-            "diet_guard._gatelock.GATE_LOCK_FILE",
+            "diet_guard._gatelock_lockfile.GATE_LOCK_FILE",
             tmp_path / ".gate.lock",
         ),
         patch(

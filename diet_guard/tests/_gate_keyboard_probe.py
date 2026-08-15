@@ -21,7 +21,8 @@ from dataclasses import dataclass, field
 import tkinter as tk
 from tkinter import ttk
 
-from diet_guard._gatelock_ui import GateCallbacks, build_layout
+from diet_guard._gatelock_layout import build_layout
+from diet_guard._gatelock_ui import GateCallbacks
 from diet_guard.tests._gate_layout_probe import _make_vars, _noop
 
 # How far to walk before declaring the ring non-terminating.

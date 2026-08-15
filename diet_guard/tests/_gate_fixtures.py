@@ -23,9 +23,14 @@ import pytest
 
 from diet_guard import (
     _gatelock,
+    _gatelock_budgetedit,
     _gatelock_calendar,
+    _gatelock_calendar_types,
     _gatelock_calendar_ui,
+    _gatelock_calendar_widgets,
     _gatelock_core,
+    _gatelock_fields,
+    _gatelock_layout,
     _gatelock_mealflow,
     _gatelock_nutrition,
     _gatelock_ui,
@@ -145,8 +150,19 @@ _GATE_TK_MODULES = (
     # needs the fake tk too -- otherwise the gate tests open real windows.
     _gatelock_widgets,
     _gatelock_calendar,
-    _gatelock_calendar_ui,
+    # NOT _gatelock_calendar_ui: since the History tab's builders moved to
+    # _gatelock_calendar_widgets it imports only `ttk`, which is patched
+    # separately in fake_tk(). Listing it here fails with "does not have the
+    # attribute 'tk'".
+    _gatelock_calendar_widgets,
+    # Builds the History tab's StringVars (make_calendar_vars); without the
+    # fake those are REAL tkinter vars over a MagicMock root, so every
+    # `.get()` returns a MagicMock instead of the text under test.
+    _gatelock_calendar_types,
+    _gatelock_budgetedit,
     _gatelock_core,
+    _gatelock_fields,
+    _gatelock_layout,
     _gatelock_nutrition,
     _gatelock_mealflow,
     _gatelock_ui,

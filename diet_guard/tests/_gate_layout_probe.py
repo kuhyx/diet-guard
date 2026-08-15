@@ -31,12 +31,14 @@ Run the gate with:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import tkinter as tk
 from tkinter import ttk
 
-from diet_guard._gatelock_ui import GateCallbacks, GateVars, build_layout
+from diet_guard._gatelock_layout import build_layout
+from diet_guard._gatelock_ui import GateCallbacks, GateVars
 from diet_guard._gatelock_ui_types import GateEntryVars
+from diet_guard.tests._gate_focus_probe import _probe_viewport
+from diet_guard.tests._gate_measurement import Measurement
 
 # ttk.Notebook's tab strip is chrome the content pane never gets to use.
 # Measured rather than assumed; see _notebook_overhead().
@@ -51,62 +53,6 @@ _SAMPLE_DASHBOARD = (
     "protein 118 / 140 g   carbs 210 g   fat 61 g",
     "protein target: 22 g remaining",
 )
-
-
-@dataclass(frozen=True)
-class Measurement:
-    """One layout measurement against one screen size."""
-
-    screen_w: int
-    screen_h: int
-    content_span: int
-    viewport_h: int
-    scrolls_by_keyboard: bool
-    last_widget_visible_after_focus: bool
-    has_scroll_viewport: bool = True
-
-    @property
-    def needs_scroll(self) -> bool:
-        """Whether the content is taller than the viewport."""
-        return self.content_span > self.viewport_h
-
-    @property
-    def reachable(self) -> bool:
-        """Whether every part of the content can be reached by keyboard.
-
-        Content that fits is trivially reachable. Content that overflows must
-        scroll by keyboard *and* bring a focused below-the-fold widget into
-        view.
-
-        Deliberately not asserted: that focusing always *moves* the view. When
-        the overflow is small the deepest widget is already visible, and then
-        holding still is the correct behaviour -- the invariant is "the focused
-        widget is visible", not "the viewport scrolled".
-        """
-        if not self.needs_scroll:
-            return True
-        return self.scrolls_by_keyboard and self.last_widget_visible_after_focus
-
-    def describe(self) -> str:
-        """Return a one-line human-readable summary."""
-        fit = (
-            f"needs scroll (+{self.content_span - self.viewport_h}px)"
-            if self.needs_scroll
-            else "fits"
-        )
-        verdict = "REACHABLE" if self.reachable else "UNREACHABLE CONTENT"
-        viewport = (
-            "scroll viewport present"
-            if self.has_scroll_viewport
-            else "NO SCROLL VIEWPORT -- overflow is clipped, not scrolled"
-        )
-        return (
-            f"{self.screen_w}x{self.screen_h}: "
-            f"content {self.content_span} in viewport {self.viewport_h} "
-            f"-> {fit}; {viewport}; keys={self.scrolls_by_keyboard} "
-            f"last_visible={self.last_widget_visible_after_focus} "
-            f"-> {verdict}"
-        )
 
 
 def _make_vars(*, populated: bool) -> GateVars:
@@ -164,103 +110,6 @@ def _notebook_overhead(root: tk.Misc) -> int:
     overhead = probe.winfo_reqheight() - filler.winfo_reqheight()
     probe.destroy()
     return overhead if overhead > 0 else _FALLBACK_TAB_STRIP_PX
-
-
-# Tk widget classes that take keyboard focus by default. Checking `takefocus`
-# is not enough: it is "" on most widgets, meaning "ask ::tk::FocusOK", so an
-# empty value indicates a *default*-focusable widget rather than an opted-out
-# one. Matching on class is what actually mirrors FocusOK's behaviour here.
-_FOCUSABLE_CLASSES = frozenset(
-    {
-        "Button",
-        "Checkbutton",
-        "Entry",
-        "Listbox",
-        "Radiobutton",
-        "Spinbox",
-        "Text",
-    }
-)
-
-
-def _is_focusable(widget: tk.Misc) -> bool:
-    """Whether ``widget`` would accept keyboard focus."""
-    if str(widget.cget("takefocus")) == "0":
-        return False
-    if str(widget.cget("takefocus")) == "1":
-        return True
-    return widget.winfo_class() in _FOCUSABLE_CLASSES
-
-
-def _deepest_focusable(widget: tk.Misc) -> tk.Misc | None:
-    """Return the last descendant that can take keyboard focus.
-
-    Used to prove the *bottom* of the content is reachable, which is where the
-    submit button and the dashboard live -- exactly what a centered, clipping
-    frame used to hide.
-    """
-    found: tk.Misc | None = None
-    for child in widget.winfo_children():
-        if _is_focusable(child):
-            found = child
-        deeper = _deepest_focusable(child)
-        if deeper is not None:
-            found = deeper
-    return found
-
-
-def _probe_viewport(
-    root: tk.Misc,
-    canvas: tk.Canvas,
-    inner: tk.Misc,
-    screen_w: int,
-    screen_h: int,
-) -> Measurement:
-    """Interrogate a built viewport: does it scroll, and does focus follow?
-
-    Split out of :func:`measure` so each function does one thing -- building the
-    layout, and interrogating it -- and so neither trips the local-variable cap.
-    """
-    box = canvas.bbox("all")
-    span = (box[3] - box[1]) if box else 0
-    viewport_h = canvas.winfo_height()
-
-    canvas.yview_moveto(0.0)
-    root.update_idletasks()
-    canvas.yview_scroll(1, "pages")
-    root.update_idletasks()
-    scrolls = canvas.yview()[0] > 0.0
-
-    # Scroll back to the top, then focus the deepest widget and check it ends up
-    # on screen. Starting from the top is what makes this a real test: it is the
-    # state a user arrives in.
-    canvas.yview_moveto(0.0)
-    root.update_idletasks()
-    target = _deepest_focusable(inner)
-    last_visible = False
-    if target is not None:
-        # A real keypress first, then the focus it would have moved. Since
-        # 2026-08-03 gatelock only scrolls to follow focus the *user* moved:
-        # it used to follow programmatic focus too, and because the apps
-        # re-focus a widget on every repaint, the screen scrolled itself to
-        # mid-content and back while the user was doing nothing. A bare
-        # focus_set() here would therefore test a path no user can take.
-        target.event_generate("<Key-Tab>", when="now")
-        target.focus_set()
-        root.update()
-        root.update_idletasks()
-        top = target.winfo_rooty() - inner.winfo_rooty()
-        visible_from = canvas.canvasy(0)
-        last_visible = visible_from <= top <= visible_from + viewport_h
-
-    return Measurement(
-        screen_w=screen_w,
-        screen_h=screen_h,
-        content_span=span,
-        viewport_h=viewport_h,
-        scrolls_by_keyboard=scrolls,
-        last_widget_visible_after_focus=last_visible,
-    )
 
 
 def measure(

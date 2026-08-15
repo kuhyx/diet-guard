@@ -1,12 +1,12 @@
-"""History tab: budget-adherence calendar, streaks, YTD tally, budget edit.
+"""History tab: budget-adherence calendar, streaks, YTD tally.
 
 Split out of :mod:`._gatelock` (and kept out of :mod:`._gatelock_ui`) to keep
-every gate module under the repo's 500-line limit.  ``_GateCalendar`` extends
-:class:`~diet_guard._gatelock_mealflow._GateMealFlow` with a second
+every gate module under the repo's 250-line limit.  ``_GateCalendar`` extends
+:class:`~diet_guard._gatelock_budgetedit._GateBudgetEdit` with a second
 ``ttk.Notebook`` tab: the calendar/streak/tally view built from
-:mod:`diet_guard._calendar_view`'s pure grid math, plus a budget-edit field
-writing through :func:`diet_guard._budget.write_budget` -- the one place
-either device edits the now freely-editable, synced daily budget.
+:mod:`diet_guard._calendar_view`'s pure grid math.  The budget-edit half of
+the tab -- the one place either device edits the freely-editable, synced daily
+budget -- lives in :mod:`._gatelock_budgetedit`.
 
 The month-grid math itself lives in :mod:`diet_guard._calendar_view` (no Tk
 dependency), so the boundary cases (varying month length/first weekday,
@@ -20,15 +20,13 @@ import calendar
 import contextlib
 import tkinter as tk
 from tkinter import ttk
+from typing import TYPE_CHECKING
 
 from diet_guard._budget import (
-    BudgetError,
     BudgetFileCorruptError,
     BudgetNotInitializedError,
-    budget_weight,
     current_schedule,
     daily_budget,
-    write_budget,
 )
 from diet_guard._calendar_view import (
     CalendarCell,
@@ -39,6 +37,7 @@ from diet_guard._calendar_view import (
     ytd_text,
 )
 from diet_guard._daystatus import DayStatus, status_map
+from diet_guard._gatelock_budgetedit import _GateBudgetEdit
 from diet_guard._gatelock_calendar_ui import (
     _DECEMBER,
     _DEFAULT_BUDGET_KCAL,
@@ -51,15 +50,14 @@ from diet_guard._gatelock_calendar_ui import (
     build_calendar_frame,
     make_calendar_vars,
 )
-from diet_guard._gatelock_mealflow import _GateMealFlow
-from diet_guard._gatelock_ui import (
-    ERR,
-    FG,
-    GateCallbacks,
-    GateWidgets,
-    build_layout,
-)
+from diet_guard._gatelock_layout import build_layout
 from diet_guard._state import load_log, now_local
+
+if TYPE_CHECKING:
+    from diet_guard._gatelock_ui import (
+        GateCallbacks,
+        GateWidgets,
+    )
 
 __all__ = [
     "CalendarCallbacks",
@@ -71,7 +69,7 @@ __all__ = [
 ]
 
 
-class _GateCalendar(_GateMealFlow):
+class _GateCalendar(_GateBudgetEdit):
     """History tab: calendar, streaks, YTD tally, and budget editing."""
 
     _cal_vars: CalendarVars
@@ -212,75 +210,3 @@ class _GateCalendar(_GateMealFlow):
             self._cal_month = _JANUARY
             self._cal_year += 1
         self._refresh_calendar()
-
-    # -- budget editing -----------------------------------------------------
-
-    def _set_budget_entry_state(self, state: str) -> None:
-        """Lock or unlock the budget entry on every monitor."""
-        for surface in self._cal_surfaces:
-            with contextlib.suppress(tk.TclError):
-                surface.budget_entry.config(state=state)
-
-    def _set_budget_button_text(self, text: str) -> None:
-        """Relabel the budget edit/save button on every monitor."""
-        for surface in self._cal_surfaces:
-            with contextlib.suppress(tk.TclError):
-                surface.budget_edit_button.config(text=text)
-
-    def _set_budget_status(self, text: str, *, error: bool) -> None:
-        """Update the budget-edit status line, red for errors."""
-        self._cal_vars.budget_status.set(text)
-        colour = ERR if error else FG
-        for surface in self._cal_surfaces:
-            with contextlib.suppress(tk.TclError):
-                surface.budget_status_label.config(fg=colour)
-
-    def _on_edit_or_save_budget(self) -> None:
-        """Toggle the budget row between read-only display and editing.
-
-        First click: unlock the entry for typing and relabel the button
-        "Save" -- nothing is persisted yet.  Second click: validate and
-        persist; on success, lock the entry back to read-only and relabel
-        the button "Edit".  A validation failure leaves editing open so the
-        user can correct the value instead of silently discarding it.
-        """
-        if not self._cal_editing_budget:
-            self._cal_editing_budget = True
-            self._set_budget_entry_state("normal")
-            self._set_budget_button_text("Save")
-            self._set_budget_status("", error=False)
-            return
-        if not self._save_budget_entry():
-            return
-        self._cal_editing_budget = False
-        self._set_budget_button_text("Edit")
-        self._refresh_calendar()
-        self._refresh_dashboard()
-        self._refresh_projection()
-
-    def _save_budget_entry(self) -> bool:
-        """Validate and persist the entry's current text.
-
-        Preserves any body weight already stored alongside the budget (used
-        to derive the protein target) -- a bare ``write_budget(value)`` would
-        silently drop it, since the file holds one record, not a diff.
-
-        Returns:
-            Whether the value was valid and persisted.
-        """
-        raw = self._cal_vars.budget.get().strip()
-        try:
-            value = int(raw)
-        except ValueError:
-            self._set_budget_status("Enter a whole number of kcal.", error=True)
-            return False
-        if value <= 0:
-            self._set_budget_status("Budget must be a positive number.", error=True)
-            return False
-        try:
-            weight = budget_weight()
-        except BudgetError:
-            weight = None
-        write_budget(value, weight_kg=weight)
-        self._set_budget_status("Saved.", error=False)
-        return True
