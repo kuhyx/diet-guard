@@ -20,6 +20,9 @@ from __future__ import annotations
 import ast
 import pathlib
 
+from gatelock import log_integrity
+from gatelock.log_integrity import compute_entry_hmac
+
 from diet_guard import _budget, _budget_history, _state
 from diet_guard._constants import (
     BUDGET_FILE as REAL_BUDGET_FILE,
@@ -32,6 +35,9 @@ from diet_guard._constants import (
 )
 
 _PACKAGE_DIR = pathlib.Path(__file__).resolve().parent.parent
+
+#: The real machine-wide key the fixture must redirect away from.
+_REAL_HMAC_KEY = pathlib.Path("/etc/workout-locker/hmac.key")
 
 #: Each on-disk state path conftest redirects, mapped to the single package
 #: module allowed to name it. Anything else naming one means the redirect no
@@ -100,4 +106,26 @@ def test_redirect_moves_writes_off_the_live_paths() -> None:
     assert _budget.BUDGET_FILE.exists(), "budget write did not land on the redirect"
     assert _budget_history.BUDGET_HISTORY_FILE.exists(), (
         "budget-history write did not land on the redirect"
+    )
+
+
+def test_hmac_key_is_redirected_off_the_machine_key() -> None:
+    """The shared HMAC key points at a temp file, not ``/etc``.
+
+    ``_gate_fixtures._hmac_key`` is autouse, but a fixture only registers if
+    ``conftest.py`` *imports* it -- and ruff deletes an import that nothing
+    references, which is why every such fixture is also named in conftest's
+    ``__all__``. When ``_hmac_key`` was left out of both, this machine's real
+    ``/etc/workout-locker/hmac.key`` silently stood in for it: the suite passed
+    here and six signing tests failed on CI, which has no such file.
+
+    Asserting the redirect directly makes that a local failure instead of a
+    push-time one.
+    """
+    assert log_integrity.DEFAULT_HMAC_KEY_FILE != _REAL_HMAC_KEY, (
+        "_hmac_key is not registered -- add it to conftest's import list AND "
+        "its __all__, or tests will pass here and fail on a keyless runner"
+    )
+    assert compute_entry_hmac({"probe": True}) is not None, (
+        "the redirected key does not sign; signing tests will fail closed"
     )

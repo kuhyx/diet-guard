@@ -37,6 +37,7 @@ from diet_guard.tests._gate_fixtures import (
     _block_real_tk,
     _block_real_vt,
     _hermetic_gatelock,
+    _hmac_key,
     dual_output,
     fake_tk,
     gate,
@@ -81,11 +82,9 @@ __all__ = [
     "_block_real_tk",
     "_block_real_vt",
     "_hermetic_gatelock",
-    "dual_output",
+    "_hmac_key",
     "dual_output",
     "fake_tk",
-    "fake_tk",
-    "gate",
     "gate",
 ]
 
