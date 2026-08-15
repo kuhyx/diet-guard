@@ -10,15 +10,13 @@ import 'dart:async';
 
 import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
-import 'package:diet_guard_app/services/github_device_auth.dart';
 import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:github_device_auth/github_device_auth.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 
 /// Screen for configuring and triggering the GitHub mirror sync.
 class GitHubMirrorScreen extends StatefulWidget {
@@ -132,7 +130,7 @@ class _GitHubMirrorScreenState extends State<GitHubMirrorScreen> {
       final token = await showDialog<String>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => _DeviceCodeDialog(device: device, auth: auth),
+        builder: (_) => DeviceCodeDialog(device: device, auth: auth),
       );
       if (token != null && token.isNotEmpty) {
         setState(() {
@@ -386,94 +384,6 @@ class _ClientIdSetupDialogState extends State<_ClientIdSetupDialog> {
             if (id.isNotEmpty) Navigator.of(context).pop(id);
           },
           child: const Text('Continue'),
-        ),
-      ],
-    );
-  }
-}
-
-/// Dialog shown during the device flow: displays the user code, opens the
-/// verification page, and polls until authorized — popping the token (or
-/// null if cancelled / failed).
-class _DeviceCodeDialog extends StatefulWidget {
-  const _DeviceCodeDialog({required this.device, required this.auth});
-
-  final DeviceCodeResponse device;
-  final GitHubDeviceAuth auth;
-
-  @override
-  State<_DeviceCodeDialog> createState() => _DeviceCodeDialogState();
-}
-
-class _DeviceCodeDialogState extends State<_DeviceCodeDialog> {
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_poll());
-  }
-
-  Future<void> _poll() async {
-    try {
-      final token = await widget.auth.pollForToken(widget.device);
-      if (mounted) Navigator.of(context).pop(token);
-    } on Exception catch (e) {
-      if (mounted) setState(() => _error = '$e');
-    }
-  }
-
-  Future<void> _openPage() async {
-    await Clipboard.setData(ClipboardData(text: widget.device.userCode));
-    await launchUrl(
-      Uri.parse(widget.device.verificationUri),
-      mode: LaunchMode.externalApplication,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Authorize on GitHub'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Enter this code on GitHub:'),
-          const SizedBox(height: 8),
-          SelectableText(
-            widget.device.userCode,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 16),
-          if (_error == null)
-            const Row(
-              children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 12),
-                Expanded(child: Text('Waiting for authorization…')),
-              ],
-            )
-          else
-            Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton.icon(
-          onPressed: _openPage,
-          icon: const Icon(Icons.open_in_new),
-          label: const Text('Open GitHub & copy code'),
         ),
       ],
     );

@@ -3,8 +3,8 @@ library;
 
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/services/desktop_wrapper.dart';
-import 'package:diet_guard_app/services/github_device_auth.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
+import 'package:github_device_auth/github_device_auth.dart';
 import 'package:http/http.dart' as http;
 
 /// This device's id under `diet-guard-sync/devices/`.
