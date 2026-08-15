@@ -23,6 +23,7 @@ import 'dart:io';
 
 import 'package:crdt_sync/crdt_sync.dart';
 
+import 'package:diet_guard_app/desktop/content_types.dart' as content_types;
 import 'package:diet_guard_app/desktop/github_proxy.dart';
 import 'package:diet_guard_app/services/desktop_wrapper.dart';
 import 'package:path/path.dart' as p;
@@ -218,37 +219,10 @@ class WrapperServer {
     await request.response.addStream(file.openRead());
   }
 
-  /// Content type for [filePath].
+  /// Content type for [filePath]. See `content_types.dart`.
   ///
-  /// Flutter web is strict here: CanvasKit refuses to instantiate a `.wasm`
-  /// served as anything but `application/wasm`, and the app then renders
-  /// nothing at all.
-  static ContentType contentTypeFor(String filePath) {
-    switch (p.extension(filePath).toLowerCase()) {
-      case '.html':
-        return ContentType.html;
-      case '.js' || '.mjs':
-        return ContentType('text', 'javascript', charset: 'utf-8');
-      case '.json':
-        return ContentType.json;
-      case '.wasm':
-        return ContentType('application', 'wasm');
-      case '.css':
-        return ContentType('text', 'css', charset: 'utf-8');
-      case '.png':
-        return ContentType('image', 'png');
-      case '.jpg' || '.jpeg':
-        return ContentType('image', 'jpeg');
-      case '.svg':
-        return ContentType('image', 'svg+xml');
-      case '.ttf':
-        return ContentType('font', 'ttf');
-      case '.otf':
-        return ContentType('font', 'otf');
-      case '.woff2':
-        return ContentType('font', 'woff2');
-      default:
-        return ContentType.binary;
-    }
-  }
+  /// Kept as a static forwarder so callers and tests that reach for
+  /// `WrapperServer.contentTypeFor` keep working after the split.
+  static ContentType contentTypeFor(String filePath) =>
+      content_types.contentTypeFor(filePath);
 }
