@@ -31,6 +31,14 @@ PACKAGE = "diet_guard"
 
 TESTS_ROOT = pathlib.Path(PACKAGE) / "tests"
 
+# Running this as `python3 scripts/check_patch_targets.py` puts *scripts/* on
+# sys.path, not the repo root -- so `import diet_guard` fails unless the
+# package happens to be installed. It is not, on a CI runner that only
+# installs requirements.txt. Without this the resolver's `except ImportError`
+# swallowed every lookup and the hook reported all 19 targets as stale, which
+# is the exact fail-open shape this script exists to prevent.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
 
 def patch_targets(root: pathlib.Path) -> Iterator[tuple[pathlib.Path, int, str]]:
     """Yield ``(file, lineno, dotted_target)`` for every literal patch target."""
@@ -76,6 +84,20 @@ def main() -> int:
     """Report every unresolvable patch target; return 1 if any were found."""
     if not TESTS_ROOT.is_dir():
         sys.stderr.write(f"Error: {TESTS_ROOT} not found; run from the repo root.\n")
+        return 1
+
+    # Distinguish "this target moved" from "the package will not import at
+    # all". Without this the second case masquerades as the first: every
+    # target reports stale at once, which reads like a catastrophic refactor
+    # and hides the real error (a missing dependency, a syntax error).
+    try:
+        importlib.import_module(PACKAGE)
+    except ImportError as exc:
+        sys.stderr.write(
+            f"Error: cannot import {PACKAGE} ({exc}); every patch target would "
+            f"be reported stale. Fix the import first -- this is an environment "
+            f"problem, not a stale patch target.\n",
+        )
         return 1
 
     stale = [
