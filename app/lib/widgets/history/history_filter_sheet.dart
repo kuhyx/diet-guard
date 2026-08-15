@@ -3,8 +3,8 @@
 /// Split out of `history_screen.dart` to hold the repo's 250-line cap.
 library;
 
+import 'package:diet_guard_app/widgets/filters/filter_fields.dart';
 import 'package:diet_guard_app/widgets/history/history_filter.dart';
-import 'package:diet_guard_app/widgets/history/history_filter_fields.dart';
 import 'package:diet_guard_app/widgets/history/history_filter_sort.dart';
 import 'package:diet_guard_app/widgets/history/history_grouping.dart';
 import 'package:flutter/material.dart';

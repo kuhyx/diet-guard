@@ -1,6 +1,9 @@
-/// Small input widgets used by the history filter sheet.
+/// Filter-sheet input widgets shared by the history and food-bank screens.
 ///
-/// Split from `history_filter_sheet.dart` for the repo's 250-line cap.
+/// Both screens grew the same name-search field, the same slider captions and
+/// four copies each of the same min/max macro range block. They live here, in a
+/// neutral `widgets/filters/` rather than under either screen, so neither
+/// screen owns the other's controls.
 library;
 
 import 'package:flutter/material.dart';
@@ -116,6 +119,7 @@ class FilterRangeRow extends StatelessWidget {
     required this.max,
     required this.onChanged,
     this.unit = '',
+    this.showEndpointLabels = true,
     super.key,
   });
 
@@ -140,6 +144,12 @@ class FilterRangeRow extends StatelessWidget {
   /// Suffix appended to the endpoint and selection labels, e.g. `g`.
   final String unit;
 
+  /// Whether to print the endpoint captions and the selected-range readout.
+  ///
+  /// The history sheet shows both; the food-bank sheet never did, and turning
+  /// them on there would be a UI change smuggled in under a refactor.
+  final bool showEndpointLabels;
+
   @override
   Widget build(BuildContext context) {
     if (maxValue <= 0) return const SizedBox.shrink();
@@ -149,7 +159,8 @@ class FilterRangeRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(label, style: Theme.of(context).textTheme.labelLarge),
-        SliderEndpointLabels(lo: '0', hi: '${maxValue.round()}$unit'),
+        if (showEndpointLabels)
+          SliderEndpointLabels(lo: '0', hi: '${maxValue.round()}$unit'),
         RangeSlider(
           key: sliderKey,
           max: maxValue,
@@ -160,7 +171,8 @@ class FilterRangeRow extends StatelessWidget {
             v.end < maxValue ? v.end : null,
           ),
         ),
-        SliderSelectedLabel('${lo.round()} – ${hi.round()}$unit'),
+        if (showEndpointLabels)
+          SliderSelectedLabel('${lo.round()} – ${hi.round()}$unit'),
         const SizedBox(height: 8),
       ],
     );
