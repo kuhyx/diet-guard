@@ -1,28 +1,9 @@
 import 'package:diet_guard_app/models/day_status.dart';
-import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/day_status_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-// The real app theme, not a bare default MaterialApp -- the widget under
-// test reads its colors from Theme.of(context), so asserting against the
-// same theme the app actually ships is what makes these assertions mean
-// anything (a bare MaterialApp's own default colors would be arbitrary).
-final _theme = buildAppTheme();
-final _statusColors = _theme.extension<AppStatusColors>()!;
-
-Widget _wrap(Widget child) => MaterialApp(
-  theme: _theme,
-  home: Scaffold(body: child),
-);
-
-Color _colorOfDay(WidgetTester tester, String day) {
-  final container = tester.widget<Container>(
-    find.ancestor(of: find.text(day), matching: find.byType(Container)).first,
-  );
-  final decoration = container.decoration! as BoxDecoration;
-  return decoration.color!;
-}
+import 'day_status_calendar_test_support.dart';
 
 void main() {
   group('DayStatusCalendar', () {
@@ -31,7 +12,7 @@ void main() {
 
     testWidgets('shows month and year in header', (tester) async {
       await tester.pumpWidget(
-        _wrap(
+        wrapInApp(
           DayStatusCalendar(
             statusByDate: const {},
             month: june2026,
@@ -46,7 +27,7 @@ void main() {
 
     testWidgets('shows day-of-week headers', (tester) async {
       await tester.pumpWidget(
-        _wrap(
+        wrapInApp(
           DayStatusCalendar(
             statusByDate: const {},
             month: june2026,
@@ -63,7 +44,7 @@ void main() {
     testWidgets('calls onPrevMonth when left arrow tapped', (tester) async {
       var called = false;
       await tester.pumpWidget(
-        _wrap(
+        wrapInApp(
           DayStatusCalendar(
             statusByDate: const {},
             month: june2026,
@@ -80,7 +61,7 @@ void main() {
     testWidgets('calls onNextMonth when right arrow tapped', (tester) async {
       var called = false;
       await tester.pumpWidget(
-        _wrap(
+        wrapInApp(
           DayStatusCalendar(
             statusByDate: const {},
             month: june2026,
@@ -96,7 +77,7 @@ void main() {
 
     testWidgets('colors a green day', (tester) async {
       await tester.pumpWidget(
-        _wrap(
+        wrapInApp(
           DayStatusCalendar(
             statusByDate: const {'2026-06-15': DayStatus.green},
             month: june2026,
@@ -106,12 +87,12 @@ void main() {
           ),
         ),
       );
-      expect(_colorOfDay(tester, '15'), _statusColors.success);
+      expect(colorOfDay(tester, '15'), statusColors.success);
     });
 
     testWidgets('colors a yellow day', (tester) async {
       await tester.pumpWidget(
-        _wrap(
+        wrapInApp(
           DayStatusCalendar(
             statusByDate: const {'2026-06-15': DayStatus.yellow},
             month: june2026,
@@ -121,12 +102,12 @@ void main() {
           ),
         ),
       );
-      expect(_colorOfDay(tester, '15'), _statusColors.warning);
+      expect(colorOfDay(tester, '15'), statusColors.warning);
     });
 
     testWidgets('colors a red day', (tester) async {
       await tester.pumpWidget(
-        _wrap(
+        wrapInApp(
           DayStatusCalendar(
             statusByDate: const {'2026-06-15': DayStatus.red},
             month: june2026,
@@ -136,14 +117,14 @@ void main() {
           ),
         ),
       );
-      expect(_colorOfDay(tester, '15'), _theme.colorScheme.error);
+      expect(colorOfDay(tester, '15'), appTheme.colorScheme.error);
     });
 
     testWidgets(
       'a past day absent from statusByDate renders black (not logged)',
       (tester) async {
         await tester.pumpWidget(
-          _wrap(
+          wrapInApp(
             DayStatusCalendar(
               statusByDate: const {},
               month: june2026,
@@ -153,7 +134,7 @@ void main() {
             ),
           ),
         );
-        expect(_colorOfDay(tester, '15'), _theme.colorScheme.surface);
+        expect(colorOfDay(tester, '15'), appTheme.colorScheme.surface);
       },
     );
 
@@ -161,7 +142,7 @@ void main() {
       'a future day renders neutrally, never as a false not-logged cell',
       (tester) async {
         await tester.pumpWidget(
-          _wrap(
+          wrapInApp(
             DayStatusCalendar(
               statusByDate: const {},
               month: june2026,
@@ -173,17 +154,17 @@ void main() {
         );
         // Day 25 is after the reference "today" of June 10.
         expect(
-          _colorOfDay(tester, '25'),
-          _theme.colorScheme.surfaceContainerHigh,
+          colorOfDay(tester, '25'),
+          appTheme.colorScheme.surfaceContainerHigh,
         );
       },
     );
 
-    testWidgets("today itself is classified, not treated as future", (
+    testWidgets('today itself is classified, not treated as future', (
       tester,
     ) async {
       await tester.pumpWidget(
-        _wrap(
+        wrapInApp(
           DayStatusCalendar(
             statusByDate: const {'2026-06-20': DayStatus.red},
             month: june2026,
@@ -193,7 +174,7 @@ void main() {
           ),
         ),
       );
-      expect(_colorOfDay(tester, '20'), _theme.colorScheme.error);
+      expect(colorOfDay(tester, '20'), appTheme.colorScheme.error);
     });
 
     testWidgets('renders a month starting on Sunday correctly', (
@@ -201,11 +182,11 @@ void main() {
     ) async {
       final sep2026 = DateTime(2026, 9);
       await tester.pumpWidget(
-        _wrap(
+        wrapInApp(
           DayStatusCalendar(
             statusByDate: const {},
             month: sep2026,
-            today: DateTime(2026, 9, 1),
+            today: DateTime(2026, 9),
             onPrevMonth: () {},
             onNextMonth: () {},
           ),
@@ -219,7 +200,7 @@ void main() {
     ) async {
       DateTime? selected;
       await tester.pumpWidget(
-        _wrap(
+        wrapInApp(
           DayStatusCalendar(
             statusByDate: const {'2026-06-15': DayStatus.green},
             month: june2026,
@@ -238,7 +219,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        _wrap(
+        wrapInApp(
           DayStatusCalendar(
             statusByDate: const {},
             month: june2026,

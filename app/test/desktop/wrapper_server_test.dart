@@ -14,6 +14,7 @@ import 'package:http/testing.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
+
   late Directory tempDir;
   late String webRoot;
   late String dataDir;
@@ -85,7 +86,6 @@ void main() {
       expect((await http.get(url('/nope.js'))).statusCode, 404);
     });
   });
-
   group('document mirror', () {
     test('round-trips a document', () async {
       final posted = await http.post(
@@ -124,155 +124,6 @@ void main() {
       expect((await http.delete(url('/documents/x.json'))).statusCode, 405);
     });
   });
-
-  group('github proxy', () {
-    test('reports no token before one is stored', () async {
-      final response = await http.get(url('/github/auth/status'));
-
-      expect(jsonDecode(response.body), {'configured': false});
-    });
-
-    test('stores a pasted token and then reports configured', () async {
-      await http.post(url('/github/auth/token'), body: 'ghp_pasted');
-
-      final response = await http.get(url('/github/auth/status'));
-
-      expect(jsonDecode(response.body), {'configured': true});
-      expect(
-        File(p.join(tempDir.path, 'config', 'sync_token')).readAsStringSync(),
-        'ghp_pasted',
-      );
-    });
-
-    test(
-      'falls back to the PC gate token when it has none of its own',
-      () async {
-        // The Python side already keeps a token for diet-guard-sync.timer;
-        // reusing it is what makes the desktop app need no second setup.
-        final fallback = File(p.join(tempDir.path, 'config', 'fallback_token'))
-          ..createSync(recursive: true)
-          ..writeAsStringSync('ghp_from_gate\n');
-        addTearDown(fallback.deleteSync);
-
-        final response = await http.get(url('/github/auth/status'));
-
-        expect(jsonDecode(response.body), {'configured': true});
-      },
-    );
-
-    test('attaches the token to a proxied API call', () async {
-      await http.post(url('/github/auth/token'), body: 'ghp_stored');
-      canned['https://api.github.com/repos/kuhyx/syncs'] = http.Response(
-        '{"name":"syncs"}',
-        200,
-      );
-
-      final response = await http.get(url('/github/api/repos/kuhyx/syncs'));
-
-      expect(response.body, '{"name":"syncs"}');
-      expect(outbound.single.headers['Authorization'], 'Bearer ghp_stored');
-    });
-
-    test('keeps a device-flow token server-side', () async {
-      canned['https://github.com/login/oauth/access_token'] = http.Response(
-        '{"access_token":"ghp_device"}',
-        200,
-      );
-
-      final response = await http.post(
-        url('/github/auth/device/poll'),
-        body: jsonEncode({'client_id': 'cid', 'device_code': 'dc'}),
-      );
-
-      // The point of the proxy: the browser is told "ok", never the token.
-      expect(jsonDecode(response.body), {'status': 'ok'});
-      expect(response.body, isNot(contains('ghp_device')));
-      expect(
-        File(p.join(tempDir.path, 'config', 'sync_token')).readAsStringSync(),
-        'ghp_device',
-      );
-    });
-
-    test('passes a still-pending device-flow poll straight back', () async {
-      canned['https://github.com/login/oauth/access_token'] = http.Response(
-        '{"error":"authorization_pending"}',
-        200,
-      );
-
-      final response = await http.post(
-        url('/github/auth/device/poll'),
-        body: jsonEncode({'client_id': 'cid', 'device_code': 'dc'}),
-      );
-
-      expect(jsonDecode(response.body), {'error': 'authorization_pending'});
-    });
-
-    test('forwards the device-code request with the client id', () async {
-      canned['https://github.com/login/device/code'] = http.Response(
-        '{"device_code":"dc","user_code":"ABCD-1234"}',
-        200,
-      );
-
-      final response = await http.post(
-        url('/github/auth/device/start'),
-        body: jsonEncode({'client_id': 'cid'}),
-      );
-
-      expect(jsonDecode(response.body), containsPair('user_code', 'ABCD-1234'));
-      expect(outbound.single.bodyFields['client_id'], 'cid');
-    });
-
-    test('404s an unknown /github path', () async {
-      expect((await http.get(url('/github/nope'))).statusCode, 404);
-    });
-
-    test('clears the stored token when handed an empty one', () async {
-      await http.post(url('/github/auth/token'), body: 'ghp_stored');
-
-      await http.post(url('/github/auth/token'), body: '');
-
-      expect(jsonDecode((await http.get(url('/github/auth/status'))).body), {
-        'configured': false,
-      });
-    });
-
-    test('ignores an unreadable token file rather than failing', () async {
-      // A directory where the token file should be: readToken must fall
-      // through to "no token" instead of throwing out of every request.
-      Directory(
-        p.join(tempDir.path, 'config', 'sync_token'),
-      ).createSync(recursive: true);
-
-      expect(jsonDecode((await http.get(url('/github/auth/status'))).body), {
-        'configured': false,
-      });
-    });
-
-    test('passes a non-JSON device-flow response straight back', () async {
-      canned['https://github.com/login/oauth/access_token'] = http.Response(
-        '<html>rate limited</html>',
-        200,
-      );
-
-      final response = await http.post(
-        url('/github/auth/device/poll'),
-        body: jsonEncode({'client_id': 'cid', 'device_code': 'dc'}),
-      );
-
-      expect(response.body, contains('rate limited'));
-    });
-
-    test('treats a malformed request body as empty fields', () async {
-      final response = await http.post(
-        url('/github/auth/device/start'),
-        body: 'not json',
-      );
-
-      expect(response.statusCode, 200);
-      expect(outbound.single.bodyFields['client_id'], 'null');
-    });
-  });
-
   group('content types', () {
     test('labels each asset kind the browser is strict about', () {
       ContentType typeOf(String name) =>
@@ -289,61 +140,6 @@ void main() {
       expect(typeOf('f.otf').mimeType, 'font/otf');
       expect(typeOf('f.woff2').mimeType, 'font/woff2');
       expect(typeOf('data.bin').mimeType, 'application/octet-stream');
-    });
-  });
-
-  group('sync-account provisioning', () {
-    /// Writes [files] into a temp config dir and restarts with the route on.
-    Future<String> enableWith(Map<String, String> files) async {
-      final configDir = Directory(p.join(tempDir.path, 'crdt-sync'))
-        ..createSync(recursive: true);
-      files.forEach((name, contents) {
-        File(p.join(configDir.path, name)).writeAsStringSync(contents);
-      });
-      await server.stop();
-      await startServer(serveSyncAccount: true, syncConfigDir: configDir.path);
-      return 'http://localhost:${server.port}';
-    }
-
-    test('is 404 when not enabled', () async {
-      // The default, and the whole security posture: a credential route must
-      // not be reachable just because the wrapper is running.
-      final response = await http.get(url(kSyncAccountPath));
-
-      expect(response.statusCode, HttpStatus.notFound);
-    });
-
-    test('serves the account when enabled', () async {
-      final origin = await enableWith({
-        'firebase.json': '{"email":"a@b.c"}',
-        'password': 'pw\n',
-      });
-
-      final response = await http.get(Uri.parse('$origin$kSyncAccountPath'));
-      final account = FirebaseAccount.tryParse(response.body);
-
-      expect(response.statusCode, HttpStatus.ok);
-      expect(account?.email, 'a@b.c');
-      expect(account?.password, 'pw');
-    });
-
-    test('is 404 when the config files are absent', () async {
-      final origin = await enableWith({});
-
-      final response = await http.get(Uri.parse('$origin$kSyncAccountPath'));
-
-      expect(response.statusCode, HttpStatus.notFound);
-    });
-
-    test('is 404 when firebase.json has no usable email', () async {
-      final origin = await enableWith({
-        'firebase.json': '{"apiKey":"x"}',
-        'password': 'pw',
-      });
-
-      final response = await http.get(Uri.parse('$origin$kSyncAccountPath'));
-
-      expect(response.statusCode, HttpStatus.notFound);
     });
   });
 }

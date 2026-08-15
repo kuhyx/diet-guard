@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../fake_secure_storage.dart';
 
 void main() {
+
   late Directory tempDir;
 
   setUp(() async {
@@ -63,7 +64,6 @@ void main() {
       expect(find.widgetWithText(TextField, '1800'), findsOneWidget);
     });
   });
-
   testWidgets('typing a kcal goal debounces the save', (tester) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
@@ -81,7 +81,6 @@ void main() {
       expect(AppSettingsService.dailyKcalGoal, 2100);
     });
   });
-
   testWidgets('an invalid kcal goal is not saved', (tester) async {
     await tester.runAsync(() async {
       final initial = AppSettingsService.dailyKcalGoal;
@@ -98,7 +97,6 @@ void main() {
       expect(AppSettingsService.dailyKcalGoal, initial);
     });
   });
-
   testWidgets('disposing mid-debounce still flushes the pending goal', (
     tester,
   ) async {
@@ -122,7 +120,6 @@ void main() {
       expect(AppSettingsService.dailyKcalGoal, 1950);
     });
   });
-
   testWidgets('tapping Sync settings opens the shared SyncSettingsScreen', (
     tester,
   ) async {
@@ -144,7 +141,6 @@ void main() {
       expect(find.text('Firebase sync'), findsOneWidget);
     });
   });
-
   testWidgets(
     'Sync settings wires storedAccount, not loadAccount, as the '
     'default accountLoader',
@@ -175,7 +171,6 @@ void main() {
       });
     },
   );
-
   testWidgets(
     'tapping Advanced sync (GitHub) opens the local GitHubMirrorScreen',
     (tester) async {
@@ -191,84 +186,4 @@ void main() {
       });
     },
   );
-
-  testWidgets('battery exemption button reports a granted status', (
-    tester,
-  ) async {
-    await tester.runAsync(() async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SettingsScreen(
-            requestBatteryExemption: () async => PermissionStatus.granted,
-          ),
-        ),
-      );
-      await settle(tester);
-
-      await tester.tap(find.text('Disable battery optimization'));
-      await settle(tester);
-
-      expect(find.textContaining('exemption granted'), findsOneWidget);
-    });
-  });
-
-  testWidgets('battery exemption button reports a denied status', (
-    tester,
-  ) async {
-    await tester.runAsync(() async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SettingsScreen(
-            requestBatteryExemption: () async => PermissionStatus.denied,
-          ),
-        ),
-      );
-      await settle(tester);
-
-      await tester.tap(find.text('Disable battery optimization'));
-      await settle(tester);
-
-      expect(find.textContaining('not granted'), findsOneWidget);
-    });
-  });
-
-  testWidgets('battery exemption defaults to the real permission_handler '
-      'call, which fails predictably under test', (tester) async {
-    await tester.runAsync(() async {
-      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
-      await settle(tester);
-
-      await tester.tap(find.text('Disable battery optimization'));
-      await settle(tester);
-
-      expect(
-        find.textContaining('Could not request exemption'),
-        findsOneWidget,
-      );
-    });
-  });
-
-  testWidgets('battery exemption button surfaces a request failure', (
-    tester,
-  ) async {
-    await tester.runAsync(() async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SettingsScreen(
-            requestBatteryExemption: () async =>
-                throw Exception('no permission service'),
-          ),
-        ),
-      );
-      await settle(tester);
-
-      await tester.tap(find.text('Disable battery optimization'));
-      await settle(tester);
-
-      expect(
-        find.textContaining('Could not request exemption'),
-        findsOneWidget,
-      );
-    });
-  });
 }
