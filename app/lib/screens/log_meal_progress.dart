@@ -15,7 +15,7 @@ double parseMacroField(TextEditingController controller) =>
 ///
 /// Takes the already-read [log] rather than re-reading, so the card can
 /// never disagree with the write that produced it.
-TodayProgress buildTodayProgress(DayLog log, String desc) {
+TodayProgress buildTodayProgress(DayLog log) {
   final budget = AppSettingsService.dailyKcalGoal;
   final today = localDateKey(DateTime.now());
   final entries = (log[today] ?? const <FoodEntry>[])
@@ -23,7 +23,6 @@ TodayProgress buildTodayProgress(DayLog log, String desc) {
       .toList();
   final macros = sumMacros(entries);
   return TodayProgress(
-    justLogged: desc,
     consumedKcal: sumKcal(entries),
     budgetKcal: budget,
     proteinG: macros.proteinG,

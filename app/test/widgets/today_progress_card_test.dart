@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 TodayProgress _progress({
-  String justLogged = 'toast',
   double consumedKcal = 1450,
   int budgetKcal = 2200,
   double proteinG = 90,
@@ -11,7 +10,6 @@ TodayProgress _progress({
   double fatG = 40,
   int adherenceStreak = 3,
 }) => TodayProgress(
-  justLogged: justLogged,
   consumedKcal: consumedKcal,
   budgetKcal: budgetKcal,
   proteinG: proteinG,
@@ -48,12 +46,14 @@ void main() {
   });
 
   group('TodayProgressCard', () {
-    testWidgets('shows the meal, the kcal position, and macros', (
+    testWidgets('shows the kcal position and macros, but not the meal', (
       tester,
     ) async {
       await _pump(tester, _progress());
 
-      expect(find.text('Logged "toast".'), findsOneWidget);
+      // The `Logged "<meal>".` line was removed 2026-08-16 -- it restated
+      // what the user had just typed. Pinned so it does not creep back.
+      expect(find.textContaining('Logged'), findsNothing);
       expect(find.text('1450 / 2200'), findsOneWidget);
       expect(find.text('750 left'), findsOneWidget);
       expect(find.text('P 90g  ·  C 120g  ·  F 40g'), findsOneWidget);

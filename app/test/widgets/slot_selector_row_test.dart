@@ -86,5 +86,46 @@ void main() {
       );
       expect(chip.selected, isTrue);
     });
+
+    // The row used to be a Wrap, which pushed the later pills onto a second
+    // line: a logged chip is ~124px at Material defaults, so even four need
+    // more width than a phone has. Both halves below matter -- a Row of
+    // Expanded children also passes the "one line" check while squeezing each
+    // label to ~10px (about one character) and throwing nothing at all.
+    testWidgets('keeps every chip on one legible row at phone widths', (
+      tester,
+    ) async {
+      for (final width in <double>[320, 360, 412]) {
+        tester.view.physicalSize = Size(width, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        // Every slot logged is the widest case: each chip carries a check
+        // avatar on top of its label.
+        await _pump(
+          tester,
+          now: DateTime(2026, 8, 14, 21),
+          loggedSlots: daySlots().toSet(),
+        );
+
+        expect(tester.takeException(), isNull, reason: 'overflowed at $width');
+
+        final labels = daySlots()
+            .map((slot) => tester.getRect(find.text(slotLabel(slot))))
+            .toList();
+        for (final label in labels) {
+          expect(
+            label.top,
+            moreOrLessEquals(labels.first.top, epsilon: 0.5),
+            reason: 'chip wrapped to a second line at $width',
+          );
+          expect(
+            label.width,
+            greaterThan(20),
+            reason: 'label squeezed to ${label.width}px at $width',
+          );
+        }
+      }
+    });
   });
 }

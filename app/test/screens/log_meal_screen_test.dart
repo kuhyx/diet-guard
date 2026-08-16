@@ -40,7 +40,6 @@ class _FakeUrlLauncher extends UrlLauncherPlatform
 /// it as a real image instead of throwing on bogus bytes.
 
 void main() {
-
   late Directory tempDir;
 
   setUp(() async {
@@ -94,7 +93,10 @@ void main() {
       await tester.tap(logMealButton);
       await settle(tester);
 
-      expect(find.text('Logged "toast".'), findsOneWidget);
+      // The card itself is the "it logged" signal; the `Logged "<meal>".`
+      // line it used to open with was removed 2026-08-16.
+      expect(find.byType(TodayProgressCard), findsOneWidget);
+      expect(find.textContaining('Logged'), findsNothing);
       final entries = await LogStorageService.instance.todayEntries();
       expect(entries.single.source, 'manual');
       expect(entries.single.kcal, 150);

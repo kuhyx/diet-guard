@@ -49,42 +49,60 @@ class SlotSelectorRow extends StatelessWidget {
     final statusColors =
         Theme.of(context).extension<AppStatusColors>() ?? AppStatusColors.dark;
     final elapsed = elapsedSlots(now).toSet();
-    return Wrap(
-      spacing: AppSpacing.xs + 2,
-      runSpacing: AppSpacing.xs,
-      children: [
-        ...daySlots().map((slot) {
-          final isLogged = loggedSlots.contains(slot);
-          final isDue = !isLogged && elapsed.contains(slot);
-          final color = isLogged
-              ? statusColors.success
-              : isDue
-              ? scheme.error
-              : scheme.onSurfaceVariant;
-          final isSelected = selectedSlot == slot;
-          return ChoiceChip(
-            label: Text(slotLabel(slot)),
-            selected: isSelected,
-            // Icon reads lighter than the label text (rule 28): reduced
-            // opacity instead of the label's full-strength color.
-            avatar: isLogged
-                ? Icon(
-                    Icons.check,
-                    size: 14,
-                    color: color.withValues(alpha: 0.72),
-                  )
-                : null,
-            backgroundColor: color.withValues(alpha: 0.15),
-            selectedColor: color.withValues(alpha: 0.35),
-            labelStyle: TextStyle(color: color),
-            side: BorderSide(
-              width: isSelected ? 2 : 1,
-              color: isSelected ? color : color.withValues(alpha: 0.4),
-            ),
-            onSelected: (_) => onSlotSelected(slot),
-          );
-        }),
-      ],
+    // One row, always. A Wrap dropped the later pills onto a second line as
+    // soon as the row outgrew the width, which it does even at four: a logged
+    // chip measures ~124px at Material defaults, so four already need 522px
+    // against ~330px of phone width.
+    //
+    // FittedBox scales the whole row down uniformly instead. A Row of
+    // Expanded children also avoids the wrap, but imposes a *tight* width on
+    // each chip, and a Chip narrower than avatar+padding+label clips its label
+    // rather than shrinking -- measured at 10px per label, about one
+    // character, and it throws no overflow error while doing it.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacing.xs + 2,
+        children: [
+          ...daySlots().map((slot) {
+            final isLogged = loggedSlots.contains(slot);
+            final isDue = !isLogged && elapsed.contains(slot);
+            final color = isLogged
+                ? statusColors.success
+                : isDue
+                ? scheme.error
+                : scheme.onSurfaceVariant;
+            final isSelected = selectedSlot == slot;
+            return ChoiceChip(
+              label: Text(slotLabel(slot)),
+              selected: isSelected,
+              // Icon reads lighter than the label text (rule 28): reduced
+              // opacity instead of the label's full-strength color.
+              avatar: isLogged
+                  ? Icon(
+                      Icons.check,
+                      size: 14,
+                      color: color.withValues(alpha: 0.72),
+                    )
+                  : null,
+              backgroundColor: color.withValues(alpha: 0.15),
+              selectedColor: color.withValues(alpha: 0.35),
+              labelStyle: TextStyle(color: color),
+              side: BorderSide(
+                width: isSelected ? 2 : 1,
+                color: isSelected ? color : color.withValues(alpha: 0.4),
+              ),
+              // Trim the Material defaults so the row needs less scaling down:
+              // every pixel saved here is legibility kept at six meals.
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              onSelected: (_) => onSlotSelected(slot),
+            );
+          }),
+        ],
+      ),
     );
   }
 }

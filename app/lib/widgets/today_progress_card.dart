@@ -15,7 +15,6 @@ import 'package:flutter/material.dart';
 class TodayProgress {
   /// Creates a [TodayProgress].
   const TodayProgress({
-    required this.justLogged,
     required this.consumedKcal,
     required this.budgetKcal,
     required this.proteinG,
@@ -23,9 +22,6 @@ class TodayProgress {
     required this.fatG,
     required this.adherenceStreak,
   });
-
-  /// Description of the meal that was just logged.
-  final String justLogged;
 
   /// Today's total calories, including the meal just logged.
   final double consumedKcal;
@@ -53,7 +49,11 @@ class TodayProgress {
   bool get isOverBudget => remainingKcal < 0;
 }
 
-/// Shows the just-logged meal and today's running budget position.
+/// Shows today's running budget position after a meal is logged.
+///
+/// It used to open with a `Logged "<meal>".` line, removed 2026-08-16: the
+/// user had just typed that description, so it restated the input instead of
+/// telling them anything. What remains is what they act on.
 ///
 /// Replaces the old one-tap-reward prompt: the same slot in the log screen,
 /// but showing information the user actually acts on instead of an
@@ -92,11 +92,6 @@ class TodayProgressCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Logged "${progress.justLogged}".',
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: AppSpacing.sm),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,

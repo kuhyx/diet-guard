@@ -54,8 +54,6 @@ class _LogMealScreenState extends State<LogMealScreen>
   String? _status;
   TodayProgress? _progress;
 
-
-
   @override
   void initState() {
     super.initState();
@@ -163,7 +161,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     if (!mounted) return;
     setState(() {
       _status = null;
-      _progress = buildTodayProgress(log, desc);
+      _progress = buildTodayProgress(log);
     });
   }
 
@@ -178,7 +176,6 @@ class _LogMealScreenState extends State<LogMealScreen>
   /// [checkAndNotify] already swallows notification-platform failures, so
   /// the meal -- written before this runs -- can never be lost to one.
   Future<void> _dismissStaleReminder() => checkAndNotify(pullWhenDue: false);
-
 
   @override
   Widget build(BuildContext context) {
