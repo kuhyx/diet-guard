@@ -45,8 +45,25 @@ __all__ = [
     "CalendarCallbacks",
     "CalendarVars",
     "CalendarWidgets",
+    "ScheduleVars",
     "make_calendar_vars",
 ]
+
+
+@dataclass
+class ScheduleVars:
+    """Tk string variables backing the History tab's meal-schedule row.
+
+    Grouped rather than flattened into :class:`CalendarVars`, which would
+    otherwise carry eleven fields for two unrelated concerns.
+    """
+
+    status: tk.StringVar
+    first: tk.StringVar
+    last: tk.StringVar
+    count: tk.StringVar
+    times: tk.StringVar
+    """The derived checkpoint times, e.g. ``"08:00  11:00  14:00"``."""
 
 
 @dataclass
@@ -60,6 +77,7 @@ class CalendarVars:
     budget_status: tk.StringVar
     budget: tk.StringVar
     """Backs the budget entry so its per-monitor copies cannot disagree."""
+    schedule: ScheduleVars
 
 
 @dataclass
@@ -71,6 +89,11 @@ class CalendarWidgets:
     budget_entry: tk.Entry
     budget_edit_button: tk.Button
     budget_status_label: tk.Label
+    schedule_first_entry: tk.Entry
+    schedule_last_entry: tk.Entry
+    schedule_count_entry: tk.Entry
+    schedule_edit_button: tk.Button
+    schedule_status_label: tk.Label
 
 
 @dataclass
@@ -80,6 +103,7 @@ class CalendarCallbacks:
     on_prev_month: Callable[[], None]
     on_next_month: Callable[[], None]
     on_edit_or_save_budget: Callable[[], None]
+    on_edit_or_save_schedule: Callable[[], None]
 
 
 def make_calendar_vars(root: tk.Misc) -> CalendarVars:
@@ -91,4 +115,11 @@ def make_calendar_vars(root: tk.Misc) -> CalendarVars:
         averages=tk.StringVar(master=root, value=""),
         budget_status=tk.StringVar(master=root, value=""),
         budget=tk.StringVar(master=root, value=""),
+        schedule=ScheduleVars(
+            status=tk.StringVar(master=root, value=""),
+            first=tk.StringVar(master=root, value=""),
+            last=tk.StringVar(master=root, value=""),
+            count=tk.StringVar(master=root, value=""),
+            times=tk.StringVar(master=root, value=""),
+        ),
     )

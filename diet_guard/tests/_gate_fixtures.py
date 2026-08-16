@@ -25,6 +25,7 @@ from diet_guard import (
     _gatelock,
     _gatelock_budgetedit,
     _gatelock_calendar,
+    _gatelock_calendar_schedule,
     _gatelock_calendar_types,
     _gatelock_calendar_ui,
     _gatelock_calendar_widgets,
@@ -33,6 +34,7 @@ from diet_guard import (
     _gatelock_layout,
     _gatelock_mealflow,
     _gatelock_nutrition,
+    _gatelock_scheduleedit,
     _gatelock_ui,
 )
 from diet_guard._gatelock import MealGate
@@ -155,11 +157,14 @@ _GATE_TK_MODULES = (
     # separately in fake_tk(). Listing it here fails with "does not have the
     # attribute 'tk'".
     _gatelock_calendar_widgets,
+    # The History tab's meal-schedule row builds its own tk widgets.
+    _gatelock_calendar_schedule,
     # Builds the History tab's StringVars (make_calendar_vars); without the
     # fake those are REAL tkinter vars over a MagicMock root, so every
     # `.get()` returns a MagicMock instead of the text under test.
     _gatelock_calendar_types,
     _gatelock_budgetedit,
+    _gatelock_scheduleedit,
     _gatelock_core,
     _gatelock_fields,
     _gatelock_layout,

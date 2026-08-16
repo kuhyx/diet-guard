@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 from gatelock import ButtonStyle, make_button
 
+from diet_guard._gatelock_calendar_schedule import build_schedule_row
 from diet_guard._gatelock_calendar_types import (
     _ACCENT,
     _COLORS,
@@ -182,6 +183,17 @@ def build_calendar_frame(
         vars_,
         callbacks.on_edit_or_save_budget,
     )
+    (
+        schedule_first_entry,
+        schedule_last_entry,
+        schedule_count_entry,
+        schedule_edit_button,
+        schedule_status_label,
+    ) = build_schedule_row(
+        frame,
+        vars_,
+        callbacks.on_edit_or_save_schedule,
+    )
     _build_month_nav(frame, vars_, callbacks)
     day_cells = _build_grid(frame)
 
@@ -213,4 +225,9 @@ def build_calendar_frame(
         budget_entry=budget_entry,
         budget_edit_button=budget_edit_button,
         budget_status_label=budget_status_label,
+        schedule_first_entry=schedule_first_entry,
+        schedule_last_entry=schedule_last_entry,
+        schedule_count_entry=schedule_count_entry,
+        schedule_edit_button=schedule_edit_button,
+        schedule_status_label=schedule_status_label,
     )

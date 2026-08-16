@@ -37,7 +37,6 @@ from diet_guard._calendar_view import (
     ytd_text,
 )
 from diet_guard._daystatus import DayStatus, status_map
-from diet_guard._gatelock_budgetedit import _GateBudgetEdit
 from diet_guard._gatelock_calendar_ui import (
     _DECEMBER,
     _DEFAULT_BUDGET_KCAL,
@@ -51,6 +50,10 @@ from diet_guard._gatelock_calendar_ui import (
     make_calendar_vars,
 )
 from diet_guard._gatelock_layout import build_layout
+from diet_guard._gatelock_scheduleedit import _GateScheduleEdit
+from diet_guard._meal_schedule_store import (
+    current_schedule as current_meal_schedule,
+)
 from diet_guard._state import load_log, now_local
 
 if TYPE_CHECKING:
@@ -69,7 +72,7 @@ __all__ = [
 ]
 
 
-class _GateCalendar(_GateBudgetEdit):
+class _GateCalendar(_GateScheduleEdit):
     """History tab: calendar, streaks, YTD tally, and budget editing."""
 
     _cal_vars: CalendarVars
@@ -78,6 +81,7 @@ class _GateCalendar(_GateBudgetEdit):
     _cal_year: int
     _cal_month: int
     _cal_editing_budget: bool
+    _cal_editing_schedule: bool
     _notebook: ttk.Notebook
 
     def _build_tabs(self, parent: tk.Misc, callbacks: GateCallbacks) -> GateWidgets:
@@ -95,6 +99,7 @@ class _GateCalendar(_GateBudgetEdit):
         self._cal_year = today.year
         self._cal_month = today.month
         self._cal_editing_budget = False
+        self._cal_editing_schedule = False
         _style_notebook(parent)
         notebook = ttk.Notebook(parent)
         notebook.place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -109,6 +114,7 @@ class _GateCalendar(_GateBudgetEdit):
             on_prev_month=self._on_prev_month,
             on_next_month=self._on_next_month,
             on_edit_or_save_budget=self._on_edit_or_save_budget,
+            on_edit_or_save_schedule=self._on_edit_or_save_schedule,
         )
         cal_widgets = build_calendar_frame(notebook, self._cal_vars, cal_callbacks)
         notebook.add(cal_widgets.frame, text="History")
@@ -162,6 +168,8 @@ class _GateCalendar(_GateBudgetEdit):
             self._cal_vars.averages.set(averages_text(log, schedule=schedule))
         if not self._cal_editing_budget:
             self._refresh_budget_field(budget)
+        if not self._cal_editing_schedule:
+            self._show_schedule(current_meal_schedule())
 
     def _render_month(self, status_map_: dict[str, DayStatus] | None) -> None:
         """Redraw the day-cell grid and month label for the displayed month."""
