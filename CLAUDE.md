@@ -1,7 +1,8 @@
 # CLAUDE.md — diet_guard
 
 A log-to-unlock gate. Every ~30 min `diet-guard-gate.timer` checks whether a
-meal slot (08:00, 12:00, 16:00, 20:00) elapsed unlogged; if so it opens a
+meal slot (08:00, 12:00, 16:00, 20:00 by default — the schedule is
+user-configurable, see below) elapsed unlogged; if so it opens a
 fullscreen Tk window that blocks the desktop until the user logs what they
 ate. It also tracks a daily calorie/macro budget, seeded from biometrics at
 `init` and freely editable afterward on either device. A History tab
@@ -166,6 +167,16 @@ changing either hides the entire local food log).
   is `diet-guard-gate.timer`.
 - Never run `flutter create --platforms linux` in `app/`.
 
+## The meal schedule
+
+The slot hours are user-configurable: a first meal, a last meal, and how
+many meals fall between them, evenly divided. Default `(8, 20, 4)` is the
+old hardcoded 08/12/16/20. Four load-bearing rules (integer-only
+arithmetic, whole-hour slots, the count clamp, the `last + 2h` cutoff), the
+forward-only history, and the two edit surfaces are documented in
+[docs/meal-schedule.md](docs/meal-schedule.md) — read it before touching
+`_slots.py` / `slot.dart`.
+
 ## Averages (`_averages.py` / `average_service.dart`)
 
 Three load-bearing rules; changing any silently changes what "under budget"
@@ -187,9 +198,15 @@ phone show both.
 ## Do NOT
 
 - Don't relax the meal-slot logic without re-reading `docs/design.md`. The
-  off-hours clamp in `slot_for_log`/`slotForLog` (before 08:00 → 08:00, after
-  22:00 → 20:00) must stay byte-identical across Python and Dart; do NOT widen
-  `elapsed_slots`, which would make every slot fall due at 23:00.
+  off-hours clamp in `slot_for_log`/`slotForLog` (before the first slot → the
+  first slot, after the enforcement window → the last slot) must stay
+  byte-identical across Python and Dart; do NOT widen `elapsed_slots`, which
+  would make every slot fall due at the end of the day.
+- Don't reintroduce floating point into the slot derivation. Python's `round`
+  is banker's (`round(2.5) == 2`), Dart's is half-away-from-zero
+  (`2.5.round() == 3`), so a float path silently desyncs the two devices —
+  and a slot one device offers while the other does not is a checkpoint that
+  can never be satisfied, i.e. a permanent lock. Integer `//` and `~/` only.
 - Don't re-add the meal builder, "repeat last meal", the reward prompt, or
   **meal photos** — all removed deliberately, enforced by
   `app/test/repo_invariants_test.dart`. Photos also took `image_picker`, the
