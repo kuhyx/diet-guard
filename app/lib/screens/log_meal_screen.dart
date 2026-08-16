@@ -50,7 +50,8 @@ class _LogMealScreenState extends State<LogMealScreen>
   final TextEditingController _descController = TextEditingController();
   final MacroControllers _macros = MacroControllers();
   List<FoodSuggestion> _suggestions = const [];
-  int? _selectedSlot;
+  @override
+  int? selectedSlot;
   String _source = 'manual';
   String? _status;
   TodayProgress? _progress;
@@ -70,7 +71,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     ]) {
       controller.addListener(_onMacroEdited);
     }
-    _selectedSlot = slotForLog(DateTime.now(), MealScheduleService.current);
+    selectedSlot = slotForLog(DateTime.now(), MealScheduleService.current);
     unawaited(refreshSlots());
     unawaited(_onDescChanged());
     // Read health before the first sync finishes, so a device that stalled in
@@ -139,7 +140,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     await LogStorageService.instance.logMeal(
       desc,
       nutrition,
-      slot: _selectedSlot,
+      slot: selectedSlot,
     );
     final log = await LogStorageService.instance.readLog();
     await FoodBankService.instance.rebuildAndPersist(log);
@@ -156,7 +157,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     _macros.clear();
     setState(() {
       _source = 'manual';
-      _selectedSlot = slotForLog(DateTime.now(), MealScheduleService.current);
+      selectedSlot = slotForLog(DateTime.now(), MealScheduleService.current);
     });
     await refreshSlots();
     if (!mounted) return;
@@ -201,8 +202,8 @@ class _LogMealScreenState extends State<LogMealScreen>
             SlotSelectorRow(
               now: DateTime.now(),
               loggedSlots: loggedSlots,
-              selectedSlot: _selectedSlot,
-              onSlotSelected: (slot) => setState(() => _selectedSlot = slot),
+              selectedSlot: selectedSlot,
+              onSlotSelected: (slot) => setState(() => selectedSlot = slot),
             ),
             const SizedBox(height: 8),
             TextField(

@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/background_tasks.dart';
 import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
@@ -29,6 +31,12 @@ mixin LogMealSyncMixin<T extends StatefulWidget> on State<T>
 
   /// The slots that already carry a logged meal today.
   Set<int> loggedSlots = {};
+
+  /// The slot the screen is currently logging for.
+  ///
+  /// Owned by the screen's own state; declared here so
+  /// [onScheduleMayHaveChanged] can re-derive it when the schedule changes.
+  abstract int? selectedSlot;
 
   /// The screen's injected HTTP client, or null to use the default.
   ///
@@ -136,5 +144,23 @@ mixin LogMealSyncMixin<T extends StatefulWidget> on State<T>
     final logged = await LogStorageService.instance.loggedSlotsToday();
     if (!mounted) return;
     setState(() => loggedSlots = logged);
+  }
+
+  /// Rebuilds the slot row after the settings screen pops.
+  ///
+  /// The meal-schedule editor lives in settings, and [SlotSelectorRow] reads
+  /// `MealScheduleService.current` at build time, so refreshing is enough to
+  /// re-derive the row -- but the selected slot also has to be recomputed,
+  /// since the hour it referred to may no longer be a checkpoint at all.
+  ///
+  /// Found on the phone: without this the settings preview and the overdue
+  /// reminder both updated while the row behind them kept the old four
+  /// checkpoints until the app was restarted.
+  Future<void> onScheduleMayHaveChanged() async {
+    await refreshSlots();
+    if (!mounted) return;
+    setState(() {
+      selectedSlot = slotForLog(DateTime.now(), MealScheduleService.current);
+    });
   }
 }

@@ -1,12 +1,15 @@
 import 'dart:io';
 
 import 'package:diet_guard_app/models/food_entry.dart';
+import 'package:diet_guard_app/models/meal_schedule.dart';
+import 'package:diet_guard_app/screens/log_meal_nav_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/widgets/today_progress_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,6 +53,7 @@ void main() {
     BudgetHistoryService.resetForTesting(
       store: FileDocumentStore(tempDir),
     );
+    await MealScheduleService.initForTesting(FileDocumentStore(tempDir));
   });
 
   tearDown(() async {
@@ -57,6 +61,7 @@ void main() {
     FoodBankService.resetForTesting();
     AppSettingsService.resetForTesting();
     BudgetHistoryService.resetForTesting();
+    MealScheduleService.resetForTesting();
     await tempDir.delete(recursive: true);
   });
 
