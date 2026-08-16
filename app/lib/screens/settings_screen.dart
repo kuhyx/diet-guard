@@ -11,11 +11,15 @@ library;
 import 'dart:async';
 
 import 'package:crdt_sync/crdt_sync.dart';
+import 'package:diet_guard_app/models/meal_schedule.dart';
+import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/screens/github_mirror_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/due_slot_check.dart';
 import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/google_sign_in_backend.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +29,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:sync_settings_ui/sync_settings_ui.dart';
 
 part 'settings_kcal_goal.dart';
+part 'settings_meal_schedule.dart';
 
 /// Screen for app-specific settings and links to sync configuration.
 class SettingsScreen extends StatefulWidget {
@@ -91,13 +96,14 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen>
-    with _SettingsKcalGoal {
+    with _SettingsKcalGoal, _SettingsMealSchedule {
   final _kcalGoalController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _kcalGoalController.text = AppSettingsService.dailyKcalGoal.toString();
+    _loadSchedule();
   }
 
   @override
@@ -175,6 +181,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                   onChanged: _onKcalGoalChanged,
                 ),
               ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 8),
+              ..._mealScheduleSection(context),
               const SizedBox(height: 24),
               const Divider(),
               ListTile(

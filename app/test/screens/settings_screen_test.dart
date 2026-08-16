@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:crdt_sync/crdt_sync.dart';
+import 'package:diet_guard_app/models/meal_schedule.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
 import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
@@ -8,6 +9,7 @@ import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -16,7 +18,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../fake_secure_storage.dart';
 
 void main() {
-
   late Directory tempDir;
 
   setUp(() async {
@@ -27,6 +28,7 @@ void main() {
     BudgetHistoryService.resetForTesting(
       store: FileDocumentStore(tempDir),
     );
+    await MealScheduleService.initForTesting(FileDocumentStore(tempDir));
     SharedPreferences.setMockInitialValues({});
     installFakeSecureStorage();
   });
@@ -36,6 +38,7 @@ void main() {
     FoodBankService.resetForTesting();
     AppSettingsService.resetForTesting();
     BudgetHistoryService.resetForTesting();
+    MealScheduleService.resetForTesting();
     await tempDir.delete(recursive: true);
   });
 
@@ -62,6 +65,40 @@ void main() {
       await settle(tester);
 
       expect(find.widgetWithText(TextField, '1800'), findsOneWidget);
+    });
+  });
+  testWidgets('shows the derived meal times for the stored schedule', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+      await settle(tester);
+
+      // The default schedule still derives the hours that used to be
+      // hardcoded, so an existing install sees no change.
+      expect(
+        find.text('08:00  ·  12:00  ·  16:00  ·  20:00'),
+        findsOneWidget,
+      );
+      expect(find.text('First meal'), findsOneWidget);
+      expect(find.text('Last meal'), findsOneWidget);
+      expect(find.text('Meals per day'), findsOneWidget);
+    });
+  });
+  testWidgets('reflects a five-meal schedule as the user\'s example', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await MealScheduleService.instance.recordChange(
+        const MealSchedule(first: 8, last: 20, count: 5),
+      );
+      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+      await settle(tester);
+
+      expect(
+        find.text('08:00  ·  11:00  ·  14:00  ·  17:00  ·  20:00'),
+        findsOneWidget,
+      );
     });
   });
   testWidgets('typing a kcal goal debounces the save', (tester) async {
