@@ -32,6 +32,7 @@ from diet_guard._cli_init import cmd_init
 from diet_guard._cli_log import ManualMacroArgs, Portion, cmd_ate
 from diet_guard._cli_sync import cmd_sync
 from diet_guard._gate import due_slots
+from diet_guard._meal_schedule_store import current_schedule
 from diet_guard._slots import day_slots, slot_label
 from diet_guard._state import (
     entry_kcal,
@@ -109,7 +110,7 @@ def _print_slot_status() -> None:
     logged = logged_slots_today()
     due = set(due_slots())
     parts: list[str] = []
-    for slot in day_slots():
+    for slot in day_slots(current_schedule()):
         if slot in logged:
             mark = "logged"
         elif slot in due:

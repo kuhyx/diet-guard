@@ -48,6 +48,12 @@ BUDGET_FILE: Path = DATA_DIR / ".budget"
 # of it is untouched.  Classifying a *past* day reads this; everything about
 # *today* still reads BUDGET_FILE.  Git-ignored, never committed.
 BUDGET_HISTORY_FILE: Path = DATA_DIR / ".budget_history"
+# The effective-from history of the meal schedule (see _meal_schedule_store.py)
+# -- when the user eats their first and last meal, and how many meals fall in
+# between.  Forward-only for the same reason as the budget history: switching
+# from four meals to five must not retroactively mark every past day as having
+# missed a checkpoint.  Git-ignored, never committed.
+MEAL_SCHEDULE_FILE: Path = DATA_DIR / ".meal_schedule"
 
 # --- Estimator (Open Food Facts) -------------------------------------------
 # The default backend is Open Food Facts' "Search-a-licious" full-text search:

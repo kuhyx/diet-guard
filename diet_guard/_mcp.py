@@ -44,6 +44,7 @@ from pydantic import BaseModel
 # the names are genuinely used -- drop this and the server starts write-only.
 from diet_guard._mcp_read import get_averages, get_slots, get_status, list_today
 from diet_guard._mcp_server import APPENDS, logger, mcp
+from diet_guard._meal_schedule_store import current_schedule
 from diet_guard._resolve import ManualMacros, resolve_nutrition
 from diet_guard._slots import slot_for_log
 from diet_guard._state import (
@@ -131,7 +132,9 @@ def log_meal(
                 "or Open Food Facts. Pass kcal=<number> to log it manually."
             ),
         }
-    target_slot = slot if slot is not None else slot_for_log(now_local())
+    target_slot = (
+        slot if slot is not None else slot_for_log(now_local(), current_schedule())
+    )
     resolved = {
         "kcal": nutrition.kcal,
         "protein_g": nutrition.protein_g,

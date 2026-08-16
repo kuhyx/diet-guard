@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from diet_guard._meal_schedule_store import current_schedule
 from diet_guard._slots import missing_slots, slot_label
 from diet_guard._state import (
     now_local,
@@ -39,7 +40,7 @@ def due_slots(now: datetime | None = None) -> tuple[int, ...]:
         The slot hours that still need a meal logged (empty == nothing due).
     """
     reference = now if now is not None else now_local()
-    return missing_slots(reference, logged_slots_today())
+    return missing_slots(reference, logged_slots_today(), current_schedule())
 
 
 def gate_is_due(now: datetime | None = None) -> bool:

@@ -20,6 +20,7 @@ from diet_guard._averages_report import monthly_average, weekly_average
 from diet_guard._budget import BudgetError, current_schedule, daily_budget
 from diet_guard._gate import due_slots
 from diet_guard._mcp_server import READS_ONLY, mcp
+from diet_guard._meal_schedule_store import current_schedule as current_meal_schedule
 from diet_guard._slots import current_slot, day_slots, slot_label
 from diet_guard._state import (
     load_log,
@@ -94,7 +95,7 @@ def get_status() -> dict[str, Any]:
         "budget_initialized": band is not None,
         "due_slots": [slot_label(slot) for slot in due_slots()],
         "logged_slots": sorted(logged_slots_today()),
-        "current_slot": current_slot(now_local()),
+        "current_slot": current_slot(now_local(), current_meal_schedule()),
     }
 
 
@@ -176,9 +177,10 @@ def get_slots() -> dict[str, Any]:
     Pure schedule information (08:00 / 12:00 / 16:00 / 20:00 by default) with no
     budget or intake data attached.
     """
+    schedule = current_meal_schedule()
     return {
         "day_slots": [
-            {"hour": slot, "label": slot_label(slot)} for slot in day_slots()
+            {"hour": slot, "label": slot_label(slot)} for slot in day_slots(schedule)
         ],
-        "current_slot": current_slot(now_local()),
+        "current_slot": current_slot(now_local(), schedule),
     }

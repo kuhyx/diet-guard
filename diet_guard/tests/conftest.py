@@ -106,6 +106,10 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
             tmp_path / ".budget_history",
         ),
         patch(
+            "diet_guard._meal_schedule_store.MEAL_SCHEDULE_FILE",
+            tmp_path / ".meal_schedule",
+        ),
+        patch(
             "diet_guard._state.FOOD_LOG_FILE",
             tmp_path / "food_log.json",
         ),

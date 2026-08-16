@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from diet_guard._foodbank import remember_food
+from diet_guard._meal_schedule_store import current_schedule
 from diet_guard._portions import DEFAULT_ITEM_GRAMS, estimate_unit_grams
 from diet_guard._resolve import ManualMacros, resolve_nutrition
 from diet_guard._slots import slot_for_log
@@ -145,7 +146,7 @@ def cmd_ate(
             "re-run with --kcal <number> to log it manually.",
         )
         return 1
-    log_meal(description, nutrition, slot_for_log(now_local()))
+    log_meal(description, nutrition, slot_for_log(now_local(), current_schedule()))
     remember_food(description, nutrition)
     macro_str = f"P{nutrition.protein_g:g} C{nutrition.carbs_g:g} F{nutrition.fat_g:g}"
     portion_str = f"{nutrition.grams:g} g" if nutrition.grams else "portion n/a"

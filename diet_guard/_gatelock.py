@@ -63,6 +63,7 @@ from diet_guard._gatelock_ui import (
     GateCallbacks,
     make_vars,
 )
+from diet_guard._meal_schedule_store import current_schedule
 from diet_guard._slots import current_slot, day_slots
 from diet_guard._state import now_local
 
@@ -102,7 +103,13 @@ def _pending_slots(*, demo_mode: bool) -> list[int]:
     if pending:
         return pending
     if demo_mode:
-        return [current_slot(now_local()) or day_slots()[0]]
+        schedule = current_schedule()
+        # Spelled `is None` rather than `or` because slot 0 (midnight) is
+        # falsy. The two happen to be equivalent -- if 0 is a slot it is
+        # necessarily the *first* slot, so both arms return 0, verified
+        # exhaustively -- but the intent should not depend on that coincidence.
+        elapsed = current_slot(now_local(), schedule)
+        return [elapsed if elapsed is not None else day_slots(schedule)[0]]
     return []
 
 
