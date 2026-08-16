@@ -1,3 +1,4 @@
+import 'package:diet_guard_app/models/meal_schedule.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/widgets/slot_selector_row.dart';
 import 'package:flutter/material.dart';
@@ -27,8 +28,11 @@ void main() {
     testWidgets('renders exactly one chip per day slot', (tester) async {
       await _pump(tester, now: DateTime(2026, 8, 14, 13));
 
-      expect(find.byType(ChoiceChip), findsNWidgets(daySlots().length));
-      for (final slot in daySlots()) {
+      expect(
+        find.byType(ChoiceChip),
+        findsNWidgets(daySlots(kDefaultSchedule).length),
+      );
+      for (final slot in daySlots(kDefaultSchedule)) {
         expect(find.text(slotLabel(slot)), findsOneWidget);
       }
     });
@@ -52,11 +56,11 @@ void main() {
         onSlotSelected: selected.add,
       );
 
-      for (final slot in daySlots()) {
+      for (final slot in daySlots(kDefaultSchedule)) {
         await tester.tap(find.text(slotLabel(slot)));
       }
 
-      expect(selected, daySlots());
+      expect(selected, daySlots(kDefaultSchedule));
       expect(selected, isNot(contains(null)));
     });
 
@@ -64,14 +68,14 @@ void main() {
       await _pump(
         tester,
         now: DateTime(2026, 8, 14, 13),
-        loggedSlots: {daySlots().first},
+        loggedSlots: {daySlots(kDefaultSchedule).first},
       );
 
       expect(find.byIcon(Icons.check), findsOneWidget);
     });
 
     testWidgets('marks the selected slot', (tester) async {
-      final slot = daySlots().first;
+      final slot = daySlots(kDefaultSchedule).first;
       await _pump(
         tester,
         now: DateTime(2026, 8, 14, 13),
@@ -105,14 +109,14 @@ void main() {
         await _pump(
           tester,
           now: DateTime(2026, 8, 14, 21),
-          loggedSlots: daySlots().toSet(),
+          loggedSlots: daySlots(kDefaultSchedule).toSet(),
         );
 
         expect(tester.takeException(), isNull, reason: 'overflowed at $width');
 
-        final labels = daySlots()
-            .map((slot) => tester.getRect(find.text(slotLabel(slot))))
-            .toList();
+        final labels = daySlots(
+          kDefaultSchedule,
+        ).map((slot) => tester.getRect(find.text(slotLabel(slot)))).toList();
         for (final label in labels) {
           expect(
             label.top,

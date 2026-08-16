@@ -60,10 +60,13 @@ void main() {
           .map((c) => (c.arguments as Map)['id'])
           .toSet();
       expect(shown, {12, 20});
-      expect(cancelled, {8, 16});
+      // Every other id in the 0..23 space is cancelled, not just the other
+      // slots of the current schedule -- see syncToSlots' comment.
+      expect(cancelled, containsAll(<int>{8, 16}));
+      expect(cancelled.intersection(shown), isEmpty);
     });
 
-    test('syncToSlots with no due slots cancels every known slot', () async {
+    test('syncToSlots with no due slots cancels every id in the day', () async {
       final log = installFakeAndroidNotifications();
       NotificationService.resetForTesting(
         backend: LocalNotificationsBackend(FlutterLocalNotificationsPlugin()),
@@ -74,7 +77,34 @@ void main() {
       await NotificationService.instance.syncToSlots(const []);
 
       expect(log.where((c) => c.method == 'show'), isEmpty);
-      expect(log.where((c) => c.method == 'cancel'), hasLength(4));
+      // 24, not 4: the slot hour doubles as the notification id, so a
+      // schedule change would otherwise orphan the ids it no longer contains.
+      expect(log.where((c) => c.method == 'cancel'), hasLength(24));
+    });
+
+    test('syncToSlots cancels ids orphaned by a schedule change', () async {
+      // The regression this guards: the slot hour *is* the notification id,
+      // and syncToSlots used to iterate only the current schedule's slots.
+      // Switching 08/12/16/20 -> 08/11/14/17/20 therefore left ids 12 and 16
+      // posted with nothing that would ever cancel them, so the phone nagged
+      // forever about checkpoints that no longer existed.
+      final log = installFakeAndroidNotifications();
+      NotificationService.resetForTesting(
+        backend: LocalNotificationsBackend(FlutterLocalNotificationsPlugin()),
+      );
+      await NotificationService.init();
+
+      // Due under the old four-meal schedule.
+      await NotificationService.instance.syncToSlots([12, 16]);
+      log.clear();
+      // Now due under a five-meal schedule, which has neither 12 nor 16.
+      await NotificationService.instance.syncToSlots([11]);
+
+      final cancelled = log
+          .where((c) => c.method == 'cancel')
+          .map((c) => (c.arguments as Map)['id'])
+          .toSet();
+      expect(cancelled, containsAll(<int>{12, 16}));
     });
 
     test(

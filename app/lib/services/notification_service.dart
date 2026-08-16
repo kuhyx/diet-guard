@@ -9,6 +9,8 @@ import 'package:diet_guard_app/services/notification_backend.dart';
 import 'package:diet_guard_app/services/notification_backend_factory.dart';
 import 'package:flutter/foundation.dart';
 
+const int _hoursPerDay = 24;
+
 /// Owns the due-slot notification logic ([syncToSlots]) independently of the
 /// platform surface that actually posts them: `flutter_local_notifications`
 /// on Android, the browser's Notifications API in the desktop web build (see
@@ -60,7 +62,12 @@ class NotificationService {
   /// behavior rather than firing once and forgetting.
   Future<void> syncToSlots(List<int> dueSlots) async {
     final due = dueSlots.toSet();
-    for (final slot in daySlots()) {
+    // Sweeps every hour of the day, not just the *current* schedule's slots.
+    // The slot hour doubles as the notification id, so a schedule change
+    // orphans the ids it no longer contains: going 08/12/16/20 -> 08/11/14/17
+    // used to leave 12 and 16 posted with nothing left to ever cancel them,
+    // nagging forever about checkpoints that no longer exist.
+    for (var slot = 0; slot < _hoursPerDay; slot++) {
       if (due.contains(slot)) {
         await _backend.show(
           slot,

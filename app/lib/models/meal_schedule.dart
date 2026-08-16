@@ -24,7 +24,7 @@
 ///   disagree about which inputs are errors.
 library;
 
-import 'package:meta/meta.dart';
+import 'package:flutter/foundation.dart';
 
 /// Fewest meals a schedule may describe.
 const int kMinMealCount = 2;

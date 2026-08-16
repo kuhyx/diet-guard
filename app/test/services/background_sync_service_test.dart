@@ -11,6 +11,7 @@ import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/background_sync_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/sync_device_id.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -34,6 +35,7 @@ void main() {
     BudgetHistoryService.resetForTesting(
       store: FileDocumentStore(tempDir),
     );
+    MealScheduleService.resetForTesting(store: FileDocumentStore(tempDir));
   });
 
   tearDown(() async {
@@ -41,6 +43,7 @@ void main() {
     FoodBankService.resetForTesting();
     AppSettingsService.resetForTesting();
     BudgetHistoryService.resetForTesting();
+    MealScheduleService.resetForTesting();
     await tempDir.delete(recursive: true);
   });
 
@@ -120,7 +123,10 @@ void main() {
 
     expect(pushedPaths, isNotEmpty);
     expect(pushedPaths.every((path) => path.contains(uuid)), isTrue);
-    expect(pushedPaths.any((path) => path.contains('/devices/phone/')), isFalse);
+    expect(
+      pushedPaths.any((path) => path.contains('/devices/phone/')),
+      isFalse,
+    );
   });
 
   test('reports failure (retry) when the push errors', () async {

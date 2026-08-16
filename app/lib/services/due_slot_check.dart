@@ -12,6 +12,7 @@ library;
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/background_sync_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/notification_service.dart';
 import 'package:http/http.dart' as http;
 
@@ -55,9 +56,15 @@ Future<void> checkAndNotify({
     // WorkManager isolate, including the token read and singleton init.
     await backgroundSyncPush(httpClient: httpClient);
   }
+  // Deliberately not init()ed here: `current` degrades to the default
+  // schedule when the singleton is absent, and forcing initialisation would
+  // reach path_provider from contexts that have no plugin channel (widget
+  // tests, and the WorkManager isolate before main() has run). `main.dart`
+  // owns the real init, the same way it does for the other stores.
   final due = missingSlots(
     at,
     await LogStorageService.instance.loggedSlotsToday(),
+    MealScheduleService.current,
   );
   await _reconcileNotifications(due);
 }

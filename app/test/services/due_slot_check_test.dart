@@ -13,6 +13,7 @@ import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/services/due_slot_check.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/notification_backend_io.dart';
 import 'package:diet_guard_app/services/notification_service.dart';
 import 'package:flutter/services.dart';
@@ -50,6 +51,7 @@ void main() {
     BudgetHistoryService.resetForTesting(
       store: FileDocumentStore(tempDir),
     );
+    MealScheduleService.resetForTesting(store: FileDocumentStore(tempDir));
     SharedPreferences.setMockInitialValues({});
     installFakeSecureStorage();
     notificationLog = installFakeAndroidNotifications();
@@ -63,6 +65,7 @@ void main() {
     FoodBankService.resetForTesting();
     AppSettingsService.resetForTesting();
     BudgetHistoryService.resetForTesting();
+    MealScheduleService.resetForTesting();
     NotificationService.resetForTesting();
     await tempDir.delete(recursive: true);
   });
@@ -83,7 +86,10 @@ void main() {
           .map((c) => (c.arguments as Map)['id'])
           .toSet();
       expect(shown, {8, 16});
-      expect(cancelled, {12, 20});
+      // Every other id in the 0..23 space is cancelled, not just the other
+      // slots of the current schedule -- see syncToSlots' comment.
+      expect(cancelled, containsAll(<int>{12, 20}));
+      expect(cancelled.intersection(shown), isEmpty);
     },
   );
 
@@ -93,7 +99,9 @@ void main() {
     await checkAndNotify(now: DateTime(2026, 1, 1, 8));
 
     expect(notificationLog.where((c) => c.method == 'show'), isEmpty);
-    expect(notificationLog.where((c) => c.method == 'cancel'), hasLength(4));
+    // 24, not 4: syncToSlots sweeps the whole id space so a schedule change
+    // cannot orphan the ids it no longer contains.
+    expect(notificationLog.where((c) => c.method == 'cancel'), hasLength(24));
   });
 
   test('uses the real clock when now is omitted', () async {

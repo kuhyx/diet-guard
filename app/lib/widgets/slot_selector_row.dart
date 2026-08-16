@@ -4,6 +4,7 @@
 library;
 
 import 'package:diet_guard_app/models/slot.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -48,7 +49,8 @@ class SlotSelectorRow extends StatelessWidget {
     // matches production exactly when the extension is genuinely absent.
     final statusColors =
         Theme.of(context).extension<AppStatusColors>() ?? AppStatusColors.dark;
-    final elapsed = elapsedSlots(now).toSet();
+    final schedule = MealScheduleService.current;
+    final elapsed = elapsedSlots(now, schedule).toSet();
     // One row, always. A Wrap dropped the later pills onto a second line as
     // soon as the row outgrew the width, which it does even at four: a logged
     // chip measures ~124px at Material defaults, so four already need 522px
@@ -66,7 +68,7 @@ class SlotSelectorRow extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         spacing: AppSpacing.xs + 2,
         children: [
-          ...daySlots().map((slot) {
+          ...daySlots(schedule).map((slot) {
             final isLogged = loggedSlots.contains(slot);
             final isDue = !isLogged && elapsed.contains(slot);
             final color = isLogged

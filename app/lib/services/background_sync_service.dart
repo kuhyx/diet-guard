@@ -12,6 +12,7 @@ import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/sync_device_id.dart';
 import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
@@ -50,6 +51,11 @@ Future<bool> backgroundSyncPush({http.Client? httpClient}) async {
   await AppSettingsService.init();
   // runSync also merges the budget history through this singleton.
   await BudgetHistoryService.init();
+  // A fresh isolate has its own static state, so the schedule must be loaded
+  // here too -- otherwise the due-slot check in this isolate would fall back
+  // to the default four meals and nag for checkpoints the user's actual
+  // schedule does not have.
+  await MealScheduleService.init();
   final SyncSettings settings;
   try {
     settings = await SyncSettings.load();

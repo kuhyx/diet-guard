@@ -15,6 +15,7 @@ import 'package:diet_guard_app/screens/log_meal_sync_mixin.dart';
 import 'package:diet_guard_app/services/due_slot_check.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/autocomplete_suggestion_list.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
@@ -69,7 +70,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     ]) {
       controller.addListener(_onMacroEdited);
     }
-    _selectedSlot = slotForLog(DateTime.now());
+    _selectedSlot = slotForLog(DateTime.now(), MealScheduleService.current);
     unawaited(refreshSlots());
     unawaited(_onDescChanged());
     // Read health before the first sync finishes, so a device that stalled in
@@ -155,7 +156,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     _macros.clear();
     setState(() {
       _source = 'manual';
-      _selectedSlot = slotForLog(DateTime.now());
+      _selectedSlot = slotForLog(DateTime.now(), MealScheduleService.current);
     });
     await refreshSlots();
     if (!mounted) return;
