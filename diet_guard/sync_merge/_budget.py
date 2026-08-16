@@ -23,9 +23,12 @@ from crdt_sync import Hlc, Record
 from diet_guard._budget_history import BudgetEntry
 from diet_guard._device import device_id
 from diet_guard.sync_merge._clock import _EPOCH
+from diet_guard.sync_merge._schedule import schedule_fields
 
 if TYPE_CHECKING:
     from crdt_sync import Log
+
+    from diet_guard._meal_schedule_store import ScheduleEntry
 
 
 _BUDGET_RECORD_ID = "budget"
@@ -77,6 +80,7 @@ def _history_hlc(entry: BudgetEntry) -> Hlc:
 def budget_to_log(
     record: dict[str, object] | None,
     entries: tuple[BudgetEntry, ...] = (),
+    schedule_entries: tuple[ScheduleEntry, ...] = (),
 ) -> Log:
     """Convert a raw local budget record plus its history into a Log.
 
@@ -112,6 +116,9 @@ def budget_to_log(
             entry.kcal,
             _history_hlc(entry),
         )
+    # The meal-schedule history rides the same record as its own `sched:`
+    # fields; see :mod:`diet_guard.sync_merge._schedule`.
+    fields.update(schedule_fields(schedule_entries))
     rec = Record(id=_BUDGET_RECORD_ID, fields=fields)
     return {rec.id: rec}
 

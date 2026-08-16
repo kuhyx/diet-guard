@@ -14,7 +14,9 @@ import 'dart:convert';
 
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/services/budget_schedule.dart';
+import 'package:diet_guard_app/services/meal_schedule_history.dart';
 import 'package:diet_guard_app/services/sync_device_id.dart';
+import 'package:diet_guard_app/services/sync_merge_schedule.dart';
 
 /// Stable id: exactly one budget record per device-pushed `budget.json`.
 const budgetRecordId = 'budget';
@@ -75,6 +77,7 @@ Hlc historyHlc(BudgetEntry entry) {
 Log budgetToLog(
   Map<String, dynamic>? record, [
   List<BudgetEntry> entries = const [],
+  List<ScheduleEntry> scheduleEntries = const [],
 ]) {
   if (record == null) return {};
   final hlc = budgetHlc(record);
@@ -88,6 +91,9 @@ Log budgetToLog(
       historyHlc(entry),
     );
   }
+  // The meal-schedule history rides the same record as its own `sched:`
+  // fields; see `sync_merge_schedule.dart`.
+  fields.addAll(scheduleFields(scheduleEntries));
   return {budgetRecordId: Record(id: budgetRecordId, fields: fields)};
 }
 

@@ -45,11 +45,17 @@ from diet_guard.sync_merge._daylog import (
     parse_remote_log,
     record_to_entry,
 )
+from diet_guard.sync_merge._schedule import (
+    SCHEDULE_FIELD_PREFIX,
+    log_to_schedule_history,
+    schedule_fields,
+)
 
 __all__ = [
     # Private helpers the tests reach for directly. Re-exported deliberately:
     # they were importable from the flat module, and dropping them here would
     # break those tests for a naming reason rather than a behavioural one.
+    "SCHEDULE_FIELD_PREFIX",
     "_budget_hlc",
     "_entry_hlc",
     "_legacy_entry_id",
@@ -62,10 +68,12 @@ __all__ = [
     "log_to_food_bank",
     "log_to_history",
     "log_to_manual_bank",
+    "log_to_schedule_history",
     "manual_bank_to_log",
     "parse_remote_budget",
     "parse_remote_food_bank",
     "parse_remote_log",
     "parse_remote_manual_bank",
     "record_to_entry",
+    "schedule_fields",
 ]

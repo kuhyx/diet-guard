@@ -18,8 +18,10 @@ import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/sync_device_id.dart';
 import 'package:diet_guard_app/services/sync_merge.dart';
+import 'package:diet_guard_app/services/sync_merge_schedule.dart';
 import 'package:diet_guard_app/services/sync_state_factory.dart';
 
 const _devicesDir = 'diet-guard-sync/devices';
@@ -113,12 +115,23 @@ Future<void> _syncManualBank(RemoteStore client) async {
 /// from elsewhere.
 Future<void> _syncBudget(RemoteStore client) async {
   final updatedAt = AppSettingsService.dailyKcalGoalUpdatedAt;
-  final localRecord = updatedAt == null
+  final scheduleEntries = MealScheduleService.history.entries;
+  // `budgetToLog` returns an empty Log for a null record, which would also
+  // drop the `sched:` fields. A device that has edited its schedule but never
+  // its budget still has something to contribute, so synthesise a record from
+  // the schedule's own edit time in that case. Its `value` carries the
+  // unset-default budget, but that loses every LWW race against a device that
+  // has actually set one, because this stamp is older than any real edit.
+  final scheduleStamp = MealScheduleService.updatedAt;
+  final recordStamp =
+      updatedAt ?? (scheduleEntries.isEmpty ? null : scheduleStamp);
+  final localRecord = recordStamp == null
       ? null
       : <String, dynamic>{
           'v': 2,
           'b': AppSettingsService.dailyKcalGoal,
-          't': updatedAt.toIso8601String(),
+          't': (updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+              .toIso8601String(),
         };
 
   final mergedBudgetLog = await syncLog(
@@ -129,6 +142,7 @@ Future<void> _syncBudget(RemoteStore client) async {
     localLog: budgetToLog(
       localRecord,
       BudgetHistoryService.schedule.entries,
+      scheduleEntries,
     ),
     encode: encodeBudgetForPush,
     decode: parseRemoteBudget,
@@ -141,6 +155,14 @@ Future<void> _syncBudget(RemoteStore client) async {
   await BudgetHistoryService.instance.applyMerged(
     logToHistory(mergedBudgetLog),
   );
+  // Same reasoning for the meal schedule: field-union merge, so applied
+  // regardless of how the scalar budget resolved.
+  if (MealScheduleService.isInitialized) {
+    await MealScheduleService.instance.applyMerged(
+      logToScheduleHistory(mergedBudgetLog),
+      updatedAt: scheduleStamp,
+    );
+  }
 
   final merged = logToBudget(mergedBudgetLog);
   final mergedKcal = merged?['b'];

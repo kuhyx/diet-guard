@@ -28,6 +28,15 @@ from diet_guard._budget_history import (
 from diet_guard._device import device_identity
 from diet_guard._foodbank import read_food_bank, write_food_bank
 from diet_guard._foodbank_manual import read_manual_bank, write_manual_bank
+from diet_guard._meal_schedule_store import (
+    history_to_json as schedule_history_to_json,
+)
+from diet_guard._meal_schedule_store import (
+    load_entries as load_schedule_entries,
+)
+from diet_guard._meal_schedule_store import (
+    write_raw_history as write_raw_schedule,
+)
 from diet_guard._sync_paths import (
     _DEVICES_DIR,
     _device_budget_path,
@@ -41,6 +50,7 @@ from diet_guard.sync_merge import (
     log_to_food_bank,
     log_to_history,
     log_to_manual_bank,
+    log_to_schedule_history,
     manual_bank_to_log,
     parse_remote_budget,
     parse_remote_food_bank,
@@ -161,7 +171,7 @@ def _sync_budget(client: GitHubSyncClient) -> None:
     *no* device has ever set one, nothing is written or pushed.
     """
     identity = device_identity()
-    merged = budget_to_log(read_raw_record(), load_entries())
+    merged = budget_to_log(read_raw_record(), load_entries(), load_schedule_entries())
     for device_id in client.list_directory(_DEVICES_DIR):
         if identity.is_own(device_id):
             continue
@@ -187,6 +197,12 @@ def _sync_budget(client: GitHubSyncClient) -> None:
     # seed from ever running.
     if merged_history:
         write_raw_history(history_to_json(merged_history))
+    # Same guard for the meal schedule: a pre-feature peer contributes no
+    # `sched:` fields, and writing the empty document back would discard this
+    # device's own history.
+    merged_schedule = log_to_schedule_history(merged)
+    if merged_schedule:
+        write_raw_schedule(schedule_history_to_json(merged_schedule))
 
     push_json = json.dumps(
         {record_id: record.to_dict() for record_id, record in merged.items()},

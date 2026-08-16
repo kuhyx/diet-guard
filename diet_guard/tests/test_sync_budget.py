@@ -14,6 +14,11 @@ from diet_guard._budget import daily_budget, write_budget
 from diet_guard._budget_derived import budget_weight
 from diet_guard._budget_history import load_entries
 from diet_guard._device import device_id
+from diet_guard._meal_schedule import MealSchedule
+from diet_guard._meal_schedule_store import (
+    load_entries as load_schedule_entries,
+)
+from diet_guard._meal_schedule_store import record_schedule_change
 from diet_guard.tests._sync_fakes import (
     _mock_client,
     _remote_budget_json,
@@ -112,6 +117,21 @@ class TestSyncBudget:
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         assert load_entries()[-1].kcal == 2000
+
+    def test_meal_schedule_survives_a_round_trip(self) -> None:
+        """The meal schedule is written back locally after every merge.
+
+        Without this the schedule would be device-local: the phone could set
+        five meals while the PC still derived four, and the PC's gate would
+        nag for a checkpoint the phone never offered.
+        """
+        _write_token()
+        write_budget(2000)
+        record_schedule_change(MealSchedule(8, 20, 5))
+        client = _mock_client(devices=())
+        with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
+            _sync.run_sync()
+        assert load_schedule_entries()[-1].schedule == MealSchedule(8, 20, 5)
 
     def test_malformed_remote_budget_is_skipped(self) -> None:
         """A corrupt remote budget.json is skipped, not a crash."""
