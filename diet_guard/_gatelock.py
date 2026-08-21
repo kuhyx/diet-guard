@@ -52,6 +52,7 @@ from gatelock import (
     LockConfig,
     LockWindow,
     SurfaceInfo,
+    wait_for_turn,
 )
 
 from diet_guard._gate import due_slots
@@ -151,6 +152,9 @@ class MealGate(_GateCalendar):
             disable_vt=config.resolved_disable_vt(),
         )
         arbiter.publish()
+        # Wait with nothing on screen for any stronger claim; never exits
+        # here, so a higher-ranked locker means "later", never "skip".
+        wait_for_turn(arbiter)
         arbiter.acquire_holder()
         self._lock = LockWindow(self.root, config, hooks=self, arbiter=arbiter)
         self._vars = make_vars(self.root)
