@@ -117,23 +117,24 @@ class TestAte:
         assert "logged:" in capsys.readouterr().out
 
     def test_publishes_after_logging(self) -> None:
-        """The meal is published immediately, not left for a periodic tick."""
+        """Publishing starts immediately; off-thread, so it is not awaited."""
         write_budget(2000)
         with (
             patch.object(_cli_log, "resolve_nutrition", return_value=_NUT),
-            patch.object(_cli_log, "publish_after_log", return_value=None) as publish,
+            patch.object(_cli_log, "publish_after_log_detached") as publish,
         ):
             assert main(["ate", "big mac"]) == 0
-        publish.assert_called_once_with()
+        publish.assert_called_once()
 
     def test_sync_outage_still_logs_locally(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """A failed publish reports itself without failing the local log."""
         write_budget(2000)
+        fail = {"side_effect": lambda cb: cb("no token")}
         with (
             patch.object(_cli_log, "resolve_nutrition", return_value=_NUT),
-            patch.object(_cli_log, "publish_after_log", return_value="no token"),
+            patch.object(_cli_log, "publish_after_log_detached", **fail),
         ):
             assert main(["ate", "big mac"]) == 0
         out = capsys.readouterr().out

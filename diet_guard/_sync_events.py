@@ -28,6 +28,11 @@ from __future__ import annotations
 from importlib import import_module
 import logging
 import sys
+import threading
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _logger = logging.getLogger(__name__)
 
@@ -62,3 +67,35 @@ def publish_after_log() -> str | None:
     if reason is not None:
         _logger.info("post-log sync skipped: %s", reason)
     return reason
+
+
+def publish_after_log_detached(on_failure: Callable[[str], None]) -> None:
+    """Publish on a background thread, returning immediately.
+
+    For the *interactive* CLI, where blocking the terminal is the problem: the
+    full tick measures ~15.5s, of which only ~2.5s is the push the phone
+    actually needs. The local write is already durable by the time this is
+    called, so the worst case is a late publish -- exactly the trade
+    :func:`publish_after_log` already documents.
+
+    **Not for the gate.** ``diet-guard-gate.service`` is ``Type=oneshot``, so
+    systemd reaps the unit as soon as the main thread exits and a daemon
+    thread would be killed mid-push. The gate keeps calling
+    :func:`publish_after_log` and waiting for it.
+
+    The thread is non-daemon precisely so the interpreter waits for it at exit:
+    the CLI's output is already flushed, so the user sees their result at once
+    while the process lingers only as long as the push takes.
+
+    Args:
+        on_failure: Called with a reason if the publish could not complete.
+            Runs on the worker thread, after the caller has printed and
+            returned, so it must not touch the caller's output ordering.
+    """
+
+    def _publish() -> None:
+        reason = publish_after_log()
+        if reason is not None:
+            on_failure(reason)
+
+    threading.Thread(target=_publish, daemon=False).start()

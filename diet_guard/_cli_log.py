@@ -22,7 +22,7 @@ from diet_guard._portions import DEFAULT_ITEM_GRAMS, estimate_unit_grams
 from diet_guard._resolve import ManualMacros, resolve_nutrition
 from diet_guard._slots import slot_for_log
 from diet_guard._state import log_meal, now_local
-from diet_guard._sync_events import publish_after_log
+from diet_guard._sync_events import publish_after_log_detached
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -156,8 +156,15 @@ def cmd_ate(
     )
     # Publish straight away rather than waiting for a periodic tick: until this
     # lands, the phone still believes this slot is unlogged and will nag for it.
-    reason = publish_after_log()
-    if reason is not None:
-        emit(f"logged locally, not yet published ({reason}).")
+    #
+    # On a background thread, though: the full tick measures ~15.5s and this is
+    # an interactive command, so blocking the terminal on it after every meal
+    # is the whole complaint. The local write above is already durable, so the
+    # worst case is a late publish -- the trade `_sync_events` documents. The
+    # thread is non-daemon, so the process waits for the push at exit even
+    # though the user already has their output.
+    publish_after_log_detached(
+        lambda reason: emit(f"logged locally, not yet published ({reason})."),
+    )
     print_summary()
     return 0

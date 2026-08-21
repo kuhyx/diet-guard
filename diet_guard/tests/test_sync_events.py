@@ -8,6 +8,7 @@ reaches the genuine helper (see ``conftest._isolate_state``).
 from __future__ import annotations
 
 import logging
+import threading
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -52,3 +53,44 @@ class TestPublishAfterLog:
         ):
             publish_after_log()
         assert "boom" in caplog.text
+
+
+class TestPublishAfterLogDetached:
+    """The CLI's non-blocking publish."""
+
+    def test_runs_the_publish_off_thread(self) -> None:
+        """The caller must not wait ~15.5s for the tick to finish."""
+        done = threading.Event()
+
+        def _publish() -> None:
+            done.set()
+
+        with patch.object(_sync_events, "publish_after_log", side_effect=_publish):
+            _sync_events.publish_after_log_detached(lambda _reason: None)
+            assert done.wait(timeout=5), "publish never ran"
+
+    def test_reports_a_failure_through_the_callback(self) -> None:
+        """A publish outage still surfaces, just after the caller returned."""
+        seen: list[str] = []
+        finished = threading.Event()
+
+        def _record(reason: str) -> None:
+            seen.append(reason)
+            finished.set()
+
+        with patch.object(_sync_events, "publish_after_log", return_value="no token"):
+            _sync_events.publish_after_log_detached(_record)
+            assert finished.wait(timeout=5), "callback never fired"
+
+        assert seen == ["no token"]
+
+    def test_stays_quiet_on_success(self) -> None:
+        """Nothing to report means the callback is never called."""
+        calls: list[str] = []
+        with patch.object(_sync_events, "publish_after_log", return_value=None):
+            _sync_events.publish_after_log_detached(calls.append)
+            for thread in threading.enumerate():
+                if thread is not threading.current_thread():
+                    thread.join(timeout=5)
+
+        assert calls == []

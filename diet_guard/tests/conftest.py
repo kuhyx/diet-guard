@@ -152,7 +152,7 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
         # path that has nothing to do with what it is asserting. Patched at the
         # *call sites* rather than on `_sync_events`, so a test that imports
         # `publish_after_log` directly still exercises the real helper.
-        patch("diet_guard._cli_log.publish_after_log", return_value=None),
+        patch("diet_guard._cli_log.publish_after_log_detached", return_value=None),
         patch("diet_guard._cli_gate.publish_after_log", return_value=None),
         patch("diet_guard._mcp.publish_after_log", return_value=None),
         # The gate's pre-lock refresh is a *second*, independent network
