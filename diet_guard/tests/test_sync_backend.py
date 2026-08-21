@@ -8,6 +8,7 @@ credentials a run actually requires (``_client_for_run``).
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from crdt_sync import ConfigError
 import pytest
@@ -125,3 +126,35 @@ class TestClientForRun:
 
         with pytest.raises(_sync.SyncError):
             _sync_client._client_for_run()
+
+
+class TestInteractiveTimeout:
+    """The short per-request budget for paths the user is waiting on."""
+
+    def test_tightens_every_backend_half(self) -> None:
+        """A mirrored client must bound both halves, not just the primary."""
+        client = SimpleNamespace(
+            primary=SimpleNamespace(_timeout_seconds=15.0),
+            mirror=SimpleNamespace(_timeout_seconds=10.0),
+        )
+
+        _sync_client._apply_timeout(client, 2.0)
+
+        assert client.primary._timeout_seconds == 2.0
+        assert client.mirror._timeout_seconds == 2.0
+
+    def test_a_client_without_the_attribute_is_left_alone(self) -> None:
+        """Never invent a setting on a backend that does not read one."""
+        client = SimpleNamespace()
+
+        _sync_client._apply_timeout(client, 2.0)
+
+        assert not hasattr(client, "_timeout_seconds")
+
+    def test_a_bare_client_is_tightened_directly(self) -> None:
+        """Not every backend is mirrored; the unwrapped case must work too."""
+        client = SimpleNamespace(_timeout_seconds=15.0)
+
+        _sync_client._apply_timeout(client, 2.0)
+
+        assert client._timeout_seconds == 2.0

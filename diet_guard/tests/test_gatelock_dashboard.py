@@ -9,8 +9,8 @@ dashboard, and multi-item meals).  The functional fake ``tk`` widgets and the
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-from unittest.mock import patch
+from typing import TYPE_CHECKING, cast
+from unittest.mock import MagicMock, patch
 
 from diet_guard import _gatelock_mealflow
 from diet_guard._budget import write_budget
@@ -99,12 +99,26 @@ class TestSlotWalk:
         unlock.assert_called_once()
 
 
+def _drive_fetch(gate: MealGate) -> None:
+    """Run a started fetch to completion, deterministically.
+
+    ``_on_fetch_sync`` now hands the pull to a worker thread and schedules a
+    poll via ``root.after``; under test ``after`` is a MagicMock, so nothing
+    would ever pick the result up. Joining on the queue and calling the poll
+    directly keeps these assertions synchronous without a sleep.
+    """
+    result = gate._fetch_result
+    assert result is not None, "no fetch was started"
+    result.put(result.get(timeout=5))
+    gate._poll_fetch()
+
+
 class TestFetchFromSync:
     """The manual "Fetch from sync" button on the lock screen."""
 
     def test_demo_mode_does_not_sync(self, gate: MealGate) -> None:
         """In demo the button is inert and never touches the network."""
-        with patch.object(_gatelock_mealflow, "pull_shared_log") as pull:
+        with patch.object(_gatelock_mealflow, "pull_peer_logs") as pull:
             gate._on_fetch_sync()
         pull.assert_not_called()
         assert "only available on the real lock" in gate._vars.status.get()
@@ -115,10 +129,11 @@ class TestFetchFromSync:
         gate._pending = [8, 12]
         with patch.object(
             _gatelock_mealflow,
-            "pull_shared_log",
+            "pull_peer_logs",
             return_value="sync unavailable (x)",
         ):
             gate._on_fetch_sync()
+            _drive_fetch(gate)
         assert gate._pending == [8, 12]
         assert "still locked" in gate._vars.status.get()
 
@@ -127,10 +142,11 @@ class TestFetchFromSync:
         gate.demo_mode = False
         gate._pending = [8, 12]
         with (
-            patch.object(_gatelock_mealflow, "pull_shared_log", return_value=None),
+            patch.object(_gatelock_mealflow, "pull_peer_logs", return_value=None),
             patch.object(_gatelock_mealflow, "due_slots", return_value=(8, 12)),
         ):
             gate._on_fetch_sync()
+            _drive_fetch(gate)
         assert gate._pending == [8, 12]
         assert "No new meals" in gate._vars.status.get()
 
@@ -139,10 +155,11 @@ class TestFetchFromSync:
         gate.demo_mode = False
         gate._pending = [8, 12]
         with (
-            patch.object(_gatelock_mealflow, "pull_shared_log", return_value=None),
+            patch.object(_gatelock_mealflow, "pull_peer_logs", return_value=None),
             patch.object(_gatelock_mealflow, "due_slots", return_value=(12,)),
         ):
             gate._on_fetch_sync()
+            _drive_fetch(gate)
         assert gate._pending == [12]
         assert "Pulled 1 meal " in gate._vars.status.get()
 
@@ -151,10 +168,11 @@ class TestFetchFromSync:
         gate.demo_mode = False
         gate._pending = [8, 12, 16]
         with (
-            patch.object(_gatelock_mealflow, "pull_shared_log", return_value=None),
+            patch.object(_gatelock_mealflow, "pull_peer_logs", return_value=None),
             patch.object(_gatelock_mealflow, "due_slots", return_value=(16,)),
         ):
             gate._on_fetch_sync()
+            _drive_fetch(gate)
         assert gate._pending == [16]
         assert "Pulled 2 meals" in gate._vars.status.get()
 
@@ -163,9 +181,48 @@ class TestFetchFromSync:
         gate.demo_mode = False
         gate._pending = [8, 12]
         with (
-            patch.object(_gatelock_mealflow, "pull_shared_log", return_value=None),
+            patch.object(_gatelock_mealflow, "pull_peer_logs", return_value=None),
             patch.object(_gatelock_mealflow, "due_slots", return_value=()),
         ):
             gate._on_fetch_sync()
+            _drive_fetch(gate)
         assert gate._pending == []
         assert "unlocking" in gate._vars.status.get()
+
+    def test_poll_without_a_fetch_is_inert(self, gate: MealGate) -> None:
+        """A stray poll after completion must stop, not block on an empty queue."""
+        gate._fetch_result = None
+
+        gate._poll_fetch()  # must simply return
+
+        assert gate._fetch_result is None
+
+    def test_poll_rearms_while_the_worker_is_still_running(
+        self, gate: MealGate
+    ) -> None:
+        """An empty queue means "not finished yet" -- reschedule, do not block."""
+        import queue as _queue
+
+        gate.demo_mode = False
+        gate._fetch_result = _queue.Queue()
+
+        gate._poll_fetch()
+
+        after = cast("MagicMock", gate.root.after)
+        after.assert_called_with(_gatelock_mealflow.FETCH_POLL_MS, gate._poll_fetch)
+        assert gate._fetch_result is not None
+
+    def test_a_second_click_while_fetching_is_ignored(self, gate: MealGate) -> None:
+        """Two workers would race two log writes and orphan one result."""
+        gate.demo_mode = False
+        with patch.object(
+            _gatelock_mealflow, "pull_peer_logs", return_value=None
+        ) as pull:
+            gate._on_fetch_sync()
+            first = gate._fetch_result
+            gate._on_fetch_sync()  # second click, still in flight
+
+            assert gate._fetch_result is first
+            _drive_fetch(gate)
+
+        assert pull.call_count == 1

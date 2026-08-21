@@ -45,7 +45,7 @@ from diet_guard import _sync
 from diet_guard._device import device_identity
 from diet_guard._state_sync import read_raw_log, resign_entry, write_raw_log
 from diet_guard._sync import _remote_revisions
-from diet_guard._sync_client import _client_for_run
+from diet_guard._sync_client import _client_for_interactive_run
 from diet_guard._sync_errors import SyncError
 from diet_guard._sync_paths import _DEVICES_DIR, _device_log_path
 from diet_guard.sync_merge import daylog_to_log, log_to_daylog, parse_remote_log
@@ -138,7 +138,7 @@ def refresh_peer_logs() -> None:
         SyncError: If no backend is configured.
         crdt_sync.RemoteSyncError: On any transport failure.
     """
-    client = _client_for_run()
+    client = _client_for_interactive_run()
     identity = device_identity()
     # Via the module, not a direct import: the suite redirects
     # ``_sync.SYNC_STATE_FILE`` to a tmp path, and a private copy of the

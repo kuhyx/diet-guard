@@ -110,3 +110,14 @@ SYNC_DEVICE_ID_FILE: Path = DATA_DIR / ".device_id"
 # mode 600.  Never committed -- this path is outside the repo entirely.
 SYNC_TOKEN_FILE: Path = Path.home() / ".config" / "diet_guard" / "sync_token"
 SYNC_TIMEOUT_SECONDS: float = 10.0
+
+#: Per-request budget for a pull the user is actively waiting on (the gate's
+#: pre-lock refresh and the lock screen's "Fetch from sync" button).
+#:
+#: Deliberately far below :data:`SYNC_TIMEOUT_SECONDS`: those paths run 1-2
+#: requests and must resolve inside a second, whereas the background tick can
+#: afford to be patient. The default is worse than it looks -- ``crdt_sync``
+#: v0.6.0's ``firebase_client_for`` takes no timeout at all, so Firebase falls
+#: back to *15s per request* and one hung session refresh stalls the lock
+#: window. The journal records five such refresh failures in five days.
+INTERACTIVE_TIMEOUT_SECONDS: float = 2.0

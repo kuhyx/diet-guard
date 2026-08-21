@@ -11,17 +11,19 @@ calorie/macro dashboard it calls into lives in :mod:`._gatelock_dashboard`.
 from __future__ import annotations
 
 import contextlib
+import queue
 import tkinter as tk
 from typing import TYPE_CHECKING
 
 from diet_guard._foodbank import remember_food
 from diet_guard._gate import due_slots
 from diet_guard._gatelock_dashboard import _GateDashboard
+from diet_guard._gatelock_fetch import FETCH_POLL_MS, start_fetch
 from diet_guard._gatelock_ui import ERR, FG, UNIT_GRAMS
 from diet_guard._resolve import lookup_candidates
 from diet_guard._slots import slot_label
 from diet_guard._state import log_meal
-from diet_guard._sync import pull_shared_log
+from diet_guard._sync_refresh import pull_peer_logs
 
 if TYPE_CHECKING:
     from diet_guard._estimator import Nutrition
@@ -32,6 +34,11 @@ _UNLOCK_DELAY_MS = 1200
 
 class _GateMealFlow(_GateDashboard):
     """Submit/lookup/log flow for a logged food."""
+
+    #: The in-flight fetch's result queue, or None when no fetch is running.
+    #: Doubles as the poll's own guard: a stray poll after completion finds
+    #: None and stops rather than blocking on an empty queue forever.
+    _fetch_result: queue.Queue[str | None] | None = None
 
     # -- slot walk ------------------------------------------------------------
 
@@ -164,15 +171,44 @@ class _GateMealFlow(_GateDashboard):
 
         For a meal already logged on another device (typically the phone) that
         has not yet propagated here: rather than re-entering it to unlock, the
-        user pulls it in.  The pull blocks the window briefly (bounded by the
-        sync timeout) and fails closed -- a failure leaves the lock untouched.
+        user pulls it in.
+
+        The pull is the *narrow* one (:func:`pull_peer_logs`) and runs on a
+        worker thread, so the window stays live. It used to run the full tick
+        inline and froze the fullscreen lock for its whole duration (~18-27s
+        measured). The button's question is the same as the gate's -- "did a
+        peer log this slot?" -- and :meth:`_reconcile_after_fetch` reads only
+        ``due_slots()``, so the budget and food banks it dropped were never
+        consulted here; the full tick still runs once the window closes.
+        Measured at ~92ms against the live remote.
+
+        Fails closed: a failure leaves the lock untouched. A second click while
+        a fetch is in flight is ignored, which is the reentrancy guard and the
+        write-race fix in one -- two workers would race two log writes and
+        orphan one result.
         """
         if self.demo_mode:
             self._set_status("Fetch from sync is only available on the real lock.")
             return
+        if self._fetch_result is not None:
+            # Already fetching. Without this a double-click starts a second
+            # worker, orphans the first result and races two log writes.
+            return
         self._set_status("Fetching from sync…")
-        self.root.update_idletasks()
-        reason = pull_shared_log()
+        self._fetch_result = start_fetch(pull_peer_logs)
+        self.root.after(FETCH_POLL_MS, self._poll_fetch)
+
+    def _poll_fetch(self) -> None:
+        """On the Tk thread: pick up the worker's result once it lands."""
+        result = self._fetch_result
+        if result is None:
+            return
+        try:
+            reason = result.get_nowait()
+        except queue.Empty:
+            self.root.after(FETCH_POLL_MS, self._poll_fetch)
+            return
+        self._fetch_result = None
         if reason is not None:
             self._set_status(f"{reason} — still locked.", error=True)
             return

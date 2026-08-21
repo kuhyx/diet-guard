@@ -30,6 +30,7 @@ from crdt_sync import (
 )
 
 from diet_guard._constants import (
+    INTERACTIVE_TIMEOUT_SECONDS,
     SYNC_REPO_NAME,
     SYNC_REPO_OWNER,
     SYNC_TIMEOUT_SECONDS,
@@ -129,3 +130,38 @@ def _read_token() -> str:
         msg = f"{SYNC_TOKEN_FILE} is empty"
         raise SyncError(msg)
     return token
+
+
+def _apply_timeout(client: RemoteStore, seconds: float) -> None:
+    """Tighten ``client``'s per-request budget, including any mirrored halves.
+
+    Reaches for the private ``_timeout_seconds`` because ``crdt_sync`` v0.6.0
+    exposes no other lever: ``firebase_client_for`` accepts no timeout, so a
+    Firebase client silently uses its 15s default and one hung request stalls
+    a path the user is watching. The attribute is read fresh on every request,
+    so assigning it here is enough.
+
+    Set via ``vars()`` rather than ``setattr`` so a client that does not carry
+    the attribute is left alone instead of gaining a meaningless one. The clean
+    fix is a ``timeout_seconds`` kwarg upstream; until that ships this keeps the
+    interactive paths bounded.
+    """
+    for target in (
+        client,
+        getattr(client, "primary", None),
+        getattr(client, "mirror", None),
+    ):
+        if target is not None and "_timeout_seconds" in vars(target):
+            vars(target)["_timeout_seconds"] = seconds
+
+
+def _client_for_interactive_run() -> RemoteStore:
+    """Return a sync client budgeted for a path the user is waiting on.
+
+    Same backends as :func:`_client_for_run`, but with
+    :data:`~diet_guard._constants.INTERACTIVE_TIMEOUT_SECONDS` in place of the
+    background tick's much longer budget.
+    """
+    client = _client_for_run()
+    _apply_timeout(client, INTERACTIVE_TIMEOUT_SECONDS)
+    return client
