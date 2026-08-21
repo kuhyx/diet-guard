@@ -34,6 +34,7 @@ from diet_guard._device import device_identity
 from diet_guard._sync_client import _client_for_run
 from diet_guard._sync_paths import (
     _DEVICES_DIR,
+    _REVS_DIR,
     _device_budget_path,
     _device_food_bank_path,
     _device_log_path,
@@ -69,12 +70,21 @@ class PrunePlan:
 
 
 def _device_paths(device_id: str) -> tuple[str, ...]:
-    """Return every path a device publishes under."""
+    """Return every path a device publishes under.
+
+    The revision marker is one of them, and forgetting it is not cosmetic:
+    ``_sync_refresh._candidate_peers`` enumerates peers from the revision map,
+    so a marker left behind for a deleted device makes every tick propose a
+    peer that no longer exists and pay a round trip discovering that. Pruning
+    without this made the narrow pull *slower* (~90ms -> ~15s) rather than
+    faster.
+    """
     return (
         _device_log_path(device_id),
         _device_food_bank_path(device_id),
         _device_manual_bank_path(device_id),
         _device_budget_path(device_id),
+        f"{_REVS_DIR}/{device_id}",
     )
 
 

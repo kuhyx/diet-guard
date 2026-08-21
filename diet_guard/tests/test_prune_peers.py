@@ -102,7 +102,7 @@ class TestApply:
 
         written = _prune_peers.backup_peers(client, ["dead"], tmp_path)
 
-        assert written == 4  # log, food bank, curated bank, budget
+        assert written == 5  # log, food bank, curated bank, budget, rev
         assert (tmp_path / "dead" / "food_log.json").read_text() == "{}"
 
     def test_backup_skips_paths_a_device_never_published(self, tmp_path: Path) -> None:
@@ -111,11 +111,26 @@ class TestApply:
 
         assert _prune_peers.backup_peers(client, ["dead"], tmp_path) == 0
 
+    def test_apply_deletes_the_revision_marker_too(self) -> None:
+        """Leaving it behind makes the narrow pull slower, not faster.
+
+        ``_sync_refresh._candidate_peers`` enumerates peers from the revision
+        map, so an orphaned marker resurrects a deleted device as a candidate
+        and costs a round trip every tick. Observed for real: pruning without
+        this took the narrow pull from ~90ms to ~15s.
+        """
+        client = MagicMock()
+
+        list(_prune_peers.apply_prune(client, ["dead"]))
+
+        deleted = [call.args[0] for call in client.delete_file.call_args_list]
+        assert "diet-guard-sync/revs/dead" in deleted
+
     def test_apply_deletes_all_four_paths(self) -> None:
         client = MagicMock()
 
         assert list(_prune_peers.apply_prune(client, ["dead"])) == ["dead"]
-        assert client.delete_file.call_count == 4
+        assert client.delete_file.call_count == 5
 
 
 class TestCommand:
@@ -180,7 +195,7 @@ class TestCommand:
         code, out = self._run(monkeypatch, client, apply=True, backup_dir=str(tmp_path))
 
         assert code == 0
-        assert client.delete_file.call_count == 4
+        assert client.delete_file.call_count == 5
         assert any("pruned 1 device" in line for line in out)
 
     def test_main_dispatches_the_subcommand(
