@@ -25,11 +25,25 @@ day that goes unlogged raises a lock by construction.
 
 from __future__ import annotations
 
+from importlib import import_module
 import logging
-
-from diet_guard._sync import pull_shared_log
+import sys
 
 _logger = logging.getLogger(__name__)
+
+
+# ``_sync`` pulls in ``crdt_sync`` -> ``requests`` (~78ms), and the gate's
+# common path -- no lock due -- never publishes. Deferring the import is what
+# lets ``gate --check`` decide without loading an HTTP stack it will not use.
+#
+# A module-level ``__getattr__`` (PEP 562) rather than a function-local import
+# so ``patch.object(_sync_events, "pull_shared_log", ...)`` still resolves.
+def __getattr__(name: str) -> object:
+    """Resolve the deferred sync import on first attribute access."""
+    if name != "pull_shared_log":
+        msg = f"module {__name__!r} has no attribute {name!r}"
+        raise AttributeError(msg)
+    return import_module("diet_guard._sync").pull_shared_log
 
 
 def publish_after_log() -> str | None:
@@ -44,7 +58,7 @@ def publish_after_log() -> str | None:
         it could not -- callers that have somewhere to show it (the CLI) print
         it; callers that do not (the gate, the MCP tool) let it fall to the log.
     """
-    reason = pull_shared_log()
+    reason = sys.modules[__name__].pull_shared_log()
     if reason is not None:
         _logger.info("post-log sync skipped: %s", reason)
     return reason

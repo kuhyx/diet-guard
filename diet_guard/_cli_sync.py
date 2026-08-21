@@ -8,15 +8,36 @@ of one file.
 
 from __future__ import annotations
 
+from importlib import import_module
+import sys
 from typing import TYPE_CHECKING
-
-from crdt_sync import RemoteSyncError
-
-from diet_guard._sync import SyncError, run_sync
 
 if TYPE_CHECKING:
     import argparse
     from collections.abc import Callable
+
+# ``_cli_args`` imports this module just to register the subparser, but
+# ``crdt_sync``/``_sync`` drag in ``requests`` (~78ms). Only the ``sync``
+# command itself needs them, so every other subcommand -- notably the gate's
+# frequent ``--check`` -- no longer pays for an HTTP stack it will not use.
+#
+# A module-level ``__getattr__`` (PEP 562) rather than function-local imports
+# so ``patch.object(_cli_sync, "run_sync", ...)`` still resolves.
+_LAZY_ATTRS = {
+    "run_sync": ("diet_guard._sync", "run_sync"),
+    "SyncError": ("diet_guard._sync", "SyncError"),
+    "RemoteSyncError": ("crdt_sync", "RemoteSyncError"),
+}
+
+
+def __getattr__(name: str) -> object:
+    """Resolve a deferred sync import on first attribute access."""
+    target = _LAZY_ATTRS.get(name)
+    if target is None:
+        msg = f"module {__name__!r} has no attribute {name!r}"
+        raise AttributeError(msg)
+    module_name, attr = target
+    return getattr(import_module(module_name), attr)
 
 
 def register_sync_subparser(sub: argparse._SubParsersAction) -> None:
@@ -43,12 +64,13 @@ def cmd_sync(emit: Callable[[str], None]) -> int:
     Returns:
         0 on a successful sync, 1 if it could not run or failed partway.
     """
+    module = sys.modules[__name__]
     try:
-        merged = run_sync()
-    except SyncError as exc:
+        merged = module.run_sync()
+    except module.SyncError as exc:
         emit(f"sync not configured: {exc}")
         return 1
-    except RemoteSyncError as exc:
+    except module.RemoteSyncError as exc:
         # The shared base, not GitHubSyncError: Firebase's errors are siblings
         # of GitHub's, so catching only the latter let the primary backend's
         # failures crash this timer-driven command with a traceback.

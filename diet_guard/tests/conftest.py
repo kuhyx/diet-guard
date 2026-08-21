@@ -155,6 +155,10 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
         patch("diet_guard._cli_log.publish_after_log", return_value=None),
         patch("diet_guard._cli_gate.publish_after_log", return_value=None),
         patch("diet_guard._mcp.publish_after_log", return_value=None),
+        # The gate's pre-lock refresh is a *second*, independent network
+        # entry point (narrow peer-log pull, not the full tick). Without
+        # this every test that reaches `_should_lock` hits the real remote.
+        patch("diet_guard._cli_gate.pull_peer_logs", return_value=None),
     ):
         yield
 

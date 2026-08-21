@@ -13,9 +13,10 @@ the log/state or CLI layers.
 
 from __future__ import annotations
 
+from importlib import import_module
 import logging
-
-import requests
+import sys
+from typing import TYPE_CHECKING
 
 from diet_guard._constants import (
     DEFAULT_PORTION_GRAMS,
@@ -26,7 +27,38 @@ from diet_guard._constants import (
 )
 from diet_guard._estimator import Nutrition, _as_float, manual
 
+if TYPE_CHECKING:
+    from types import ModuleType
+
 _logger = logging.getLogger(__name__)
+
+
+# ``requests`` costs ~70ms to import and this module is reachable from every
+# CLI subcommand via ``_resolve`` -> ``_cli_log``, so importing it eagerly
+# taxed ``gate --check`` -- which never looks a food up. Only the Open Food
+# Facts calls below need it, and those are network calls already.
+#
+# A module-level ``__getattr__`` (PEP 562) rather than function-local imports
+# so ``patch("diet_guard._estimator_off.requests")`` still resolves: the patch
+# sets a real module attribute, which takes precedence over this hook.
+def _requests() -> ModuleType:
+    """Return the ``requests`` module, imported on first use.
+
+    Both call sites below go through this rather than a bare global: a module
+    ``__getattr__`` does not fire for name lookups *inside* its own module, and
+    ``sys.modules[__name__].requests`` is what lets the suite keep patching
+    ``diet_guard._estimator_off.requests``.
+    """
+    return sys.modules[__name__].requests
+
+
+def __getattr__(name: str) -> object:
+    """Resolve the deferred ``requests`` import on first attribute access."""
+    if name != "requests":
+        msg = f"module {__name__!r} has no attribute {name!r}"
+        raise AttributeError(msg)
+    return import_module("requests")
+
 
 # Open Food Facts nutriment field names (values are "per 100 g").
 _OFF_KCAL_FIELD = "energy-kcal_100g"
@@ -53,7 +85,7 @@ def _off_search(term: str) -> list[dict[str, object]]:
         "fields": "product_name,nutriments,serving_quantity",
         "page_size": str(OFF_PAGE_SIZE),
     }
-    response = requests.get(
+    response = _requests().get(
         OFF_SEARCH_URL,
         params=params,
         headers={"User-Agent": OFF_USER_AGENT},
@@ -159,7 +191,7 @@ def off_candidates(
     """
     try:
         products = _off_search(description)
-    except requests.RequestException as exc:
+    except _requests().RequestException as exc:
         _logger.warning("Open Food Facts request failed: %s", exc)
         return []
     return [

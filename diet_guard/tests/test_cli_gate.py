@@ -16,7 +16,7 @@ from diet_guard._state import log_meal
 
 def _no_sync() -> object:
     """Neutralize the pre-lock pull (as if it found nothing) for mode tests."""
-    return patch.object(_cli_gate, "pull_shared_log", return_value=None)
+    return patch.object(_cli_gate, "pull_peer_logs", return_value=None)
 
 
 class TestCmdGate:
@@ -73,7 +73,7 @@ class TestCmdGate:
         lines: list[str] = []
         with (
             patch.object(_cli_gate, "gate_is_due", side_effect=[True, False]),
-            patch.object(_cli_gate, "pull_shared_log", return_value=None),
+            patch.object(_cli_gate, "pull_peer_logs", return_value=None),
             patch.object(_cli_gate, "MealGate") as factory,
         ):
             assert cmd_gate(lines.append, check=False, demo=False) == 0
@@ -161,7 +161,7 @@ class TestShouldLock:
         pull = MagicMock(return_value=None)
         with (
             patch.object(_cli_gate, "gate_is_due", return_value=False),
-            patch.object(_cli_gate, "pull_shared_log", pull),
+            patch.object(_cli_gate, "pull_peer_logs", pull),
         ):
             assert _should_lock([].append) is False
         pull.assert_not_called()
@@ -171,7 +171,7 @@ class TestShouldLock:
         pull = MagicMock(return_value=None)
         with (
             patch.object(_cli_gate, "gate_is_due", side_effect=[True, False]),
-            patch.object(_cli_gate, "pull_shared_log", pull),
+            patch.object(_cli_gate, "pull_peer_logs", pull),
         ):
             assert _should_lock([].append) is False
         pull.assert_called_once()
@@ -181,7 +181,7 @@ class TestShouldLock:
         pull = MagicMock(return_value=None)
         with (
             patch.object(_cli_gate, "gate_is_due", side_effect=[True, True]),
-            patch.object(_cli_gate, "pull_shared_log", pull),
+            patch.object(_cli_gate, "pull_peer_logs", pull),
         ):
             assert _should_lock([].append) is True
         pull.assert_called_once()
@@ -192,7 +192,7 @@ class TestShouldLock:
         with (
             patch.object(_cli_gate, "gate_is_due", side_effect=[True, True]),
             patch.object(
-                _cli_gate, "pull_shared_log", return_value="sync unavailable (x)"
+                _cli_gate, "pull_peer_logs", return_value="sync unavailable (x)"
             ),
         ):
             assert _should_lock(lines.append) is True
