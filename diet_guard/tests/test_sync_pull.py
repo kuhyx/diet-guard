@@ -102,10 +102,13 @@ class TestPullSkipsUnchangedPeers:
     def test_skips_a_peer_whose_revision_is_unchanged(self) -> None:
         client = _mock_client(devices=("phone",))
         state = SyncState(pushed_rev=None, peer_revs={"phone": "rev-1"})
-        seen: dict[str, str] = {}
 
-        logs = _sync._pull_remote_logs(
-            client, {"phone": "rev-1"}, state, seen, device_identity()
+        logs, seen = _sync._pull_remote_logs(
+            client,
+            {"phone": "rev-1"},
+            state,
+            identity=device_identity(),
+            device_ids=("phone",),
         )
 
         assert logs == []
@@ -119,10 +122,13 @@ class TestPullSkipsUnchangedPeers:
             files={"diet-guard-sync/devices/phone/food_log.json": text},
         )
         state = SyncState(pushed_rev=None, peer_revs={"phone": "rev-1"})
-        seen: dict[str, str] = {}
 
-        _sync._pull_remote_logs(
-            client, {"phone": "rev-2"}, state, seen, device_identity()
+        _, seen = _sync._pull_remote_logs(
+            client,
+            {"phone": "rev-2"},
+            state,
+            identity=device_identity(),
+            device_ids=("phone",),
         )
 
         client.get_file_text.assert_called_once()

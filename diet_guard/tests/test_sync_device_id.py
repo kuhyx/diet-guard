@@ -37,9 +37,14 @@ class TestPullSkipsOwnLegacyPath:
         """
         client = _mock_client(devices=("pc", "phone"))
         state = SyncState(pushed_rev=None, peer_revs={})
-        seen: dict[str, str] = {}
 
-        _sync._pull_remote_logs(client, {}, state, seen, device_identity())
+        _, _seen = _sync._pull_remote_logs(
+            client,
+            {},
+            state,
+            identity=device_identity(),
+            device_ids=("pc", "phone"),
+        )
 
         fetched = [call.args[0] for call in client.get_file_text.call_args_list]
         assert "diet-guard-sync/devices/pc/food_log.json" not in fetched
@@ -54,10 +59,13 @@ class TestPullSkipsOwnLegacyPath:
         """
         client = _mock_client(devices=("pc",))
         state = SyncState(pushed_rev=None, peer_revs={})
-        seen: dict[str, str] = {}
 
-        _sync._pull_remote_logs(
-            client, {}, state, seen, DeviceIdentity(device_id=device_id())
+        _, _seen = _sync._pull_remote_logs(
+            client,
+            {},
+            state,
+            identity=DeviceIdentity(device_id=device_id()),
+            device_ids=("pc",),
         )
 
         fetched = [call.args[0] for call in client.get_file_text.call_args_list]

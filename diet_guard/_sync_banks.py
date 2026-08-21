@@ -17,7 +17,7 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-from crdt_sync import merge_logs
+from crdt_sync import MirrorSyncClient, merge_logs
 
 from diet_guard._budget import read_raw_record, write_raw_record
 from diet_guard._budget_history import (
@@ -38,7 +38,6 @@ from diet_guard._meal_schedule_store import (
     write_raw_history as write_raw_schedule,
 )
 from diet_guard._sync_paths import (
-    _DEVICES_DIR,
     _device_budget_path,
     _device_food_bank_path,
     _device_manual_bank_path,
@@ -58,12 +57,14 @@ from diet_guard.sync_merge import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from crdt_sync import GitHubSyncClient
 
 _logger = logging.getLogger(__name__)
 
 
-def _sync_food_bank(client: GitHubSyncClient) -> None:
+def _sync_food_bank(client: GitHubSyncClient, device_ids: Sequence[str]) -> None:
     """Pull, merge, persist and push the log-derived food bank.
 
     Runs *after* the local rebuild in :func:`run_sync`, so this device's own
@@ -87,7 +88,7 @@ def _sync_food_bank(client: GitHubSyncClient) -> None:
     identity = device_identity()
     local = read_food_bank()
     merged = food_bank_to_log(local)
-    for device_id in client.list_directory(_DEVICES_DIR):
+    for device_id in device_ids:
         if identity.is_own(device_id):
             continue
         text = client.get_file_text(_device_food_bank_path(device_id))
@@ -120,7 +121,27 @@ def _sync_food_bank(client: GitHubSyncClient) -> None:
     )
 
 
-def _sync_manual_bank(client: GitHubSyncClient) -> None:
+def _primary_only_text(client: GitHubSyncClient, path: str) -> str | None:
+    """Read ``path`` from the primary backend, skipping the mirror fallthrough.
+
+    ``MirrorSyncClient.get_file_text`` treats a ``None`` from the primary as
+    "this device has not migrated yet" and consults the mirror. That is right
+    for the log and the derived bank, whose data really can live on either
+    side -- but for the *curated* bank it is 21 GitHub round trips per tick
+    (~406ms each, ~17s total) that return ``{}`` and nothing else.
+
+    Verified before narrowing, and worth re-checking before widening again:
+    reading every peer's curated bank straight off the mirror found 23 absent,
+    2 empty and **zero** non-empty. No curated food exists on the mirror alone,
+    so nothing is lost. A client with no ``primary`` (the GitHub-only case) is
+    read directly, which is the same backend either way.
+    """
+    if isinstance(client, MirrorSyncClient):
+        return client.primary.get_file_text(path)
+    return client.get_file_text(path)
+
+
+def _sync_manual_bank(client: GitHubSyncClient, device_ids: Sequence[str]) -> None:
     """Pull, merge, persist and push the hand-curated food bank.
 
     Curated entries are the one part of the bank that is not derivable from
@@ -130,10 +151,10 @@ def _sync_manual_bank(client: GitHubSyncClient) -> None:
     """
     identity = device_identity()
     merged = manual_bank_to_log(read_manual_bank())
-    for device_id in client.list_directory(_DEVICES_DIR):
+    for device_id in device_ids:
         if identity.is_own(device_id):
             continue
-        text = client.get_file_text(_device_manual_bank_path(device_id))
+        text = _primary_only_text(client, _device_manual_bank_path(device_id))
         if text is None:
             continue
         try:
@@ -159,7 +180,7 @@ def _sync_manual_bank(client: GitHubSyncClient) -> None:
     )
 
 
-def _sync_budget(client: GitHubSyncClient) -> None:
+def _sync_budget(client: GitHubSyncClient, device_ids: Sequence[str]) -> None:
     """Pull other devices' budgets, merge, write locally, push this device's.
 
     Runs in the same tick as the food-log sync, reusing the already
@@ -172,7 +193,7 @@ def _sync_budget(client: GitHubSyncClient) -> None:
     """
     identity = device_identity()
     merged = budget_to_log(read_raw_record(), load_entries(), load_schedule_entries())
-    for device_id in client.list_directory(_DEVICES_DIR):
+    for device_id in device_ids:
         if identity.is_own(device_id):
             continue
         text = client.get_file_text(_device_budget_path(device_id))

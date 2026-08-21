@@ -53,6 +53,8 @@ from diet_guard.sync_merge import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from diet_guard._state import (
         DayLog,
     )
@@ -86,10 +88,11 @@ def _pull_remote_logs(
     client: RemoteStore,
     remote_revs: dict[str, str],
     state: SyncState,
-    seen_revs: dict[str, str],
+    *,
     identity: DeviceIdentity,
-) -> list[Log]:
-    """Return every other device's last-pushed log, skipping this one.
+    device_ids: Sequence[str],
+) -> tuple[list[Log], dict[str, str]]:
+    """Return every other device's last-pushed log, plus the revisions seen.
 
     A device whose pushed file is corrupt, truncated, or otherwise
     unparsable (new or old wire format) is logged and skipped, same as one
@@ -103,7 +106,8 @@ def _pull_remote_logs(
     day, so re-reading an unchanged peer is pure waste.
     """
     remote_logs: list[Log] = []
-    for device_id in client.list_directory(_DEVICES_DIR):
+    seen_revs: dict[str, str] = {}
+    for device_id in device_ids:
         if identity.is_own(device_id):
             continue
         remote_rev = remote_revs.get(device_id)
@@ -123,7 +127,7 @@ def _pull_remote_logs(
             _logger.warning("Unparsable log pushed by device %r, skipping", device_id)
             continue
         seen_revs[device_id] = remote_rev or revision_of(text)
-    return remote_logs
+    return remote_logs, seen_revs
 
 
 def run_sync() -> DayLog:
@@ -152,12 +156,17 @@ def run_sync() -> DayLog:
     state_store = FileSyncStateStore(SYNC_STATE_FILE)
     state = state_store.load()
     remote_revs = _remote_revisions(client)
-    seen_revs: dict[str, str] = {}
+    device_ids = list(client.list_directory(_DEVICES_DIR))
 
     merged = daylog_to_log(read_raw_log())
-    for remote_log in _pull_remote_logs(
-        client, remote_revs, state, seen_revs, identity
-    ):
+    remote_logs, seen_revs = _pull_remote_logs(
+        client,
+        remote_revs,
+        state,
+        identity=identity,
+        device_ids=device_ids,
+    )
+    for remote_log in remote_logs:
         merged = merge_logs(merged, remote_log)
 
     merged_daylog = log_to_daylog(merged)
@@ -167,9 +176,9 @@ def run_sync() -> DayLog:
     }
     write_raw_log(resigned)
     rebuild_food_bank(resigned)
-    _sync_budget(client)
-    _sync_food_bank(client)
-    _sync_manual_bank(client)
+    _sync_budget(client, device_ids)
+    _sync_food_bank(client, device_ids)
+    _sync_manual_bank(client, device_ids)
 
     push_log = daylog_to_log(resigned)
     push_json = json.dumps(
