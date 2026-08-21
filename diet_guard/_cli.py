@@ -30,6 +30,7 @@ from diet_guard._cli_averages import cmd_averages
 from diet_guard._cli_gate import cmd_gate
 from diet_guard._cli_init import cmd_init
 from diet_guard._cli_log import ManualMacroArgs, Portion, cmd_ate
+from diet_guard._cli_prune import cmd_prune_peers
 from diet_guard._cli_sync import cmd_sync
 from diet_guard._gate import due_slots
 from diet_guard._meal_schedule_store import current_schedule
@@ -186,12 +187,23 @@ def _dispatch_gate(args: argparse.Namespace) -> int:
 # A table rather than an if-chain: the chain grew a return per subcommand and
 # tripped ruff's return-count limit at the seventh, and a table also has no
 # unreachable trailing branch for the 100%-coverage gate to chase.
+def _dispatch_prune(args: argparse.Namespace) -> int:
+    """Unpack the prune-peers flags for :func:`cmd_prune_peers`."""
+    return cmd_prune_peers(
+        _emit,
+        keep=args.keep,
+        backup_dir=args.backup_dir,
+        apply=args.apply,
+    )
+
+
 _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "init": lambda _args: cmd_init(_emit, _ask),
     "ate": _dispatch_ate,
     "status": lambda _args: _cmd_status(),
     "averages": lambda _args: cmd_averages(_emit),
     "sync": lambda _args: cmd_sync(_emit),
+    "prune-peers": _dispatch_prune,
     "gate": _dispatch_gate,
     "undo": lambda _args: _cmd_undo(),
 }
