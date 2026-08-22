@@ -22,6 +22,21 @@ So:
   dish by dish, in the caterer's own meal order. The user still clicks
   "Log & Continue" for each.
 
+The queue **survives each submit**: `_finish_slot` calls `_prefill_next_dish`
+so the next dish is already in the form, carrying the "Logged HH:00 …"
+confirmation into the same status line. One button click walks the whole
+delivery. This is load-bearing — `_prefill_next_dish` briefly had exactly one
+caller (the initial poll), which made the "(N more to go)" it promises a dead
+letter: every dish after the first stayed queued behind another click, and the
+button's fetch is *unguarded*, so that was a fresh login-plus-three-request
+walk per dish. `test_kuchnia_queue.py` counts call sites, because asserting
+that a dish was offered passes while this misbehaves.
+
+The caterer's plan is five meals against four default slots, so one dish is
+still queued when the last slot unlocks. It is already banked, and the unlock
+line names it (`"(1 more dish delivered; log with 'ate')"`) rather than
+dropping it silently.
+
 ## The API (undocumented, recovered by inspection)
 
 The panel is a white-labelled **Dietly** React SPA. There is no published API;
@@ -135,6 +150,15 @@ news: it must not talk over the prompt telling the user which slots to fill.
   through existing sync, and `FoodBankRecord.fromJson`/`toJson` enumerate a
   fixed key set — a provenance field written by the PC would be silently
   dropped on every round-trip, producing an endless re-add/re-strip ping-pong.
+  Verified rather than assumed: `app/test/kuchnia_bank_interop_test.dart`
+  round-trips a verbatim capture of a real imported bank through the Dart
+  model, diacritics and `t` stamp included.
+- **The two devices normalize bank keys with different primitives** — Python
+  `str.casefold()`, Dart `String.toLowerCase()`. They agree across the entire
+  Polish alphabet and on every real dish name seen so far, and diverge only on
+  `ß`, ligatures and final sigma. Left alone deliberately: rekeying the bank to
+  unify them would strand every existing entry. The Dart test above pins the
+  agreement, so a future non-Polish dish name cannot break it unnoticed.
 
 ## Re-probing the API
 

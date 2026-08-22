@@ -139,8 +139,14 @@ class _PullFlows(_GateNutrition):
         self._delivery_pending = dishes_in_slot_order(outcome.dishes)
         self._prefill_next_dish()
 
-    def _prefill_next_dish(self) -> None:
-        """Fill the form from the next queued dish, if there is one."""
+    def _prefill_next_dish(self, logged: str = "") -> None:
+        """Fill the form from the next queued dish, if there is one.
+
+        Args:
+            logged: What was just logged, when this follows a submit. Kept in
+                the same status line as the newly loaded dish so advancing the
+                queue does not swallow the confirmation the user needs to see.
+        """
         if not self._delivery_pending:
             return
         dish, *rest = self._delivery_pending
@@ -155,7 +161,10 @@ class _PullFlows(_GateNutrition):
         self._refresh_projection()
         remaining = len(self._delivery_pending)
         suffix = f" ({remaining} more to go)" if remaining else ""
-        self._set_status(f"Loaded: {dish.name}{suffix} — check, then Log & Continue.")
+        prefix = f"{logged} — " if logged else ""
+        self._set_status(
+            f"{prefix}Loaded: {dish.name}{suffix} — check, then Log & Continue."
+        )
 
     def _autoload_delivery(self) -> None:
         """Start a guarded catering fetch as the lock opens.

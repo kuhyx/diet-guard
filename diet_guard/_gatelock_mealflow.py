@@ -157,6 +157,14 @@ class _GateMealFlow(_PullFlows):
             return
         self._clear_inputs()
         self._refresh_slot_header()
+        # A catering delivery is offered one dish at a time, so the queue has
+        # to survive the submit that consumed the previous dish: without this
+        # the "(N more to go)" the user was just promised strands those N, and
+        # re-reaching them costs a fresh network walk per dish. Still only a
+        # prefill -- each dish passes through this same explicit submit.
+        if self._delivery_pending:
+            self._prefill_next_dish(logged)
+            return
         self._set_status(f"{logged} — next meal, please.")
         self._widgets.desc_text.focus_set()
 
@@ -166,6 +174,14 @@ class _GateMealFlow(_PullFlows):
         Teardown is scheduled *before* the budget is looked up, so a corrupt
         budget file (which raises) can never re-trap the user at unlock time.
         """
+        # A 5-meal plan against 4 slots leaves a dish queued when the last slot
+        # is satisfied (``_kuchnia_spread`` doubles up the earliest slots), so
+        # say what was not offered rather than dropping it silently. Purely
+        # informational: the dishes are already banked, and the lock is over.
+        left = len(self._delivery_pending)
+        if left:
+            noun = "dish" if left == 1 else "dishes"
+            logged = f"{logged} ({left} more {noun} delivered; log with 'ate')"
         self._set_status(f"{logged} — all meals logged, unlocking…")
         self.root.after(_UNLOCK_DELAY_MS, self.close)
 
