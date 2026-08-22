@@ -14,9 +14,11 @@ rather than a periodic timer.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import threading
 from typing import TYPE_CHECKING
 
 from diet_guard._foodbank import remember_food
+from diet_guard._kuchnia_import import refresh_delivery_once
 from diet_guard._meal_schedule_store import current_schedule
 from diet_guard._portions import DEFAULT_ITEM_GRAMS, estimate_unit_grams
 from diet_guard._resolve import ManualMacros, resolve_nutrition
@@ -166,5 +168,27 @@ def cmd_ate(
     publish_after_log_detached(
         lambda reason: emit(f"logged locally, not yet published ({reason})."),
     )
+    # Warm the catering bank on the same background thread, so tomorrow's
+    # autocomplete already knows today's dishes. Guarded to one fetch per day
+    # (`refresh_delivery_once`), because this fires after *every* meal and each
+    # unguarded refresh is a login plus a three-request walk. Never inline: it
+    # would add up to the whole catering deadline to an interactive command.
+    _warm_catering_bank_detached()
     print_summary()
     return 0
+
+
+def _warm_catering_bank_detached() -> None:
+    """Refresh today's catering bank off-thread, ignoring any failure.
+
+    Non-daemon, matching ``publish_after_log_detached``: the process waits for
+    it at exit while the user already has their output. Failures are silent by
+    design -- the user asked to log a meal, not to hear about the caterer.
+    """
+
+    def _warm() -> None:
+        # A module-global lookup, so the conftest patch on this module's
+        # attribute takes effect -- and so ruff can see the import is used.
+        refresh_delivery_once(now_local().date())
+
+    threading.Thread(target=_warm, daemon=False).start()

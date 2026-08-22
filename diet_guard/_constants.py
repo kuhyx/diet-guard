@@ -121,3 +121,38 @@ SYNC_TIMEOUT_SECONDS: float = 10.0
 #: back to *15s per request* and one hung session refresh stalls the lock
 #: window. The journal records five such refresh failures in five days.
 INTERACTIVE_TIMEOUT_SECONDS: float = 2.0
+
+# --- Kuchnia Wikinga catering import -------------------------------------
+# The panel is a white-labelled Dietly SPA. Its API is undocumented; the
+# endpoint map was recovered from the site's JS bundles and confirmed against
+# live responses (see docs/kuchnia-wikinga.md).
+KUCHNIA_API_BASE: str = "https://panel.kuchniavikinga.pl/api"
+# Sent as the ``company-id`` header. The panel wants the company *name*, not a
+# numeric id -- confirmed by its own postSideOrders call passing companyName.
+KUCHNIA_COMPANY: str = "kuchniavikinga"
+# The panel's own launcher tag for a browser panel session.
+KUCHNIA_LAUNCHER_TYPE: str = "BROWSER_PANEL"
+# Credentials the user writes by hand, mode 600: e-mail on line 1, password on
+# line 2. Nothing in this package ever writes it, exactly as with
+# SYNC_TOKEN_FILE. Under ~/.config, not DATA_DIR, so it is outside the synced
+# tree -- a credential must never leave the machine it was entered on.
+KUCHNIA_CREDENTIALS_FILE: Path = (
+    Path.home() / ".config" / "diet_guard" / "kuchnia_credentials"
+)
+# The cached SESSION cookie, so a refresh does not re-login every time. Also
+# outside the synced tree, for the same reason.
+KUCHNIA_SESSION_FILE: Path = (
+    Path.home() / ".config" / "diet_guard" / "kuchnia_session.json"
+)
+# One ISO date: the last day whose delivery was fetched. Without it the
+# gate and the after-log hook would each pay a full auth + 3-request walk
+# every time they fire. The curated bank cannot answer this -- it is keyed
+# by dish name, and knowing today's names requires the fetch itself.
+# Under ~/.config (not DATA_DIR): a per-device rate limit must not sync.
+KUCHNIA_LAST_IMPORT_FILE: Path = (
+    Path.home() / ".config" / "diet_guard" / "kuchnia_last_import"
+)
+KUCHNIA_TIMEOUT_SECONDS: float = 8.0
+# Whole-walk ceiling. The import is 3-4 sequential requests, so a per-request
+# timeout alone would permit ~32s against a slow provider.
+KUCHNIA_TOTAL_DEADLINE_SECONDS: float = 12.0

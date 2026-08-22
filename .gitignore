@@ -17,3 +17,6 @@ htmlcov/
 
 # ci_mirror.sh cached requirements.txt venv (rebuilt on demand)
 .ci-mirror-venv/
+
+# Kuchnia Wikinga probe captures: contain account data, never commit.
+kuchnia_probe*.json

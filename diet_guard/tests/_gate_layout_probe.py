@@ -149,6 +149,7 @@ def measure(
             on_submit=_noop,
             on_close=_noop,
             on_fetch_sync=_noop,
+            on_load_delivery=_noop,
         )
         widgets = build_layout(
             notebook, _make_vars(populated=populated), callbacks, demo_mode=False

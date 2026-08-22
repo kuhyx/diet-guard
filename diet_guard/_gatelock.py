@@ -32,12 +32,11 @@ repo's 250-line limit: :mod:`._gatelock_core` provides the shared leaf
 widget/field helpers and state (``_GateCore``, ``_GateState``);
 :mod:`._gatelock_nutrition` provides the reference->total nutrition maths and
 food lookup (``_GateNutrition``); :mod:`._gatelock_mealflow` provides the
-submit/log flow, dashboard, and callback-error handling (``_GateMealFlow``);
-and :mod:`._gatelock_calendar` provides the second ``ttk.Notebook`` tab --
-the budget-adherence calendar, streaks, and YTD tally from
-:mod:`._daystatus`, plus budget editing (``_GateCalendar``). ``MealGate``
-wires these mixins together, owns the ``gatelock.LockWindow``, and handles
-construction, layout, and event binding.
+submit/log flow, dashboard, callback errors and the pull-it-in buttons
+(``_GateMealFlow`` + ``_PullFlows``); :mod:`._gatelock_calendar` the tab --
+the budget-adherence calendar, streaks, YTD tally (:mod:`._daystatus`) and
+budget editing (``_GateCalendar``). ``MealGate`` wires these together, owns the
+``gatelock.LockWindow``, and handles construction, layout and event binding.
 """
 
 from __future__ import annotations
@@ -167,6 +166,7 @@ class MealGate(_GateCalendar):
             on_submit=self._on_submit,
             on_close=self.close,
             on_fetch_sync=self._on_fetch_sync,
+            on_load_delivery=self._on_load_delivery,
         )
         self._build()
 
@@ -210,6 +210,7 @@ class MealGate(_GateCalendar):
         if surface is None:
             return
         self._widgets.desc_text.focus_force()
+        self._autoload_delivery()
 
     def on_close(self) -> None:
         """No hardware/state to release; meal-log writes already happened."""

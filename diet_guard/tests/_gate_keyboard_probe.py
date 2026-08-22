@@ -92,6 +92,7 @@ def probe(screen_w: int = 1366, screen_h: int = 768) -> RingReport:
             on_submit=_noop,
             on_close=_noop,
             on_fetch_sync=_noop,
+            on_load_delivery=_noop,
         )
         widgets = build_layout(
             notebook, _make_vars(populated=True), callbacks, demo_mode=False

@@ -20,6 +20,7 @@ are functional in-memory stand-ins, shared by ``test_gatelock.py`` and
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -95,8 +96,13 @@ if TYPE_CHECKING:
 
 @pytest.fixture(autouse=True)
 def _isolate_state(tmp_path: Path) -> Iterator[None]:
-    """Redirect all on-disk diet_guard state into a temp dir."""
-    with (
+    """Redirect all on-disk diet_guard state into a temp dir.
+
+    Built as a list fed through an ``ExitStack`` rather than one ``with``
+    tuple: the tuple form is a statically nested block per entry, and at
+    ~20 redirects CPython refuses to compile it.
+    """
+    redirects = [
         patch(
             "diet_guard._budget.BUDGET_FILE",
             tmp_path / ".budget",
@@ -159,7 +165,47 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
         # entry point (narrow peer-log pull, not the full tick). Without
         # this every test that reaches `_should_lock` hits the real remote.
         patch("diet_guard._cli_gate.pull_peer_logs", return_value=None),
-    ):
+        # The catering credentials and its cached session cookie. Redirected
+        # for the same reason as `sync_token`: `_test_guard` raises on any
+        # write under the real ~/.config/diet_guard, and a test that logs in
+        # would otherwise clobber the live session. Deliberately NOT added to
+        # `test_state_redirect._REDIRECTED_CONSTANTS`, matching
+        # `SYNC_TOKEN_FILE` -- that check enforces a single naming module,
+        # which would forbid the CLI naming the path in its own setup text.
+        patch(
+            "diet_guard._kuchnia_config.KUCHNIA_CREDENTIALS_FILE",
+            tmp_path / "kuchnia_credentials",
+        ),
+        patch(
+            "diet_guard._kuchnia_config.KUCHNIA_SESSION_FILE",
+            tmp_path / "kuchnia_session.json",
+        ),
+        patch(
+            "diet_guard._kuchnia_config.KUCHNIA_LAST_IMPORT_FILE",
+            tmp_path / "kuchnia_last_import",
+        ),
+        # The catering fetch is a third network entry point. Patched at each
+        # call site, so a test importing `refresh_delivery` directly still
+        # exercises the real helper.
+        patch("diet_guard._cli_kuchnia.refresh_delivery", return_value=([], None)),
+        # Logging a meal now warms the catering bank on a background
+        # thread. Without this every meal-logging test in the suite reaches
+        # the live panel.
+        patch(
+            "diet_guard._cli_log.refresh_delivery_once",
+            return_value=([], None),
+        ),
+        # Logging a meal now warms the catering bank on a background
+        # thread. Without this every meal-logging test in the suite reaches
+        # the live panel.
+        patch(
+            "diet_guard._gatelock_delivery.refresh_delivery",
+            return_value=([], None),
+        ),
+    ]
+    with ExitStack() as stack:
+        for redirect in redirects:
+            stack.enter_context(redirect)
         yield
 
 

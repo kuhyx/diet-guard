@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 
 from diet_guard._cli_averages import register_averages_subparser
+from diet_guard._cli_kuchnia import register_kuchnia_subparser
 from diet_guard._cli_prune import register_prune_subparser
 from diet_guard._cli_sync import register_sync_subparser
 
@@ -82,6 +83,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     sub.add_parser("status", help="Show today's calories and budget band.")
     sub.add_parser("undo", help="Remove today's most recent entry.")
     register_averages_subparser(sub)
+    register_kuchnia_subparser(sub)
     register_prune_subparser(sub)
     register_sync_subparser(sub)
 

@@ -84,3 +84,4 @@ class GateCallbacks:
     on_submit: Callable[[], None]
     on_close: Callable[[], None]
     on_fetch_sync: Callable[[], None]
+    on_load_delivery: Callable[[], None]

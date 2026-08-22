@@ -11,19 +11,22 @@ calorie/macro dashboard it calls into lives in :mod:`._gatelock_dashboard`.
 from __future__ import annotations
 
 import contextlib
-import queue
 import tkinter as tk
 from typing import TYPE_CHECKING
 
+from diet_guard._budget import BudgetError, daily_budget
+from diet_guard._budget_derived import protein_target_g
 from diet_guard._foodbank import remember_food
-from diet_guard._gate import due_slots
-from diet_guard._gatelock_dashboard import _GateDashboard
-from diet_guard._gatelock_fetch import FETCH_POLL_MS, start_fetch
+from diet_guard._gatelock_delivery import _PullFlows
 from diet_guard._gatelock_ui import ERR, FG, UNIT_GRAMS
 from diet_guard._resolve import lookup_candidates
 from diet_guard._slots import slot_label
-from diet_guard._state import log_meal
-from diet_guard._sync_refresh import pull_peer_logs
+from diet_guard._state import entry_kcal, log_meal
+from diet_guard._state_today import (
+    today_entries,
+    today_total_kcal,
+    today_total_macros,
+)
 
 if TYPE_CHECKING:
     from diet_guard._estimator import Nutrition
@@ -31,14 +34,16 @@ if TYPE_CHECKING:
 # How long the "unlocking..." confirmation lingers before the window tears down.
 _UNLOCK_DELAY_MS = 1200
 
+# How many recent meals the dashboard lists.
+_DASHBOARD_ROWS = 5
+# ISO timestamp "YYYY-MM-DDTHH:MM:SS": HH:MM is characters 11..16.
+_TIME_SLICE = slice(11, 16)
+# Width a meal description is truncated to in the dashboard.
+_DASH_DESC_WIDTH = 22
 
-class _GateMealFlow(_GateDashboard):
+
+class _GateMealFlow(_PullFlows):
     """Submit/lookup/log flow for a logged food."""
-
-    #: The in-flight fetch's result queue, or None when no fetch is running.
-    #: Doubles as the poll's own guard: a stray poll after completion finds
-    #: None and stops rather than blocking on an empty queue forever.
-    _fetch_result: queue.Queue[str | None] | None = None
 
     # -- slot walk ------------------------------------------------------------
 
@@ -164,74 +169,43 @@ class _GateMealFlow(_GateDashboard):
         self._set_status(f"{logged} — all meals logged, unlocking…")
         self.root.after(_UNLOCK_DELAY_MS, self.close)
 
-    # -- manual sync ------------------------------------------------------------
+    def _refresh_dashboard(self) -> None:
+        """Recompute the prominent calorie headline and the detail panel."""
+        self._vars.cal_headline.set(self._cal_headline_text())
+        self._vars.dashboard.set(self._dashboard_text())
 
-    def _on_fetch_sync(self) -> None:
-        """Pull the shared log on demand and unlock any slots it now satisfies.
-
-        For a meal already logged on another device (typically the phone) that
-        has not yet propagated here: rather than re-entering it to unlock, the
-        user pulls it in.
-
-        The pull is the *narrow* one (:func:`pull_peer_logs`) and runs on a
-        worker thread, so the window stays live. It used to run the full tick
-        inline and froze the fullscreen lock for its whole duration (~18-27s
-        measured). The button's question is the same as the gate's -- "did a
-        peer log this slot?" -- and :meth:`_reconcile_after_fetch` reads only
-        ``due_slots()``, so the budget and food banks it dropped were never
-        consulted here; the full tick still runs once the window closes.
-        Measured at ~92ms against the live remote.
-
-        Fails closed: a failure leaves the lock untouched. A second click while
-        a fetch is in flight is ignored, which is the reentrancy guard and the
-        write-race fix in one -- two workers would race two log writes and
-        orphan one result.
-        """
-        if self.demo_mode:
-            self._set_status("Fetch from sync is only available on the real lock.")
-            return
-        if self._fetch_result is not None:
-            # Already fetching. Without this a double-click starts a second
-            # worker, orphans the first result and races two log writes.
-            return
-        self._set_status("Fetching from sync…")
-        self._fetch_result = start_fetch(pull_peer_logs)
-        self.root.after(FETCH_POLL_MS, self._poll_fetch)
-
-    def _poll_fetch(self) -> None:
-        """On the Tk thread: pick up the worker's result once it lands."""
-        result = self._fetch_result
-        if result is None:
-            return
+    def _cal_headline_text(self) -> str:
+        """Return the big calories-today line: consumed, target, and remaining."""
+        consumed = today_total_kcal()
         try:
-            reason = result.get_nowait()
-        except queue.Empty:
-            self.root.after(FETCH_POLL_MS, self._poll_fetch)
-            return
-        self._fetch_result = None
-        if reason is not None:
-            self._set_status(f"{reason} — still locked.", error=True)
-            return
-        self._reconcile_after_fetch()
+            budget = daily_budget()
+        except (BudgetError, OSError):
+            return f"{consumed:g} kcal today"
+        return (
+            f"{consumed:g} / {budget:g} kcal   ·   {round(budget - consumed, 1):g} left"
+        )
 
-    def _reconcile_after_fetch(self) -> None:
-        """Drop pending slots a freshly pulled meal now covers; unlock if none."""
-        still_due = set(due_slots())
-        satisfied_slots = [slot for slot in self._pending if slot not in still_due]
-        self._refresh_dashboard()
-        if not satisfied_slots:
-            self._set_status("No new meals found in sync.")
-            return
-        self._pending = [slot for slot in self._pending if slot in still_due]
-        if not self._pending:
-            self._unlock("Synced from another device")
-            return
-        self._clear_inputs()
-        self._refresh_slot_header()
-        count = len(satisfied_slots)
-        meal_word = "meal" if count == 1 else "meals"
-        self._set_status(f"Pulled {count} {meal_word} — next meal, please.")
-        self._widgets.desc_text.focus_set()
+    def _dashboard_text(self) -> str:
+        """Build the detail panel: recent meals, then macros and protein."""
+        lines = ["── Today ───────────────────────────────"]
+        entries = today_entries()
+        if entries:
+            for entry in entries[-_DASHBOARD_ROWS:]:
+                clock = str(entry.get("time", ""))[_TIME_SLICE]
+                desc = str(entry.get("desc", "?"))[:_DASH_DESC_WIDTH]
+                lines.append(
+                    f"  {clock:>5}  {desc:<{_DASH_DESC_WIDTH}}  "
+                    f"{entry_kcal(entry):>5.0f} kcal",
+                )
+        else:
+            lines.append("  (nothing logged yet today)")
+        protein, carbs, fat = today_total_macros()
+        lines.append(f"  macros so far:  P{protein:g}  C{carbs:g}  F{fat:g}  g")
+        target = protein_target_g()
+        if target is not None:
+            left = round(target - protein, 1)
+            lines.append(f"  protein {protein:g} / {target:g} g  ({left:g} g left)")
+        return "\n".join(lines)
 
     def on_callback_error(self) -> None:
         """Surface an unexpected callback error without dropping the grab."""

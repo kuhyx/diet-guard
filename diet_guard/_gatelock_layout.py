@@ -116,15 +116,32 @@ def _build_actions(body: tk.Frame, callbacks: GateCallbacks) -> None:
         callbacks.on_submit,
     ).pack(pady=(XS, XS))
 
-    # Manual pull for a meal already logged on another device (the phone) but
-    # not yet propagated to this machine -- saves re-typing it to unlock.
+    # Both "pull it in from elsewhere" actions share one row: stacking them
+    # cost 42px, which pushed the tab past the viewport on a 1366x768 screen
+    # (test_gate_fits_the_primary_screen). Side by side they fit.
+    pulls = tk.Frame(body, bg=BG)
+    pulls.pack(pady=(0, XS))
+
+    # A meal already logged on another device (the phone) but not yet
+    # propagated here -- saves re-typing it to unlock.
     make_button(
-        body,
+        pulls,
         _COLORS,
         "⟳ Fetch from sync",
         callbacks.on_fetch_sync,
         ButtonStyle(variant="secondary", bold=False),
-    ).pack(pady=(0, XS))
+    ).pack(side="left", padx=(0, XS))
+
+    # Today's catering delivery, with its real macros. Loading only *offers*
+    # the dishes -- each still has to be checked and submitted, because a
+    # delivered meal is not an eaten meal.
+    make_button(
+        pulls,
+        _COLORS,
+        "🍱 Today's delivery",
+        callbacks.on_load_delivery,
+        ButtonStyle(variant="secondary", bold=False),
+    ).pack(side="left")
 
 
 def build_layout(
