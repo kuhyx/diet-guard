@@ -225,9 +225,10 @@ phone show both.
 - Don't strip the `components` field: nothing writes it, but historical
   composite entries and the food bank read it, and it is part of the sync wire
   format.
-- Don't let the catering import write a log entry unattended: a delivered
-  meal is not an eaten meal, and the gate would satisfy its own checkpoint.
-  See [docs/kuchnia-wikinga.md](docs/kuchnia-wikinga.md).
+- Don't let the catering import log unattended (delivered ≠ eaten), don't let
+  its Python and Dart halves drift (one shared fixture gates them), and don't
+  make the synced password machine-local — the phone could not then fetch.
+  [docs](docs/kuchnia-wikinga.md), [phone](docs/kuchnia-wikinga-phone.md).
 - Don't add a dependency without the production install-path check above.
 - Don't reintroduce a seal/`chattr +i` on the budget file.
 - Don't re-add a Linux embedder target, and don't change the wrapper's port or

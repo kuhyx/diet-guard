@@ -135,7 +135,7 @@ returns a reason string and the caller carries on.
 
 ## Triggers
 
-Three, all event-driven. **No new systemd timer** — `diet-guard-sync.timer` was
+All event-driven. **No new systemd timer** — `diet-guard-sync.timer` was
 deliberately deleted and `install.sh` actively uninstalls it.
 
 | | Where | Guarded? |
@@ -143,11 +143,19 @@ deliberately deleted and `install.sh` actively uninstalls it.
 | CLI | `diet-guard kuchnia` | no — an explicit ask always goes and looks |
 | Gate | `MealGate.on_focus_ready` → `_autoload_delivery` | yes |
 | After a meal | `_cli_log.cmd_ate`, on the existing background thread | yes |
+| Phone: log screen | `LogMealKuchniaMixin.loadTodaysDelivery` on `initState` | yes |
+| Phone: settings | the "Fetch today's delivery" button | no — same rule as the CLI |
 
-The guarded pair go through `refresh_delivery_once`, which skips the walk when
-today has already been fetched (`kuchnia_last_import`, one ISO date). Without
-it the after-log hook would pay a login plus three requests after *every* meal.
-Only a clean fetch records the date, so an outage is retried.
+The guarded ones go through `refresh_delivery_once` (Python) or
+`KuchniaQueueService.refreshOnce` (Dart), which skip the walk when today has
+already been fetched. Without that the after-log hook would pay a login plus
+three requests after *every* meal. Only a clean fetch records the date, so an
+outage is retried.
+
+The marker is **device-local on both sides** — `kuchnia_last_import` under
+`~/.config` on the PC, `kuchnia_last_import.json` in the app's document store
+on the phone. It is a rate limit, not shared state: syncing it would let one
+device's fetch suppress the other's.
 
 **Why the gate hook is in `on_focus_ready` and not `_cli_gate._should_lock`:**
 `gate_is_due()` reads only the food log and the schedule, never the food bank,
@@ -210,6 +218,12 @@ news: it must not talk over the prompt telling the user which slots to fill.
   `ß`, ligatures and final sigma. Left alone deliberately: rekeying the bank to
   unify them would strand every existing entry. The Dart test above pins the
   agreement, so a future non-Polish dish name cannot break it unnoticed.
+
+## The phone runs the same import
+
+`app/` carries a Dart mirror of the whole walk, so the feature works with the
+PC switched off — including the cross-language parity gate that keeps the two
+from drifting. See [kuchnia-wikinga-phone.md](kuchnia-wikinga-phone.md).
 
 ## Re-probing the API
 
