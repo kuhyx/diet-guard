@@ -1,0 +1,87 @@
+[
+  {
+    "deliveryMealId": 1001,
+    "mealName": "Śniadanie",
+    "mealPriority": 1,
+    "menuMealName": "Marchewkowe pancakes, twarożek cynamonowy, sos truskawkowy",
+    "nutrition": {
+      "calories": 435.0,
+      "carbohydrate": 54.64,
+      "dietaryFiber": 2.03,
+      "fat": 12.01,
+      "protein": 25.86,
+      "salt": 0.52,
+      "saturatedFattyAcids": 1.92,
+      "sugar": 22.4,
+      "weight": 270.0
+    }
+  },
+  {
+    "deliveryMealId": 1002,
+    "mealName": "II śniadanie",
+    "mealPriority": 2,
+    "menuMealName": "Hummus paprykowy, mini wafle kukurydziane, warzywa",
+    "nutrition": {
+      "calories": 367.0,
+      "carbohydrate": 41.67,
+      "dietaryFiber": 9.18,
+      "fat": 17.26,
+      "protein": 10.86,
+      "salt": 1.27,
+      "saturatedFattyAcids": 1.59,
+      "sugar": 3.77,
+      "weight": 205.0
+    }
+  },
+  {
+    "deliveryMealId": 1003,
+    "mealName": "Obiad",
+    "mealPriority": 3,
+    "menuMealName": "Makaron farfalle z indykiem w sosie z batatów z suszonymi pomidorami, ser włoski",
+    "nutrition": {
+      "calories": 594.0,
+      "carbohydrate": 53.23,
+      "dietaryFiber": 3.83,
+      "fat": 23.21,
+      "protein": 42.47,
+      "salt": 1.08,
+      "saturatedFattyAcids": 7.03,
+      "sugar": 4.88,
+      "weight": 465.0
+    }
+  },
+  {
+    "deliveryMealId": 1004,
+    "mealName": "Podwieczorek",
+    "mealPriority": 4,
+    "menuMealName": "Fit ciasto, jak twix white",
+    "nutrition": {
+      "calories": 268.0,
+      "carbohydrate": 25.18,
+      "dietaryFiber": 0.36,
+      "fat": 17.36,
+      "protein": 5.85,
+      "salt": 0.15,
+      "saturatedFattyAcids": 10.76,
+      "sugar": 8.3,
+      "weight": 90.0
+    }
+  },
+  {
+    "deliveryMealId": 1005,
+    "mealName": "Kolacja",
+    "mealPriority": 5,
+    "menuMealName": "Kaszotto grzybowe z pieczonym kurczakiem i serem włoskim",
+    "nutrition": {
+      "calories": 391.0,
+      "carbohydrate": 35.56,
+      "dietaryFiber": 3.69,
+      "fat": 13.02,
+      "protein": 32.51,
+      "salt": 1.3,
+      "saturatedFattyAcids": 6.53,
+      "sugar": 1.99,
+      "weight": 318.0
+    }
+  }
+]

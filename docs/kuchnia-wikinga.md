@@ -146,13 +146,37 @@ news: it must not talk over the prompt telling the user which slots to fill.
 - **`requests` is lazy-imported.** The gate's not-due tick imports the CLI and
   must not pay ~78ms for an HTTP stack it never touches. Call sites reach
   through `sys.modules[__name__]` so `patch.object` still wins.
-- **The phone needs no importer.** It receives the curated bank and the log
-  through existing sync, and `FoodBankRecord.fromJson`/`toJson` enumerate a
-  fixed key set — a provenance field written by the PC would be silently
-  dropped on every round-trip, producing an endless re-add/re-strip ping-pong.
-  Verified rather than assumed: `app/test/kuchnia_bank_interop_test.dart`
-  round-trips a verbatim capture of a real imported bank through the Dart
-  model, diacritics and `t` stamp included.
+- **The phone has its own importer, and the two must agree exactly.** It no
+  longer merely receives the curated bank: it fetches, parses and banks the
+  day's dishes itself, so the feature works with the PC switched off. That
+  makes three things load-bearing across two languages — which dishes are
+  *dropped*, which *slot* each lands on, and the exact JSON a banked record
+  encodes to. A disagreement on any of them means each device re-adds what the
+  other dropped; `add_manual_entry` restamps `t` unconditionally, so the whole
+  curated bank republishes to every peer on every refresh. A slot mismatch is
+  worse: a checkpoint one device offers and the other does not can never be
+  satisfied.
+
+  Gated by **one shared fixture**, `tests/fixtures/kuchnia_day.json`, asserted
+  by `diet_guard/tests/test_kuchnia_parity.py` *and*
+  `app/test/kuchnia_parity_test.dart`. Two suites written independently from
+  the same prose is not a gate; one input with one expected result is.
+  Regenerate it with `scripts/build_kuchnia_fixture.py`, and re-read the diff
+  before committing — the script blesses whatever Python currently does.
+
+  Three traps the fixture pins, each of which passed review once:
+  `_ENERGY_TOLERANCE` is **0.35**, not the ~1% the prose above quotes for the
+  captured day; `jsonEncode(435)` emits `435` where Python emits `435.0`, so
+  every Dart macro is forced to `double`; and Dart's `List.sort` is unstable
+  where Python's `sorted` is stable, so the Dart comparator carries the payload
+  index as a final tiebreak.
+
+- **Bank records still round-trip losslessly through the Dart model.**
+  `FoodBankRecord.fromJson`/`toJson` enumerate a fixed key set — a provenance
+  field written by the PC would be silently dropped on every round-trip,
+  producing an endless re-add/re-strip ping-pong.
+  `app/test/kuchnia_bank_interop_test.dart` round-trips a verbatim capture of a
+  real imported bank through the Dart model, diacritics and `t` stamp included.
 - **The two devices normalize bank keys with different primitives** — Python
   `str.casefold()`, Dart `String.toLowerCase()`. They agree across the entire
   Polish alphabet and on every real dish name seen so far, and diverge only on

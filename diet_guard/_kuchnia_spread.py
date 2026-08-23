@@ -14,10 +14,20 @@ last, and doubles up the earliest slots rather than dropping anything.
 Integer ``//`` only, never ``round()``.  That is repo convention for slot
 arithmetic (``docs/meal-schedule.md``): Python's banker's rounding and Dart's
 half-away-from-zero disagree on ``.5``, and a slot one device offers while the
-other does not is a checkpoint that can never be satisfied.  The parity risk is
-theoretical *here* -- the phone has no importer and so no mirror of this code
-(see the plan's §8) -- but the rule is cheap to keep and expensive to
-rediscover.
+other does not is a checkpoint that can never be satisfied.
+
+**The mirror now exists**: ``app/lib/services/kuchnia_spread.dart`` runs this
+same mapping on the phone, which fetches the catering menu itself rather than
+waiting for the PC to bank it.  The parity risk stopped being theoretical the
+day that landed, so the two implementations are gated by one shared fixture,
+``tests/fixtures/kuchnia_day.json``, asserted by
+``diet_guard/tests/test_kuchnia_parity.py`` *and*
+``app/test/kuchnia_parity_test.dart`` -- same input, same expected slots.
+
+One Dart-only hazard has no Python counterpart and is easy to reintroduce:
+``List.sort`` is not stable while :func:`sorted` is, so the Dart comparator
+carries the payload index as a final tiebreak.  Without it two dishes sharing
+both a priority and a name could order differently on the two devices.
 """
 
 from __future__ import annotations

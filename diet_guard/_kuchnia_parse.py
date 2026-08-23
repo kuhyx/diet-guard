@@ -18,6 +18,14 @@ sums to 2055 kcal against the plan's declared 2000.  Had they been per-100 g,
 every imported meal would have been silently wrong by a factor of several --
 which is why :func:`parse_menu` drops a dish whose numbers do not hold together
 instead of importing a plausible-looking lie.
+
+That ~1% is how closely the *captured day* happened to agree, **not** the
+threshold: :data:`_ENERGY_TOLERANCE` is 0.35.  The distinction matters now that
+``app/lib/services/kuchnia_parse.dart`` mirrors this check on the phone -- a
+port that copied "1%" from this paragraph would drop dishes the PC keeps, and
+then each device re-adds what the other dropped, restamping and republishing
+the whole curated bank on every refresh.  Both sides are gated by
+``tests/fixtures/kuchnia_day.json``.
 """
 
 from __future__ import annotations
