@@ -6,9 +6,9 @@ import 'dart:async';
 
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_suggestion.dart';
-import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/screens/log_meal_actions.dart';
+import 'package:diet_guard_app/screens/log_meal_kuchnia_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_nav_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_progress.dart';
 import 'package:diet_guard_app/screens/log_meal_sync_mixin.dart';
@@ -43,7 +43,8 @@ class _LogMealScreenState extends State<LogMealScreen>
     with
         WidgetsBindingObserver,
         LogMealSyncMixin<LogMealScreen>,
-        LogMealNavMixin<LogMealScreen> {
+        LogMealNavMixin<LogMealScreen>,
+        LogMealKuchniaMixin<LogMealScreen> {
   @override
   http.Client? get syncHttpClient => widget.httpClient;
 
@@ -78,6 +79,9 @@ class _LogMealScreenState extends State<LogMealScreen>
     // a previous session says so immediately rather than only after a tick.
     unawaited(refreshSyncHealth());
     unawaited(autoSync());
+    // After autoSync so a dish already logged on the PC is known before the
+    // queue is built, and guarded so this costs at most one walk per day.
+    unawaited(loadTodaysDelivery());
   }
 
   @override
@@ -110,6 +114,13 @@ class _LogMealScreenState extends State<LogMealScreen>
     });
   }
 
+  @override
+  TextEditingController get descController => _descController;
+  @override
+  MacroControllers get macroControllers => _macros;
+  @override
+  void onDishPrefilled() => setState(() => _source = 'catering');
+
   void _onSuggestionSelected(FoodSuggestion suggestion) {
     _descController.text = suggestion.name;
     _macros.fillFrom(suggestion.nutrition);
@@ -128,15 +139,7 @@ class _LogMealScreenState extends State<LogMealScreen>
       });
       return;
     }
-    final nutrition = nutritionForPortion(
-      kcal: parseMacroField(_macros.kcal),
-      proteinG: parseMacroField(_macros.protein),
-      carbsG: parseMacroField(_macros.carbs),
-      fatG: parseMacroField(_macros.fat),
-      perGrams: parseMacroField(_macros.perGrams),
-      ateGrams: parseMacroField(_macros.grams),
-      source: _source,
-    );
+    final nutrition = nutritionFromControllers(_macros, _source);
     await LogStorageService.instance.logMeal(
       desc,
       nutrition,
@@ -151,7 +154,11 @@ class _LogMealScreenState extends State<LogMealScreen>
     // Offline backstop: if the push above fails (no connectivity), a
     // connectivity-gated WorkManager task uploads the meal on reconnect.
     unawaited(enqueueSyncBackstopTask());
-    await _dismissStaleReminder();
+    // Clears a reminder the meal just logged has now satisfied; without it a
+    // notification already on screen survives up to 15 min and reads as a
+    // false alarm. `pullWhenDue: false` because `autoSync` above already owns
+    // the network for this submit.
+    await checkAndNotify(pullWhenDue: false);
     if (!mounted) return;
     _descController.clear();
     _macros.clear();
@@ -161,23 +168,16 @@ class _LogMealScreenState extends State<LogMealScreen>
     });
     await refreshSlots();
     if (!mounted) return;
+    // The second `prefillNextDish` caller. Without it every dish after the
+    // first stays queued behind another tap and the "N more to log" line
+    // becomes a dead letter -- the exact regression the PC gate once shipped.
+    advanceQueueAfterLog(desc);
     setState(() {
-      _status = null;
+      _status = queueStatusLine;
       _progress = buildTodayProgress(log);
     });
   }
 
-  /// Clears any reminder the meal just logged has now satisfied.
-  ///
-  /// Without this a notification already on screen survives until the next
-  /// background tick (up to 15 minutes), which reads as a false alarm even
-  /// though the meal was logged on this very device. Passes
-  /// `pullWhenDue: false` because [autoSync] above already owns the network
-  /// here and the local log is by definition the freshest copy.
-  ///
-  /// [checkAndNotify] already swallows notification-platform failures, so
-  /// the meal -- written before this runs -- can never be lost to one.
-  Future<void> _dismissStaleReminder() => checkAndNotify(pullWhenDue: false);
 
   @override
   Widget build(BuildContext context) {

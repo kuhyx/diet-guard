@@ -84,3 +84,28 @@ List<KuchniaDish> dishesInSlotOrder(
   List<KuchniaDish> dishes,
   List<int> slots,
 ) => [for (final item in assignSlots(dishes, slots)) item.dish];
+
+/// Returns `(portionGrams, (kcal, protein, carbs, fat))` as form strings.
+///
+/// Mirrors `_kuchnia_spread.dish_field_values`. Formatted here rather than in
+/// the widget so the numeric formatting is covered by a test that needs no
+/// display.
+///
+/// Python uses `f"{value:g}"`, which drops a trailing `.0`; Dart's
+/// `toStringAsFixed` would keep it and `toString` would render `435.0`. So a
+/// whole number is printed as an integer and anything else keeps its
+/// decimals -- the form should read "435", not "435.0".
+(String, (String, String, String, String)) dishFieldValues(KuchniaDish dish) {
+  String format(double value) => value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toString();
+  return (
+    format(dish.grams),
+    (
+      format(dish.kcal),
+      format(dish.proteinG),
+      format(dish.carbsG),
+      format(dish.fatG),
+    ),
+  );
+}
