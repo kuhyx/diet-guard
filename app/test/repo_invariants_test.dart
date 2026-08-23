@@ -125,6 +125,28 @@ void main() {
     });
   });
 
+  group('singletons that silently no-op are initialised at startup', () {
+    // Every catering entry point checks `isInitialized` first and returns
+    // quietly when it is false, so a missing `init()` does not throw -- it
+    // reads as "no delivery" and "no credential" forever. That is invisible in
+    // widget tests, which initialise these directly, and was caught only by
+    // grepping main.dart before a phone deploy.
+    test('main.dart initialises the catering services', () {
+      final source = File('${_appDir.path}/lib/main.dart').readAsStringSync();
+      for (final call in [
+        'KuchniaCredentialService.init()',
+        'KuchniaQueueService.init()',
+      ]) {
+        expect(
+          source.contains(call),
+          isTrue,
+          reason: '$call is missing from main(). The feature will silently do '
+              'nothing on a real device while every test still passes.',
+        );
+      }
+    });
+  });
+
   group('the desktop wrapper origin is fixed', () {
     // IndexedDB is keyed by origin and lives in the Chrome profile. Changing
     // either the port or the --user-data-dir hides the entire local food log

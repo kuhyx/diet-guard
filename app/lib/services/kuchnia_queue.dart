@@ -23,6 +23,7 @@ library;
 
 import 'package:diet_guard_app/models/kuchnia_dish.dart';
 import 'package:diet_guard_app/services/document_store.dart';
+import 'package:diet_guard_app/services/document_store_factory.dart';
 import 'package:diet_guard_app/services/kuchnia_import.dart';
 import 'package:diet_guard_app/services/kuchnia_orders.dart' show isoDay;
 import 'package:flutter/foundation.dart';
@@ -60,7 +61,24 @@ class KuchniaQueueService {
   /// How many dishes are still waiting to be logged.
   static int get remaining => _instance?._pending.length ?? 0;
 
-  /// Initialises from [store], for tests and for [init].
+  /// Initialises the singleton against the platform document store.
+  ///
+  /// Without this the queue silently no-ops on a real device: every entry
+  /// point checks [isInitialized] first, so a missing call reads as "no
+  /// delivery" rather than as an error.
+  static Future<KuchniaQueueService> init() async {
+    if (_instance != null) return _instance!;
+    // Resolving the platform store is a plugin call, not reachable from
+    // `flutter test`.
+    // coverage:ignore-start
+    final service = KuchniaQueueService._(await openDocumentStore());
+    // coverage:ignore-end
+    await service._load();
+    _instance = service;
+    return service;
+  }
+
+  /// Initialises from [store], for tests.
   @visibleForTesting
   static Future<KuchniaQueueService> initForTesting(DocumentStore store) async {
     final service = KuchniaQueueService._(store);
