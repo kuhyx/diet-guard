@@ -12,6 +12,7 @@ already use:
 * :mod:`._daylog` -- the food log itself, including the legacy-format fallback
 * :mod:`._budget` -- the budget record and its ``hist:`` history fields
 * :mod:`._banks` -- the derived and curated halves of the food bank
+* :mod:`._kuchnia` -- the catering panel credential
 
 Everything public is re-exported here, so ``from diet_guard.sync_merge import
 parse_remote_log`` reaches the same object the flat module exposed. (The
@@ -45,6 +46,13 @@ from diet_guard.sync_merge._daylog import (
     parse_remote_log,
     record_to_entry,
 )
+from diet_guard.sync_merge._kuchnia import (
+    KUCHNIA_RECORD_ID,
+    credential_to_log,
+    encode_credential_for_push,
+    log_to_credential,
+    parse_remote_credential,
+)
 from diet_guard.sync_merge._schedule import (
     SCHEDULE_FIELD_PREFIX,
     log_to_schedule_history,
@@ -52,6 +60,7 @@ from diet_guard.sync_merge._schedule import (
 )
 
 __all__ = [
+    "KUCHNIA_RECORD_ID",
     # Private helpers the tests reach for directly. Re-exported deliberately:
     # they were importable from the flat module, and dropping them here would
     # break those tests for a naming reason rather than a behavioural one.
@@ -60,10 +69,13 @@ __all__ = [
     "_entry_hlc",
     "_legacy_entry_id",
     "budget_to_log",
+    "credential_to_log",
     "daylog_to_log",
+    "encode_credential_for_push",
     "entry_to_record",
     "food_bank_to_log",
     "log_to_budget",
+    "log_to_credential",
     "log_to_daylog",
     "log_to_food_bank",
     "log_to_history",
@@ -71,6 +83,7 @@ __all__ = [
     "log_to_schedule_history",
     "manual_bank_to_log",
     "parse_remote_budget",
+    "parse_remote_credential",
     "parse_remote_food_bank",
     "parse_remote_log",
     "parse_remote_manual_bank",

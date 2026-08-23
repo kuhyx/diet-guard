@@ -181,6 +181,10 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
             tmp_path / "kuchnia_session.json",
         ),
         patch(
+            "diet_guard._kuchnia_credential_store.KUCHNIA_SYNCED_CREDENTIAL_FILE",
+            tmp_path / "kuchnia_synced_credential.json",
+        ),
+        patch(
             "diet_guard._kuchnia_config.KUCHNIA_LAST_IMPORT_FILE",
             tmp_path / "kuchnia_last_import",
         ),

@@ -4,13 +4,21 @@ Sole reader of :data:`~diet_guard._constants.KUCHNIA_CREDENTIALS_FILE` and
 :data:`~diet_guard._constants.KUCHNIA_SESSION_FILE`, so the test-suite redirect
 in ``conftest._isolate_state`` has exactly one place to patch.
 
-Two files, both mode 600, both under ``~/.config/diet_guard/`` -- deliberately
-*outside* ``DATA_DIR``, which syncs.  A password and a live session cookie must
-not travel to another device.
+Both files live under ``~/.config/diet_guard/`` at mode 600, outside
+``DATA_DIR``.  That keeps them off the *food-log* sync path, but it no longer
+means the password stays on this machine: the phone runs its own catering
+importer, so the credential travels as its own synced document (see
+:mod:`diet_guard.sync_merge._kuchnia`), in plaintext, by the user's explicit
+choice.  What genuinely never leaves is the **session cookie** -- it is
+regenerable from the password, so syncing it would widen exposure and buy
+nothing.
 
-The credentials file is **written by the user, never by this package**, which
-is the same contract as ``sync_token``: nothing here can leak a password into a
-backup or a log because nothing here has ever held one on disk.
+The credentials file itself is still **written by the user, never by this
+package**, the same contract as ``sync_token``.  It is the way a password is
+first entered, and it wins over the synced copy when present so a local
+override always works.  The synced copy is written by
+:mod:`diet_guard._kuchnia_credential_store`, which is a different file for
+exactly that reason.
 """
 
 from __future__ import annotations
@@ -23,6 +31,7 @@ from diet_guard._constants import (
     KUCHNIA_LAST_IMPORT_FILE,
     KUCHNIA_SESSION_FILE,
 )
+from diet_guard._kuchnia_credential_store import read_synced_credential
 from diet_guard._kuchnia_errors import KuchniaError
 
 _logger = logging.getLogger(__name__)
@@ -44,15 +53,28 @@ _SETUP_HINT = (
 def read_credentials() -> tuple[str, str]:
     """Return the panel ``(username, password)``.
 
+    Two sources, in this order:
+
+    1. ``kuchnia_credentials``, hand-written by the user. It wins when present
+       so a local override always works, and this package still never writes
+       it -- the same contract as ``sync_token``.
+    2. Whatever the cross-device merge resolved
+       (:mod:`diet_guard._kuchnia_credential_store`). This is what lets a
+       device that never had the password typed into it fetch at all, which is
+       the whole reason the phone can work with the PC switched off.
+
     Returns:
-        The credentials read from disk.
+        The credentials.
 
     Raises:
-        KuchniaError: When the file is missing, empty, or not two lines. The
-            message carries the setup command, mirroring ``_read_token``.
+        KuchniaError: When neither source has a usable credential. The message
+            carries the setup command, mirroring ``_read_token``.
     """
     path = KUCHNIA_CREDENTIALS_FILE
     if not path.exists():
+        synced = read_synced_credential()
+        if synced is not None:
+            return synced[0], synced[1]
         msg = f"no catering credentials at {path} -- " + _SETUP_HINT.format(path=path)
         raise KuchniaError(msg)
     lines = [

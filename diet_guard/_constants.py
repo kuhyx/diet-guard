@@ -144,6 +144,15 @@ KUCHNIA_CREDENTIALS_FILE: Path = (
 KUCHNIA_SESSION_FILE: Path = (
     Path.home() / ".config" / "diet_guard" / "kuchnia_session.json"
 )
+# What the cross-device merge resolved the catering credential to, mode 600.
+# Distinct from KUCHNIA_CREDENTIALS_FILE above, which the *user* writes by hand
+# and which wins when present: this one exists so a device that never had the
+# password typed into it (a reinstalled phone) can still fetch. Under ~/.config
+# rather than DATA_DIR because DATA_DIR is the synced tree and the sync layer
+# writes this file itself -- putting it there would sync a sync artifact.
+KUCHNIA_SYNCED_CREDENTIAL_FILE: Path = (
+    Path.home() / ".config" / "diet_guard" / "kuchnia_synced_credential.json"
+)
 # One ISO date: the last day whose delivery was fetched. Without it the
 # gate and the after-log hook would each pay a full auth + 3-request walk
 # every time they fire. The curated bank cannot answer this -- it is keyed

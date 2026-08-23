@@ -79,14 +79,15 @@ class TestRunSync:
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
-        # Every pull -- food log, budget, curated bank -- skips "pc" (this
-        # device) and only ever reads "phone"'s files.
+        # Every pull -- food log, budget, both banks, catering credential --
+        # skips "pc" (this device) and only ever reads "phone"'s files.
         requested_paths = [call.args[0] for call in client.get_file_text.call_args_list]
         assert requested_paths == [
             "diet-guard-sync/devices/phone/food_log.json",
             "diet-guard-sync/devices/phone/budget.json",
             "diet-guard-sync/devices/phone/food_bank.json",
             "diet-guard-sync/devices/phone/food_bank_manual.json",
+            "diet-guard-sync/devices/phone/kuchnia.json",
         ]
 
     def test_skips_a_device_with_no_pushed_file_yet(self) -> None:

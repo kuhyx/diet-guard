@@ -37,3 +37,13 @@ def _device_manual_bank_path(device_id: str) -> str:
 def _device_budget_path(device_id: str) -> str:
     """Return the repo-relative path a device's budget is pushed to."""
     return f"{_DEVICES_DIR}/{device_id}/budget.json"
+
+
+def _device_kuchnia_path(device_id: str) -> str:
+    """Return one device's pushed catering-credential path.
+
+    Its own document rather than a field on ``budget.json``: the budget is
+    written back at default permissions, and a password riding inside it would
+    be readable by anything that reads the budget.
+    """
+    return f"{_DEVICES_DIR}/{device_id}/kuchnia.json"

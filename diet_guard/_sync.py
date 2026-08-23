@@ -45,6 +45,7 @@ from diet_guard._state_sync import (
 from diet_guard._sync_banks import _sync_budget, _sync_food_bank, _sync_manual_bank
 from diet_guard._sync_client import _client_for_run
 from diet_guard._sync_errors import SyncError
+from diet_guard._sync_kuchnia import _sync_kuchnia_credential
 from diet_guard._sync_paths import _DEVICES_DIR, _REVS_DIR, _device_log_path
 from diet_guard.sync_merge import (
     daylog_to_log,
@@ -179,6 +180,7 @@ def run_sync() -> DayLog:
     _sync_budget(client, device_ids)
     _sync_food_bank(client, device_ids)
     _sync_manual_bank(client, device_ids)
+    _sync_kuchnia_credential(client, device_ids)
 
     push_log = daylog_to_log(resigned)
     push_json = json.dumps(
