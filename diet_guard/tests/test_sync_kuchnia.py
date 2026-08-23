@@ -11,13 +11,18 @@ The behaviours worth pinning are the ones whose failure is silent:
 from __future__ import annotations
 
 import json
+import time
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 from crdt_sync import Hlc, Record
 
 import diet_guard._kuchnia_credential_store as store
-from diet_guard._sync_kuchnia import _local_credential_log, _sync_kuchnia_credential
+from diet_guard._sync_kuchnia import (
+    _bootstrap_credential_log,
+    _local_credential_log,
+    _sync_kuchnia_credential,
+)
 from diet_guard.sync_merge._kuchnia import (
     KUCHNIA_RECORD_ID,
     PASSWORD_FIELD_NAME,
@@ -145,11 +150,11 @@ def test_a_missing_peer_file_is_skipped() -> None:
     )
 
 
-def test_the_synced_cache_wins_over_the_handwritten_file() -> None:
-    """Once a merge has resolved, that is what this device contributes.
+def test_the_synced_cache_is_what_this_device_contributes() -> None:
+    """The hand-written file never competes in the merge.
 
-    Otherwise the hand-written file -- a deliberately *local* override -- would
-    be republished to every peer on every tick.
+    It is a deliberately *local* override; republishing it on every tick would
+    push a machine-local value to every peer.
     """
     store.write_synced_credential("synced@example.com", "synced-pass", _EDITED)
     _write_handwritten("local@example.com\nlocal-pass\n")
@@ -157,16 +162,60 @@ def test_the_synced_cache_wins_over_the_handwritten_file() -> None:
     assert log[KUCHNIA_RECORD_ID].fields[USERNAME_FIELD_NAME][0] == "synced@example.com"
 
 
-def test_a_malformed_handwritten_file_contributes_nothing() -> None:
+def test_no_cache_contributes_nothing() -> None:
+    """A device that has never merged competes on no clock at all."""
+    _write_handwritten("local@example.com\nlocal-pass\n")
+    assert _local_credential_log() == {}
+
+
+def test_a_malformed_handwritten_file_bootstraps_nothing() -> None:
     """A one-line credentials file is unusable, not a crash."""
     _write_handwritten("only-a-username\n")
-    assert _local_credential_log() == {}
+    assert _bootstrap_credential_log() == {}
 
 
-def test_no_handwritten_file_and_no_cache_contributes_nothing() -> None:
-    """A device that has never seen the password contributes an empty log.
+def test_no_handwritten_file_bootstraps_nothing() -> None:
+    """The normal state of a freshly installed second device."""
+    assert _bootstrap_credential_log() == {}
 
-    Distinct from the malformed-file case below: here the file is absent
-    entirely, which is the normal state of a freshly installed second device.
+
+def test_a_touched_handwritten_file_cannot_clobber_a_peer() -> None:
+    """A bumped mtime must not overwrite a password just set on the phone.
+
+    ``git checkout``, a backup restore, or re-running the ``install -m 600``
+    setup line all move the credentials file's mtime forward without the
+    credential changing. When that mtime competed in the LWW race, the PC won
+    it against a genuinely newer phone edit and the user's new password
+    silently reverted -- reproduced before the bootstrap was split out of
+    ``_local_credential_log``.
     """
-    assert _local_credential_log() == {}
+    # A hand-written file "touched" just now, and no local cache yet.
+    _write_handwritten("pc@example.com\nstale-pc-pass\n")
+    assert store.read_synced_credential() is None
+
+    # The phone set a new password an hour ago -- older wall time, newer edit.
+    phone_ms = int((time.time() - 3600) * 1000)
+    client = _client(
+        {
+            "diet-guard-sync/devices/phone/kuchnia.json": _peer_push(
+                "phone@example.com", "new-phone-pass", phone_ms
+            )
+        }
+    )
+    _sync_kuchnia_credential(client, ["phone"])
+
+    cached = store.read_synced_credential()
+    assert cached is not None
+    assert cached[1] == "new-phone-pass", (
+        "the PC's touched credentials file outranked a real phone edit"
+    )
+
+
+def test_the_bootstrap_still_runs_when_no_peer_has_one() -> None:
+    """Last resort, but still a resort: someone has to publish first."""
+    _write_handwritten("pc@example.com\nhunter2\n")
+    client = _client()
+    _sync_kuchnia_credential(client, ["phone"])
+    cached = store.read_synced_credential()
+    assert cached is not None
+    assert cached[1] == "hunter2"

@@ -87,9 +87,36 @@ the parser refuses rather than importing a plausible-looking lie.
 
 ## Credentials
 
-Two files under `~/.config/diet_guard/`, both mode 600, both **outside** the
-synced tree — a password and a live session cookie must not travel to another
-device.
+Three files under `~/.config/diet_guard/`, all mode 600. They are outside
+`DATA_DIR` so they stay off the *food-log* sync path — but one of them, the
+credential itself, **does travel between devices**.
+
+**The password syncs, in plaintext.** The phone runs its own importer and
+cannot fetch without it, and a phone that has been wiped needs it back without
+the user digging out the original. It rides its own document
+(`diet_guard/sync_merge/_kuchnia.py`, `devices/<id>/kuchnia.json`), not the
+budget record — `budget.json` is written back at default permissions, so a
+password inside it would be readable by anything that reads the budget. Nothing
+encrypts it, and the rest of the synced state is not encrypted either, so do
+not describe it as "encrypted like everything else". This is a deliberate
+trade: the alternative was a phone that cannot fetch at all, and the blast
+radius is a catering menu and a delivery address.
+
+**The session cookie does not sync.** It is regenerable from the password, so
+copying it around would widen exposure and buy nothing.
+
+| file | written by | syncs? |
+|---|---|---|
+| `kuchnia_credentials` | the user, by hand | no — a local override, and the bootstrap for the first push |
+| `kuchnia_synced_credential.json` | the sync layer | **yes**, as its own record |
+| `kuchnia_session.json` | the client, on login | no |
+
+`kuchnia_credentials` wins over the synced copy when present, so a machine-local
+override always works. It is never *pushed*, though — only used to bootstrap
+when no device has published a credential yet. Its mtime is the only edit time
+it has, and `git checkout`, a backup restore or re-running the `install` line
+below all bump it without the credential changing; letting that compete in the
+merge let a merely-touched file overwrite a password just typed on the phone.
 
 ```bash
 install -m 600 /dev/null ~/.config/diet_guard/kuchnia_credentials

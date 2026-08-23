@@ -134,13 +134,17 @@ KUCHNIA_COMPANY: str = "kuchniavikinga"
 KUCHNIA_LAUNCHER_TYPE: str = "BROWSER_PANEL"
 # Credentials the user writes by hand, mode 600: e-mail on line 1, password on
 # line 2. Nothing in this package ever writes it, exactly as with
-# SYNC_TOKEN_FILE. Under ~/.config, not DATA_DIR, so it is outside the synced
-# tree -- a credential must never leave the machine it was entered on.
+# SYNC_TOKEN_FILE, and it acts as a local override that wins over the synced
+# copy. Under ~/.config rather than DATA_DIR so it is off the food-log sync
+# path -- but note the credential itself DOES travel between devices now, as
+# its own document (diet_guard.sync_merge._kuchnia); the phone runs its own
+# catering importer and cannot fetch without it.
 KUCHNIA_CREDENTIALS_FILE: Path = (
     Path.home() / ".config" / "diet_guard" / "kuchnia_credentials"
 )
-# The cached SESSION cookie, so a refresh does not re-login every time. Also
-# outside the synced tree, for the same reason.
+# The cached SESSION cookie, so a refresh does not re-login every time. This
+# one genuinely never leaves the machine: it is regenerable from the password,
+# so syncing it would widen exposure and buy nothing.
 KUCHNIA_SESSION_FILE: Path = (
     Path.home() / ".config" / "diet_guard" / "kuchnia_session.json"
 )

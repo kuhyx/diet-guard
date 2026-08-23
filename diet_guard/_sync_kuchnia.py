@@ -47,20 +47,39 @@ _logger = logging.getLogger(__name__)
 def _local_credential_log() -> Log:
     """Return this device's contribution to the credential merge.
 
-    Prefers the synced cache, and falls back to the hand-written
-    ``kuchnia_credentials`` when there is no cache yet.  That fallback is what
-    bootstraps the whole feature: the PC is where the password is typed, so
-    without it the PC would never publish and the phone would never receive.
+    Sourced from the synced cache, which carries a real edit time.  Returns an
+    empty ``Log`` when there is no cache, so a device that has never merged
+    contributes nothing rather than competing on a made-up clock.
 
-    The hand-written file's mtime is its edit time.  It is a coarse clock, but
-    it is the only one that file has, and it only has to beat the epoch that an
-    unset peer contributes.
+    The hand-written ``kuchnia_credentials`` deliberately does **not** feed
+    this; see :func:`_bootstrap_credential_log`.
     """
     synced = read_synced_credential()
-    if synced is not None:
-        username, password, edited_at = synced
-        return credential_to_log(username, password, edited_at)
+    if synced is None:
+        return {}
+    username, password, edited_at = synced
+    return credential_to_log(username, password, edited_at)
 
+
+def _bootstrap_credential_log() -> Log:
+    """Return the hand-written credential, for use only when no peer has one.
+
+    The PC is where the password is first typed, so without a bootstrap no
+    device would ever publish and the phone would never receive one.  But this
+    file has no edit time of its own -- only an mtime, which ``git checkout``,
+    a backup restore, or re-running the ``install -m 600`` setup line all bump
+    forward without the credential changing.
+
+    So it is a fallback of *last resort*, applied only when the merge came back
+    empty, rather than a competitor in the LWW race.  Letting it compete on
+    mtime meant a PC whose file had merely been touched could overwrite a
+    password the user had just typed on the phone -- reproduced before this
+    split existed, and now pinned by
+    ``test_a_touched_handwritten_file_cannot_clobber_a_peer``.
+
+    Its stamp is the mtime all the same: something has to go on the wire, and
+    once this has been published the synced cache takes over permanently.
+    """
     # Reached through the module rather than imported by value:
     # `conftest._isolate_state` redirects this attribute on `_kuchnia_config`,
     # and importing the constant straight from `_constants` silently bypasses
@@ -107,6 +126,12 @@ def _sync_kuchnia_credential(
                 "Unparsable catering credential pushed by device %r, skipping",
                 device_id,
             )
+
+    if not merged:
+        # Nobody -- not this device's cache, not any peer -- has a credential
+        # yet. Only now does the hand-written file get to speak, so its
+        # untrustworthy mtime can never outrank a real edit from a peer.
+        merged = _bootstrap_credential_log()
 
     resolved = log_to_credential(merged)
     if resolved is None:
