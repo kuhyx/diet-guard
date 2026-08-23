@@ -9,6 +9,7 @@ import 'package:diet_guard_app/services/background_tasks.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/frame_stats.dart';
+import 'package:diet_guard_app/services/kuchnia_credential_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/notification_service.dart';
@@ -26,6 +27,7 @@ Future<void> main() async {
   await BudgetHistoryService.init();
   await MealScheduleService.init();
   await FoodBankService.init();
+  await KuchniaCredentialService.init();
   final notifications = await NotificationService.init();
   // Deliberately *not* awaited before the first frame: the browser's
   // `Notification.requestPermission()` does not complete until the user

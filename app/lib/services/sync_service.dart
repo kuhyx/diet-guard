@@ -17,10 +17,12 @@ import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
+import 'package:diet_guard_app/services/kuchnia_credential_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/sync_device_id.dart';
 import 'package:diet_guard_app/services/sync_merge.dart';
+import 'package:diet_guard_app/services/sync_merge_kuchnia.dart';
 import 'package:diet_guard_app/services/sync_merge_schedule.dart';
 import 'package:diet_guard_app/services/sync_state_factory.dart';
 
@@ -59,6 +61,7 @@ Future<DayLog> runSync(RemoteStore client, {SyncStateStore? stateStore}) async {
   await _syncBudget(client);
   await _syncFoodBank(client);
   await _syncManualBank(client);
+  await _syncKuchniaCredential(client);
   return merged;
 }
 
@@ -170,5 +173,41 @@ Future<void> _syncBudget(RemoteStore client) async {
   await AppSettingsService.instance.applySyncedBudget(
     mergedKcal,
     updatedAt: DateTime.tryParse(merged['t'] as String? ?? ''),
+  );
+}
+
+/// Pulls peers' catering credentials, merges, applies the winner locally.
+///
+/// The phone runs its own catering importer, so it cannot fetch anything until
+/// the panel password reaches it -- that is the whole reason this credential
+/// syncs at all. It is plaintext on the wire, like the rest of the synced
+/// state; see `sync_merge_kuchnia.dart`.
+///
+/// A device that has no credential contributes an empty log, so it neither
+/// blocks nor clobbers a peer's real value -- it relays it. Mirrors
+/// `diet_guard/_sync_kuchnia.py`.
+Future<void> _syncKuchniaCredential(RemoteStore client) async {
+  if (!KuchniaCredentialService.isInitialized) return;
+  final merged = await syncLog(
+    client: client,
+    deviceId: currentSyncDeviceId,
+    legacyDeviceId: legacySyncDeviceId,
+    pathPrefix: _devicesDir,
+    localLog: credentialToLog(
+      KuchniaCredentialService.username,
+      KuchniaCredentialService.password,
+      KuchniaCredentialService.editedAt,
+    ),
+    encode: encodeCredentialForPush,
+    decode: parseRemoteCredential,
+    filename: 'kuchnia.json',
+    commitMessage: 'diet_guard_app sync',
+  );
+  final credential = logToCredential(merged);
+  if (credential == null) return;
+  await KuchniaCredentialService.instance.applySynced(
+    credential.username,
+    credential.password,
+    credential.editedAt,
   );
 }

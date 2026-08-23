@@ -12,6 +12,7 @@ import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/services/due_slot_check.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
+import 'package:diet_guard_app/services/kuchnia_credential_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/notification_backend_io.dart';
@@ -52,6 +53,9 @@ void main() {
       store: FileDocumentStore(tempDir),
     );
     MealScheduleService.resetForTesting(store: FileDocumentStore(tempDir));
+    KuchniaCredentialService.resetForTesting(
+      store: FileDocumentStore(tempDir),
+    );
     SharedPreferences.setMockInitialValues({});
     installFakeSecureStorage();
     notificationLog = installFakeAndroidNotifications();
@@ -65,6 +69,7 @@ void main() {
     FoodBankService.resetForTesting();
     AppSettingsService.resetForTesting();
     BudgetHistoryService.resetForTesting();
+    KuchniaCredentialService.resetForTesting();
     MealScheduleService.resetForTesting();
     NotificationService.resetForTesting();
     await tempDir.delete(recursive: true);

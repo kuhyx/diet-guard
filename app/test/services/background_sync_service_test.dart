@@ -10,6 +10,7 @@ import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/background_sync_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
+import 'package:diet_guard_app/services/kuchnia_credential_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/sync_device_id.dart';
@@ -36,6 +37,9 @@ void main() {
       store: FileDocumentStore(tempDir),
     );
     MealScheduleService.resetForTesting(store: FileDocumentStore(tempDir));
+    KuchniaCredentialService.resetForTesting(
+      store: FileDocumentStore(tempDir),
+    );
   });
 
   tearDown(() async {
@@ -44,6 +48,7 @@ void main() {
     AppSettingsService.resetForTesting();
     BudgetHistoryService.resetForTesting();
     MealScheduleService.resetForTesting();
+    KuchniaCredentialService.resetForTesting();
     await tempDir.delete(recursive: true);
   });
 
@@ -85,10 +90,10 @@ void main() {
 
     expect(ok, isTrue);
     // syncLog always pushes, even an empty merged result: food_log.json,
-    // budget.json, food_bank.json, food_bank_manual.json.
-    // Four data files plus this device's revision, which is what lets a
+    // budget.json, food_bank.json, food_bank_manual.json, kuchnia.json.
+    // Five data files plus this device's revision, which is what lets a
     // later tick skip an unchanged peer.
-    expect(puts, 5);
+    expect(puts, 6);
   });
 
   test('pushes under the persisted uuid, not the legacy role id', () async {

@@ -16,6 +16,9 @@ dropped on the floor and never noticed.
 from __future__ import annotations
 
 import json
+from pathlib import Path
+from typing import Any
+from unittest.mock import patch
 
 from crdt_sync import Hlc, Record, merge_logs
 import pytest
@@ -95,7 +98,7 @@ def test_re_syncing_an_unchanged_credential_is_a_no_op() -> None:
     assert encode_credential_for_push(first) == encode_credential_for_push(second)
 
 
-def test_an_unparseable_edit_time_loses_to_a_real_one() -> None:
+def test_an_unparsable_edit_time_loses_to_a_real_one() -> None:
     """A junk timestamp falls back to the epoch rather than winning by accident."""
     junk = credential_to_log("junk@example.com", "junk-pass", "not-a-timestamp")
     real = credential_to_log("real@example.com", "real-pass", _EDITED)
@@ -160,3 +163,46 @@ def test_a_non_object_payload_is_rejected() -> None:
     """A corrupt push raises rather than being half-applied."""
     with pytest.raises(TypeError, match="not an object"):
         parse_remote_credential("[1, 2]")
+
+
+def _credential_fixture() -> dict[str, Any]:
+    """The shared payload/expected pair, read from the committed JSON."""
+    path = (
+        Path(__file__).resolve().parents[2] / "tests/fixtures/kuchnia_credential.json"
+    )
+    with path.open(encoding="utf-8") as handle:
+        data: dict[str, Any] = json.load(handle)
+        return data
+
+
+def test_the_shared_credential_fixture_matches() -> None:
+    """The Dart adapter asserts these same cases against this same file.
+
+    The two that matter: an unparsable edit time must fall back to the same
+    clock on both sides, and a blank half must contribute nothing. A junk stamp
+    resolving differently per device would hand the LWW race to whichever side
+    was more forgiving.
+    """
+    fixture = _credential_fixture()
+    with patch(
+        "diet_guard.sync_merge._kuchnia.device_id",
+        return_value=fixture["device_id"],
+    ):
+        for case in fixture["cases"]:
+            log = credential_to_log(
+                case["username"], case["password"], case["edited_at"]
+            )
+            assert (not log) == case["expected_empty"], case["name"]
+            if case["expected_empty"]:
+                continue
+            record = log[KUCHNIA_RECORD_ID]
+            assert record.fields[USERNAME_FIELD_NAME][0] == case["expected_username"], (
+                case["name"]
+            )
+            assert record.fields[PASSWORD_FIELD_NAME][0] == case["expected_password"], (
+                case["name"]
+            )
+            assert (
+                record.fields[PASSWORD_FIELD_NAME][1].wall_time_ms
+                == case["expected_wall_time_ms"]
+            ), case["name"]

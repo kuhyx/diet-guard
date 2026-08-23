@@ -58,17 +58,20 @@ class KuchniaDish {
   /// ranks foods by how often they were *eaten*, and a delivered dish has not
   /// been eaten yet.
   ///
-  /// Every macro is forced to `double` before it reaches `jsonEncode`.
+  /// Every macro is declared `double` on this class rather than `num`, which
+  /// is what keeps the encoded record byte-identical to Python's.
   /// `jsonEncode(435)` emits `435` where Python emits `435.0`, and a
   /// byte-different record for the same dish makes every refresh look like a
-  /// change -- which republishes the whole curated bank to every peer.
+  /// change -- which republishes the whole curated bank to every peer. A
+  /// `.toDouble()` here would be a no-op the analyzer flags; the field types
+  /// are the guarantee, and `kuchnia_parity_test.dart` asserts the encoding.
   Map<String, dynamic> toBankRecord() => {
     'desc': name,
-    'kcal': kcal.toDouble(),
-    'protein_g': proteinG.toDouble(),
-    'carbs_g': carbsG.toDouble(),
-    'fat_g': fatG.toDouble(),
-    'grams': grams.toDouble(),
+    'kcal': kcal,
+    'protein_g': proteinG,
+    'carbs_g': carbsG,
+    'fat_g': fatG,
+    'grams': grams,
     'count': 0,
   };
 

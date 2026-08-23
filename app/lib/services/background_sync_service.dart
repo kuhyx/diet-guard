@@ -11,6 +11,7 @@ import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
+import 'package:diet_guard_app/services/kuchnia_credential_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/sync_device_id.dart';
@@ -56,6 +57,11 @@ Future<bool> backgroundSyncPush({http.Client? httpClient}) async {
   // to the default four meals and nag for checkpoints the user's actual
   // schedule does not have.
   await MealScheduleService.init();
+  // Same fresh-isolate reasoning: `_syncKuchniaCredential` no-ops when this
+  // singleton is uninitialised, so without this a background tick would
+  // neither publish this device's catering credential nor receive a peer's --
+  // and on the phone the background tick is most of the syncing there is.
+  await KuchniaCredentialService.init();
   final SyncSettings settings;
   try {
     settings = await SyncSettings.load();

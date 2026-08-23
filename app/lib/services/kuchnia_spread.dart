@@ -57,8 +57,7 @@ List<SlottedDish> assignSlots(List<KuchniaDish> dishes, List<int> slots) {
   // agree without relying on either sort's stability.
   final indexed = <(int, KuchniaDish)>[
     for (var i = 0; i < dishes.length; i++) (i, dishes[i]),
-  ];
-  indexed.sort((a, b) {
+  ]..sort((a, b) {
     final byPriority = a.$2.priority.compareTo(b.$2.priority);
     if (byPriority != 0) return byPriority;
     final byName = a.$2.name.compareTo(b.$2.name);
@@ -81,5 +80,7 @@ List<SlottedDish> assignSlots(List<KuchniaDish> dishes, List<int> slots) {
 ///
 /// So the dish offered for the slot being filled is the one the catering
 /// actually intends for it, rather than whatever order the payload arrived in.
-List<KuchniaDish> dishesInSlotOrder(List<KuchniaDish> dishes, List<int> slots) =>
-    [for (final item in assignSlots(dishes, slots)) item.dish];
+List<KuchniaDish> dishesInSlotOrder(
+  List<KuchniaDish> dishes,
+  List<int> slots,
+) => [for (final item in assignSlots(dishes, slots)) item.dish];
