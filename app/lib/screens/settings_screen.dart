@@ -14,6 +14,7 @@ import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/meal_schedule.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/screens/github_mirror_screen.dart';
+import 'package:diet_guard_app/screens/settings_kuchnia.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/due_slot_check.dart';
 import 'package:diet_guard_app/services/firebase_backend.dart';
@@ -185,6 +186,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               const Divider(),
               const SizedBox(height: 8),
               ..._mealScheduleSection(context),
+              const KuchniaSettingsSection(),
               const SizedBox(height: 24),
               const Divider(),
               ListTile(
