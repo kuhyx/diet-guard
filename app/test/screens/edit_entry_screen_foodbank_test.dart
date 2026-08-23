@@ -147,4 +147,51 @@ void main() {
       expect(find.text('1200'), findsOneWidget);
     });
   });
+
+  testWidgets('a stale per-grams does not rescale an edited entry on save', (
+    tester,
+  ) async {
+    // The edit screen reaches the same `nutritionForPortion` as the log form,
+    // so it is exposed to the identical corruption: pick a suggestion (which
+    // sets `perGrams`), retype the macros as a whole portion, and the save
+    // would scale them by grams/perGrams. Asserting the *written entry* is
+    // what catches it -- the fields on screen look right either way.
+    await tester.runAsync(() async {
+      await FoodBankService.instance.addManualEntry(
+        const FoodBankRecord(
+          desc: 'pizza obok pracy',
+          kcal: 1200,
+          proteinG: 52,
+          carbsG: 145,
+          fatG: 42,
+          grams: 400,
+          count: 1,
+        ),
+      );
+      await LogStorageService.instance.writeLog({
+        '2026-06-22': [_entry],
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(home: EditEntryScreen(entry: _entry)),
+      );
+      await settle(tester);
+
+      await tester.tap(find.text('pizza obok pracy').last);
+      await settle(tester);
+
+      await tester.tap(find.text('Save'));
+      await settle(tester);
+
+      final saved = (await LogStorageService.instance.readLog())['2026-06-22']!
+          .first;
+      expect(
+        saved.kcal,
+        1200,
+        reason: 'the banked portion must save as itself, not rescaled by '
+            'its own reference weight.',
+      );
+      expect(saved.grams, 400);
+    });
+  });
 }

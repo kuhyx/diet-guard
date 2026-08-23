@@ -43,7 +43,12 @@ class MacroControllers {
   ///
   /// Both [perGrams] and [grams] are set to the suggestion's own weight, so
   /// the row starts out describing exactly the portion that was banked.
+  ///
+  /// Clears first so no field can survive from a previous pick. This one
+  /// assignment set happens to cover all six today, but the clear is what
+  /// makes that non-load-bearing -- see [clear].
   void fillFrom(Nutrition nutrition) {
+    clear();
     kcal.text = nutrition.kcal.toStringAsFixed(0);
     protein.text = nutrition.proteinG.toStringAsFixed(0);
     carbs.text = nutrition.carbsG.toStringAsFixed(0);

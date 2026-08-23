@@ -41,6 +41,10 @@ class _EditEntryScreenState extends State<EditEntryScreen> {
     super.initState();
     final e = widget.entry;
     _descController = TextEditingController(text: e.desc);
+    // Same clear-before-fill discipline as `fillControllersFromDish`: the
+    // entry's macros describe the whole eaten portion, so any reference
+    // weight left in `perGrams` would rescale them on save.
+    _macros.clear();
     _macros.kcal.text = e.kcal.toStringAsFixed(0);
     _macros.protein.text = e.proteinG.toStringAsFixed(0);
     _macros.carbs.text = e.carbsG.toStringAsFixed(0);
@@ -85,12 +89,10 @@ class _EditEntryScreenState extends State<EditEntryScreen> {
 
   void _onSuggestionSelected(FoodSuggestion suggestion) {
     _descController.text = suggestion.name;
-    _macros.kcal.text = suggestion.nutrition.kcal.toStringAsFixed(0);
-    _macros.protein.text = suggestion.nutrition.proteinG.toStringAsFixed(0);
-    _macros.carbs.text = suggestion.nutrition.carbsG.toStringAsFixed(0);
-    _macros.fat.text = suggestion.nutrition.fatG.toStringAsFixed(0);
-    _macros.perGrams.text = suggestion.nutrition.grams.toStringAsFixed(0);
-    _macros.grams.text = suggestion.nutrition.grams.toStringAsFixed(0);
+    // Routed through `fillFrom` rather than six hand-written assignments, so
+    // this path and the log screen's cannot drift and neither can forget a
+    // field. It clears first, so nothing survives from the previous pick.
+    _macros.fillFrom(suggestion.nutrition);
     setState(() {
       _source = 'food bank';
       _suggestions = const [];

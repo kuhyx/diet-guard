@@ -52,10 +52,34 @@ class _HostState extends State<_Host> with LogMealKuchniaMixin<_Host> {
   final MacroControllers macros = MacroControllers();
 
   @override
+  void initState() {
+    super.initState();
+    for (final c in [
+      macros.kcal,
+      macros.protein,
+      macros.carbs,
+      macros.fat,
+      macros.perGrams,
+      macros.grams,
+    ]) {
+      c.addListener(() {
+        if (source == 'food bank') source = 'manual';
+      });
+    }
+  }
+
+  @override
   TextEditingController get descController => desc;
 
   @override
   MacroControllers get macroControllers => macros;
+
+  /// Mirrors the screen: a macro edit demotes a food-bank pick to manual,
+  /// and a prefilled dish stamps catering.
+  String source = 'manual';
+
+  @override
+  void onDishPrefilled() => source = 'catering';
 
   /// Stands in for the screen's submit: the entry write is irrelevant here,
   /// the queue advance is what is under test.

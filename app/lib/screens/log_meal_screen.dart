@@ -18,6 +18,7 @@ import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/autocomplete_suggestion_list.dart';
+import 'package:diet_guard_app/widgets/log_meal_actions_row.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
 import 'package:diet_guard_app/widgets/slot_selector_row.dart';
 import 'package:diet_guard_app/widgets/sync_health_banner.dart';
@@ -178,7 +179,6 @@ class _LogMealScreenState extends State<LogMealScreen>
     });
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -218,17 +218,11 @@ class _LogMealScreenState extends State<LogMealScreen>
             const SizedBox(height: 8),
             MacroInputRow(controllers: _macros, compact: true),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                const Spacer(),
-                Tooltip(
-                  message: 'Log meal',
-                  child: FilledButton(
-                    onPressed: _onLogMeal,
-                    child: const Icon(Icons.check_circle),
-                  ),
-                ),
-              ],
+            LogMealActionsRow(
+              onLoadDelivery: loadDeliveryAndReport,
+              onLog: _onLogMeal,
+              deliveryBusy: deliveryBusy,
+              dishesQueued: dishesStillQueued,
             ),
             // Mutually exclusive: _status carries a validation complaint,
             // _progress the post-log summary. A successful log clears one

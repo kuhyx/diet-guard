@@ -20,6 +20,7 @@ library;
 
 import 'package:diet_guard_app/models/kuchnia_dish.dart';
 import 'package:diet_guard_app/models/slot.dart';
+import 'package:diet_guard_app/services/kuchnia_import.dart';
 import 'package:diet_guard_app/services/kuchnia_queue.dart';
 import 'package:diet_guard_app/services/kuchnia_spread.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
@@ -31,11 +32,24 @@ import 'package:flutter/material.dart';
 ///
 /// Free function rather than a mixin method so the numeric formatting is
 /// testable without pumping a widget.
+///
+/// Clears every macro field first, mirroring `_gatelock_delivery.py`'s
+/// `self._clear_inputs()`. Dropping that step is what corrupted a real log
+/// entry on 2026-08-23: a dish carries *per-portion* macros and leaves
+/// [MacroControllers.perGrams] untouched, so a `100` left behind by an
+/// earlier food-bank pick made `nutritionForPortion` read them as *per-100g*
+/// and scale them by `grams / 100` -- 472 kcal logged as 1217.8.
+///
+/// The clear is a single call covering all six controllers rather than a
+/// `perGrams.clear()` line here, so a seventh field added later cannot be
+/// forgotten at this call site; `MacroControllers.clear()` is enumerated by
+/// its own test.
 void fillControllersFromDish(
   KuchniaDish dish,
   TextEditingController desc,
   MacroControllers macros,
 ) {
+  macros.clear();
   desc.text = dish.name;
   final (grams, values) = dishFieldValues(dish);
   macros.kcal.text = values.$1;
@@ -109,6 +123,72 @@ mixin LogMealKuchniaMixin<T extends StatefulWidget> on State<T> {
         for (final entry in logged) entry.desc.trim().toLowerCase(),
       },
     );
+  }
+
+  /// Loads today's delivery on an **explicit** user tap, unguarded.
+  ///
+  /// Deliberately [refreshDelivery], not [KuchniaQueueService.refreshOnce]:
+  /// per `docs/kuchnia-wikinga.md`'s Triggers table, a user who asks gets a
+  /// look, the same as the CLI and the settings button. The guard exists to
+  /// rate-limit *automatic* triggers, and applying it here would make the
+  /// button silently do nothing for the rest of the day after the startup
+  /// load — the failure that has nothing to tap in the kitchen.
+  ///
+  /// Still skips dishes already logged today (a dish logged on the PC must
+  /// not be re-offered) and still records the fetch, so a successful tap
+  /// also spares the automatic path a second walk.
+  ///
+  /// Returns a line to show the user, or null when a dish was prefilled and
+  /// the form speaks for itself.
+  Future<String?> loadDeliveryOnTap() async {
+    if (!KuchniaQueueService.isInitialized) return 'Catering is not ready yet.';
+    final logged = await LogStorageService.instance.todayEntries();
+    if (!mounted) return null;
+    final result = await refreshDelivery(DateTime.now());
+    if (!mounted) return null;
+    if (!result.ok) return result.reason;
+    if (result.dishes.isEmpty) return 'No delivery today.';
+    await KuchniaQueueService.instance.recordFetched(DateTime.now());
+    if (!mounted) return null;
+    final ordered = dishesInSlotOrder(
+      result.dishes,
+      daySlots(MealScheduleService.current),
+    );
+    KuchniaQueueService.instance.offer(
+      ordered,
+      alreadyLogged: {
+        for (final entry in logged) entry.desc.trim().toLowerCase(),
+      },
+    );
+    if (KuchniaQueueService.next == null) {
+      return 'All delivered dishes are already logged.';
+    }
+    prefillNextDish();
+    return null;
+  }
+
+  /// Whether an explicit delivery fetch is in flight.
+  ///
+  /// Only guards against a double tap opening two logins at once -- it is not
+  /// the daily guard, which an explicit tap deliberately bypasses.
+  bool deliveryBusy = false;
+
+  /// Runs [loadDeliveryOnTap] and shows its outcome as a SnackBar.
+  ///
+  /// Lives here rather than on the screen because `log_meal_screen.dart` is at
+  /// the 250-line cap, and this is the mixin's own behaviour anyway.
+  Future<void> loadDeliveryAndReport() async {
+    setState(() => deliveryBusy = true);
+    String? message;
+    try {
+      message = await loadDeliveryOnTap();
+    } finally {
+      if (mounted) setState(() => deliveryBusy = false);
+    }
+    if (!mounted || message == null) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   /// Prefills the form with the next queued dish, if there is one.
