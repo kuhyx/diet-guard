@@ -11,7 +11,7 @@ streaks, a YTD tally and weekly/monthly averages, all derived from
 `_daystatus.py` / `day_status_service.dart` and `_averages.py` /
 `average_service.dart`.
 
-`docs/design.md` holds the original spec (slot timing, the Tue/Wed/Thu
+`docs/DOCS-design.md` holds the original spec (slot timing, the Tue/Wed/Thu
 catch-up rule).
 
 ## Commands
@@ -75,7 +75,7 @@ every idle tick to approximate the two moments state actually changes here.
 - **Interactive paths must not block, and stale peers cost real time.** The
   threading rules, the interactive timeout, and `prune-peers` (including the
   `revs/` marker trap that made pruning *slower*) are in
-  [docs/sync-latency.md](docs/sync-latency.md) — read it before touching
+  [docs/DOCS-sync-latency.md](docs/DOCS-sync-latency.md) — read it before touching
   `_sync_refresh.py`, the fetch button, or the publish paths.
 - Every test that logs a meal would otherwise hit the network through these new
   call sites; `conftest._isolate_state` patches each one
@@ -159,7 +159,7 @@ reach the running service.
 
 `app/` builds for **Android** and **web** only. There is no `app/linux/` —
 Flutter's GTK embedder manages ~20fps at 3840x2160 where the same Dart in
-Chrome sustains ~144fps (`~/todo/docs/desktop-performance-findings.md`). The
+Chrome sustains ~144fps (`~/todo/docs/DOCS-desktop-performance-findings.md`). The
 desktop app is the web build served by `bin/diet_guard_desktop.dart` in a
 Chrome `--app` window.
 
@@ -184,7 +184,7 @@ many meals fall between them, evenly divided. Default `(8, 20, 4)` is the
 old hardcoded 08/12/16/20. Four load-bearing rules (integer-only
 arithmetic, whole-hour slots, the count clamp, the `last + 2h` cutoff), the
 forward-only history, and the two edit surfaces are documented in
-[docs/meal-schedule.md](docs/meal-schedule.md) — read it before touching
+[docs/DOCS-meal-schedule.md](docs/DOCS-meal-schedule.md) — read it before touching
 `_slots.py` / `slot.dart`.
 
 ## Averages (`_averages.py` / `average_service.dart`)
@@ -207,7 +207,7 @@ phone show both.
 
 ## Do NOT
 
-- Don't relax the meal-slot logic without re-reading `docs/design.md`. The
+- Don't relax the meal-slot logic without re-reading `docs/DOCS-design.md`. The
   off-hours clamp in `slot_for_log`/`slotForLog` (before the first slot → the
   first slot, after the enforcement window → the last slot) must stay
   byte-identical across Python and Dart; do NOT widen `elapsed_slots`, which
@@ -228,7 +228,7 @@ phone show both.
 - Don't let the catering import log unattended (delivered ≠ eaten), don't let
   its Python and Dart halves drift (one shared fixture gates them), and don't
   make the synced password machine-local — the phone could not then fetch.
-  [docs](docs/kuchnia-wikinga.md), [phone](docs/kuchnia-wikinga-phone.md).
+  [docs](docs/DOCS-kuchnia-wikinga.md), [phone](docs/DOCS-kuchnia-wikinga-phone.md).
 - Don't add a dependency without the production install-path check above.
 - Don't reintroduce a seal/`chattr +i` on the budget file.
 - Don't re-add a Linux embedder target, and don't change the wrapper's port or
@@ -243,8 +243,8 @@ _Vendored from [flutter/flutter docs/rules/rules.md](https://github.com/flutter/
 via `~/.claude/CLAUDE.md` Flutter AI tooling setup. Re-fetch periodically.
 Split across five files to stay under the 250-line cap._
 
-- [Language, style and architecture](docs/flutter-rules-language.md)
-- [Architecture, lint rules, state and data](docs/flutter-rules-state-and-data.md)
-- [Code generation, testing and theming](docs/flutter-rules-testing-and-assets.md)
-- [UI: theming, layout and overlays](docs/flutter-rules-ui.md)
-- [Colour, type, documentation and accessibility](docs/flutter-rules-design.md)
+- [Language, style and architecture](docs/DOCS-flutter-rules-language.md)
+- [Architecture, lint rules, state and data](docs/DOCS-flutter-rules-state-and-data.md)
+- [Code generation, testing and theming](docs/DOCS-flutter-rules-testing-and-assets.md)
+- [UI: theming, layout and overlays](docs/DOCS-flutter-rules-ui.md)
+- [Colour, type, documentation and accessibility](docs/DOCS-flutter-rules-design.md)

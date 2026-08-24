@@ -13,7 +13,7 @@ desktop, sharing one food log through GitHub-backed sync.
 There is no `linux/` directory. Flutter's GTK embedder manages ~20fps at
 3840x2160 -- measured on a stock `flutter create` counter app, so it is the
 toolkit rather than this code -- where the same Dart rendered by Chrome
-sustains ~144fps (`~/todo/docs/desktop-performance-findings.md`). Running
+sustains ~144fps (`~/todo/docs/DOCS-desktop-performance-findings.md`). Running
 `flutter create --platforms linux` here would silently restore the slow path.
 
 ## Commands

@@ -96,4 +96,4 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 ```
 
 See `CLAUDE.md` for scheduling details and production deployment gotchas,
-and `docs/design.md` for the original feature spec.
+and `docs/DOCS-design.md` for the original feature spec.
