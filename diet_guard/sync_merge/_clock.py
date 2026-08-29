@@ -10,9 +10,9 @@ would silently change merge outcomes rather than raising.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 def _wall_time_ms(stamp: str) -> int:

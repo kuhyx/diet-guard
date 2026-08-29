@@ -121,7 +121,7 @@ def _merge_peer_logs(
             continue
         try:
             merged = merge_logs(merged, parse_remote_log(text))
-        except (TypeError, KeyError, ValueError, json.JSONDecodeError):
+        except TypeError, KeyError, ValueError, json.JSONDecodeError:
             # A corrupt push must be retried next tick, not remembered as
             # merged -- so deliberately not recorded in ``seen``.
             _logger.warning("Unparsable log pushed by device %r, skipping", device_id)

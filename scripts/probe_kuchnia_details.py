@@ -26,7 +26,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 import sys
@@ -69,7 +69,7 @@ def pick_deliveries(capture: dict[str, Any]) -> list[dict[str, Any]]:
     """
     order = capture["steps"]["order"]["body"]
     deliveries = sorted(order["deliveries"], key=lambda item: str(item["date"]))
-    today = datetime.now(tz=timezone.utc).astimezone().date().isoformat()
+    today = datetime.now(tz=UTC).astimezone().date().isoformat()
     past = [item for item in deliveries if str(item["date"]) < today]
     current = [item for item in deliveries if str(item["date"]) == today]
     future = [item for item in deliveries if str(item["date"]) > today]

@@ -15,7 +15,7 @@ menu with the PC switched off; see :mod:`diet_guard.sync_merge._kuchnia`.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import json
 import logging
 from typing import TYPE_CHECKING
@@ -92,7 +92,7 @@ def _bootstrap_credential_log() -> Log:
         username, password = _kuchnia_config.read_credentials()
     except KuchniaError:
         return {}
-    edited = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+    edited = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
     return credential_to_log(
         username, password, edited.astimezone().isoformat(timespec="seconds")
     )
@@ -121,7 +121,7 @@ def _sync_kuchnia_credential(
             continue
         try:
             merged = merge_logs(merged, parse_remote_credential(text))
-        except (TypeError, KeyError, ValueError, json.JSONDecodeError):
+        except TypeError, KeyError, ValueError, json.JSONDecodeError:
             _logger.warning(
                 "Unparsable catering credential pushed by device %r, skipping",
                 device_id,

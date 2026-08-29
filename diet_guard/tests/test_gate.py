@@ -6,7 +6,7 @@ here the logged set is mocked and ``now`` is injected to drive each decision.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 from diet_guard._gate import due_slots, gate_is_due, gate_message
@@ -14,7 +14,7 @@ from diet_guard._gate import due_slots, gate_is_due, gate_message
 
 def _at(hour: int) -> datetime:
     """Return a fixed local datetime at ``hour``."""
-    return datetime(2026, 1, 1, hour, 0, tzinfo=timezone.utc)
+    return datetime(2026, 1, 1, hour, 0, tzinfo=UTC)
 
 
 def _logged(slots: set[int]) -> object:

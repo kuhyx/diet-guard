@@ -18,7 +18,7 @@ malformed one is skipped exactly as a non-int ``hist:`` value is.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from crdt_sync import Hlc
@@ -97,7 +97,7 @@ def log_to_schedule_history(log: Log) -> tuple[ScheduleEntry, ...]:
             isinstance(first, int) and isinstance(last, int) and isinstance(count, int)
         ) or any(isinstance(part, bool) for part in (first, last, count)):
             continue
-        edited = datetime.fromtimestamp(hlc.wall_time_ms / 1000, tz=timezone.utc)
+        edited = datetime.fromtimestamp(hlc.wall_time_ms / 1000, tz=UTC)
         entries.append(
             ScheduleEntry(
                 effective_from=name[len(SCHEDULE_FIELD_PREFIX) :],

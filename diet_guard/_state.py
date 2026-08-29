@@ -10,7 +10,7 @@ instead of silently losing the data it just wrote.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import json
 import logging
 import os
@@ -36,7 +36,7 @@ DayLog = dict[str, list[dict[str, object]]]
 
 def now_local() -> datetime:
     """Return the current time as a timezone-aware local datetime."""
-    return datetime.now(tz=timezone.utc).astimezone()
+    return datetime.now(tz=UTC).astimezone()
 
 
 def _today() -> str:
@@ -76,7 +76,7 @@ def _read_raw_log() -> DayLog:
     try:
         with FOOD_LOG_FILE.open() as handle:
             data = json.load(handle)
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         _logger.warning("Cannot read food log %s", FOOD_LOG_FILE)
         return {}
     if not isinstance(data, dict):

@@ -96,7 +96,7 @@ def _sync_food_bank(client: GitHubSyncClient, device_ids: Sequence[str]) -> None
             continue
         try:
             merged = merge_logs(merged, parse_remote_food_bank(text))
-        except (TypeError, KeyError, ValueError, json.JSONDecodeError):
+        except TypeError, KeyError, ValueError, json.JSONDecodeError:
             _logger.warning(
                 "Unparsable food bank pushed by device %r, skipping",
                 device_id,
@@ -159,7 +159,7 @@ def _sync_manual_bank(client: GitHubSyncClient, device_ids: Sequence[str]) -> No
             continue
         try:
             merged = merge_logs(merged, parse_remote_manual_bank(text))
-        except (TypeError, KeyError, ValueError, json.JSONDecodeError):
+        except TypeError, KeyError, ValueError, json.JSONDecodeError:
             _logger.warning(
                 "Unparsable curated food bank pushed by device %r, skipping",
                 device_id,
@@ -201,7 +201,7 @@ def _sync_budget(client: GitHubSyncClient, device_ids: Sequence[str]) -> None:
             continue
         try:
             merged = merge_logs(merged, parse_remote_budget(text))
-        except (TypeError, KeyError, ValueError, json.JSONDecodeError):
+        except TypeError, KeyError, ValueError, json.JSONDecodeError:
             _logger.warning(
                 "Unparsable budget pushed by device %r, skipping",
                 device_id,

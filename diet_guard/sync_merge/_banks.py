@@ -11,7 +11,7 @@ stamp -- those foods were never eaten, so they are not derivable from any log.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import json
 from typing import TYPE_CHECKING
 
@@ -113,7 +113,7 @@ def log_to_manual_bank(log: Log) -> dict[str, dict[str, object]]:
             continue
         stored = dict(body)
         if hlc is not None:
-            winning = datetime.fromtimestamp(hlc.wall_time_ms / 1000, tz=timezone.utc)
+            winning = datetime.fromtimestamp(hlc.wall_time_ms / 1000, tz=UTC)
             stored["t"] = winning.astimezone().isoformat(timespec="seconds")
         bank[name] = stored
     return bank

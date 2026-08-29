@@ -30,7 +30,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 import sys
@@ -192,7 +192,7 @@ def main() -> int:
     out.write_text(
         json.dumps(
             {
-                "captured_at": datetime.now(tz=timezone.utc).isoformat(),
+                "captured_at": datetime.now(tz=UTC).isoformat(),
                 "login_base": base,
                 "xsrf_cookie_present": xsrf is not None,
                 "steps": captured,

@@ -195,7 +195,7 @@ class _GateMealFlow(_PullFlows):
         consumed = today_total_kcal()
         try:
             budget = daily_budget()
-        except (BudgetError, OSError):
+        except BudgetError, OSError:
             return f"{consumed:g} kcal today"
         return (
             f"{consumed:g} / {budget:g} kcal   ·   {round(budget - consumed, 1):g} left"

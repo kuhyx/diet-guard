@@ -79,7 +79,7 @@ def _remote_revisions(client: RemoteStore) -> dict[str, str]:
         return {}
     try:
         return get_string_map(_REVS_DIR)
-    except (GitHubSyncError, RemoteSyncError):
+    except GitHubSyncError, RemoteSyncError:
         # A revision map that cannot be read is not worth failing a sync
         # over; without it every peer is simply fetched, as before.
         return {}
@@ -122,7 +122,7 @@ def _pull_remote_logs(
             continue
         try:
             remote_logs.append(parse_remote_log(text))
-        except (TypeError, KeyError, ValueError, json.JSONDecodeError):
+        except TypeError, KeyError, ValueError, json.JSONDecodeError:
             # Deliberately not recorded as seen: a corrupt push must be
             # retried next tick, not remembered as merged.
             _logger.warning("Unparsable log pushed by device %r, skipping", device_id)

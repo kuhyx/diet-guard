@@ -14,7 +14,7 @@ brand-new sync payload, so every device pushing it already speaks this format.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import json
 from typing import TYPE_CHECKING
 
@@ -139,7 +139,7 @@ def log_to_history(log: Log) -> tuple[BudgetEntry, ...]:
             continue
         if isinstance(value, bool) or not isinstance(value, int):
             continue
-        edited = datetime.fromtimestamp(hlc.wall_time_ms / 1000, tz=timezone.utc)
+        edited = datetime.fromtimestamp(hlc.wall_time_ms / 1000, tz=UTC)
         entries.append(
             BudgetEntry(
                 effective_from=name[len(_HISTORY_FIELD_PREFIX) :],
@@ -163,7 +163,7 @@ def log_to_budget(log: Log) -> dict[str, object] | None:
     value, hlc = record.fields.get("value", ({}, None))
     result: dict[str, object] = dict(value) if isinstance(value, dict) else {}
     if hlc is not None:
-        winning_time = datetime.fromtimestamp(hlc.wall_time_ms / 1000, tz=timezone.utc)
+        winning_time = datetime.fromtimestamp(hlc.wall_time_ms / 1000, tz=UTC)
         result["t"] = winning_time.astimezone().isoformat(timespec="seconds")
     weight, _ = record.fields.get(_WEIGHT_FIELD, (None, None))
     if isinstance(weight, (int, float)) and not isinstance(weight, bool):

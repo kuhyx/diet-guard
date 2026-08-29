@@ -98,7 +98,7 @@ def load_session_cookie() -> str | None:
         return None
     try:
         cached = json.loads(KUCHNIA_SESSION_FILE.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         _logger.warning("Catering session cache %s is unreadable", KUCHNIA_SESSION_FILE)
         return None
     value = cached.get(SESSION_COOKIE) if isinstance(cached, dict) else None

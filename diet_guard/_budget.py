@@ -19,7 +19,7 @@ keeps up to date on every edit.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import json
 import logging
 
@@ -49,7 +49,7 @@ def _now_local() -> datetime:
     imported: ``_state`` imports :func:`daily_budget` from this module, so
     importing back from ``_state`` here would be circular.
     """
-    return datetime.now(tz=timezone.utc).astimezone()
+    return datetime.now(tz=UTC).astimezone()
 
 
 # A medically sane lower bound.  Even an aggressive deficit must not compute
@@ -207,7 +207,7 @@ def read_raw_record() -> dict[str, object] | None:
     try:
         with BUDGET_FILE.open() as handle:
             record = json.load(handle)
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return None
     if not isinstance(record, dict):
         return None

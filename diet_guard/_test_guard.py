@@ -37,7 +37,7 @@ def _resolved(path: pathlib.Path) -> pathlib.Path:
     """Resolve ``path`` as far as the filesystem allows, never raising."""
     try:
         return path.expanduser().resolve()
-    except (OSError, RuntimeError, ValueError):
+    except OSError, RuntimeError, ValueError:
         return path
 
 

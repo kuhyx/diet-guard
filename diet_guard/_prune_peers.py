@@ -95,7 +95,7 @@ def _record_ids(client: RemoteStore, device_id: str) -> set[str]:
         return set()
     try:
         parsed = json.loads(text)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return set()
     return set(parsed) if isinstance(parsed, dict) else set()
 

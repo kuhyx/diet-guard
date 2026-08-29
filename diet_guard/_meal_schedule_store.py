@@ -29,7 +29,7 @@ KEEP IN SYNC WITH ``app/lib/services/meal_schedule_service.dart``.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import json
 import logging
 
@@ -187,7 +187,7 @@ def read_raw_history() -> dict[str, object] | None:
     try:
         with MEAL_SCHEDULE_FILE.open() as handle:
             document = json.load(handle)
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         _logger.debug("unreadable meal schedule; using the default")
         return None
     if not isinstance(document, dict):
@@ -215,7 +215,7 @@ def current_schedule() -> MealSchedule:
     through; the slot arithmetic itself stays a pure function of its
     arguments.
     """
-    today = datetime.now(tz=timezone.utc).astimezone().date().isoformat()
+    today = datetime.now(tz=UTC).astimezone().date().isoformat()
     return schedule_for_day(load_entries(), today)
 
 
@@ -227,6 +227,6 @@ def record_schedule_change(
     Seeds the default at the epoch first, so past days keep the four-meal
     schedule they were actually judged against.
     """
-    moment = when if when is not None else datetime.now(tz=timezone.utc).astimezone()
+    moment = when if when is not None else datetime.now(tz=UTC).astimezone()
     entries = seed_default(load_entries())
     write_raw_history(history_to_json(upsert(entries, schedule, moment)))

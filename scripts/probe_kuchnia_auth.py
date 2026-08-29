@@ -64,7 +64,7 @@ def load_session_cookie() -> str | None:
         return None
     try:
         cached = json.loads(SESSION_FILE.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return None
     value = cached.get(SESSION_COOKIE) if isinstance(cached, dict) else None
     return value if isinstance(value, str) else None

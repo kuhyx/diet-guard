@@ -4,7 +4,7 @@ alongside its source module (see _cli_gate.py's module docstring).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 from diet_guard import _cli_gate
@@ -214,7 +214,7 @@ class TestGateReadsFreshState:
 
     def test_written_slot_clears_the_gate_immediately(self) -> None:
         """At 09:00 only the 08:00 slot is due; logging it flips the decision."""
-        now = datetime(2026, 1, 1, 9, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         assert gate_is_due(now) is True
         log_meal("oatmeal", self._nutrition(), slot=8)
         assert gate_is_due(now) is False

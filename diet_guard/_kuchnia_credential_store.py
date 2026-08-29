@@ -51,7 +51,7 @@ def read_synced_credential() -> tuple[str, str, str] | None:
         return None
     try:
         raw = json.loads(KUCHNIA_SYNCED_CREDENTIAL_FILE.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         _logger.warning(
             "Synced catering credential %s is unreadable",
             KUCHNIA_SYNCED_CREDENTIAL_FILE,

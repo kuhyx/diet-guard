@@ -7,7 +7,7 @@ here.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -190,7 +190,7 @@ class TestPersistence:
     def test_record_defaults_to_now(self) -> None:
         """Omitting ``when`` stamps the edit with the current time."""
         store.record_schedule_change(MealSchedule(7, 19, 3))
-        today = datetime.now(tz=timezone.utc).astimezone().date().isoformat()
+        today = datetime.now(tz=UTC).astimezone().date().isoformat()
         assert store.schedule_for_day(store.load_entries(), today) == MealSchedule(
             7, 19, 3
         )

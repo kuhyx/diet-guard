@@ -28,7 +28,7 @@ propagating -- it relays them untouched.  No coordinated release is needed.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import json
 import logging
 
@@ -200,7 +200,7 @@ def read_raw_history() -> dict[str, object] | None:
     try:
         with BUDGET_HISTORY_FILE.open() as handle:
             document = json.load(handle)
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return None
     if not isinstance(document, dict):
         return None
@@ -229,5 +229,5 @@ def load_entries() -> tuple[BudgetEntry, ...]:
 
 def record_budget_change(kcal: int, *, when: datetime | None = None) -> None:
     """Record a budget edit, effective from the day it was made."""
-    moment = when if when is not None else datetime.now(tz=timezone.utc).astimezone()
+    moment = when if when is not None else datetime.now(tz=UTC).astimezone()
     write_raw_history(history_to_json(upsert(load_entries(), kcal=kcal, when=moment)))

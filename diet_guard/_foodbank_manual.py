@@ -19,7 +19,7 @@ next meal.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import json
 import logging
 
@@ -46,7 +46,7 @@ def read_manual_bank() -> dict[str, ManualRecord]:
     try:
         with MANUAL_BANK_FILE.open() as handle:
             bank = json.load(handle)
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         _logger.warning("Manual food bank %s is unreadable", MANUAL_BANK_FILE)
         return {}
     if not isinstance(bank, dict):
@@ -77,7 +77,7 @@ def add_manual_entry(name: str, record: ManualRecord) -> None:
     bank = read_manual_bank()
     stamped = dict(record)
     stamped["t"] = (
-        datetime.now(tz=timezone.utc)
+        datetime.now(tz=UTC)
         .astimezone()
         .isoformat(
             timespec="seconds",

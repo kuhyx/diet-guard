@@ -6,7 +6,7 @@ fixture, so every read/write here is isolated from real user data.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import json
 
 from diet_guard import _budget, _budget_derived, _budget_history
@@ -64,7 +64,7 @@ class TestFileIO:
     def test_record_budget_change_defaults_to_now(self) -> None:
         record_budget_change(1900)
         entries = load_entries()
-        today = datetime.now(tz=timezone.utc).astimezone().date().isoformat()
+        today = datetime.now(tz=UTC).astimezone().date().isoformat()
         assert entries[-1].effective_from == today
         assert entries[-1].kcal == 1900
 
@@ -121,7 +121,7 @@ class TestWriteBudgetIntegration:
         assert schedule.for_day("2026-06-01") == 2200
         assert (
             schedule.for_day(
-                datetime.now(tz=timezone.utc).astimezone().date().isoformat(),
+                datetime.now(tz=UTC).astimezone().date().isoformat(),
             )
             == 2000
         )
@@ -140,7 +140,7 @@ class TestWriteBudgetIntegration:
         _budget.write_budget(2000)
         entries = load_entries()
         assert [e.effective_from for e in entries] == [
-            datetime.now(tz=timezone.utc).astimezone().date().isoformat(),
+            datetime.now(tz=UTC).astimezone().date().isoformat(),
         ]
 
     def test_the_history_file_is_plain_readable_json(self) -> None:

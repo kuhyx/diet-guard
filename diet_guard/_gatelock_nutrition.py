@@ -97,7 +97,7 @@ class _GateNutrition(_GateCore):
         this_kcal = nutrition.kcal if nutrition is not None else 0.0
         try:
             budget = daily_budget()
-        except (BudgetError, OSError):
+        except BudgetError, OSError:
             tail = f" · this item {this_kcal:g} kcal" if this_kcal else ""
             self._vars.projection.set(f"Consumed {consumed:g} kcal today{tail}")
             return

@@ -56,7 +56,7 @@ def _read_bank() -> dict[str, BankRecord]:
     try:
         with FOOD_BANK_FILE.open() as handle:
             data = json.load(handle)
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         _quarantine_corrupt_bank()
         return {}
     if not isinstance(data, dict):

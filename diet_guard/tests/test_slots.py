@@ -8,7 +8,7 @@ still pin the behaviour these functions had when those hours were hardcoded.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from diet_guard._meal_schedule import DEFAULT_SCHEDULE, MealSchedule
 from diet_guard._slots import (
@@ -24,7 +24,7 @@ from diet_guard._slots import (
 
 def _at(hour: int) -> datetime:
     """Return a fixed local datetime at ``hour`` (date is irrelevant here)."""
-    return datetime(2026, 1, 1, hour, 0, tzinfo=timezone.utc)
+    return datetime(2026, 1, 1, hour, 0, tzinfo=UTC)
 
 
 class TestDaySlots:

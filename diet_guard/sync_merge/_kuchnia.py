@@ -28,7 +28,7 @@ KEEP IN SYNC WITH ``app/lib/services/sync_merge_kuchnia.dart``.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import json
 from typing import TYPE_CHECKING
 
@@ -125,7 +125,7 @@ def log_to_credential(log: Log) -> tuple[str, str, str] | None:
         return None
     # `password_hlc` cannot be None here: a field's value and its clock arrive
     # as one tuple, so reaching this line at all means the field was present.
-    stamp = datetime.fromtimestamp(password_hlc.wall_time_ms / 1000, tz=timezone.utc)
+    stamp = datetime.fromtimestamp(password_hlc.wall_time_ms / 1000, tz=UTC)
     return username, password, stamp.astimezone().isoformat(timespec="seconds")
 
 
