@@ -24,6 +24,7 @@ from contextlib import ExitStack
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+import freedays
 import pytest
 
 from diet_guard._estimator import Nutrition
@@ -103,6 +104,14 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
     ~20 redirects CPython refuses to compile it.
     """
     redirects = [
+        # The shared free-day pool lives under ~/.local/share, outside every
+        # diet_guard path below. Without this a real free day on the
+        # developer's machine would make every "the gate is due" test here
+        # fail, for a reason that looks nothing like the cause.
+        patch(
+            "freedays._api.resolve_paths",
+            lambda paths: paths or freedays.Paths.under(tmp_path / "freedays"),
+        ),
         patch(
             "diet_guard._budget.BUDGET_FILE",
             tmp_path / ".budget",

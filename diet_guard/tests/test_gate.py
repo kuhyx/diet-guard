@@ -6,10 +6,16 @@ here the logged set is mocked and ``now`` is injected to drive each decision.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+import freedays
+
 from diet_guard._gate import due_slots, gate_is_due, gate_message
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _at(hour: int) -> datetime:
@@ -77,3 +83,36 @@ class TestGateMessage:
         with _logged(set()):
             message = gate_message(_at(17))
         assert message == "Log your meals for 08:00, 12:00, 16:00 to unlock."
+
+
+class TestFreeDays:
+    """The shared pool stands the gate down entirely."""
+
+    def test_a_free_day_leaves_nothing_due(self, tmp_path: Path) -> None:
+        with _logged(set()):
+            assert due_slots(_at(20)), "precondition: slots are due without a free day"
+            freedays.mark(
+                _at(20).date(),
+                paths=freedays.Paths.under(tmp_path / "freedays"),
+                now=_at(20).date(),
+            )
+            assert due_slots(_at(20)) == ()
+            assert not gate_is_due(_at(20))
+
+    def test_a_free_day_on_another_date_changes_nothing(self, tmp_path: Path) -> None:
+        with _logged(set()):
+            freedays.mark(
+                date(2026, 12, 24),
+                paths=freedays.Paths.under(tmp_path / "freedays"),
+                now=_at(20).date(),
+            )
+            assert due_slots(_at(20))
+            assert gate_is_due(_at(20))
+
+    def test_an_unreadable_pool_leaves_the_gate_armed(self, tmp_path: Path) -> None:
+        """Fail closed: a corrupt pool must not switch the gate off."""
+        pool_dir = tmp_path / "freedays"
+        pool_dir.mkdir(exist_ok=True)
+        (pool_dir / "free_days.json").write_text("{ not json", encoding="utf-8")
+        with _logged(set()):
+            assert gate_is_due(_at(20))
