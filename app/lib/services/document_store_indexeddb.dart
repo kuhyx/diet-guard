@@ -53,7 +53,7 @@ class IndexedDbDocumentStore implements DocumentStore {
     if (value is String) return value;
     // Empty IndexedDB: either a first run or a cleared profile. Recover from
     // the wrapper's disk copy rather than silently starting from nothing.
-    return _readMirror(name);
+    return await _readMirror(name);
   }
 
   @override

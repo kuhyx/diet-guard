@@ -104,16 +104,16 @@ class WrapperServer {
       return;
     }
     if (path.startsWith(WrapperPaths.documents)) {
-      return _storedFile(
+      return await _storedFile(
         request,
         'documents',
         path.substring(WrapperPaths.documents.length),
       );
     }
     if (path == kSyncAccountPath) {
-      return _syncAccount(request);
+      return await _syncAccount(request);
     }
-    return _static(request, path);
+    return await _static(request, path);
   }
 
   /// Serves the shared sync account so a desktop install can self-provision.

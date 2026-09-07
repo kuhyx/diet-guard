@@ -30,7 +30,7 @@ void backgroundCheckCallbackDispatcher() {
     if (taskName == syncPushTaskName) {
       // Return the push's own success flag so a still-offline / failed push
       // is retried with backoff rather than silently dropped.
-      return backgroundSyncPush();
+      return await backgroundSyncPush();
     }
     if (taskName == backgroundCheckTaskName) {
       await checkAndNotify();

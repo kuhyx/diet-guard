@@ -26,7 +26,7 @@ Future<FirebaseRestClient?> openFirebase() async {
     // turned one missing write into "syncs over GitHub and 401s forever":
     // the credential that actually authenticates was sitting in the keystore
     // the whole time, unused. Ask the store directly before giving up.
-    return _clientFromStoredSession();
+    return await _clientFromStoredSession();
   }
   try {
     return await firebaseClientFor(

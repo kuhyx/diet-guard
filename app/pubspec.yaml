@@ -2,7 +2,7 @@ name: diet_guard_app
 description: "Companion phone app for diet_guard: log meals on the go."
 publish_to: 'none'
 
-version: 1.0.77+1
+version: 1.0.78+1
 
 environment:
   sdk: ^3.12.2
@@ -31,7 +31,7 @@ dependencies:
   idb_shim: 2.9.8
   path: 1.9.1
   path_provider: 2.1.6
-  permission_handler: 13.0.1
+  permission_handler: 13.0.2
   shared_preferences: 2.5.5
 
   # Shared "Sync settings" screen (Firebase + optional local backup), reused
@@ -46,7 +46,7 @@ dependencies:
   url_launcher: 6.3.2
   uuid: 4.6.0
   web: 1.1.1
-  workmanager: 0.10.9
+  workmanager: 0.10.10
 
 dev_dependencies:
   # Generates the Android launcher icons from assets/icon/ (see
@@ -58,7 +58,7 @@ dev_dependencies:
   # freshness check cannot compare against anything.
   plugin_platform_interface: 2.1.8
   url_launcher_platform_interface: 2.3.2
-  very_good_analysis: ^10.3.0
+  very_good_analysis: ^11.0.0
 
 flutter:
   uses-material-design: true
