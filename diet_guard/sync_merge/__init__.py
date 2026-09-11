@@ -4,7 +4,7 @@ diet_guard's own on-disk ``food_log.json`` format is unchanged (a
 :class:`~diet_guard._state.DayLog`: date string -> list of entry dicts) --
 only the GitHub-synced wire format and the cross-device merge algorithm go
 through ``crdt_sync``'s ``Record``/``Log``/``Hlc`` primitives, the same ones
-every other kuhy app that syncs this way uses (see ``~/crdt-sync``).
+every other kuhy app that syncs this way uses (see ``~/src/utils/crdt-sync``).
 
 Split into three submodules for file size, along the same seams the tests
 already use:

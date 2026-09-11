@@ -120,7 +120,7 @@ non-stdlib dependency must go into system Python's user site-packages:
 Verify against `/usr/bin/python3 -c "import <dep>"`, not the dev venv.
 Installing only into `.venv` caused a 3-day production outage (2026-06-19).
 
-Run `install.sh` from a **durable** clone (`~/diet-guard`), never a scratch
+Run `install.sh` from a **durable** clone (`~/src/diet-guard`), never a scratch
 dir — it does `pip install -e`, so the clone must persist for `git pull` to
 reach the running service.
 
@@ -159,7 +159,7 @@ reach the running service.
 
 `app/` builds for **Android** and **web** only. There is no `app/linux/` —
 Flutter's GTK embedder manages ~20fps at 3840x2160 where the same Dart in
-Chrome sustains ~144fps (`~/todo/docs/DOCS-desktop-performance-findings.md`). The
+Chrome sustains ~144fps (`~/src/todo/docs/DOCS-desktop-performance-findings.md`). The
 desktop app is the web build served by `bin/diet_guard_desktop.dart` in a
 Chrome `--app` window.
 
@@ -235,7 +235,7 @@ phone show both.
   Chrome profile path.
 - Don't exceed **250 lines** in any file. Enforced by the `file-length`
   pre-commit hook and `.github/workflows/file-length.yml`; the cap and its
-  exemptions live in `~/utils/file_length/config.py`.
+  exemptions live in `~/src/utils/file_length/config.py`.
 
 ## Flutter/Dart AI rules
 

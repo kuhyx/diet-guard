@@ -1,7 +1,7 @@
 # AUR packaging
 
 `PKGBUILD` here is the source of truth for the `diet-guard-app` AUR package.
-The AUR checkout (`~/aur/diet-guard-app`) is a copy of this file plus a
+The AUR checkout (`~/sdk/aur/diet-guard-app`) is a copy of this file plus a
 generated `.SRCINFO`.
 
 ## Why the checksum can go stale
@@ -35,8 +35,8 @@ the first packageable tag was `v1.0.1`.
 git tag v1.2.3 && git push origin v1.2.3
 
 # 3. sync + checksum + build + verify
-cp packaging/aur/PKGBUILD ~/aur/diet-guard-app/PKGBUILD
-cd ~/aur/diet-guard-app
+cp packaging/aur/PKGBUILD ~/sdk/aur/diet-guard-app/PKGBUILD
+cd ~/sdk/aur/diet-guard-app
 # bump pkgver to match the tag, then:
 updpkgsums
 makepkg -Cf

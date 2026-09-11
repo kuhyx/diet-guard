@@ -3,7 +3,7 @@
 Split out so :mod:`._gatelock_ui` and :mod:`._gatelock_calendar` pick
 ``pady``/``padx``/``ipady`` values from one deliberate scale instead of
 each row inventing its own gap -- see ``DESIGN_AUDIT_TODO.md``. Values are
-the px steps from ``~/utils/unified-design-system/tokens.md``'s spacing
+the px steps from ``~/src/utils/unified-design-system/tokens.md``'s spacing
 scale, used directly as Tk pixel counts.
 """
 

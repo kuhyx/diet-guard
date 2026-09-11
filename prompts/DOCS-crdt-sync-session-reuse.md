@@ -1,12 +1,12 @@
 # Session prompt: connection pooling in crdt_sync
 
 Paste everything below the line into a fresh Claude Code session started in
-`~/utils` (that is where the library lives — **not** `~/diet-guard`).
+`~/src/utils` (that is where the library lives — **not** `~/src/diet-guard`).
 
 ---
 
 Add HTTP connection pooling to the shared `crdt_sync` library at
-`~/utils/crdt-sync`, then bump the tag and re-pin `~/diet-guard` to it.
+`~/src/utils/crdt-sync`, then bump the tag and re-pin `~/src/diet-guard` to it.
 
 ## Why
 
@@ -32,22 +32,22 @@ changed.
 ## Scope
 
 **In scope**
-1. Connection pooling in `~/utils/crdt-sync/crdt_sync/`, across exactly 9 call
+1. Connection pooling in `~/src/utils/crdt-sync/crdt_sync/`, across exactly 9 call
    sites in 3 files:
    - `_github.py`: lines ~73, ~84 (get), ~163 (put), ~238 (delete)
    - `_firebase.py`: ~189, ~319 (get), ~254 (put), ~300 (delete)
    - `_firebase_auth.py`: ~290 (post)
 2. A `timeout_seconds` keyword on `firebase_client_for` in `_config.py`
    (see "Second fix" below).
-3. Tag bump + re-pin `~/diet-guard/pyproject.toml` **and**
-   `~/diet-guard/requirements.txt` (both name the tag).
+3. Tag bump + re-pin `~/src/diet-guard/pyproject.toml` **and**
+   `~/src/diet-guard/requirements.txt` (both name the tag).
 
 **Out of scope — do not touch**
-- The other consumers. `~/screen-locker` is already on `crdt-sync-v0.7.0`;
-  `~/leetcode-guard`, `~/build_your_x` and `~/wake-alarm` are on
+- The other consumers. `~/src/screen-locker` is already on `crdt-sync-v0.7.0`;
+  `~/src/leetcode-guard`, `~/build_your_x` and `~/src/wake-alarm` are on
   `crdt-sync-v0.5.1`. Leave every one of those pins alone and say so in your
   final report.
-- `~/diet-guard/diet_guard/_sync*.py` logic. That work is finished and
+- `~/src/diet-guard/diet_guard/_sync*.py` logic. That work is finished and
   committed; this task only re-pins the dependency.
 
 ## The constraint that decides the design
@@ -93,7 +93,7 @@ note in your report that it can be simplified in a follow-up.
   the underlying issue instead; do not add a suppression, and do not add one to
   the ignore list without asking.
 - 250-line cap per file, enforced by a hook.
-- `~/diet-guard` has a `no local crdt_sync dependency_override` pre-commit hook
+- `~/src/diet-guard` has a `no local crdt_sync dependency_override` pre-commit hook
   that exists to stop a local path override leaking into a commit. Do not
   defeat it — re-pin to a real pushed tag.
 
@@ -102,7 +102,7 @@ note in your report that it can be simplified in a follow-up.
 `diet-guard-gate.service` runs `/usr/bin/python`, not a venv. After re-pinning:
 
 ```bash
-/usr/bin/python3 -m pip install --user --break-system-packages -e ~/diet-guard
+/usr/bin/python3 -m pip install --user --break-system-packages -e ~/src/diet-guard
 /usr/bin/python3 -c "import crdt_sync, sys; print(crdt_sync.__file__)"
 ```
 
@@ -116,7 +116,7 @@ Verify against `/usr/bin/python3`, **never** the dev venv.
   `RealUserStateWriteError` if a test tries to write there — that is a feature.
 - A sync tick **pushes to a shared remote** that the phone also reads. Timing a
   real `run_sync()` is fine (it is idempotent), but do not add throwaway writes.
-- `~/utils` is a monorepo holding several packages. Stage narrowly —
+- `~/src/utils` is a monorepo holding several packages. Stage narrowly —
   `crdt-sync/` only — and note that `crdt-sync/tool/seed_session.py` is already
   modified and `crdt-sync/firebase-debug.log` is untracked; both predate this
   task, so leave them out of your commit.
@@ -129,7 +129,7 @@ Verify against `/usr/bin/python3`, **never** the dev venv.
 
 1. `crdt_sync` at 100% branch coverage, lint clean, with a near-zero test diff.
 2. A pushed `crdt-sync-v0.8.0` tag.
-3. `~/diet-guard` re-pinned in both `pyproject.toml` and `requirements.txt`,
+3. `~/src/diet-guard` re-pinned in both `pyproject.toml` and `requirements.txt`,
    830 tests still green at 100%.
 4. Installed into `/usr/bin/python3`'s user site-packages and verified there.
 5. A re-measured full tick, reported against the 7.6s / 27-request baseline

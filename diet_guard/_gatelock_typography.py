@@ -6,7 +6,7 @@ own value per label -- see ``DESIGN_AUDIT_TODO.md``.
 
 **These are Tk font sizes, and Tk encodes the unit in the sign: positive
 means points, negative means pixels.** The design-system scale in
-``~/utils/unified-design-system/tokens.md`` is in *pixels*, so every constant
+``~/src/utils/unified-design-system/tokens.md`` is in *pixels*, so every constant
 here is negative.
 
 This module previously carried the positive values with a comment asserting

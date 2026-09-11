@@ -160,7 +160,7 @@ void main() {
         isTrue,
         reason: 'The wrapper port changed. IndexedDB is keyed by origin, so a '
             'new port looks like a different app with no history at all. '
-            '8730 is ~/todo and 8731 is ~/habit_stack; do not collide.',
+            '8730 is ~/src/todo and 8731 is ~/src/habit_stack; do not collide.',
       );
     });
 

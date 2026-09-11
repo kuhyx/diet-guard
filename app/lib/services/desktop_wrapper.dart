@@ -9,7 +9,7 @@ library;
 /// packaging and `bin/diet_guard_desktop.dart` must all use this value, and
 /// the Chrome `--user-data-dir` must stay equally fixed for the same reason.
 ///
-/// 8730 is `~/todo`'s wrapper and 8731 is `~/habit_stack`'s; this is the next
+/// 8730 is `~/src/todo`'s wrapper and 8731 is `~/src/habit_stack`'s; this is the next
 /// free one so all three can run at once.
 const desktopWrapperPort = 8732;
 

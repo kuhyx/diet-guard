@@ -89,7 +89,7 @@ GATE_LOCK_FILE: Path = DATA_DIR / ".gate.lock"
 
 # --- Sync (cross-device log merge) ------------------------------------------
 # GitHub is used purely as dumb file storage via the REST Contents API (not a
-# git clone) -- mirrors ~/todo's sync transport. Each device pushes its own
+# git clone) -- mirrors ~/src/todo's sync transport. Each device pushes its own
 # full current log as one file under devices/<id>/food_log.json; merging
 # happens client-side (see _sync_merge.py), never via git.
 SYNC_REPO_OWNER: str = "kuhyx"

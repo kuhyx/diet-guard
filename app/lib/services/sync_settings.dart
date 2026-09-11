@@ -1,4 +1,4 @@
-/// Locally-stored GitHub sync configuration, ported from `~/todo`'s
+/// Locally-stored GitHub sync configuration, ported from `~/src/todo`'s
 /// `sync/sync_settings.dart`, including the OAuth device-flow fields: the
 /// "Connect GitHub" button is the primary path, with a pasted PAT kept as a
 /// manual fallback.

@@ -2,7 +2,7 @@
 ///
 /// The desktop app is a Flutter **web** build (Flutter's Linux embedder
 /// manages only ~20fps at 4K, where the same Dart code in Chrome sustains
-/// ~144fps -- see `~/todo/docs/desktop-performance-findings.md`), so it runs
+/// ~144fps -- see `~/src/todo/docs/desktop-performance-findings.md`), so it runs
 /// in a browser and cannot touch the filesystem. This process is the other
 /// half of the desktop app:
 ///

@@ -6,7 +6,7 @@ coverage==7.16.0
 crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.9.1#subdirectory=crdt-sync
 freedays @ git+https://github.com/kuhyx/utils@freedays-v0.2.0#subdirectory=freedays
 gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.7.3#subdirectory=gatelock
-mcp==2.1.1
+mcp==2.2.0
 mypy==2.3.1
 pre-commit==4.6.2
 pydantic==2.13.5
@@ -17,4 +17,4 @@ pytest-randomly==5.0.0
 pytest-sugar==1.1.1
 pytest-xdist==3.8.0
 requests==2.34.2
-ruff==0.16.6
+ruff==0.16.7
