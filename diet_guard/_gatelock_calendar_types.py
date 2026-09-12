@@ -25,9 +25,9 @@ if TYPE_CHECKING:
 # used to be its own hardcoded copy of _gatelock_ui's private constants; now
 # it reads the same shared LockConfig() directly instead.
 _COLORS = LockConfig()
-_MUTED = _COLORS.muted
-_FIELD_BG = _COLORS.field_bg
-_ACCENT = _COLORS.accent
+_MUTED = _COLORS.palette.muted
+_FIELD_BG = _COLORS.palette.field_bg
+_ACCENT = _COLORS.palette.accent
 
 # calendar.monthcalendar never returns more than 6 weeks for any month.
 _MONTH_ROWS = 6

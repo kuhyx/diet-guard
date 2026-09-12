@@ -44,13 +44,13 @@ from diet_guard._gatelock_ui_types import (
 # already import them by name; they now track LockConfig instead of a
 # separate, driftable copy.
 _COLORS = LockConfig()
-BG = _COLORS.bg
-FG = _COLORS.fg
-ERR = _COLORS.danger
-_ACCENT = _COLORS.accent
-_FIELD_BG = _COLORS.field_bg
-_MUTED = _COLORS.muted
-_FONT = _COLORS.font_family
+BG = _COLORS.palette.bg
+FG = _COLORS.palette.fg
+ERR = _COLORS.palette.danger
+_ACCENT = _COLORS.palette.accent
+_FIELD_BG = _COLORS.palette.field_bg
+_MUTED = _COLORS.palette.muted
+_FONT = _COLORS.typography.font_family
 # Number of food-bank / staple / OFF suggestions shown in the picker list.
 SUGGESTION_ROWS = 5
 # Grams a label's macros are assumed to describe when the "per" field is blank.

@@ -103,7 +103,7 @@ def build_suggestion_box(parent: tk.Frame) -> tk.Listbox:
         bg=_FIELD_BG,
         fg=FG,
         selectbackground=_ACCENT,
-        selectforeground=_COLORS.on_fill,
+        selectforeground=_COLORS.palette.on_fill,
         activestyle="none",
         # Was highlightthickness=0, which removed the focus ring entirely. The
         # list *is* arrow-key navigable, so it was keyboard-usable with no

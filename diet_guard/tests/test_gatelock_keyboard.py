@@ -130,7 +130,7 @@ class TestFocusRingIsVisible:
         against ``bg`` the moment it took focus.
         """
         kwargs = _gatelock_ui._COLORS.focus_kwargs()
-        assert kwargs["highlightcolor"] == _gatelock_ui._COLORS.accent
+        assert kwargs["highlightcolor"] == _gatelock_ui._COLORS.palette.accent
         assert kwargs["highlightcolor"] != "#000000"
         assert int(kwargs["highlightthickness"]) > 0
 

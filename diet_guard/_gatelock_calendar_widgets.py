@@ -60,14 +60,14 @@ def _build_budget_row(
     tk.Label(
         row,
         text="Daily budget (kcal):",
-        font=(_COLORS.font_family, LABEL),
+        font=(_COLORS.typography.font_family, LABEL),
         bg=BG,
         fg=FG,
     ).pack(side="left")
     entry = tk.Entry(
         row,
         textvariable=vars_.budget,
-        font=(_COLORS.font_family, BODY),
+        font=(_COLORS.typography.font_family, BODY),
         width=8,
         bg=_FIELD_BG,
         fg=FG,
@@ -87,7 +87,7 @@ def _build_budget_row(
     status_label = tk.Label(
         parent,
         textvariable=vars_.budget_status,
-        font=(_COLORS.font_family, LABEL),
+        font=(_COLORS.typography.font_family, LABEL),
         bg=BG,
         fg=FG,
     )
@@ -113,7 +113,7 @@ def _build_month_nav(
     tk.Label(
         row,
         textvariable=vars_.month_label,
-        font=(_COLORS.font_family, LABEL, "bold"),
+        font=(_COLORS.typography.font_family, LABEL, "bold"),
         bg=BG,
         fg=FG,
         width=16,
@@ -136,7 +136,7 @@ def _build_grid(parent: tk.Frame) -> list[tk.Label]:
         tk.Label(
             weekday_row,
             text=label,
-            font=(_COLORS.font_family, CAPTION, "bold"),
+            font=(_COLORS.typography.font_family, CAPTION, "bold"),
             bg=BG,
             fg=_MUTED,
             width=4,
@@ -150,7 +150,7 @@ def _build_grid(parent: tk.Frame) -> list[tk.Label]:
             cell = tk.Label(
                 grid_frame,
                 text="",
-                font=(_COLORS.font_family, CAPTION),
+                font=(_COLORS.typography.font_family, CAPTION),
                 width=4,
                 height=2,
                 bg=BG,
@@ -173,7 +173,7 @@ def build_calendar_frame(
     tk.Label(
         frame,
         text="📅  History",
-        font=(_COLORS.font_family, TITLE, "bold"),
+        font=(_COLORS.typography.font_family, TITLE, "bold"),
         bg=BG,
         fg=_ACCENT,
     ).pack(pady=(SM, 0))
@@ -200,21 +200,21 @@ def build_calendar_frame(
     tk.Label(
         frame,
         textvariable=vars_.streaks,
-        font=(_COLORS.font_family, LABEL, "bold"),
+        font=(_COLORS.typography.font_family, LABEL, "bold"),
         bg=BG,
         fg=FG,
     ).pack(pady=(SM, 0))
     tk.Label(
         frame,
         textvariable=vars_.ytd,
-        font=(_COLORS.font_family, CAPTION),
+        font=(_COLORS.typography.font_family, CAPTION),
         bg=BG,
         fg=_MUTED,
     ).pack(pady=(XS, 0))
     tk.Label(
         frame,
         textvariable=vars_.averages,
-        font=(_COLORS.font_family, CAPTION),
+        font=(_COLORS.typography.font_family, CAPTION),
         bg=BG,
         fg=_MUTED,
     ).pack(pady=(XS, SM))

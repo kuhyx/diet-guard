@@ -38,12 +38,12 @@ _COLORS = LockConfig()
 _NOT_LOGGED_FILL = BG
 _NOT_LOGGED_OUTLINE = FG
 _STATUS_COLORS = {
-    DayStatus.GREEN: _COLORS.success,
-    DayStatus.YELLOW: _COLORS.warning,
-    DayStatus.RED: _COLORS.danger,
+    DayStatus.GREEN: _COLORS.palette.success,
+    DayStatus.YELLOW: _COLORS.palette.warning,
+    DayStatus.RED: _COLORS.palette.danger,
 }
-_STATUS_TEXT_COLOR = _COLORS.on_fill
-_MUTED = _COLORS.muted
+_STATUS_TEXT_COLOR = _COLORS.palette.on_fill
+_MUTED = _COLORS.palette.muted
 
 
 @dataclass(frozen=True)

@@ -33,7 +33,7 @@ def _spin_entry(row: tk.Frame, variable: tk.StringVar) -> tk.Entry:
     entry = tk.Entry(
         row,
         textvariable=variable,
-        font=(_COLORS.font_family, BODY),
+        font=(_COLORS.typography.font_family, BODY),
         width=_ENTRY_WIDTH,
         bg=_FIELD_BG,
         fg=FG,
@@ -65,7 +65,7 @@ def build_schedule_row(
     tk.Label(
         row,
         text="Meals:",
-        font=(_COLORS.font_family, LABEL),
+        font=(_COLORS.typography.font_family, LABEL),
         bg=BG,
         fg=FG,
     ).pack(side="left")
@@ -73,7 +73,7 @@ def build_schedule_row(
     tk.Label(
         row,
         text="to",
-        font=(_COLORS.font_family, LABEL),
+        font=(_COLORS.typography.font_family, LABEL),
         bg=BG,
         fg=FG,
     ).pack(side="left")
@@ -81,7 +81,7 @@ def build_schedule_row(
     tk.Label(
         row,
         text="x",
-        font=(_COLORS.font_family, LABEL),
+        font=(_COLORS.typography.font_family, LABEL),
         bg=BG,
         fg=FG,
     ).pack(side="left")
@@ -94,14 +94,14 @@ def build_schedule_row(
     tk.Label(
         parent,
         textvariable=vars_.schedule.times,
-        font=(_COLORS.font_family, LABEL),
+        font=(_COLORS.typography.font_family, LABEL),
         bg=BG,
         fg=FG,
     ).pack(pady=(0, XS))
     status_label = tk.Label(
         parent,
         textvariable=vars_.schedule.status,
-        font=(_COLORS.font_family, LABEL),
+        font=(_COLORS.typography.font_family, LABEL),
         bg=BG,
         fg=FG,
     )

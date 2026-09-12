@@ -75,5 +75,5 @@ def _style_notebook(root: tk.Misc) -> None:
     style.map(
         "TNotebook.Tab",
         background=[("selected", _ACCENT)],
-        foreground=[("selected", _COLORS.on_fill)],
+        foreground=[("selected", _COLORS.palette.on_fill)],
     )
