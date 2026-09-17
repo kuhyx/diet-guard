@@ -62,16 +62,16 @@ every idle tick to approximate the two moments state actually changes here.
   never in the unlock handler: that runs on the Tk thread with the window up,
   so a hanging call would keep the user locked in behind a successful log. It
   also covers the "Synced from another device" unlock.
-- Accepted trade: a PC that is on but neither logging nor locking does not
-  pull, so an inbound phone edit lands at the next log or lock. Bounded by slot
-  spacing — an unlogged day raises a lock.
 - **`gate --demo` publishes too** (the call sits after the `finally`). "Safe,
   closeable" means it cannot trap you at the keyboard, not that it is offline:
   demo already writes real entries through `log_meal` (only the *slot* is
   synthetic).
 - `pull_shared_log()` is misnamed: it runs a *full* tick (pull, merge, re-sign,
-  persist, **push**, plus budget and both food banks), not just a pull. Use
-  `_sync_refresh.pull_peer_logs()` for anything a user waits on.
+  persist, **push**, budget, both food banks, and last the phone's weigh-in
+  into `w` via `_phone_weight`: `wake_alarm._weight`, lazy, never raises).
+  `_sync_refresh.pull_peer_logs()` is for anything a user waits on. What must
+  follow every tick goes in `run_sync`, not `cmd_sync` (the PC never runs it).
+- Accepted trade: a PC neither logging nor locking does not pull.
 - **Interactive paths must not block, and stale peers cost real time.** The
   threading rules, the interactive timeout, and `prune-peers` (including the
   `revs/` marker trap that made pruning *slower*) are in
