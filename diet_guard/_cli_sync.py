@@ -27,10 +27,6 @@ _LAZY_ATTRS = {
     "run_sync": ("diet_guard._sync", "run_sync"),
     "SyncError": ("diet_guard._sync", "SyncError"),
     "RemoteSyncError": ("crdt_sync", "RemoteSyncError"),
-    "refresh_weight_from_phone": (
-        "diet_guard._phone_weight",
-        "refresh_weight_from_phone",
-    ),
 }
 
 
@@ -82,7 +78,4 @@ def cmd_sync(emit: Callable[[str], None]) -> int:
         return 1
     total_entries = sum(len(entries) for entries in merged.values())
     emit(f"synced: {total_entries} entries across {len(merged)} day(s).")
-    # After the merge, never before: the local record is then already the
-    # merged winner, so refreshing its ``t`` re-asserts nothing stale.
-    module.refresh_weight_from_phone(emit)
     return 0

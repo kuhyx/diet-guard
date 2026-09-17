@@ -37,6 +37,7 @@ from diet_guard._constants import (
 )
 from diet_guard._device import device_identity
 from diet_guard._foodbank_rebuild import rebuild_food_bank
+from diet_guard._phone_weight import refresh_weight_from_phone
 from diet_guard._state_sync import (
     read_raw_log,
     resign_entry,
@@ -202,6 +203,11 @@ def run_sync() -> DayLog:
             message="diet_guard sync: revision",
         )
     state_store.save(SyncState(pushed_rev=revision, peer_revs=seen_revs))
+    # Last, after the budget merge above: the local record is then already
+    # the merged winner, so the refreshed ``t`` re-asserts nothing stale.
+    # Here rather than in the ``sync`` subcommand because on the PC a full
+    # tick runs from ``publish_after_log``, never from that command.
+    refresh_weight_from_phone(lambda line: _logger.info("%s", line))
     return resigned
 
 
