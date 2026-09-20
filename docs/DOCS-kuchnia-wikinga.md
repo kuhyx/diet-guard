@@ -85,6 +85,15 @@ This was proven, not assumed: 4·protein + 4·carbs + 9·fat reproduces the stat
 payload and would silently skew every logged meal by a factor of several, so
 the parser refuses rather than importing a plausible-looking lie.
 
+The same mix-up has a second home: the PC gate's form. Its macro fields are a
+*reference* scaled from the "per" basis to the amount eaten, so the delivery
+prefill must go through `_apply_reference` with `_kuchnia_log.dish_nutrition`
+(basis = the dish's own grams). Writing the macros straight into the fields
+left the basis at `_clear_inputs`'s 100 g default and logged grams/100 times
+too much while the fields still read correctly (350 g owsianka: 448 shown,
+1568 logged; every gate-logged delivery 2026-08-23 to 2026-09-20). The phone's
+`dishFieldValues` has no such basis and is correct as is.
+
 ## Credentials
 
 Three files under `~/.config/diet_guard/`, all mode 600. They are outside

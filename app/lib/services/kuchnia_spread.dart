@@ -87,9 +87,13 @@ List<KuchniaDish> dishesInSlotOrder(
 
 /// Returns `(portionGrams, (kcal, protein, carbs, fat))` as form strings.
 ///
-/// Mirrors `_kuchnia_spread.dish_field_values`. Formatted here rather than in
-/// the widget so the numeric formatting is covered by a test that needs no
-/// display.
+/// Phone-only, deliberately: this form logs the fields as typed, so writing
+/// the dish's whole-portion macros into them is correct. The PC gate's form
+/// scales its macros from a "per" basis to the amount eaten, so it goes
+/// through `_kuchnia_log.dish_nutrition` (basis = the dish's own grams)
+/// instead -- filling its fields this way logged 3.5x the calories.
+/// Formatted here rather than in the widget so the numeric formatting is
+/// covered by a test that needs no display.
 ///
 /// Python uses `f"{value:g}"`, which drops a trailing `.0`; Dart's
 /// `toStringAsFixed` would keep it and `toString` would render `435.0`. So a
