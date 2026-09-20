@@ -24,6 +24,7 @@ from diet_guard._state_today import today_entries
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from collections.abc import Sequence
 
+    from diet_guard._kuchnia_parse import Dish
     from diet_guard._kuchnia_spread import SlottedDish
 
 #: Marks entries this importer created, so the provenance is visible in the log
@@ -38,6 +39,23 @@ def _already_logged(entries: Sequence[dict[str, object]], name: str, slot: int) 
         str(entry.get("desc", "")).strip().casefold() == wanted
         and entry.get("slot") == slot
         for entry in entries
+    )
+
+
+def dish_nutrition(dish: Dish) -> Nutrition:
+    """Return a dish as the whole-portion :class:`Nutrition` it gets logged as.
+
+    ``grams`` is the dish's own portion, which matters to the gate: its form
+    scales the label macros from the "per" basis to the amount eaten, and a
+    dish whose basis was left at the 100 g default logged 3.5x too much.
+    """
+    return Nutrition(
+        kcal=dish.kcal,
+        protein_g=dish.protein_g,
+        carbs_g=dish.carbs_g,
+        fat_g=dish.fat_g,
+        grams=dish.grams,
+        source=SOURCE,
     )
 
 
@@ -56,18 +74,7 @@ def log_dishes(chosen: Sequence[SlottedDish]) -> list[str]:
         dish = item.dish
         if _already_logged(entries, dish.name, item.slot):
             continue
-        log_meal(
-            dish.name,
-            Nutrition(
-                kcal=dish.kcal,
-                protein_g=dish.protein_g,
-                carbs_g=dish.carbs_g,
-                fat_g=dish.fat_g,
-                grams=dish.grams,
-                source=SOURCE,
-            ),
-            item.slot,
-        )
+        log_meal(dish.name, dish_nutrition(dish), item.slot)
         # Reflect the write locally so two identical dishes in one batch do not
         # both land: today_entries() was read once, before the loop.
         entries = [*entries, {"desc": dish.name, "slot": item.slot}]

@@ -24,6 +24,7 @@ from unittest.mock import patch
 
 from diet_guard import _gatelock_mealflow
 from diet_guard._gatelock_kuchnia import DeliveryResult
+from diet_guard._kuchnia_log import dish_nutrition
 from diet_guard.tests.conftest import _nutrition
 from diet_guard.tests.test_kuchnia_gate import _deliver, _dish, _Gate
 
@@ -144,6 +145,26 @@ class TestTheGateAdvancesTheQueue:
         assert not gate._delivery_pending
         assert "Loaded: Second course" in gate._vars.status.get()
         assert "Logged 08:00" in gate._vars.status.get()
+
+    def test_a_prefilled_dish_logs_exactly_its_own_values(self, gate: MealGate) -> None:
+        """What the submit logs is the dish, not the dish scaled by grams/100.
+
+        The fields alone cannot catch this: they read the right numbers either
+        way. The regression it pins is a 350 g dish prefilled with its
+        whole-portion macros while the "per" basis sat at the 100 g default,
+        so ``Log & Continue`` recorded 3.5x the calories the form showed.
+        """
+        dish = _dish("Owsianka")
+        gate._delivery_pending = (dish,)
+        gate._prefill_next_dish()
+        assert gate._current_nutrition() == dish_nutrition(dish)
+        assert "→ 391 kcal" in gate._vars.preview.get()
+        with (
+            patch.object(_gatelock_mealflow, "log_meal") as log,
+            patch.object(_gatelock_mealflow, "remember_food"),
+        ):
+            gate._on_submit()
+        assert log.call_args.args[1] == dish_nutrition(dish)
 
     def test_dishes_left_when_the_last_slot_unlocks_are_named(
         self, gate: MealGate

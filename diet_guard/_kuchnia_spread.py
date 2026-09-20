@@ -84,13 +84,3 @@ def dishes_in_slot_order(dishes: tuple[Dish, ...]) -> tuple[Dish, ...]:
     """
     slotted = assign_slots(dishes, day_slots(current_schedule()))
     return tuple(item.dish for item in slotted)
-
-
-def dish_field_values(dish: Dish) -> tuple[str, tuple[str, ...]]:
-    """Return ``(portion_grams, (kcal, protein, carbs, fat))`` as form strings.
-
-    Formatted here rather than in the widget code so the numeric formatting is
-    covered by a test that needs no display.
-    """
-    macros = (dish.kcal, dish.protein_g, dish.carbs_g, dish.fat_g)
-    return f"{dish.grams:g}", tuple(f"{value:g}" for value in macros)

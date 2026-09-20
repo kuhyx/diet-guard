@@ -25,7 +25,8 @@ from diet_guard._gate import due_slots
 from diet_guard._gatelock_fetch import FETCH_POLL_MS, start_fetch
 from diet_guard._gatelock_kuchnia import start_delivery_fetch
 from diet_guard._gatelock_nutrition import _GateNutrition
-from diet_guard._kuchnia_spread import dish_field_values, dishes_in_slot_order
+from diet_guard._kuchnia_log import dish_nutrition
+from diet_guard._kuchnia_spread import dishes_in_slot_order
 from diet_guard._state import now_local
 from diet_guard._sync_refresh import pull_peer_logs
 
@@ -79,16 +80,13 @@ class _PullFlows(_GateNutrition):
     #: prompt to report that the caterer had nothing today.
     _delivery_asked: bool = False
 
-    #: The in-flight sync fetch's queue, or None when none is running.
-
-    #: Slots still to be filled; owned by the controller this mixes into.
-
     # Supplied by ``_GateMealFlow``, which mixes this class in. Declared so the
     # contract is explicit and pylint can see it: the dependency runs both ways
     # (the flows drive the meal form, the form hosts the flows) and the
     # ancestor cap leaves no room for another chain link.
     _set_status: Callable[..., None]
     _clear_inputs: Callable[[], None]
+    _apply_reference: Callable[..., None]
     _refresh_dashboard: Callable[[], None]
     _unlock: Callable[[str], None]
 
@@ -152,13 +150,12 @@ class _PullFlows(_GateNutrition):
         dish, *rest = self._delivery_pending
         self._delivery_pending = tuple(rest)
         self._clear_inputs()
-        self._set_desc(dish.name)
-        grams, macros = dish_field_values(dish)
-        self._widgets.amount_entry.insert(0, grams)
-        for entry, value in zip(self._macro_entries(), macros, strict=True):
-            entry.insert(0, value)
-        self._state.source = "kuchnia wikinga"
-        self._refresh_projection()
+        # Through the reference model, never straight into the fields: the
+        # form scales the macros from the "per" basis to the amount eaten, so
+        # the basis must be the dish's own portion. Writing the macros with
+        # the basis left at ``_clear_inputs``'s 100 g default logged a 350 g
+        # dish at 3.5x its calories while the fields still read correctly.
+        self._apply_reference(dish_nutrition(dish), name=dish.name)
         remaining = len(self._delivery_pending)
         suffix = f" ({remaining} more to go)" if remaining else ""
         prefix = f"{logged} — " if logged else ""

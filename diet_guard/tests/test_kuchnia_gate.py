@@ -24,16 +24,19 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from diet_guard import _gatelock_delivery
-from diet_guard._gatelock_delivery import _PullFlows, dish_field_values
+from diet_guard._gatelock_delivery import _PullFlows
 from diet_guard._gatelock_kuchnia import (
     UNEXPECTED,
     DeliveryResult,
     start_delivery_fetch,
 )
+from diet_guard._kuchnia_log import SOURCE, dish_nutrition
 from diet_guard._kuchnia_parse import Dish
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    from diet_guard._estimator import Nutrition
 
 DAY = datetime.date(2026, 8, 22)
 
@@ -80,12 +83,10 @@ class _Gate(_PullFlows):
         self.root = MagicMock()
         self.demo_mode = False
         self.statuses: list[tuple[str, bool]] = []
-        self._widgets = SimpleNamespace(amount_entry=MagicMock())
         self._state = SimpleNamespace(source="manual")
         self._descs: list[str] = []
+        self._references: list[Nutrition] = []
         self._cleared = 0
-        self._projections = 0
-        self._entries = [MagicMock() for _ in range(4)]
 
     def _set_status(self, text: str, *, error: bool = False) -> None:
         self.statuses.append((text, error))
@@ -96,11 +97,14 @@ class _Gate(_PullFlows):
     def _clear_inputs(self) -> None:
         self._cleared += 1
 
-    def _refresh_projection(self) -> None:
-        self._projections += 1
-
-    def _macro_entries(self) -> tuple[MagicMock, ...]:
-        return tuple(self._entries)
+    def _apply_reference(
+        self, nutrition: Nutrition, *, name: str | None = None
+    ) -> None:
+        # The real one also fills the fields; the queue tests only need to
+        # know which dish was offered and as what reference.
+        if name is not None:
+            self._set_desc(name)
+        self._references.append(nutrition)
 
     @property
     def last_status(self) -> str:
@@ -155,9 +159,11 @@ class TestLoadButton:
     def test_a_dish_is_offered_but_never_logged(self) -> None:
         gate = _Gate()
         _deliver(gate, DeliveryResult(dishes=(_dish(),), reason=None))
-        # The form is filled...
+        # The form is filled -- as a whole-portion reference, so the basis
+        # is the dish's 318 g and not the form's 100 g default...
         assert gate._descs == ["Kaszotto"]
-        gate._widgets.amount_entry.insert.assert_called_once_with(0, "318")
+        assert gate._references == [dish_nutrition(_dish())]
+        assert gate._references[0].grams == 318.0
         # ...and that is all. Submitting stays the user's explicit action.
         assert "Log & Continue" in gate.last_status
 
@@ -198,19 +204,24 @@ class TestLoadButton:
         gate.root.after.assert_not_called()
 
 
-class TestFieldFormatting:
-    def test_values_are_trimmed_not_padded(self) -> None:
-        grams, macros = dish_field_values(_dish())
-        assert grams == "318"
-        assert macros == ("391", "32.5", "35.6", "13")
+class TestDishNutrition:
+    def test_the_basis_is_the_dish_portion(self) -> None:
+        # The gate scales the reference from this basis to the amount eaten;
+        # anything other than the dish's own grams scales a whole-portion
+        # label as if it were per 100 g.
+        nutrition = dish_nutrition(_dish())
+        assert nutrition.grams == 318.0
+        assert nutrition.source == SOURCE
 
-    def test_the_macro_order_matches_the_form(self) -> None:
-        # _macro_entries() is (kcal, protein, carbs, fat); a mismatch here
-        # would silently swap a dish's protein and carbohydrate.
-        _grams, macros = dish_field_values(
-            Dish("x", 100.0, 1.0, 2.0, 3.0, 50.0, 1, ""),
+    def test_the_macro_order_matches_the_dish(self) -> None:
+        # A mismatch here would silently swap a dish's protein and carbs.
+        nutrition = dish_nutrition(Dish("x", 100.0, 1.0, 2.0, 3.0, 50.0, 1, ""))
+        assert (nutrition.kcal, nutrition.protein_g, nutrition.carbs_g) == (
+            100.0,
+            1.0,
+            2.0,
         )
-        assert macros == ("100", "1", "2", "3")
+        assert nutrition.fat_g == 3.0
 
 
 def test_unknown_lazy_attribute_raises() -> None:
