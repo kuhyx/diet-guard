@@ -31,13 +31,15 @@ jobs:
       # The gate's keyboard and layout tests drive real Tk: widget heights and
       # the focus ring come from the font engine, and no mock can answer what
       # they ask. Without a display they do not skip -- they fail, which is how
-      # this job stayed red while the tests themselves were fine.
+      # this job stayed red while the tests themselves were fine. pytest-xvfb
+      # (requirements.txt, geometry in pyproject) starts one Xvfb per xdist
+      # worker: a shared display let workers steal each other's focus.
       # ubuntu-latest already ships xvfb, so the unconditional
       # `apt-get update && install` spent ~7 s to report "already the newest
       # version"; it now installs only on an image that lacks it.
       - name: Install a virtual X display
         run: |
-          command -v xvfb-run >/dev/null \
+          command -v Xvfb >/dev/null \
             || { sudo apt-get update && sudo apt-get install -y xvfb; }
 
       # -n auto spreads the suite over every runner core (pytest-xdist is in
@@ -46,7 +48,7 @@ jobs:
       # printed all ~1050 test ids.
       - name: Run tests with coverage
         run: |
-          xvfb-run -a -s "-screen 0 1600x1200x24" python -m pytest \
+          python -m pytest \
             -n auto \
             -p no:sugar \
             -q

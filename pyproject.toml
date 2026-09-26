@@ -176,6 +176,14 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "default::pytest.PytestUnraisableExceptionWarning",
 ]
+# pytest-xvfb gives every pytest process -- each xdist worker included -- its
+# own Xvfb. Keyboard focus is global to an X display, so real-Tk tests from
+# several workers sharing one xvfb-run display stole each other's focus
+# (focus-ring assertions failed) and Tk segfaulted in focus_force(): 5 of 2760
+# stressed runs failed shared, 0 of 4600 with a display per worker.
+xvfb_width = "1600"
+xvfb_height = "1200"
+xvfb_colordepth = "24"
 
 [tool.coverage.run]
 source = ["diet_guard"]
