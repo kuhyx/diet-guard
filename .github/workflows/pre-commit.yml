@@ -7,27 +7,77 @@ on:
     branches: [main]
 
 jobs:
+  # mypy (~17 s) and pylint (~10 s, plus ~20 s to build its hook env) checked
+  # the whole repo inside one ~2 min job, so each gets its own runner and the
+  # other hooks share a third; the workflow takes as long as the slowest group
+  # rather than the sum.
   pre-commit:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: mypy
+            hooks: mypy
+            skip: ""
+          - group: pylint
+            hooks: pylint
+            skip: ""
+          - group: rest
+            hooks: ""
+            skip: mypy,pylint
+    name: pre-commit (${{ matrix.group }})
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-      - name: Install dependencies
-        run: pip install -r requirements.txt
 
-      # The file-length hook delegates to the shared gate in kuhyx/utils, which
-      # a runner does not have at $HOME/utils. Check it out and point the shim
-      # at it via UTILS_ROOT, or `pre-commit run --all-files` fails on a
-      # missing checker rather than on anything in this repo. `.utils` is in
-      # the gate's own EXCLUDED_DIRS, so it does not lint itself.
-      - name: Check out the shared gate
+      # The file-length, md-naming and dependency-freshness hooks delegate to
+      # the shared gates in kuhyx/utils, which a runner does not have at
+      # $HOME/src/utils. Only the rest group runs them.
+      - name: Check out the shared gates
+        if: matrix.group == 'rest'
         uses: actions/checkout@v4
         with:
           repository: kuhyx/utils
           path: .utils
+      - name: Point the delegates at that checkout
+        if: matrix.group == 'rest'
+        run: echo "UTILS_ROOT=$GITHUB_WORKSPACE/.utils" >> "$GITHUB_ENV"
 
-      - uses: pre-commit/action@v3.0.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      # Only rest caches its wheels: its install is the big one, and a shared
+      # key would hold whichever group saved first (the suffix keeps it apart
+      # from the Tests workflow's cache of the same requirements.txt).
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: ${{ matrix.group == 'rest' }}
+          cache-dependency-glob: requirements.txt
+          cache-suffix: pre-commit-${{ matrix.group }}
+
+      # mypy and pylint bring their own hook environments, so they need only
+      # pre-commit. The rest group's language: system patch-targets hook
+      # imports diet_guard and every patched module (requests, gatelock,
+      # crdt_sync, freedays, mcp, pydantic), and dependency-freshness needs
+      # pyyaml and packaging -- so it keeps the full requirements.txt. That
+      # install used to run in the one job, with plain pip, for ~24 s.
+      - name: Install pre-commit and the system hooks' imports
+        run: |
+          if [[ "${{ matrix.group }}" == rest ]]; then
+            uv pip install --system -r requirements.txt
+          else
+            uv pip install --system pre-commit
+          fi
+
+      # One cache per group: a shared key would hold whichever group saved
+      # first, and the others would rebuild their hook envs on every run.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ matrix.group }}-${{ env.pythonLocation }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: pre-commit run (${{ matrix.group }})
         env:
-          UTILS_ROOT: ${{ github.workspace }}/.utils
+          SKIP: ${{ matrix.skip }}
+        run: pre-commit run ${{ matrix.hooks }} --all-files --show-diff-on-failure --color=always
