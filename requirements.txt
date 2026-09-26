@@ -10,11 +10,11 @@ mcp==2.2.0
 mypy==2.3.1
 pre-commit==4.6.2
 pydantic==2.13.5
-pylint==4.0.8
+pylint==4.0.9
 pytest==9.1.1
 pytest-cov==7.1.0
 pytest-randomly==5.0.0
 pytest-sugar==1.1.1
 pytest-xdist==3.8.0
 requests==2.34.2
-ruff==0.16.8
+ruff==0.16.9
