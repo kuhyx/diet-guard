@@ -170,7 +170,13 @@ def _dispatch_ate(args: argparse.Namespace) -> int:
         _emit,
         _print_summary,
         args.description,
-        Portion(grams=args.grams, count=args.count, per_grams=args.per),
+        Portion(
+            grams=args.grams,
+            count=args.count,
+            per_grams=args.per,
+            date=args.date,
+            hour=args.hour,
+        ),
         ManualMacroArgs(
             kcal=args.kcal,
             protein=args.protein,

@@ -67,6 +67,19 @@ class MacroControllers {
     grams.clear();
   }
 
+  /// Adds [listener] to every field's controller.
+  ///
+  /// Split out for `log_meal_screen.dart`'s 250-line cap, mirroring [clear]
+  /// and [dispose]'s own per-field enumeration.
+  void addListenerToAll(VoidCallback listener) {
+    kcal.addListener(listener);
+    protein.addListener(listener);
+    carbs.addListener(listener);
+    fat.addListener(listener);
+    perGrams.addListener(listener);
+    grams.addListener(listener);
+  }
+
   /// Disposes every controller.
   void dispose() {
     kcal.dispose();

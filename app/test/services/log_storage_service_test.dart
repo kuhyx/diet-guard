@@ -94,6 +94,27 @@ void main() {
       final entries = await LogStorageService.instance.todayEntries();
       expect(entries, hasLength(2));
     });
+
+    test('a future `when` buckets the entry under that future date', () async {
+      final future = DateTime.now().add(const Duration(days: 1, hours: 1));
+      final entry = await LogStorageService.instance.logMeal(
+        'future meal',
+        _manual,
+        slot: 12,
+        when: future,
+      );
+      final log = await LogStorageService.instance.readLog();
+      expect(log[localDateKey(future)]!.single.id, entry.id);
+      expect(await LogStorageService.instance.todayEntries(), isEmpty);
+    });
+
+    test('rejects a `when` before now', () {
+      final past = DateTime.now().subtract(const Duration(days: 1));
+      expect(
+        () => LogStorageService.instance.logMeal('late', _manual, when: past),
+        throwsArgumentError,
+      );
+    });
   });
   group('undoLastToday', () {
     test('returns null when today has no entries', () async {

@@ -1,7 +1,21 @@
+import 'package:diet_guard_app/models/food_suggestion.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/screens/log_meal_progress.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
 import 'package:flutter/material.dart';
+
+/// Writes [suggestion]'s name and macros into the log form's controllers.
+///
+/// Split out of `log_meal_screen.dart` for the repo's 250-line cap, mirroring
+/// `log_meal_kuchnia_mixin.dart`'s `fillControllersFromDish`.
+void fillControllersFromSuggestion(
+  FoodSuggestion suggestion,
+  TextEditingController desc,
+  MacroControllers macros,
+) {
+  desc.text = suggestion.name;
+  macros.fillFrom(suggestion.nutrition);
+}
 
 /// Builds the [Nutrition] for a submit from the form's macro controllers.
 ///

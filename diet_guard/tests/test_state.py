@@ -7,8 +7,11 @@ defensive read paths are all exercised in isolation.
 
 from __future__ import annotations
 
+from datetime import timedelta
 import json
 from unittest.mock import patch
+
+import pytest
 
 from diet_guard import _state
 from diet_guard._estimator import Nutrition
@@ -210,3 +213,23 @@ class TestIdAndComponents:
         ]
         entry = log_meal("dinner", _nut(165), slot=20, components=parts)
         assert entry["components"] == parts
+
+
+class TestFutureLogging:
+    """Pre-logging a meal against a future date/time via ``when``."""
+
+    def test_buckets_under_the_future_date(self) -> None:
+        """A future ``when`` places the entry under that date, not today."""
+        future = now_local() + timedelta(days=1)
+        entry = log_meal("future meal", _nut(200), slot=12, when=future)
+        future_day = future.date().isoformat()
+        assert today_total_kcal() == 0.0
+        assert load_log()[future_day][0]["desc"] == "future meal"
+        assert entry["time"] == future.isoformat(timespec="seconds")
+
+    def test_rejects_a_past_when(self) -> None:
+        """A ``when`` before now raises ValueError and writes nothing."""
+        past = now_local() - timedelta(days=1)
+        with pytest.raises(ValueError, match="in the past"):
+            log_meal("late", _nut(50), slot=8, when=past)
+        assert load_log() == {}

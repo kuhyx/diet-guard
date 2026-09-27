@@ -24,11 +24,10 @@ Callers resolve the value at the impure edge, mirroring how
 
 from __future__ import annotations
 
+from datetime import date, datetime, time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     from diet_guard._meal_schedule import MealSchedule
 
 _HOURS_PER_DAY = 24
@@ -142,6 +141,46 @@ def slot_for_log(now: datetime, schedule: MealSchedule) -> int:
         return slots[0]
     current = current_slot(now, schedule)
     return current if current is not None else slots[-1]
+
+
+def resolve_future_when(
+    date_str: str, hour: int, schedule: MealSchedule, now: datetime
+) -> datetime:
+    """Build a tz-aware datetime for a meal pre-logged against a future slot.
+
+    Lets a caller (the CLI's ``--date``/``--hour`` flags, or the app's future-
+    date picker) turn a user-picked date+hour into the ``when`` that
+    :func:`diet_guard._state.log_meal` expects, with the same validation on
+    both platforms. Still clock-free per the module's own rule: ``now`` is
+    supplied by the caller rather than read here.
+
+    Args:
+        date_str: The chosen date as ``YYYY-MM-DD``.
+        hour: The chosen slot hour; must be one of ``schedule``'s slot hours.
+        schedule: The schedule in force, used to validate ``hour``.
+        now: Reference local time, used to reject a non-future date.
+
+    Returns:
+        A tz-aware datetime combining ``date_str`` and ``hour``, in ``now``'s
+        timezone.
+
+    Raises:
+        ValueError: ``date_str`` doesn't parse, ``hour`` isn't a slot hour, or
+            the resulting date isn't strictly after ``now``'s date.
+    """
+    try:
+        parsed_date = date.fromisoformat(date_str)
+    except ValueError as exc:
+        msg = f"invalid date {date_str!r}, expected YYYY-MM-DD"
+        raise ValueError(msg) from exc
+    slots = day_slots(schedule)
+    if hour not in slots:
+        msg = f"hour {hour} is not a meal slot; choose one of {slots}"
+        raise ValueError(msg)
+    if parsed_date <= now.date():
+        msg = f"{date_str} is not a future date"
+        raise ValueError(msg)
+    return datetime.combine(parsed_date, time(hour=hour), tzinfo=now.tzinfo)
 
 
 def slot_label(slot: int) -> str:

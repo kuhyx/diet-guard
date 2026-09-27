@@ -8,6 +8,7 @@ import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_suggestion.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/screens/log_meal_actions.dart';
+import 'package:diet_guard_app/screens/log_meal_future_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_kuchnia_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_nav_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_progress.dart';
@@ -20,7 +21,6 @@ import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/autocomplete_suggestion_list.dart';
 import 'package:diet_guard_app/widgets/log_meal_actions_row.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
-import 'package:diet_guard_app/widgets/slot_selector_row.dart';
 import 'package:diet_guard_app/widgets/sync_health_banner.dart';
 import 'package:diet_guard_app/widgets/today_progress_card.dart';
 import 'package:flutter/material.dart';
@@ -45,7 +45,8 @@ class _LogMealScreenState extends State<LogMealScreen>
         WidgetsBindingObserver,
         LogMealSyncMixin<LogMealScreen>,
         LogMealNavMixin<LogMealScreen>,
-        LogMealKuchniaMixin<LogMealScreen> {
+        LogMealKuchniaMixin<LogMealScreen>,
+        LogMealFutureMixin<LogMealScreen> {
   @override
   http.Client? get syncHttpClient => widget.httpClient;
 
@@ -63,16 +64,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _descController.addListener(_onDescChanged);
-    for (final controller in [
-      _macros.kcal,
-      _macros.protein,
-      _macros.carbs,
-      _macros.fat,
-      _macros.perGrams,
-      _macros.grams,
-    ]) {
-      controller.addListener(_onMacroEdited);
-    }
+    _macros.addListenerToAll(_onMacroEdited);
     selectedSlot = slotForLog(DateTime.now(), MealScheduleService.current);
     unawaited(refreshSlots());
     unawaited(_onDescChanged());
@@ -123,8 +115,7 @@ class _LogMealScreenState extends State<LogMealScreen>
   void onDishPrefilled() => setState(() => _source = 'catering');
 
   void _onSuggestionSelected(FoodSuggestion suggestion) {
-    _descController.text = suggestion.name;
-    _macros.fillFrom(suggestion.nutrition);
+    fillControllersFromSuggestion(suggestion, _descController, _macros);
     setState(() {
       _source = 'food bank';
       _suggestions = const [];
@@ -140,12 +131,21 @@ class _LogMealScreenState extends State<LogMealScreen>
       });
       return;
     }
-    final nutrition = nutritionFromControllers(_macros, _source);
+    final target = resolveLogTarget(selectedSlot);
+    if (target.error != null) {
+      setState(() {
+        _status = target.error;
+        _progress = null;
+      });
+      return;
+    }
     await LogStorageService.instance.logMeal(
       desc,
-      nutrition,
-      slot: selectedSlot,
+      nutritionFromControllers(_macros, _source),
+      slot: target.slot,
+      when: target.when,
     );
+    resetFutureLog();
     final log = await LogStorageService.instance.readLog();
     await FoodBankService.instance.rebuildAndPersist(log);
     // Push the new meal now instead of waiting for the next lifecycle event,
@@ -199,11 +199,13 @@ class _LogMealScreenState extends State<LogMealScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SyncHealthBanner(status: syncHealth),
-            SlotSelectorRow(
-              now: DateTime.now(),
+            buildWhenRow(context),
+            const SizedBox(height: 8),
+            buildSlotRow(
               loggedSlots: loggedSlots,
               selectedSlot: selectedSlot,
-              onSlotSelected: (slot) => setState(() => selectedSlot = slot),
+              onTodaySlotSelected: (slot) =>
+                  setState(() => selectedSlot = slot),
             ),
             const SizedBox(height: 8),
             TextField(

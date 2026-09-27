@@ -79,6 +79,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Number of items eaten (e.g. 5 apples) instead of --grams;"
         " multiplied by the staple's unit weight.",
     )
+    ate.add_argument(
+        "--date",
+        default=None,
+        help="Pre-log for a future date (YYYY-MM-DD) instead of now; requires --hour.",
+    )
+    ate.add_argument(
+        "--hour",
+        type=int,
+        default=None,
+        help="Slot hour on --date this meal satisfies (e.g. 20); requires --date.",
+    )
 
     sub.add_parser("status", help="Show today's calories and budget band.")
     sub.add_parser("undo", help="Remove today's most recent entry.")

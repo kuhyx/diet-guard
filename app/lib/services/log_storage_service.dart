@@ -96,18 +96,24 @@ class LogStorageService {
     await _store.write(documentName, jsonEncode(encoded));
   }
 
-  /// Appends a signed-on-PC-eventually entry for [desc] to today's log.
+  /// Appends a signed-on-PC-eventually entry for [desc] to [when]'s day (or
+  /// today's, when [when] is null).
   ///
   /// Mirrors `_state.log_meal`: always assigns a fresh `id`, never computes
   /// an `hmac` (the phone never holds the shared key -- the PC re-signs on
-  /// merge, see Milestone 3).
+  /// merge, see Milestone 3). [when] lets a caller pre-log a meal against a
+  /// future date/slot; must not be in the past.
   Future<FoodEntry> logMeal(
     String desc,
     Nutrition nutrition, {
     int? slot,
     List<MealComponent>? components,
+    DateTime? when,
   }) async {
-    final now = DateTime.now();
+    if (when != null && when.isBefore(DateTime.now())) {
+      throw ArgumentError.value(when, 'when', 'cannot log a meal in the past');
+    }
+    final now = when ?? DateTime.now();
     final entry = FoodEntry(
       id: const Uuid().v4(),
       time: isoLocalSeconds(now),

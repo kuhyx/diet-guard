@@ -130,8 +130,9 @@ def log_meal(
     slot: int | None = None,
     *,
     components: list[dict[str, object]] | None = None,
+    when: datetime | None = None,
 ) -> dict[str, object]:
-    """Append a signed entry for ``description`` to today's log.
+    """Append a signed entry for ``description`` to a day's log.
 
     Args:
         description: The user's free-text meal description.
@@ -144,13 +145,25 @@ def log_meal(
             food bank -- so a bank rebuilt purely by replaying the log (the
             companion phone app's sync model) can recover every component's
             standalone nutrition, not just the composite's summed total.
+        when: Pre-log this meal against a future date/time instead of now
+            (e.g. via ``diet_guard ate --date ... --hour ...``). Must not be
+            in the past. The entry's ``time`` and day bucket are both derived
+            from this value, so it lands under the future date and the gate
+            sees that slot as already satisfied once that day arrives.
 
     Returns:
         The stored entry dict (carrying an ``hmac`` field when a key exists).
+
+    Raises:
+        ValueError: ``when`` is before the current time.
     """
+    if when is not None and when < now_local():
+        msg = "cannot log a meal in the past"
+        raise ValueError(msg)
+    effective = when or now_local()
     entry: dict[str, object] = {
         "id": str(uuid.uuid4()),
-        "time": now_local().isoformat(timespec="seconds"),
+        "time": effective.isoformat(timespec="seconds"),
         "desc": description,
         "grams": nutrition.grams,
         "kcal": nutrition.kcal,
@@ -170,7 +183,7 @@ def log_meal(
         _logger.warning("HMAC key unavailable - logging unsigned entry")
 
     log = _read_raw_log()
-    log.setdefault(_today(), []).append(entry)
+    log.setdefault(effective.date().isoformat(), []).append(entry)
     _write_log(log)
     return entry
 
