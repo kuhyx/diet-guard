@@ -37,6 +37,7 @@ from diet_guard._calendar_view import (
     ytd_text,
 )
 from diet_guard._daystatus import DayStatus, status_map
+from diet_guard._gatelock_body import BodyTab
 from diet_guard._gatelock_calendar_ui import (
     _DECEMBER,
     _DEFAULT_BUDGET_KCAL,
@@ -118,6 +119,7 @@ class _GateCalendar(_GateScheduleEdit):
         )
         cal_widgets = build_calendar_frame(notebook, self._cal_vars, cal_callbacks)
         notebook.add(cal_widgets.frame, text="History")
+        notebook.add(BodyTab(notebook).container, text="Body")
         # Ctrl+Tab / Ctrl+PageUp / Ctrl+PageDown and Alt+mnemonic tab switching
         # all live in toplevel bindings that ttk only installs on request. The
         # notebook is in the focus ring and Left/Right work once it holds focus,

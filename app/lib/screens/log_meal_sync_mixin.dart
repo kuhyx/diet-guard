@@ -5,6 +5,7 @@ import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/background_tasks.dart';
 import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
+import 'package:diet_guard_app/services/health_steps.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/sync_health.dart';
@@ -91,11 +92,11 @@ mixin LogMealSyncMixin<T extends StatefulWidget> on State<T>
         if (mounted) await refreshSyncHealth();
         return;
       }
-      final client = createGitHubClient(
-        settings,
-        httpClient: syncHttpClient,
-      );
+      final client = createGitHubClient(settings, httpClient: syncHttpClient);
       try {
+        // Foreground only (this mixin is UI), and never prompts: fresh
+        // Health Connect steps ride along in this tick's body.json.
+        await refreshSteps();
         await runSync(await syncBackend(client));
         await SyncHealth.recordSuccess();
       } finally {

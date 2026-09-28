@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/services/due_slot_check.dart';
@@ -49,13 +50,10 @@ void main() {
     // channel, exactly as background_sync_service_test.dart does.
     FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
     AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
-    BudgetHistoryService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BudgetHistoryService.resetForTesting(store: FileDocumentStore(tempDir));
     MealScheduleService.resetForTesting(store: FileDocumentStore(tempDir));
-    KuchniaCredentialService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BodyService.resetForTesting(store: FileDocumentStore(tempDir));
+    KuchniaCredentialService.resetForTesting(store: FileDocumentStore(tempDir));
     SharedPreferences.setMockInitialValues({});
     installFakeSecureStorage();
     notificationLog = installFakeAndroidNotifications();
@@ -71,6 +69,7 @@ void main() {
     BudgetHistoryService.resetForTesting();
     KuchniaCredentialService.resetForTesting();
     MealScheduleService.resetForTesting();
+    BodyService.resetForTesting();
     NotificationService.resetForTesting();
     await tempDir.delete(recursive: true);
   });
@@ -114,9 +113,7 @@ void main() {
     // on specific slots (which depend on the actual time the test runs).
     await checkAndNotify();
     expect(
-      notificationLog.where(
-        (c) => c.method == 'show' || c.method == 'cancel',
-      ),
+      notificationLog.where((c) => c.method == 'show' || c.method == 'cancel'),
       isNotEmpty,
     );
   });
@@ -164,10 +161,7 @@ void main() {
 
     expect(requests, 0);
     // Still reconciles notifications from the local log alone.
-    expect(
-      notificationLog.where((c) => c.method == 'show'),
-      isNotEmpty,
-    );
+    expect(notificationLog.where((c) => c.method == 'show'), isNotEmpty);
   });
 
   test('a meal pulled from another device cancels its reminder', () async {

@@ -28,7 +28,7 @@ repos:
         args: [--pytest-test-first]
         # Shared fakes and fixtures, not test modules. Split out of conftest.py
         # and test_sync.py only because those files passed the 250-line cap.
-        exclude: ^diet_guard/tests/_(tk_fakes(_containers|_canvas)?|gate_layout_probe|gate_focus_probe|gate_measurement|gate_keyboard_probe|gate_fixtures|sync_fakes|kuchnia_fakes)\.py$
+        exclude: ^diet_guard/tests/_(tk_fakes(_containers|_canvas)?|gate_layout_probe|gate_focus_probe|gate_measurement|gate_keyboard_probe|gate_fixtures|sync_fakes|kuchnia_fakes|state_redirects)\.py$
       - id: check-ast
       - id: mixed-line-ending
         args: [--fix=lf]
@@ -108,9 +108,10 @@ repos:
           # than merely an old one.
           - gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.8.2#subdirectory=gatelock
           - crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.9.1#subdirectory=crdt-sync
-          - freedays @ git+https://github.com/kuhyx/utils@freedays-v0.2.0#subdirectory=freedays
+          - freedays @ git+https://github.com/kuhyx/utils@freedays-v0.3.0#subdirectory=freedays
           - mcp>=2,<3
           - pydantic
+          - defusedxml==0.7.1
         # Test suites intentionally use patterns (protected-access, magic-value
         # comparisons) that don't belong in the source-code 10/10 gate.
         exclude: ^(\.venv/)|(^|/)(tests/|conftest\.py)
@@ -145,6 +146,8 @@ repos:
       - id: codespell
         args:
           - --skip=*.json,*.lock,.git,__pycache__,.venv
+          # Devine: the 1974 ideal-body-weight formula's author, not "define".
+          - --ignore-words-list=devine
 
   - repo: local
     hooks:

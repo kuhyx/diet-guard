@@ -37,13 +37,14 @@ from diet_guard._constants import (
 )
 from diet_guard._device import device_identity
 from diet_guard._foodbank_rebuild import rebuild_food_bank
-from diet_guard._phone_weight import refresh_weight_from_phone
+from diet_guard._phone_weight import refresh_weight_from_log
 from diet_guard._state_sync import (
     read_raw_log,
     resign_entry,
     write_raw_log,
 )
 from diet_guard._sync_banks import _sync_budget, _sync_food_bank, _sync_manual_bank
+from diet_guard._sync_body import sync_body
 from diet_guard._sync_client import _client_for_run
 from diet_guard._sync_errors import SyncError
 from diet_guard._sync_kuchnia import _sync_kuchnia_credential
@@ -182,6 +183,7 @@ def run_sync() -> DayLog:
     _sync_food_bank(client, device_ids)
     _sync_manual_bank(client, device_ids)
     _sync_kuchnia_credential(client, device_ids)
+    sync_body(client, device_ids)
 
     push_log = daylog_to_log(resigned)
     push_json = json.dumps(
@@ -207,7 +209,7 @@ def run_sync() -> DayLog:
     # the merged winner, so the refreshed ``t`` re-asserts nothing stale.
     # Here rather than in the ``sync`` subcommand because on the PC a full
     # tick runs from ``publish_after_log``, never from that command.
-    refresh_weight_from_phone(lambda line: _logger.info("%s", line))
+    refresh_weight_from_log(lambda line: _logger.info("%s", line))
     return resigned
 
 

@@ -164,6 +164,7 @@ _FAKE_TK = SimpleNamespace(
     Button=FakeWidget,
     OptionMenu=FakeWidget,
     Radiobutton=FakeRadiobutton,
+    Checkbutton=FakeWidget,
     Entry=FakeEntry,
     Text=FakeText,
     Listbox=FakeListbox,

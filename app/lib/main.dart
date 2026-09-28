@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/background_tasks.dart';
+import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/frame_stats.dart';
@@ -29,6 +30,7 @@ Future<void> main() async {
   await MealScheduleService.init();
   await FoodBankService.init();
   await KuchniaCredentialService.init();
+  await BodyService.init();
   await KuchniaQueueService.init();
   final notifications = await NotificationService.init();
   // Deliberately *not* awaited before the first frame: the browser's

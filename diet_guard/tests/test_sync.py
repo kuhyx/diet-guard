@@ -79,8 +79,10 @@ class TestRunSync:
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
-        # Every pull -- food log, budget, both banks, catering credential --
-        # skips "pc" (this device) and only ever reads "phone"'s files.
+        # Every pull -- food log, budget, both banks, catering credential,
+        # body -- skips "pc" (this device) and only ever reads "phone"'s files.
+        # The wake-alarm weigh-ins are another app's devices, all read: the
+        # mock lists the same two ids for every directory.
         requested_paths = [call.args[0] for call in client.get_file_text.call_args_list]
         assert requested_paths == [
             "diet-guard-sync/devices/phone/food_log.json",
@@ -88,6 +90,9 @@ class TestRunSync:
             "diet-guard-sync/devices/phone/food_bank.json",
             "diet-guard-sync/devices/phone/food_bank_manual.json",
             "diet-guard-sync/devices/phone/kuchnia.json",
+            "wake-alarm-sync/devices/pc/alarm.json",
+            "wake-alarm-sync/devices/phone/alarm.json",
+            "diet-guard-sync/devices/phone/body.json",
         ]
 
     def test_skips_a_device_with_no_pushed_file_yet(self) -> None:

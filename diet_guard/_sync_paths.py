@@ -47,3 +47,8 @@ def _device_kuchnia_path(device_id: str) -> str:
     be readable by anything that reads the budget.
     """
     return f"{_DEVICES_DIR}/{device_id}/kuchnia.json"
+
+
+def _device_body_path(device_id: str) -> str:
+    """Remote path of ``device_id``'s Body document (profile, weights, workouts)."""
+    return f"{_DEVICES_DIR}/{device_id}/body.json"

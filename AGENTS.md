@@ -20,7 +20,7 @@ catch-up rule).
 - Lint: `pre-commit run --all-files`
 - Test the lock (safe, closeable): `python -m diet_guard gate --demo`
 - One sync tick: `python -m diet_guard sync`
-- Averages: `python -m diet_guard averages`
+- Averages: `python -m diet_guard averages`; Body: `body`, `weight KG`, `profile`, `plan-week`
 - Prune dead sync peers (dry run): `python -m diet_guard prune-peers`
 - Install for production: `bash install.sh`
 - App tests: `cd app && flutter test`
@@ -67,8 +67,8 @@ every idle tick to approximate the two moments state actually changes here.
   demo already writes real entries through `log_meal` (only the *slot* is
   synthetic).
 - `pull_shared_log()` is misnamed: it runs a *full* tick (pull, merge, re-sign,
-  persist, **push**, budget, both food banks, and last the phone's weigh-in
-  into `w` via `_phone_weight`: `wake_alarm._weight`, lazy, never raises).
+  persist, **push**, budget, both food banks, the Body doc via `_sync_body`,
+  and last the newest logged weight into `w` via `_phone_weight`).
   `_sync_refresh.pull_peer_logs()` is for anything a user waits on. What must
   follow every tick goes in `run_sync`, not `cmd_sync` (the PC never runs it).
 - Accepted trade: a PC neither logging nor locking does not pull.
@@ -79,8 +79,8 @@ every idle tick to approximate the two moments state actually changes here.
   `_sync_refresh.py`, the fetch button, or the publish paths.
 - Every test that logs a meal would otherwise hit the network through these new
   call sites; `conftest._isolate_state` patches each one
-  (`_cli_log.publish_after_log_detached`, `_cli_gate.publish_after_log`,
-  `_mcp.publish_after_log`, `_cli_gate.pull_peer_logs`) — not on
+  (listed in `tests/_state_redirects.py`: `_cli_log`, `_cli_gate`, `_mcp`,
+  `_cli_body` publish sites and `_cli_gate.pull_peer_logs`) — not on
   `_sync_events`, so a direct test still exercises the real helper. A new
   network entry point missing from that list reaches the real remote.
 
@@ -139,14 +139,14 @@ reach the running service.
   `test_budget_history.py`; it syncs as `hist:<YYYY-MM-DD>` fields on the
   existing `budget` record, so devices predating the feature relay them
   untouched.
-- **Biometrics are used once and discarded** — only the computed budget is
-  persisted.
+- **Body data persists and syncs** (profile, weight log, PC workouts) as
+  `body.json`; its tables are informational. [docs/DOCS-body.md](docs/DOCS-body.md).
 - **PC and phone share one source of truth for everything**: food log, budget,
-  budget history, body weight (`w`), curated food bank. If you add a stored
+  budget history, body weight (`w`), Body doc, curated food bank. If you add a stored
   field, sync it or comment why it physically cannot be.
 - **State lives entirely under `~/.local/share/diet_guard/`** — no cross-repo
-  file coupling. Exception: the sync timer touches `kuhyx/syncs` and
-  `~/.config/diet_guard/sync_token`.
+  file coupling. Exceptions: sync (`kuhyx/syncs`, `~/.config/diet_guard/`) and
+  read-only workout sources (RunnerUp drop, screen-locker: `_activity_sources`).
 - **Every device pushes under a persisted per-install uuid**, not a role
   constant. `_device.py` / `sync_device_id.dart` (`crdt.nodeId`). The old role
   constant survives as the legacy id so `devices/<legacy>/` is skipped as this

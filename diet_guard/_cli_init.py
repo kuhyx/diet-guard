@@ -4,17 +4,20 @@ Split out of :mod:`diet_guard._cli` to hold the repo's 250-line cap, following
 the same thin-per-subcommand-handler shape as ``_cli_gate.py`` (``gate``),
 ``_cli_log.py`` (``ate``) and ``_cli_sync.py`` (``sync``).
 
-The biometrics prompted for here are used **once** and discarded: only the
-computed budget (and the body weight, which the protein target needs) is ever
-persisted.  See ``CLAUDE.md``'s "Biometrics are used once and discarded".
+The biometrics prompted for here seed the Body profile too (height, sex, a
+birth date estimated from the typed age, and today's weigh-in), so BMI and
+ideal weight work straight after ``init``. Refine the birth date with
+``diet_guard profile --birth``. See ``docs/DOCS-body.md``.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from diet_guard._body_store import set_profile, set_weight
 from diet_guard._budget import write_budget
 from diet_guard._budget_biometrics import Biometrics, compute_target_budget
+from diet_guard._state import now_local
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -81,6 +84,15 @@ def cmd_init(
         deficit_kcal=deficit,
     )
     write_budget(budget, weight_kg=bio.weight_kg)
+    today = now_local().date()
+    # Same month/day as today, so the estimated age is exact right now.
+    birth = today.replace(year=today.year - int(bio.age_years), day=min(today.day, 28))
+    set_profile(
+        birth=birth.isoformat(),
+        height_cm=bio.height_cm,
+        sex="m" if bio.is_male else "f",
+    )
+    set_weight(today.isoformat(), bio.weight_kg, "init")
     emit(f"budget computed from your biometrics: {budget:g} kcal/day.")
     emit("edit it any time from the gate's calendar tab or the phone app.")
     return 0

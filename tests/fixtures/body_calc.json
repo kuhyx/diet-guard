@@ -1,0 +1,2135 @@
+{
+ "today": "2026-09-28",
+ "people": [
+  {
+   "bio": {
+    "weight_kg": 80.0,
+    "height_cm": 180.0,
+    "age_years": 30,
+    "is_male": true
+   },
+   "bmi": {
+    "bmi": 24.691358024691358,
+    "prime": 0.9876543209876543,
+    "trefethen": 23.925007166664415,
+    "category": "normal"
+   },
+   "ideal": [
+    [
+     "Devine",
+     74.99212598425197
+    ],
+    [
+     "Robinson",
+     72.64566929133858
+    ],
+    [
+     "Miller",
+     71.5212598425197
+    ],
+    [
+     "Hamwi",
+     77.33858267716536
+    ],
+    [
+     "Broca",
+     80.0
+    ],
+    [
+     "Broca (modified)",
+     72.0
+    ],
+    [
+     "Lorentz",
+     72.5
+    ],
+    [
+     "Creff (age)",
+     74.7
+    ],
+    [
+     "Peterson (BMI 22)",
+     71.50000000000001
+    ]
+   ],
+   "bmr": [
+    [
+     "Mifflin-St Jeor",
+     1780.0
+    ],
+    [
+     "Harris-Benedict (revised 1984)",
+     1853.632
+    ],
+    [
+     "Katch-McArdle",
+     null
+    ],
+    [
+     "Cunningham",
+     null
+    ]
+   ],
+   "body_fat_pct": 18.5,
+   "bmr_with_fat": [
+    [
+     "Mifflin-St Jeor",
+     1780.0
+    ],
+    [
+     "Harris-Benedict (revised 1984)",
+     1853.632
+    ],
+    [
+     "Katch-McArdle",
+     1778.32
+    ],
+    [
+     "Cunningham",
+     1934.3999999999996
+    ]
+   ],
+   "ideal_summary": [
+    74.13307086614174,
+    71.50000000000001,
+    80.0
+   ],
+   "healthy_range": [
+    59.94000000000001,
+    80.676
+   ],
+   "stride_m": 0.747,
+   "step_kcal": {
+    "2026-09-20": 149.4,
+    "2026-09-21": 0.0,
+    "2026-09-25": 239.04
+   },
+   "exercise": {
+    "MET": 225.17309523809521,
+    "ACSM": 230.26,
+    "Per-km": 221.05428571428573
+   },
+   "exercise_no_steps": {
+    "MET": 197.42738095238093,
+    "ACSM": 202.5142857142857,
+    "Per-km": 193.30857142857144
+   },
+   "exercise_short": {
+    "MET": 301.6,
+    "ACSM": 301.6,
+    "Per-km": 301.6
+   },
+   "exercise_today_only": {
+    "MET": 0.0,
+    "ACSM": 0.0,
+    "Per-km": 0.0
+   },
+   "targets": [
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "moderate"
+     },
+     "kcal": 2209,
+     "tdee": 2759.0,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "gain",
+      "amt": 0.25,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": 2411,
+     "tdee": 2136.0,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "maintain",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "extra"
+     },
+     "kcal": 3382,
+     "tdee": 3382.0,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 1.0,
+      "wu": "lb",
+      "tu": "week",
+      "act": "light"
+     },
+     "kcal": 1949,
+     "tdee": 2447.5,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 500.0,
+      "wu": "g",
+      "tu": "day",
+      "act": "very"
+     },
+     "kcal": -779,
+     "tdee": 3070.5,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "st",
+      "tu": "month",
+      "act": "measured:ACSM"
+     },
+     "kcal": 1563,
+     "tdee": 2366.26,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 12.0,
+      "wu": "kg",
+      "tu": "year",
+      "act": "measured:Per-km"
+     },
+     "kcal": 2104,
+     "tdee": 2357.054285714286,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 3.0,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": -1164,
+     "tdee": 2136.0,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "moderate"
+     },
+     "kcal": 2206,
+     "tdee": 2756.396,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "gain",
+      "amt": 0.25,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": 2409,
+     "tdee": 2133.984,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "maintain",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "extra"
+     },
+     "kcal": 3379,
+     "tdee": 3378.8079999999995,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 1.0,
+      "wu": "lb",
+      "tu": "week",
+      "act": "light"
+     },
+     "kcal": 1946,
+     "tdee": 2445.19,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 500.0,
+      "wu": "g",
+      "tu": "day",
+      "act": "very"
+     },
+     "kcal": -782,
+     "tdee": 3067.602,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "st",
+      "tu": "month",
+      "act": "measured:ACSM"
+     },
+     "kcal": 1561,
+     "tdee": 2364.2439999999997,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 12.0,
+      "wu": "kg",
+      "tu": "year",
+      "act": "measured:Per-km"
+     },
+     "kcal": 2102,
+     "tdee": 2355.038285714286,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 3.0,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": -1166,
+     "tdee": 2133.984,
+     "bmr_name": "Katch-McArdle"
+    }
+   ]
+  },
+  {
+   "bio": {
+    "weight_kg": 62.5,
+    "height_cm": 165.0,
+    "age_years": 45,
+    "is_male": false
+   },
+   "bmi": {
+    "bmi": 22.956841138659325,
+    "prime": 0.918273645546373,
+    "trefethen": 23.233439564049128,
+    "category": "normal"
+   },
+   "ideal": [
+    [
+     "Devine",
+     56.90944881889762
+    ],
+    [
+     "Robinson",
+     57.43307086614172
+    ],
+    [
+     "Miller",
+     59.84645669291338
+    ],
+    [
+     "Hamwi",
+     56.413385826771645
+    ],
+    [
+     "Broca",
+     65.0
+    ],
+    [
+     "Broca (modified)",
+     55.25
+    ],
+    [
+     "Lorentz",
+     57.5
+    ],
+    [
+     "Creff (age)",
+     62.550000000000004
+    ],
+    [
+     "Peterson (BMI 22)",
+     59.95
+    ]
+   ],
+   "bmr": [
+    [
+     "Mifflin-St Jeor",
+     1270.25
+    ],
+    [
+     "Harris-Benedict (revised 1984)",
+     1341.8505
+    ],
+    [
+     "Katch-McArdle",
+     null
+    ],
+    [
+     "Cunningham",
+     null
+    ]
+   ],
+   "body_fat_pct": 18.5,
+   "bmr_with_fat": [
+    [
+     "Mifflin-St Jeor",
+     1270.25
+    ],
+    [
+     "Harris-Benedict (revised 1984)",
+     1341.8505
+    ],
+    [
+     "Katch-McArdle",
+     1470.25
+    ],
+    [
+     "Cunningham",
+     1620.625
+    ]
+   ],
+   "ideal_summary": [
+    58.98359580052493,
+    55.25,
+    65.0
+   ],
+   "healthy_range": [
+    50.366249999999994,
+    67.79024999999999
+   ],
+   "stride_m": 0.6814499999999999,
+   "step_kcal": {
+    "2026-09-20": 106.47656249999999,
+    "2026-09-21": 0.0,
+    "2026-09-25": 170.36249999999998
+   },
+   "exercise": {
+    "MET": 174.01436011904767,
+    "ACSM": 177.98850446428574,
+    "Per-km": 170.79654017857143
+   },
+   "exercise_no_steps": {
+    "MET": 154.24014136904765,
+    "ACSM": 158.21428571428572,
+    "Per-km": 151.02232142857142
+   },
+   "exercise_short": {
+    "MET": 235.625,
+    "ACSM": 235.625,
+    "Per-km": 235.625
+   },
+   "exercise_today_only": {
+    "MET": 0.0,
+    "ACSM": 0.0,
+    "Per-km": 0.0
+   },
+   "targets": [
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "moderate"
+     },
+     "kcal": 1419,
+     "tdee": 1968.8875,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "gain",
+      "amt": 0.25,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": 1799,
+     "tdee": 1524.3,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "maintain",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "extra"
+     },
+     "kcal": 2413,
+     "tdee": 2413.475,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 1.0,
+      "wu": "lb",
+      "tu": "week",
+      "act": "light"
+     },
+     "kcal": 1248,
+     "tdee": 1746.59375,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 500.0,
+      "wu": "g",
+      "tu": "day",
+      "act": "very"
+     },
+     "kcal": -1659,
+     "tdee": 2191.18125,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "st",
+      "tu": "month",
+      "act": "measured:ACSM"
+     },
+     "kcal": 899,
+     "tdee": 1702.2885044642858,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 12.0,
+      "wu": "kg",
+      "tu": "year",
+      "act": "measured:Per-km"
+     },
+     "kcal": 1442,
+     "tdee": 1695.0965401785713,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 3.0,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": -1776,
+     "tdee": 1524.3,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "moderate"
+     },
+     "kcal": 1729,
+     "tdee": 2278.8875000000003,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "gain",
+      "amt": 0.25,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": 2039,
+     "tdee": 1764.3,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "maintain",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "extra"
+     },
+     "kcal": 2793,
+     "tdee": 2793.475,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 1.0,
+      "wu": "lb",
+      "tu": "week",
+      "act": "light"
+     },
+     "kcal": 1523,
+     "tdee": 2021.59375,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 500.0,
+      "wu": "g",
+      "tu": "day",
+      "act": "very"
+     },
+     "kcal": -1314,
+     "tdee": 2536.18125,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "st",
+      "tu": "month",
+      "act": "measured:ACSM"
+     },
+     "kcal": 1139,
+     "tdee": 1942.2885044642858,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 12.0,
+      "wu": "kg",
+      "tu": "year",
+      "act": "measured:Per-km"
+     },
+     "kcal": 1682,
+     "tdee": 1935.0965401785713,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 3.0,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": -1536,
+     "tdee": 1764.3,
+     "bmr_name": "Katch-McArdle"
+    }
+   ]
+  },
+  {
+   "bio": {
+    "weight_kg": 50.0,
+    "height_cm": 150.0,
+    "age_years": 25,
+    "is_male": false
+   },
+   "bmi": {
+    "bmi": 22.22222222222222,
+    "prime": 0.8888888888888888,
+    "trefethen": 23.587679004578753,
+    "category": "normal"
+   },
+   "ideal": [
+    [
+     "Devine",
+     null
+    ],
+    [
+     "Robinson",
+     null
+    ],
+    [
+     "Miller",
+     null
+    ],
+    [
+     "Hamwi",
+     null
+    ],
+    [
+     "Broca",
+     50.0
+    ],
+    [
+     "Broca (modified)",
+     42.5
+    ],
+    [
+     "Lorentz",
+     50.0
+    ],
+    [
+     "Creff (age)",
+     47.25
+    ],
+    [
+     "Peterson (BMI 22)",
+     48.400000000000006
+    ]
+   ],
+   "bmr": [
+    [
+     "Mifflin-St Jeor",
+     1151.5
+    ],
+    [
+     "Harris-Benedict (revised 1984)",
+     1266.393
+    ],
+    [
+     "Katch-McArdle",
+     null
+    ],
+    [
+     "Cunningham",
+     null
+    ]
+   ],
+   "body_fat_pct": 18.5,
+   "bmr_with_fat": [
+    [
+     "Mifflin-St Jeor",
+     1151.5
+    ],
+    [
+     "Harris-Benedict (revised 1984)",
+     1266.393
+    ],
+    [
+     "Katch-McArdle",
+     1250.2
+    ],
+    [
+     "Cunningham",
+     1396.5
+    ]
+   ],
+   "ideal_summary": [
+    47.63,
+    42.5,
+    50.0
+   ],
+   "healthy_range": [
+    41.625,
+    56.02499999999999
+   ],
+   "stride_m": 0.6194999999999999,
+   "step_kcal": {
+    "2026-09-20": 77.43749999999999,
+    "2026-09-21": 0.0,
+    "2026-09-25": 123.89999999999999
+   },
+   "exercise": {
+    "MET": 137.7733630952381,
+    "ACSM": 140.9526785714286,
+    "Per-km": 135.19910714285714
+   },
+   "exercise_no_steps": {
+    "MET": 123.39211309523809,
+    "ACSM": 126.57142857142858,
+    "Per-km": 120.81785714285715
+   },
+   "exercise_short": {
+    "MET": 188.5,
+    "ACSM": 188.5,
+    "Per-km": 188.5
+   },
+   "exercise_today_only": {
+    "MET": 0.0,
+    "ACSM": 0.0,
+    "Per-km": 0.0
+   },
+   "targets": [
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "moderate"
+     },
+     "kcal": 1235,
+     "tdee": 1784.825,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "gain",
+      "amt": 0.25,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": 1657,
+     "tdee": 1381.8,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "maintain",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "extra"
+     },
+     "kcal": 2188,
+     "tdee": 2187.85,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 1.0,
+      "wu": "lb",
+      "tu": "week",
+      "act": "light"
+     },
+     "kcal": 1084,
+     "tdee": 1583.3125,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 500.0,
+      "wu": "g",
+      "tu": "day",
+      "act": "very"
+     },
+     "kcal": -1864,
+     "tdee": 1986.3375,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "st",
+      "tu": "month",
+      "act": "measured:ACSM"
+     },
+     "kcal": 719,
+     "tdee": 1522.7526785714285,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 12.0,
+      "wu": "kg",
+      "tu": "year",
+      "act": "measured:Per-km"
+     },
+     "kcal": 1264,
+     "tdee": 1516.9991071428572,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 3.0,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": -1918,
+     "tdee": 1381.8,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "moderate"
+     },
+     "kcal": 1388,
+     "tdee": 1937.8100000000002,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "gain",
+      "amt": 0.25,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": 1775,
+     "tdee": 1500.24,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "maintain",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "extra"
+     },
+     "kcal": 2375,
+     "tdee": 2375.38,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 1.0,
+      "wu": "lb",
+      "tu": "week",
+      "act": "light"
+     },
+     "kcal": 1220,
+     "tdee": 1719.025,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 500.0,
+      "wu": "g",
+      "tu": "day",
+      "act": "very"
+     },
+     "kcal": -1693,
+     "tdee": 2156.5950000000003,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "st",
+      "tu": "month",
+      "act": "measured:ACSM"
+     },
+     "kcal": 838,
+     "tdee": 1641.1926785714286,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 12.0,
+      "wu": "kg",
+      "tu": "year",
+      "act": "measured:Per-km"
+     },
+     "kcal": 1382,
+     "tdee": 1635.4391071428572,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 3.0,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": -1800,
+     "tdee": 1500.24,
+     "bmr_name": "Katch-McArdle"
+    }
+   ]
+  },
+  {
+   "bio": {
+    "weight_kg": 65.0,
+    "height_cm": 175.0,
+    "age_years": 17,
+    "is_male": true
+   },
+   "bmi": {
+    "bmi": 21.224489795918366,
+    "prime": 0.8489795918367347,
+    "trefethen": 20.857468061570415,
+    "category": "adult categories do not apply under 20"
+   },
+   "ideal": [
+    [
+     "Devine",
+     70.46456692913384
+    ],
+    [
+     "Robinson",
+     68.90551181102362
+    ],
+    [
+     "Miller",
+     68.74566929133857
+    ],
+    [
+     "Hamwi",
+     72.02362204724409
+    ],
+    [
+     "Broca",
+     75.0
+    ],
+    [
+     "Broca (modified)",
+     67.5
+    ],
+    [
+     "Lorentz",
+     68.75
+    ],
+    [
+     "Creff (age)",
+     69.03
+    ],
+    [
+     "Peterson (BMI 22)",
+     67.65
+    ]
+   ],
+   "bmr": [
+    [
+     "Mifflin-St Jeor",
+     1663.75
+    ],
+    [
+     "Harris-Benedict (revised 1984)",
+     1702.4830000000002
+    ],
+    [
+     "Katch-McArdle",
+     null
+    ],
+    [
+     "Cunningham",
+     null
+    ]
+   ],
+   "body_fat_pct": 18.5,
+   "bmr_with_fat": [
+    [
+     "Mifflin-St Jeor",
+     1663.75
+    ],
+    [
+     "Harris-Benedict (revised 1984)",
+     1702.4830000000002
+    ],
+    [
+     "Katch-McArdle",
+     1514.26
+    ],
+    [
+     "Cunningham",
+     1665.4499999999998
+    ]
+   ],
+   "ideal_summary": [
+    69.78548556430445,
+    67.5,
+    75.0
+   ],
+   "healthy_range": [
+    56.65625,
+    76.25625
+   ],
+   "stride_m": 0.72625,
+   "step_kcal": {
+    "2026-09-20": 118.01562499999999,
+    "2026-09-21": 0.0,
+    "2026-09-25": 188.825
+   },
+   "exercise": {
+    "MET": 182.3269345238095,
+    "ACSM": 186.46004464285713,
+    "Per-km": 178.98040178571426
+   },
+   "exercise_no_steps": {
+    "MET": 160.40974702380953,
+    "ACSM": 164.54285714285714,
+    "Per-km": 157.06321428571428
+   },
+   "exercise_short": {
+    "MET": 245.04999999999998,
+    "ACSM": 245.04999999999998,
+    "Per-km": 245.04999999999998
+   },
+   "exercise_today_only": {
+    "MET": 0.0,
+    "ACSM": 0.0,
+    "Per-km": 0.0
+   },
+   "targets": [
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "moderate"
+     },
+     "kcal": 2029,
+     "tdee": 2578.8125,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "gain",
+      "amt": 0.25,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": 2272,
+     "tdee": 1996.5,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "maintain",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "extra"
+     },
+     "kcal": 3161,
+     "tdee": 3161.125,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 1.0,
+      "wu": "lb",
+      "tu": "week",
+      "act": "light"
+     },
+     "kcal": 1789,
+     "tdee": 2287.65625,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 500.0,
+      "wu": "g",
+      "tu": "day",
+      "act": "very"
+     },
+     "kcal": -980,
+     "tdee": 2869.96875,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "st",
+      "tu": "month",
+      "act": "measured:ACSM"
+     },
+     "kcal": 1380,
+     "tdee": 2182.960044642857,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 12.0,
+      "wu": "kg",
+      "tu": "year",
+      "act": "measured:Per-km"
+     },
+     "kcal": 1922,
+     "tdee": 2175.480401785714,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 3.0,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": -1303,
+     "tdee": 1996.5,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "moderate"
+     },
+     "kcal": 1797,
+     "tdee": 2347.103,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "gain",
+      "amt": 0.25,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": 2092,
+     "tdee": 1817.1119999999999,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "maintain",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "extra"
+     },
+     "kcal": 2877,
+     "tdee": 2877.094,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 1.0,
+      "wu": "lb",
+      "tu": "week",
+      "act": "light"
+     },
+     "kcal": 1583,
+     "tdee": 2082.1075,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 500.0,
+      "wu": "g",
+      "tu": "day",
+      "act": "very"
+     },
+     "kcal": -1238,
+     "tdee": 2612.0985,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "st",
+      "tu": "month",
+      "act": "measured:ACSM"
+     },
+     "kcal": 1200,
+     "tdee": 2003.572044642857,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 12.0,
+      "wu": "kg",
+      "tu": "year",
+      "act": "measured:Per-km"
+     },
+     "kcal": 1743,
+     "tdee": 1996.0924017857142,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 3.0,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": -1483,
+     "tdee": 1817.1119999999999,
+     "bmr_name": "Katch-McArdle"
+    }
+   ]
+  },
+  {
+   "bio": {
+    "weight_kg": 121.3,
+    "height_cm": 191.0,
+    "age_years": 41,
+    "is_male": true
+   },
+   "bmi": {
+    "bmi": 33.2501850278227,
+    "prime": 1.3300074011129082,
+    "trefethen": 31.276686359628844,
+    "category": "obese class I"
+   },
+   "ideal": [
+    [
+     "Devine",
+     84.9527559055118
+    ],
+    [
+     "Robinson",
+     80.8740157480315
+    ],
+    [
+     "Miller",
+     77.62755905511811
+    ],
+    [
+     "Hamwi",
+     89.03149606299212
+    ],
+    [
+     "Broca",
+     91.0
+    ],
+    [
+     "Broca (modified)",
+     81.9
+    ],
+    [
+     "Lorentz",
+     80.75
+    ],
+    [
+     "Creff (age)",
+     85.59
+    ],
+    [
+     "Peterson (BMI 22)",
+     79.97
+    ]
+   ],
+   "bmr": [
+    [
+     "Mifflin-St Jeor",
+     2206.75
+    ],
+    [
+     "Harris-Benedict (revised 1984)",
+     2397.2701
+    ],
+    [
+     "Katch-McArdle",
+     null
+    ],
+    [
+     "Cunningham",
+     null
+    ]
+   ],
+   "body_fat_pct": 18.5,
+   "bmr_with_fat": [
+    [
+     "Mifflin-St Jeor",
+     2206.75
+    ],
+    [
+     "Harris-Benedict (revised 1984)",
+     2397.2701
+    ],
+    [
+     "Katch-McArdle",
+     2505.3652
+    ],
+    [
+     "Cunningham",
+     2674.909
+    ]
+   ],
+   "ideal_summary": [
+    83.52175853018372,
+    77.62755905511811,
+    91.0
+   ],
+   "healthy_range": [
+    67.48985,
+    90.83769
+   ],
+   "stride_m": 0.79265,
+   "step_kcal": {
+    "2026-09-20": 240.37111249999998,
+    "2026-09-21": 0.0,
+    "2026-09-25": 384.59378
+   },
+   "exercise": {
+    "MET": 343.9896158333333,
+    "ACSM": 351.70263517857137,
+    "Per-km": 337.74447089285707
+   },
+   "exercise_no_steps": {
+    "MET": 299.3492663690476,
+    "ACSM": 307.0622857142857,
+    "Per-km": 293.1041214285714
+   },
+   "exercise_short": {
+    "MET": 457.301,
+    "ACSM": 457.301,
+    "Per-km": 457.301
+   },
+   "exercise_today_only": {
+    "MET": 0.0,
+    "ACSM": 0.0,
+    "Per-km": 0.0
+   },
+   "targets": [
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "moderate"
+     },
+     "kcal": 2870,
+     "tdee": 3420.4625,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "gain",
+      "amt": 0.25,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": 2923,
+     "tdee": 2648.1,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "maintain",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "extra"
+     },
+     "kcal": 4193,
+     "tdee": 4192.825,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 1.0,
+      "wu": "lb",
+      "tu": "week",
+      "act": "light"
+     },
+     "kcal": 2535,
+     "tdee": 3034.28125,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 500.0,
+      "wu": "g",
+      "tu": "day",
+      "act": "very"
+     },
+     "kcal": -43,
+     "tdee": 3806.64375,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "st",
+      "tu": "month",
+      "act": "measured:ACSM"
+     },
+     "kcal": 2197,
+     "tdee": 2999.802635178571,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 12.0,
+      "wu": "kg",
+      "tu": "year",
+      "act": "measured:Per-km"
+     },
+     "kcal": 2733,
+     "tdee": 2985.844470892857,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": null,
+     "goal": {
+      "dir": "lose",
+      "amt": 3.0,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": -652,
+     "tdee": 2648.1,
+     "bmr_name": "Mifflin-St Jeor"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "moderate"
+     },
+     "kcal": 3333,
+     "tdee": 3883.3160600000006,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "gain",
+      "amt": 0.25,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": 3281,
+     "tdee": 3006.43824,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "maintain",
+      "amt": 0.5,
+      "wu": "kg",
+      "tu": "week",
+      "act": "extra"
+     },
+     "kcal": 4760,
+     "tdee": 4760.19388,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 1.0,
+      "wu": "lb",
+      "tu": "week",
+      "act": "light"
+     },
+     "kcal": 2946,
+     "tdee": 3444.8771500000003,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 500.0,
+      "wu": "g",
+      "tu": "day",
+      "act": "very"
+     },
+     "kcal": 472,
+     "tdee": 4321.754970000001,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 0.5,
+      "wu": "st",
+      "tu": "month",
+      "act": "measured:ACSM"
+     },
+     "kcal": 2555,
+     "tdee": 3358.140875178571,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 12.0,
+      "wu": "kg",
+      "tu": "year",
+      "act": "measured:Per-km"
+     },
+     "kcal": 3091,
+     "tdee": 3344.182710892857,
+     "bmr_name": "Katch-McArdle"
+    },
+    {
+     "body_fat_pct": 18.5,
+     "goal": {
+      "dir": "lose",
+      "amt": 3.0,
+      "wu": "kg",
+      "tu": "week",
+      "act": "sedentary"
+     },
+     "kcal": -294,
+     "tdee": 3006.43824,
+     "bmr_name": "Katch-McArdle"
+    }
+   ]
+  }
+ ],
+ "steps": {
+  "2026-09-20": 9000,
+  "2026-09-21": 3500,
+  "2026-09-25": 12000
+ },
+ "sessions": [
+  {
+   "day": "2026-09-20",
+   "kind": "run",
+   "minutes": 60.5,
+   "km": 5.61,
+   "label": "Running 5.6 km",
+   "source": "runnerup",
+   "start": null,
+   "end": null
+  },
+  {
+   "day": "2026-09-21",
+   "kind": "run",
+   "minutes": 30.0,
+   "km": 7.5,
+   "label": "fast run",
+   "source": "runnerup",
+   "start": null,
+   "end": null
+  },
+  {
+   "day": "2026-09-22",
+   "kind": "run",
+   "minutes": 45.0,
+   "km": 3.0,
+   "label": "slow jog",
+   "source": "runnerup",
+   "start": null,
+   "end": null
+  },
+  {
+   "day": "2026-09-23",
+   "kind": "walk",
+   "minutes": 60.0,
+   "km": 5.0,
+   "label": "walk",
+   "source": "screen-locker",
+   "start": null,
+   "end": null
+  },
+  {
+   "day": "2026-09-24",
+   "kind": "walk",
+   "minutes": 60.0,
+   "km": null,
+   "label": "walk, no distance",
+   "source": "screen-locker",
+   "start": null,
+   "end": null
+  },
+  {
+   "day": "2026-09-25",
+   "kind": "strength",
+   "minutes": 86.2,
+   "km": null,
+   "label": "StrongLifts B",
+   "source": "screen-locker",
+   "start": null,
+   "end": null
+  },
+  {
+   "day": "2026-09-26",
+   "kind": "cycle",
+   "minutes": 40.0,
+   "km": 12.0,
+   "label": "bike",
+   "source": "screen-locker",
+   "start": null,
+   "end": null
+  },
+  {
+   "day": "2026-09-27",
+   "kind": "other",
+   "minutes": 50.0,
+   "km": null,
+   "label": "climbing",
+   "source": "screen-locker",
+   "start": null,
+   "end": null
+  },
+  {
+   "day": "2026-09-19",
+   "kind": "walk",
+   "minutes": 45.0,
+   "km": 3.5,
+   "label": "walked 3500 m",
+   "source": "screen-locker",
+   "start": null,
+   "end": null
+  },
+  {
+   "day": "2026-09-13",
+   "kind": "run",
+   "minutes": 60.0,
+   "km": 10.0,
+   "label": "old run",
+   "source": "runnerup",
+   "start": null,
+   "end": null
+  },
+  {
+   "day": "2026-09-28",
+   "kind": "run",
+   "minutes": 60.0,
+   "km": 10.0,
+   "label": "today's run",
+   "source": "runnerup",
+   "start": null,
+   "end": null
+  }
+ ],
+ "session_kcal_80kg": [
+  {
+   "kcal": {
+    "MET": 403.3333333333333,
+    "ACSM": 448.8,
+    "Per-km": 403.92
+   },
+   "fallback": []
+  },
+  {
+   "kcal": {
+    "MET": 493.25,
+    "ACSM": 600.0,
+    "Per-km": 540.0
+   },
+   "fallback": []
+  },
+  {
+   "kcal": {
+    "MET": 300.0,
+    "ACSM": 240.00000000000006,
+    "Per-km": 216.0
+   },
+   "fallback": []
+  },
+  {
+   "kcal": {
+    "MET": 216.0,
+    "ACSM": 200.00000000000003,
+    "Per-km": 200.0
+   },
+   "fallback": []
+  },
+  {
+   "kcal": {
+    "MET": 200.0,
+    "ACSM": 200.0,
+    "Per-km": 200.0
+   },
+   "fallback": [
+    "ACSM",
+    "Per-km"
+   ]
+  },
+  {
+   "kcal": {
+    "MET": 459.73333333333335,
+    "ACSM": 459.73333333333335,
+    "Per-km": 459.73333333333335
+   },
+   "fallback": [
+    "ACSM",
+    "Per-km"
+   ]
+  },
+  {
+   "kcal": {
+    "MET": 346.66666666666663,
+    "ACSM": 346.66666666666663,
+    "Per-km": 346.66666666666663
+   },
+   "fallback": [
+    "ACSM",
+    "Per-km"
+   ]
+  },
+  {
+   "kcal": {
+    "MET": 200.0,
+    "ACSM": 200.0,
+    "Per-km": 200.0
+   },
+   "fallback": [
+    "ACSM",
+    "Per-km"
+   ]
+  },
+  {
+   "kcal": {
+    "MET": 145.00000000000003,
+    "ACSM": 140.00000000000003,
+    "Per-km": 140.0
+   },
+   "fallback": []
+  },
+  {
+   "kcal": {
+    "MET": 719.2727272727274,
+    "ACSM": 800.0000000000001,
+    "Per-km": 720.0
+   },
+   "fallback": []
+  },
+  {
+   "kcal": {
+    "MET": 719.2727272727274,
+    "ACSM": 800.0000000000001,
+    "Per-km": 720.0
+   },
+   "fallback": []
+  }
+ ],
+ "plans": [
+  {
+   "today": "2026-09-30",
+   "target": 2000,
+   "logged": {
+    "2026-09-28": 2500.4,
+    "2026-09-29": 1800.0
+   },
+   "typed": {},
+   "expected": {
+    "days": [
+     {
+      "day": "2026-09-28",
+      "weekday": "Mon",
+      "kcal": 2500,
+      "source": "logged"
+     },
+     {
+      "day": "2026-09-29",
+      "weekday": "Tue",
+      "kcal": 1800,
+      "source": "logged"
+     },
+     {
+      "day": "2026-09-30",
+      "weekday": "Wed",
+      "kcal": 1940,
+      "source": "plan"
+     },
+     {
+      "day": "2026-10-01",
+      "weekday": "Thu",
+      "kcal": 1940,
+      "source": "plan"
+     },
+     {
+      "day": "2026-10-02",
+      "weekday": "Fri",
+      "kcal": 1940,
+      "source": "plan"
+     },
+     {
+      "day": "2026-10-03",
+      "weekday": "Sat",
+      "kcal": 1940,
+      "source": "plan"
+     },
+     {
+      "day": "2026-10-04",
+      "weekday": "Sun",
+      "kcal": 1940,
+      "source": "plan"
+     }
+    ],
+    "target_avg": 2000,
+    "per_remaining": 1940,
+    "week_avg": 2000.0
+   }
+  },
+  {
+   "today": "2026-09-30",
+   "target": 2000,
+   "logged": {
+    "2026-09-28": 2500.0
+   },
+   "typed": {
+    "0": 2200,
+    "5": 3500
+   },
+   "expected": {
+    "days": [
+     {
+      "day": "2026-09-28",
+      "weekday": "Mon",
+      "kcal": 2200,
+      "source": "typed"
+     },
+     {
+      "day": "2026-09-29",
+      "weekday": "Tue",
+      "kcal": 1660,
+      "source": "unlogged"
+     },
+     {
+      "day": "2026-09-30",
+      "weekday": "Wed",
+      "kcal": 1660,
+      "source": "plan"
+     },
+     {
+      "day": "2026-10-01",
+      "weekday": "Thu",
+      "kcal": 1660,
+      "source": "plan"
+     },
+     {
+      "day": "2026-10-02",
+      "weekday": "Fri",
+      "kcal": 1660,
+      "source": "plan"
+     },
+     {
+      "day": "2026-10-03",
+      "weekday": "Sat",
+      "kcal": 3500,
+      "source": "typed"
+     },
+     {
+      "day": "2026-10-04",
+      "weekday": "Sun",
+      "kcal": 1660,
+      "source": "plan"
+     }
+    ],
+    "target_avg": 2000,
+    "per_remaining": 1660,
+    "week_avg": 2000.0
+   }
+  },
+  {
+   "today": "2026-10-04",
+   "target": 1800,
+   "logged": {},
+   "typed": {
+    "0": 1900,
+    "1": 1900,
+    "2": 1900,
+    "3": 1900,
+    "4": 1900,
+    "5": 1900,
+    "6": 1900
+   },
+   "expected": {
+    "days": [
+     {
+      "day": "2026-09-28",
+      "weekday": "Mon",
+      "kcal": 1900,
+      "source": "typed"
+     },
+     {
+      "day": "2026-09-29",
+      "weekday": "Tue",
+      "kcal": 1900,
+      "source": "typed"
+     },
+     {
+      "day": "2026-09-30",
+      "weekday": "Wed",
+      "kcal": 1900,
+      "source": "typed"
+     },
+     {
+      "day": "2026-10-01",
+      "weekday": "Thu",
+      "kcal": 1900,
+      "source": "typed"
+     },
+     {
+      "day": "2026-10-02",
+      "weekday": "Fri",
+      "kcal": 1900,
+      "source": "typed"
+     },
+     {
+      "day": "2026-10-03",
+      "weekday": "Sat",
+      "kcal": 1900,
+      "source": "typed"
+     },
+     {
+      "day": "2026-10-04",
+      "weekday": "Sun",
+      "kcal": 1900,
+      "source": "typed"
+     }
+    ],
+    "target_avg": 1800,
+    "per_remaining": null,
+    "week_avg": 1900.0
+   }
+  },
+  {
+   "today": "2026-10-01",
+   "target": 1500,
+   "logged": {
+    "2026-09-28": 4000,
+    "2026-09-29": 3900
+   },
+   "typed": {},
+   "expected": {
+    "days": [
+     {
+      "day": "2026-09-28",
+      "weekday": "Mon",
+      "kcal": 4000,
+      "source": "logged"
+     },
+     {
+      "day": "2026-09-29",
+      "weekday": "Tue",
+      "kcal": 3900,
+      "source": "logged"
+     },
+     {
+      "day": "2026-09-30",
+      "weekday": "Wed",
+      "kcal": 520,
+      "source": "unlogged"
+     },
+     {
+      "day": "2026-10-01",
+      "weekday": "Thu",
+      "kcal": 520,
+      "source": "plan"
+     },
+     {
+      "day": "2026-10-02",
+      "weekday": "Fri",
+      "kcal": 520,
+      "source": "plan"
+     },
+     {
+      "day": "2026-10-03",
+      "weekday": "Sat",
+      "kcal": 520,
+      "source": "plan"
+     },
+     {
+      "day": "2026-10-04",
+      "weekday": "Sun",
+      "kcal": 520,
+      "source": "plan"
+     }
+    ],
+    "target_avg": 1500,
+    "per_remaining": 520,
+    "week_avg": 1500.0
+   }
+  }
+ ]
+}

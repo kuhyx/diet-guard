@@ -23,6 +23,8 @@ import pytest
 
 from diet_guard import (
     _gatelock,
+    _gatelock_body_vars,
+    _gatelock_body_widgets,
     _gatelock_budgetedit,
     _gatelock_calendar,
     _gatelock_calendar_schedule,
@@ -157,6 +159,10 @@ _GATE_TK_MODULES = (
     # separately in fake_tk(). Listing it here fails with "does not have the
     # attribute 'tk'".
     _gatelock_calendar_widgets,
+    # The Body tab builds its own widgets and vars (the controller only
+    # wires them).
+    _gatelock_body_vars,
+    _gatelock_body_widgets,
     # The History tab's meal-schedule row builds its own tk widgets.
     _gatelock_calendar_schedule,
     # Builds the History tab's StringVars (make_calendar_vars); without the

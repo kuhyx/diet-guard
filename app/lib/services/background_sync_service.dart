@@ -7,6 +7,7 @@ library;
 
 import 'dart:developer';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
@@ -62,6 +63,9 @@ Future<bool> backgroundSyncPush({http.Client? httpClient}) async {
   // neither publish this device's catering credential nor receive a peer's --
   // and on the phone the background tick is most of the syncing there is.
   await KuchniaCredentialService.init();
+  // `syncBody` no-ops without it, and the background tick is when the
+  // phone ingests the morning weigh-in.
+  await BodyService.init();
   final SyncSettings settings;
   try {
     settings = await SyncSettings.load();

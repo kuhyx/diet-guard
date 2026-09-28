@@ -50,6 +50,29 @@ class FakeCanvas(FakeWidget):
     def itemconfigure(self, *args: object, **kwargs: object) -> None:
         pass
 
+    # Drawing, for the Body tab's weight graph: recorded as
+    # ``(kind, args, kwargs)`` so a test can assert what was drawn.
+    def delete(self, *_args: object) -> None:
+        self.drawn: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
+
+    def _draw(
+        self, kind: str, args: tuple[object, ...], kwargs: dict[str, object]
+    ) -> int:
+        self.drawn.append((kind, args, kwargs))
+        return len(self.drawn)
+
+    def create_line(self, *args: object, **kwargs: object) -> int:
+        return self._draw("line", args, kwargs)
+
+    def create_oval(self, *args: object, **kwargs: object) -> int:
+        return self._draw("oval", args, kwargs)
+
+    def create_rectangle(self, *args: object, **kwargs: object) -> int:
+        return self._draw("rectangle", args, kwargs)
+
+    def create_text(self, *args: object, **kwargs: object) -> int:
+        return self._draw("text", args, kwargs)
+
     def coords(self, *args: object, **kwargs: object) -> None:
         pass
 

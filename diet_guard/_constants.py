@@ -37,6 +37,10 @@ FOOD_BANK_FILE: Path = DATA_DIR / "food_bank.json"
 # sync in their own right.  Kept separate from FOOD_BANK_FILE because that
 # one is rewritten wholesale on every log write.
 MANUAL_BANK_FILE: Path = DATA_DIR / "food_bank_manual.json"
+# Body profile (birth date, height, sex), the per-day weight log and the
+# PC-published workout sessions (see _body_store.py, docs/DOCS-body.md).
+# Synced as its own document; git-ignored, never committed.
+BODY_FILE: Path = DATA_DIR / "body.json"
 # The budget: a plain JSON dotfile alongside the log, freely editable on this
 # device or the phone app and synced between them (see _sync.py).
 # Git-ignored, never committed.  "Hidden" here means never-online (it lives

@@ -19,9 +19,9 @@ if TYPE_CHECKING:
 class TestNotebookWiring:
     """The gate builds a two-tab notebook without breaking construction."""
 
-    def test_builds_a_notebook_with_both_tabs(self, gate: MealGate) -> None:
+    def test_builds_a_notebook_with_all_three_tabs(self, gate: MealGate) -> None:
         labels = [text for _child, text in gate._notebook.tabs]
-        assert labels == ["Log Meal", "History"]
+        assert labels == ["Log Meal", "History", "Body"]
 
     def test_calendar_state_starts_on_the_current_month(self, gate: MealGate) -> None:
         assert 1 <= gate._cal_month <= 12

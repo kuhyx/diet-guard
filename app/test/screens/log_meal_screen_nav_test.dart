@@ -1,12 +1,14 @@
 import 'dart:io';
 
 import 'package:diet_guard_app/models/food_entry.dart';
+import 'package:diet_guard_app/screens/body_screen.dart';
 import 'package:diet_guard_app/screens/calendar_screen.dart';
 import 'package:diet_guard_app/screens/food_bank_screen.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
@@ -16,6 +18,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
+
+import '../services/body_test_support.dart';
 
 /// Stub launcher that records the URL instead of opening it -- same pattern
 /// as settings_screen_test.dart's fake, duplicated locally per this
@@ -43,7 +47,6 @@ class _FakeUrlLauncher extends UrlLauncherPlatform
 /// it as a real image instead of throwing on bogus bytes.
 
 void main() {
-
   late Directory tempDir;
 
   setUp(() async {
@@ -51,9 +54,7 @@ void main() {
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
     AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
-    BudgetHistoryService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BudgetHistoryService.resetForTesting(store: FileDocumentStore(tempDir));
   });
 
   tearDown(() async {
@@ -89,9 +90,7 @@ void main() {
       expect(find.byType(HistoryScreen), findsOneWidget);
     });
   });
-  testWidgets('the calendar icon navigates to CalendarScreen', (
-    tester,
-  ) async {
+  testWidgets('the calendar icon navigates to CalendarScreen', (tester) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
       await settle(tester);
@@ -100,6 +99,19 @@ void main() {
       await settle(tester);
 
       expect(find.byType(CalendarScreen), findsOneWidget);
+    });
+  });
+  testWidgets('the body icon navigates to BodyScreen', (tester) async {
+    await tester.runAsync(() async {
+      await BodyService.initForTesting(MemoryDocStore());
+      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+      await settle(tester);
+
+      await tester.tap(find.byTooltip('Body'));
+      await settle(tester);
+
+      expect(find.byType(BodyScreen), findsOneWidget);
+      BodyService.resetForTesting();
     });
   });
   testWidgets('the settings icon navigates to SettingsScreen', (tester) async {

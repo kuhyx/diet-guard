@@ -20,6 +20,7 @@ import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/kuchnia_credential_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
+import 'package:diet_guard_app/services/sync_body.dart';
 import 'package:diet_guard_app/services/sync_device_id.dart';
 import 'package:diet_guard_app/services/sync_merge.dart';
 import 'package:diet_guard_app/services/sync_merge_kuchnia.dart';
@@ -62,6 +63,7 @@ Future<DayLog> runSync(RemoteStore client, {SyncStateStore? stateStore}) async {
   await _syncFoodBank(client);
   await _syncManualBank(client);
   await _syncKuchniaCredential(client);
+  await syncBody(client, devicesDir: _devicesDir);
   return merged;
 }
 

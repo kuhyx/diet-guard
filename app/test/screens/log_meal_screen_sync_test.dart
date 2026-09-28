@@ -36,27 +36,26 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets(
-    'does not push when sync is unconfigured (defaults to off)',
-    (tester) async {
-      SharedPreferences.setMockInitialValues({});
-      installFakeSecureStorage();
-      var puts = 0;
-      final mock = MockClient((req) async {
-        if (req.method == 'PUT') puts++;
-        return http.Response('', 404);
-      });
+  testWidgets('does not push when sync is unconfigured (defaults to off)', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    installFakeSecureStorage();
+    var puts = 0;
+    final mock = MockClient((req) async {
+      if (req.method == 'PUT') puts++;
+      return http.Response('', 404);
+    });
 
-      await tester.runAsync(() async {
-        await tester.pumpWidget(
-          MaterialApp(home: LogMealScreen(httpClient: mock)),
-        );
-        await settle(tester);
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        MaterialApp(home: LogMealScreen(httpClient: mock)),
+      );
+      await settle(tester);
 
-        expect(puts, 0);
-      });
-    },
-  );
+      expect(puts, 0);
+    });
+  });
 
   testWidgets('pushes on launch when sync is configured', (tester) async {
     SharedPreferences.setMockInitialValues({
@@ -170,7 +169,13 @@ void main() {
       await tester.enterText(find.byType(TextField).at(0), 'push-on-log');
       await tester.pump();
       await tester.tap(find.byTooltip('Log meal'));
-      await settle(tester);
+      // Wait for the push itself rather than a fixed 200 ms: under the
+      // CPU-capped pre-commit gate the real async hop can take longer, and
+      // a wall-clock guess made this flaky there (passes 5/5 standalone).
+      final deadline = DateTime.now().add(const Duration(seconds: 5));
+      while (puts < 2 && DateTime.now().isBefore(deadline)) {
+        await settle(tester);
+      }
 
       // The new meal is pushed right away, not left for a lifecycle event.
       expect(puts, 2);

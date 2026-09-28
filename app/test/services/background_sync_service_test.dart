@@ -7,6 +7,7 @@ import 'dart:io';
 
 import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
+import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/background_sync_service.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
@@ -33,13 +34,10 @@ void main() {
     // .init() call short-circuits instead of hitting the real (unmocked in
     // this test) path_provider channel.
     AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
-    BudgetHistoryService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BudgetHistoryService.resetForTesting(store: FileDocumentStore(tempDir));
     MealScheduleService.resetForTesting(store: FileDocumentStore(tempDir));
-    KuchniaCredentialService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BodyService.resetForTesting(store: FileDocumentStore(tempDir));
+    KuchniaCredentialService.resetForTesting(store: FileDocumentStore(tempDir));
   });
 
   tearDown(() async {
@@ -48,6 +46,7 @@ void main() {
     AppSettingsService.resetForTesting();
     BudgetHistoryService.resetForTesting();
     MealScheduleService.resetForTesting();
+    BodyService.resetForTesting();
     KuchniaCredentialService.resetForTesting();
     await tempDir.delete(recursive: true);
   });
@@ -90,10 +89,10 @@ void main() {
 
     expect(ok, isTrue);
     // syncLog always pushes, even an empty merged result: food_log.json,
-    // budget.json, food_bank.json, food_bank_manual.json, kuchnia.json.
-    // Five data files plus this device's revision, which is what lets a
-    // later tick skip an unchanged peer.
-    expect(puts, 6);
+    // budget.json, food_bank.json, food_bank_manual.json, kuchnia.json,
+    // body.json. Six data files plus this device's revision, which is what
+    // lets a later tick skip an unchanged peer.
+    expect(puts, 7);
   });
 
   test('pushes under the persisted uuid, not the legacy role id', () async {

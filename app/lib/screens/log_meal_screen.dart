@@ -190,6 +190,7 @@ class _LogMealScreenState extends State<LogMealScreen>
             onHistory: onOpenHistory,
             onCalendar: onOpenCalendar,
             onSettings: onOpenSettings,
+            onBody: onOpenBody,
           ),
         ],
       ),

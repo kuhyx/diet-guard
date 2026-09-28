@@ -38,14 +38,14 @@ class TestSyncBudget:
         pushed_paths = {call.args[0] for call in client.put_file_text.call_args_list}
         assert f"diet-guard-sync/devices/{device_id()}/budget.json" in pushed_paths
 
-    def test_refreshes_the_weight_from_the_phone_after_the_merge(self) -> None:
+    def test_refreshes_the_weight_from_the_log_after_the_merge(self) -> None:
         """The hook runs last, on every successful tick, into the sync log."""
         _write_token()
         write_budget(2000)
         client = _mock_client(devices=())
         with (
             patch.object(_sync_client, "GitHubSyncClient", return_value=client),
-            patch.object(_sync, "refresh_weight_from_phone") as refresh,
+            patch.object(_sync, "refresh_weight_from_log") as refresh,
         ):
             _sync.run_sync()
         refresh.assert_called_once()

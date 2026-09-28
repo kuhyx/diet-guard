@@ -27,6 +27,13 @@ from diet_guard._budget import (
 from diet_guard._budget_derived import protein_target_g
 from diet_guard._cli_args import parse_args
 from diet_guard._cli_averages import cmd_averages
+from diet_guard._cli_body import (
+    cmd_body,
+    cmd_bodyfat,
+    cmd_plan_week,
+    cmd_profile,
+    cmd_weight,
+)
 from diet_guard._cli_gate import cmd_gate
 from diet_guard._cli_init import cmd_init
 from diet_guard._cli_kuchnia import cmd_kuchnia
@@ -219,6 +226,11 @@ _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "prune-peers": _dispatch_prune,
     "gate": _dispatch_gate,
     "undo": lambda _args: _cmd_undo(),
+    "body": lambda args: cmd_body(_emit, args),
+    "weight": lambda args: cmd_weight(_emit, args),
+    "bodyfat": lambda args: cmd_bodyfat(_emit, args),
+    "profile": lambda args: cmd_profile(_emit, args),
+    "plan-week": lambda args: cmd_plan_week(_emit, args),
 }
 
 
