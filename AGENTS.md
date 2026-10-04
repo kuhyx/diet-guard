@@ -16,17 +16,16 @@ catch-up rule).
 
 ## Commands
 
-- Tests: `python -m pytest diet_guard/tests/ --cov=diet_guard --cov-branch --cov-fail-under=100`
-- Lint: `pre-commit run --all-files`
-- Test the lock (safe, closeable): `python -m diet_guard gate --demo`
 - One sync tick: `python -m diet_guard sync`
 - Averages: `python -m diet_guard averages`; Body: `body`, `weight KG`, `profile`, `plan-week`
 - Prune dead sync peers (dry run): `python -m diet_guard prune-peers`
-- Install for production: `bash install.sh`
-- App tests: `cd app && flutter test`
-- Desktop app: `cd app && bash run.sh`
-- Install desktop app: `cd app && bash install_arch.sh`
-- Phone build: `cd app && flutter build apk --release`
+- Install: `bash install.sh` (production); app: `cd app && bash install_arch.sh`; run app: `bash run.sh`; phone: `flutter build apk --release`
+- run: `python -m diet_guard gate --demo`
+- test: `python -m pytest -n auto -p no:sugar -q` (python, 100% branch bar from pyproject) then `cd app && flutter test --reporter=compact`
+- test-changed: `scripts/test_changed.sh` (maps py and app/ dart changes to their tests, no coverage)
+- lint: `pre-commit run --all-files`
+- coverage: `python -m pytest -n auto -p no:sugar -q` (writes coverage.lcov)
+- coverage-gaps: `coverage-gaps coverage.lcov`
 
 ## Scheduling
 
