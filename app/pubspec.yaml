@@ -2,7 +2,7 @@ name: diet_guard_app
 description: "Companion phone app for diet_guard: log meals on the go."
 publish_to: 'none'
 
-version: 1.0.100+1
+version: 1.0.101+1
 
 environment:
   sdk: ^3.12.2
@@ -25,7 +25,7 @@ dependencies:
   github_device_auth:
     git:
       url: https://github.com/kuhyx/utils
-      ref: github_device_auth-v0.3.1
+      ref: github_device_auth-v0.3.2
       path: github_device_auth
   google_sign_in: 7.2.0
   health: 13.3.2
@@ -45,7 +45,7 @@ dependencies:
       url: https://github.com/kuhyx/utils
       ref: sync_settings_ui-v0.4.1
       path: sync_settings_ui
-  url_launcher: 6.3.2
+  url_launcher: 6.3.3
   uuid: 4.6.0
   web: 1.1.1
   workmanager: 0.10.10
