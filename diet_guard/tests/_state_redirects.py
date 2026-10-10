@@ -136,6 +136,11 @@ def state_redirects(tmp_path: Path) -> list[_patch[object]]:
             "diet_guard._gatelock_delivery.refresh_delivery",
             return_value=([], None),
         ),
+        # The gate's "Fill all" button fetches through its own lazy helper.
+        patch(
+            "diet_guard._gatelock_fillall._refresh_delivery",
+            return_value=([], None),
+        ),
         # The Body tab's profile, weight log and published workouts.
         patch("diet_guard._body_store.BODY_FILE", tmp_path / "body.json"),
         # Workout sources live outside diet_guard entirely: RunnerUp's WebDAV

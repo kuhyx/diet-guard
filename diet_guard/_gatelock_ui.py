@@ -25,6 +25,7 @@ from gatelock import (
     escape_text_tab_trap,
 )
 
+from diet_guard._gatelock_fillall import FILL_LABEL
 from diet_guard._gatelock_spacing import SM, XS
 from diet_guard._gatelock_typography import (
     BODY,
@@ -100,6 +101,7 @@ def make_vars(root: tk.Misc) -> GateVars:
             carbs=tk.StringVar(master=root, value=""),
             fat=tk.StringVar(master=root, value=""),
         ),
+        fill_label=tk.StringVar(master=root, value=FILL_LABEL),
     )
 
 

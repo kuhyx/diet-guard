@@ -116,16 +116,18 @@ class TestCli:
             _cli_kuchnia.cmd_kuchnia(lines.append, _record, log=True, yes=True)
         assert asked == []
 
-    def test_already_logged_says_so(self) -> None:
+    def test_every_slot_taken_says_so_and_logs_nothing(self) -> None:
         lines: list[str] = []
         with (
             patch.object(
                 _cli_kuchnia, "refresh_delivery", return_value=([_dish()], None)
             ),
-            patch.object(_cli_kuchnia, "log_dishes", return_value=[]),
+            patch.object(_cli_kuchnia, "fill_plan", return_value=[]),
+            patch.object(_cli_kuchnia, "log_dishes") as logger,
         ):
             self._run(lines, log=True, yes=True)
-        assert any("already logged" in line for line in lines)
+        assert logger.call_count == 0
+        assert any("every slot already logged" in line for line in lines)
 
 
 class TestDispatch:

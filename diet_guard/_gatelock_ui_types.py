@@ -55,6 +55,8 @@ class GateVars:
     dashboard: tk.StringVar
     unit: tk.StringVar
     entries: GateEntryVars
+    #: "Fill all"'s label, shared so it relabels on every monitor at once.
+    fill_label: tk.StringVar
 
 
 @dataclass
@@ -85,3 +87,4 @@ class GateCallbacks:
     on_close: Callable[[], None]
     on_fetch_sync: Callable[[], None]
     on_load_delivery: Callable[[], None]
+    on_fill_all: Callable[[], None]

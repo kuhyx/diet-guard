@@ -90,6 +90,8 @@ def _make_vars(*, populated: bool) -> GateVars:
         dashboard=tk.StringVar(value=dashboard),
         unit=tk.StringVar(value="grams"),
         entries=entries,
+        # The wider of the button's two labels, so the row is measured at worst.
+        fill_label=tk.StringVar(value="✓ Confirm (5)" if populated else "🍱 Fill all"),
     )
 
 
@@ -150,6 +152,7 @@ def measure(
             on_close=_noop,
             on_fetch_sync=_noop,
             on_load_delivery=_noop,
+            on_fill_all=_noop,
         )
         widgets = build_layout(
             notebook, _make_vars(populated=populated), callbacks, demo_mode=False

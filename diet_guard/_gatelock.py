@@ -142,8 +142,7 @@ class MealGate(_GateCalendar):
             app_name="diet_guard",
             rank=RANK_DIET_GUARD,
         )
-        # Published here, then owned by LockWindow, which releases it on
-        # close -- so deliberately not kept as an attribute.
+        # Published here, then owned (and released on close) by LockWindow.
         arbiter = Arbiter(
             "diet_guard",
             RANK_DIET_GUARD,
@@ -167,6 +166,7 @@ class MealGate(_GateCalendar):
             on_close=self.close,
             on_fetch_sync=self._on_fetch_sync,
             on_load_delivery=self._on_load_delivery,
+            on_fill_all=self._on_fill_all,
         )
         self._build()
 

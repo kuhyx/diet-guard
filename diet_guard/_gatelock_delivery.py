@@ -42,6 +42,9 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 # ``_cli_gate`` and ``_cli_prune`` use, which also keeps ``patch.object`` working.
 _LAZY_ATTRS = ("refresh_delivery", "refresh_delivery_once")
 
+#: ``(unlock reason, nothing-new status)`` for a sync pull; "Fill all" has its own.
+_SYNC_LABELS = ("Synced from another device", "No new meals found in sync.")
+
 
 def __getattr__(name: str) -> object:
     """Resolve the deferred catering import on first attribute access."""
@@ -226,17 +229,18 @@ class _PullFlows(_GateNutrition):
             return
         self._reconcile_after_fetch()
 
-    def _reconcile_after_fetch(self) -> None:
-        """Drop slots a pulled meal now covers; unlock when none remain."""
+    def _reconcile_after_fetch(self, labels: tuple[str, str] = _SYNC_LABELS) -> None:
+        """Drop slots a pulled meal now covers; unlock if none remain."""
+        unlock, nothing_new = labels
         still_due = set(due_slots())
         satisfied_slots = [slot for slot in self._pending if slot not in still_due]
         self._refresh_dashboard()
         if not satisfied_slots:
-            self._set_status("No new meals found in sync.")
+            self._set_status(nothing_new)
             return
         self._pending = [slot for slot in self._pending if slot in still_due]
         if not self._pending:
-            self._unlock("Synced from another device")
+            self._unlock(unlock)
             return
         self._clear_inputs()
         self._refresh_slot_header()

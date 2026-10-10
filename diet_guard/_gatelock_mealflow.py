@@ -11,6 +11,7 @@ calorie/macro dashboard it calls into lives in :mod:`._gatelock_dashboard`.
 from __future__ import annotations
 
 import contextlib
+from functools import partial
 import tkinter as tk
 from typing import TYPE_CHECKING
 
@@ -18,6 +19,7 @@ from diet_guard._budget import BudgetError, daily_budget
 from diet_guard._budget_derived import protein_target_g
 from diet_guard._foodbank import remember_food
 from diet_guard._gatelock_delivery import _PullFlows
+from diet_guard._gatelock_fillall import RECONCILE_LABELS, FillAllFlow, FillHooks
 from diet_guard._gatelock_ui import ERR, FG, UNIT_GRAMS
 from diet_guard._resolve import lookup_candidates
 from diet_guard._slots import slot_label
@@ -62,6 +64,18 @@ class _GateMealFlow(_PullFlows):
         self._state.last_reference = None
         self._vars.preview.set("")
         self._refresh_projection()
+
+    #: Built on the first "Fill all" click; it holds that button's state.
+    _fill_flow: FillAllFlow | None = None
+
+    def _on_fill_all(self) -> None:
+        """Fill every empty slot from today's catering, on a confirming click."""
+        if self._fill_flow is None:
+            unlock = partial(self._reconcile_after_fetch, RECONCILE_LABELS)
+            hooks = FillHooks(self._set_status, unlock)
+            label, demo = self._vars.fill_label, self.demo_mode
+            self._fill_flow = FillAllFlow(self.root, label, hooks, demo_mode=demo)
+        self._fill_flow.click()
 
     # -- behaviour ------------------------------------------------------------
 
@@ -174,11 +188,13 @@ class _GateMealFlow(_PullFlows):
         Teardown is scheduled *before* the budget is looked up, so a corrupt
         budget file (which raises) can never re-trap the user at unlock time.
         """
-        # A 5-meal plan against 4 slots leaves a dish queued when the last slot
-        # is satisfied (``_kuchnia_spread`` doubles up the earliest slots), so
-        # say what was not offered rather than dropping it silently. Purely
-        # informational: the dishes are already banked, and the lock is over.
-        left = len(self._delivery_pending)
+        # 5 dishes on 4 slots leave one queued when the last slot is satisfied:
+        # name it rather than drop it. Already-logged dishes ("Fill all", a
+        # pull) do not count. Informational only; the lock is over.
+        eaten = {str(e.get("desc", "")).strip().casefold() for e in today_entries()}
+        left = sum(
+            d.name.strip().casefold() not in eaten for d in self._delivery_pending
+        )
         if left:
             noun = "dish" if left == 1 else "dishes"
             logged = f"{logged} ({left} more {noun} delivered; log with 'ate')"

@@ -107,8 +107,10 @@ def _build_readouts(body: tk.Frame, vars_: GateVars) -> None:
     ).pack(pady=(XS, XS))
 
 
-def _build_actions(body: tk.Frame, callbacks: GateCallbacks) -> None:
-    """Pack the submit button and the manual sync-fetch button."""
+def _build_actions(
+    body: tk.Frame, callbacks: GateCallbacks, fill_label: tk.StringVar
+) -> None:
+    """Pack the submit button and the three "pull it in" buttons."""
     make_button(
         body,
         _COLORS,
@@ -141,7 +143,20 @@ def _build_actions(body: tk.Frame, callbacks: GateCallbacks) -> None:
         "🍱 Today's delivery",
         callbacks.on_load_delivery,
         ButtonStyle(variant="secondary", bold=False),
-    ).pack(side="left")
+    ).pack(side="left", padx=(0, XS))
+
+    # Every empty slot from today's catering, in two clicks: the first shows
+    # what would be logged and relabels this to "Confirm (N)" -- through the
+    # shared variable, so the copy on every monitor relabels with it.
+    fill = make_button(
+        pulls,
+        _COLORS,
+        fill_label.get(),
+        callbacks.on_fill_all,
+        ButtonStyle(variant="secondary", bold=False),
+    )
+    fill.configure(textvariable=fill_label)
+    fill.pack(side="left")
 
 
 def build_layout(
@@ -183,7 +198,7 @@ def build_layout(
     basis_prefix, per_entry, macros = build_macro_section(root, body, vars_)
 
     _build_readouts(body, vars_)
-    _build_actions(body, callbacks)
+    _build_actions(body, callbacks, vars_.fill_label)
 
     status_label = tk.Label(
         body,

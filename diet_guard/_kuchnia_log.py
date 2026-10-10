@@ -42,6 +42,24 @@ def _already_logged(entries: Sequence[dict[str, object]], name: str, slot: int) 
     )
 
 
+def fill_plan(slotted: Sequence[SlottedDish]) -> list[SlottedDish]:
+    """Keep only the dishes whose slot has nothing logged in it today.
+
+    "Fill all with catering" fills *empty* slots: a slot the user already
+    logged something else into keeps that meal rather than gaining a second
+    one. Occupancy is read once, before the batch, so two dishes the spread
+    put in the same empty slot (5 dishes on 4 slots) both land.
+
+    Args:
+        slotted: Today's dishes, already paired with slots.
+
+    Returns:
+        The dishes to log, in the order given.
+    """
+    taken = {entry.get("slot") for entry in today_entries()}
+    return [item for item in slotted if item.slot not in taken]
+
+
 def dish_nutrition(dish: Dish) -> Nutrition:
     """Return a dish as the whole-portion :class:`Nutrition` it gets logged as.
 

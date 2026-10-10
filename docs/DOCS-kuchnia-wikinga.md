@@ -17,10 +17,14 @@ So:
 - **`diet-guard kuchnia`** banks the day's dishes and prints them. Nothing is
   logged.
 - **`diet-guard kuchnia --log`** asks first (`--yes` skips the prompt for
-  scripting).
+  scripting), then fills today's *empty* slots — the same rule as below.
 - **The lock screen's "🍱 Today's delivery"** button *prefills* the meal form,
   dish by dish, in the caterer's own meal order. The user still clicks
   "Log & Continue" for each.
+- **"🍱 Fill all"** takes two clicks: the first lists what would be logged and
+  relabels it "✓ Confirm (N)", the second logs every dish into its slot —
+  all of today's, later ones included — skipping any slot that already holds
+  a meal (`_kuchnia_log.fill_plan`, re-checked at the second click).
 
 The queue **survives each submit**: `_finish_slot` calls `_prefill_next_dish`
 so the next dish is already in the form, carrying the "Logged HH:00 …"
