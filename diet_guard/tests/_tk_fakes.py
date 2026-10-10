@@ -25,9 +25,9 @@ from types import SimpleNamespace
 
 from diet_guard.tests._tk_fakes_canvas import FakeCanvas, FakeScrollbar
 from diet_guard.tests._tk_fakes_containers import (
-    FakeCombobox,
     FakeNotebook,
     FakeRadiobutton,
+    FakeSpinbox,
     FakeStyle,
     FakeWidget,
 )
@@ -41,12 +41,12 @@ __all__ = [
     "_FAKE_TK",
     "_FAKE_TTK",
     "FakeCanvas",
-    "FakeCombobox",
     "FakeEntry",
     "FakeListbox",
     "FakeNotebook",
     "FakeRadiobutton",
     "FakeScrollbar",
+    "FakeSpinbox",
     "FakeStyle",
     "FakeText",
     "FakeVar",
@@ -176,9 +176,7 @@ _FAKE_TK = SimpleNamespace(
     Event=object,
 )
 
-_FAKE_TTK = SimpleNamespace(
-    Notebook=FakeNotebook, Style=FakeStyle, Combobox=FakeCombobox
-)
+_FAKE_TTK = SimpleNamespace(Notebook=FakeNotebook, Style=FakeStyle, Spinbox=FakeSpinbox)
 
 # Every mixin module the gate window is built from imports ``tkinter``
 # independently; all of them must see the fake so ``tk.TclError`` etc. are the

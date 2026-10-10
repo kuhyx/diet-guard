@@ -5,19 +5,20 @@ Split out of :mod:`._gatelock_calendar_widgets` (216 lines against the repo's
 lives in :mod:`._gatelock_scheduleedit`, mirroring how the budget row's
 widgets and its edit/save logic are split.
 
-The first and last meal are editable ``ttk.Combobox`` fields: the dropdown
-offers every quarter hour, and the user may also type any ``HH:MM``.  The
-``ttk`` import is load-bearing for the tests, which patch this module's
-``ttk`` with a fake -- keep binding it at module level.
+The first and last meal are editable ``ttk.Spinbox`` fields: the user may type
+any ``HH:MM``, and the arrow buttons, Up/Down and the mouse wheel step to the
+neighbouring quarter hour (:func:`step_time`).  The ``ttk`` import is
+load-bearing for the tests, which patch this module's ``ttk`` with a fake --
+keep binding it at module level.
 
-**The dropdown list is never posted.**  Observed on Xvfb (2026-10-10, demo
-gate): a posted ``ComboboxPopdown`` maps *beneath* the lock surface, which
-gatelock keeps raised, yet still holds ttk's grab -- so the user sees nothing,
-the next click anywhere is swallowed to unpost it, and keystrokes meant for
-another field land in the combobox.  On the real lock the grab watch also
-fights the popdown for the grab.  So both ways of posting are intercepted:
-a click on the arrow element (:data:`_ARROW_ELEMENT`) and Down.  Typing any
-``HH:MM`` works, and Up/Down step by 15 minutes (:func:`step_time`).
+**No popup of any kind.**  These used to be ``ttk.Combobox`` fields, and on
+Xvfb (2026-10-10, demo gate) a posted ``ComboboxPopdown`` mapped *beneath*
+the lock surface, which gatelock keeps raised, while still holding ttk's grab:
+invisible, it swallowed the next click and stole keystrokes.  A spinbox posts
+nothing.  Every way ttk spins one -- arrow press, Up/Down, the wheel --
+generates ``<<Increment>>``/``<<Decrement>>`` (``ttk/spinbox.tcl``), and those
+are bound here and answered with ``"break"``, so ttk's own ``values``/``wrap``
+logic never runs: stepping is always :func:`step_time` from the typed value.
 """
 
 from __future__ import annotations
@@ -41,32 +42,32 @@ if TYPE_CHECKING:
 
     from diet_guard._gatelock_calendar_types import CalendarVars
 
-__all__ = ["TIME_CHOICES", "build_schedule_row", "step_time"]
+__all__ = ["FIRST_RANGE", "LAST_RANGE", "build_schedule_row", "step_time"]
 
 _ENTRY_WIDTH = 4
 # "HH:MM" plus room for the caret, so a typed time is never clipped.
 _TIME_WIDTH = 6
-#: What ``Combobox.identify`` names the arrow under the gate's ``clam`` theme
-#: (verified on Xvfb: ``Combobox.field`` | ``textarea`` | ``downarrow``).
-_ARROW_ELEMENT = "downarrow"
 
-#: Every quarter hour of the day, the grid interior slots are rounded onto.
-TIME_CHOICES = tuple(
-    slot_label(minute) for minute in range(0, MINUTES_PER_DAY, SLOT_GRID_MINUTES)
-)
+_LAST_MARK = MINUTES_PER_DAY - SLOT_GRID_MINUTES  # 23:45, the day's last grid mark
+
+#: Where stepping clamps each field, as ``(low, high)`` minutes.  The last meal
+#: must sit at least one grid step after the first, so it can never be 00:00.
+FIRST_RANGE = (0, _LAST_MARK)
+LAST_RANGE = (SLOT_GRID_MINUTES, _LAST_MARK)
 
 
-def step_time(text: str, direction: int) -> str:
+def step_time(text: str, direction: int, bounds: tuple[int, int] = FIRST_RANGE) -> str:
     """Return ``text`` moved to the next quarter hour in ``direction``.
 
     An off-grid time (07:23) steps to the neighbouring grid mark (07:30 up,
-    07:15 down) rather than by a flat 15, so stepping always lands on a value
-    the dropdown offers.  Clamped to the day; unparsable text is returned
-    unchanged so a half-typed value is not clobbered.
+    07:15 down) rather than by a flat 15, so stepping always lands on the
+    grid.  Clamped to ``bounds``; unparsable text is returned unchanged so a
+    half-typed value is not clobbered.
 
     Args:
         text: The field's current value.
         direction: ``+1`` for later, ``-1`` for earlier.
+        bounds: The ``(low, high)`` minutes the result is clamped to.
 
     Returns:
         The stepped ``HH:MM`` label, or ``text`` if it does not parse.
@@ -79,53 +80,47 @@ def step_time(text: str, direction: int) -> str:
         stepped = (minute // SLOT_GRID_MINUTES + 1) * SLOT_GRID_MINUTES
     else:
         stepped = (minute - 1) // SLOT_GRID_MINUTES * SLOT_GRID_MINUTES
-    last_mark = MINUTES_PER_DAY - SLOT_GRID_MINUTES
-    return slot_label(max(0, min(last_mark, stepped)))
+    low, high = bounds
+    return slot_label(max(low, min(high, stepped)))
 
 
-def _bind_steps(combo: ttk.Combobox, variable: tk.StringVar) -> None:
-    """Make Up/Down step the time, and keep the dropdown list from posting."""
+def _bind_steps(
+    spin: ttk.Spinbox, variable: tk.StringVar, bounds: tuple[int, int]
+) -> None:
+    """Answer the spinbox's step events with :func:`step_time`."""
 
     def _step(direction: int) -> str:
-        if str(combo.cget("state")) == "normal":
-            variable.set(step_time(variable.get(), direction))
-        # "break" stops ttk's own binding, which would post the popdown.
+        if str(spin.cget("state")) == "normal":
+            variable.set(step_time(variable.get(), direction, bounds))
+        # "break" keeps ttk's own Spin (values/from/to/wrap) from running.
         return "break"
 
-    def _press(event: tk.Event[ttk.Combobox]) -> str | None:
-        # A click on the arrow would post the popdown -- see the module
-        # docstring for why that is unsafe here.  Clicks on the text still
-        # fall through to ttk, so the caret lands where the user clicked.
-        if _ARROW_ELEMENT in str(combo.identify(event.x, event.y)):
-            return "break"
-        return None
-
-    combo.bind("<Up>", lambda _event: _step(1))
-    combo.bind("<Down>", lambda _event: _step(-1))
-    combo.bind("<ButtonPress-1>", _press)
+    spin.bind("<<Increment>>", lambda _event: _step(1))
+    spin.bind("<<Decrement>>", lambda _event: _step(-1))
 
 
-def _time_combo(row: tk.Frame, variable: tk.StringVar) -> ttk.Combobox:
-    """Return one locked-by-default ``HH:MM`` combobox in the schedule row.
+def _time_spin(
+    row: tk.Frame, variable: tk.StringVar, bounds: tuple[int, int]
+) -> ttk.Spinbox:
+    """Return one locked-by-default ``HH:MM`` spinbox in the schedule row.
 
-    Locked means ``disabled``, not ``readonly``: a read-only ttk combobox still
-    lets the user pick from the list, which would edit a "locked" row.  Its
-    colours come from the ``TCombobox`` style (see
+    Locked means ``disabled``, not ``readonly``: a read-only ttk spinbox still
+    spins, which would edit a "locked" row.  Its colours come from the
+    ``TSpinbox`` style (see
     :func:`diet_guard._gatelock_calendar_ui._style_notebook`) -- ttk widgets
     reject ``bg``/``fg``.
     """
-    combo = ttk.Combobox(
+    spin = ttk.Spinbox(
         row,
         textvariable=variable,
-        values=TIME_CHOICES,
         font=(_COLORS.typography.font_family, BODY),
         width=_TIME_WIDTH,
         justify="center",
         state="disabled",
     )
-    _bind_steps(combo, variable)
-    combo.pack(side="left", padx=(XS, SM), ipady=XS)
-    return combo
+    _bind_steps(spin, variable, bounds)
+    spin.pack(side="left", padx=(XS, SM), ipady=XS)
+    return spin
 
 
 def _spin_entry(row: tk.Frame, variable: tk.StringVar) -> tk.Entry:
@@ -161,22 +156,22 @@ def build_schedule_row(
     parent: tk.Frame,
     vars_: CalendarVars,
     on_edit_or_save_schedule: Callable[[], None],
-) -> tuple[ttk.Combobox, ttk.Combobox, tk.Entry, tk.Button, tk.Label]:
+) -> tuple[ttk.Spinbox, ttk.Spinbox, tk.Entry, tk.Button, tk.Label]:
     """Build the meal-schedule row.
 
-    Returns the two time comboboxes, the count entry, the edit button, and the
+    Returns the two time spinboxes, the count entry, the edit button, and the
     status label, in that order.  Like the budget row the fields start locked:
     the schedule is displayed but not directly editable until "Edit".
 
     Returns:
-        ``(first_combo, last_combo, count_entry, edit_button, status_label)``.
+        ``(first_spin, last_spin, count_entry, edit_button, status_label)``.
     """
     row = tk.Frame(parent, bg=BG)
     row.pack(pady=(SM, XS))
     _caption(row, "Meals:")
-    first_combo = _time_combo(row, vars_.schedule.first)
+    first_spin = _time_spin(row, vars_.schedule.first, FIRST_RANGE)
     _caption(row, "to")
-    last_combo = _time_combo(row, vars_.schedule.last)
+    last_spin = _time_spin(row, vars_.schedule.last, LAST_RANGE)
     _caption(row, "x")
     count_entry = _spin_entry(row, vars_.schedule.count)
     edit_button = make_button(row, _COLORS, "Edit", on_edit_or_save_schedule)
@@ -199,4 +194,4 @@ def build_schedule_row(
         fg=FG,
     )
     status_label.pack(pady=(0, XS))
-    return first_combo, last_combo, count_entry, edit_button, status_label
+    return first_spin, last_spin, count_entry, edit_button, status_label

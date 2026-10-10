@@ -84,8 +84,8 @@ class TestEditToggle:
         assert gate._cal_editing_schedule
         assert current_schedule() == DEFAULT_SCHEDULE
 
-    def test_the_comboboxes_lock_as_disabled_not_readonly(self, gate: MealGate) -> None:
-        """A ``readonly`` ttk combobox still lets the list edit a locked row."""
+    def test_the_spinboxes_lock_as_disabled_not_readonly(self, gate: MealGate) -> None:
+        """A ``readonly`` ttk spinbox still spins, editing a locked row."""
         widgets = gate._cal_widgets
         gate._on_edit_or_save_schedule()
         assert widgets.schedule_first_entry.configured["state"] == "normal"

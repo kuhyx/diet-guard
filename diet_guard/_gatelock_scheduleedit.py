@@ -37,9 +37,9 @@ from diet_guard._slots import day_slots, slot_label
 
 __all__ = ["_GateScheduleEdit", "schedule_problem", "schedule_summary"]
 
-# ttk.Combobox and tk.Entry spell "locked" differently: a ``readonly``
-# combobox still lets the user pick from its list, so locked is ``disabled``.
-_COMBO_STATE = {"normal": "normal", "readonly": "disabled"}
+# ttk.Spinbox and tk.Entry spell "locked" differently: a ``readonly`` ttk
+# spinbox still spins, which would edit a locked row, so locked is ``disabled``.
+_SPIN_STATE = {"normal": "normal", "readonly": "disabled"}
 
 
 def schedule_summary(schedule: MealSchedule) -> str:
@@ -90,9 +90,9 @@ class _GateScheduleEdit(_GateBudgetEdit):
         stop the remaining fields from changing state.
         """
         for surface in self._cal_surfaces:
-            for combo in (surface.schedule_first_entry, surface.schedule_last_entry):
+            for spin in (surface.schedule_first_entry, surface.schedule_last_entry):
                 with contextlib.suppress(tk.TclError):
-                    combo.config(state=_COMBO_STATE[state])
+                    spin.configure(state=_SPIN_STATE[state])
             with contextlib.suppress(tk.TclError):
                 surface.schedule_count_entry.config(state=state)
 

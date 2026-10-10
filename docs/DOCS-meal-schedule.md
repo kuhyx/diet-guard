@@ -84,11 +84,14 @@ them untouched.
 Editable on both surfaces: the app's Settings screen
 (`settings_meal_schedule.dart`) and the gate's History tab
 (`_gatelock_scheduleedit.py`, widgets in `_gatelock_calendar_schedule.py`).
-The gate's first/last fields are `ttk.Combobox`es offering every quarter hour
-and accepting any typed `HH:MM`; Up/Down step 15 minutes. The dropdown list is
-**never posted** (arrow clicks and Down are intercepted): a posted popdown maps
-*beneath* the lock surface, which gatelock keeps raised, while still holding
-ttk's grab — invisible, it swallows the next click and steals keystrokes.
+The gate's first/last fields are `ttk.Spinbox`es: any typed `HH:MM`, and the
+arrow buttons, Up/Down and the wheel step to the neighbouring quarter hour
+from the typed value (07:23 → 07:30 / 07:15), clamped to 00:00–23:45 (the last
+meal to 00:15–23:45). `<<Increment>>`/`<<Decrement>>` are bound and answered
+with `"break"`, so ttk's own values/wrap logic never runs. **No popups on the
+lock:** a `ttk.Combobox` was tried first, and its popdown mapped *beneath* the
+lock surface (gatelock keeps it raised) while still holding ttk's grab —
+invisible, it swallowed the next click and stole keystrokes.
 
 `diet-guard-gate.timer` fires every 15 minutes (`*:00/15:00`), so it lands on
 every grid slot exactly; an off-grid first/last meal is caught by the next

@@ -28,7 +28,7 @@ def dual_gate(dual_output: None) -> Iterator[MealGate]:
     del dual_output
     # The shared patch set, never a hand-picked copy: a copy silently misses
     # the next module that starts building widgets (the schedule row's ttk
-    # comboboxes were exactly that).
+    # time fields were exactly that).
     with fake_tk():
         yield MealGate(demo_mode=True)
 

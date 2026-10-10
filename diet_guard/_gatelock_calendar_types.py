@@ -92,8 +92,8 @@ class CalendarWidgets:
     budget_entry: tk.Entry
     budget_edit_button: tk.Button
     budget_status_label: tk.Label
-    schedule_first_entry: ttk.Combobox
-    schedule_last_entry: ttk.Combobox
+    schedule_first_entry: ttk.Spinbox
+    schedule_last_entry: ttk.Spinbox
     schedule_count_entry: tk.Entry
     schedule_edit_button: tk.Button
     schedule_status_label: tk.Label

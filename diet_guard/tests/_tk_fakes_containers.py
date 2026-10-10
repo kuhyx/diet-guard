@@ -21,9 +21,9 @@ rather than merely asserting that a widget was constructed.
 from __future__ import annotations
 
 __all__ = [
-    "FakeCombobox",
     "FakeNotebook",
     "FakeRadiobutton",
+    "FakeSpinbox",
     "FakeStyle",
     "FakeWidget",
 ]
@@ -184,12 +184,13 @@ class FakeStyle:
         self.configured.setdefault(style_name, {}).update(kwargs)
 
 
-class FakeCombobox(FakeWidget):
-    """A functional stand-in for ``ttk.Combobox``.
+class FakeSpinbox(FakeWidget):
+    """A functional stand-in for ``ttk.Spinbox``.
 
     Reads and writes go through its ``textvariable`` (as the real widget's
     do), ``state`` is readable via ``cget``, and ``bind`` keeps each handler
-    so a test can fire the Up/Down step bindings the way a keypress would.
+    so a test can fire ``<<Increment>>``/``<<Decrement>>`` the way an arrow
+    press, Up/Down or the wheel would.
     """
 
     def __init__(self, *args: object, **kwargs: object) -> None:
@@ -206,10 +207,3 @@ class FakeCombobox(FakeWidget):
     def bind(self, *args: object, **kwargs: object) -> None:
         sequence, handler = args[0], args[1]
         self.bindings[str(sequence)] = handler
-
-    #: Where the fake's arrow element starts; left of it is the text area.
-    ARROW_X = 50
-
-    def identify(self, x: int, y: int) -> str:
-        """Name the element at ``x``, as clam does: text, then the arrow."""
-        return "downarrow" if x >= self.ARROW_X else "textarea"
