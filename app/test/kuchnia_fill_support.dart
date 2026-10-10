@@ -21,7 +21,7 @@ class MemoryStore implements DocumentStore {
 }
 
 /// The default four-slot day.
-const defaultSlots = [8, 12, 16, 20];
+const defaultSlots = [480, 720, 960, 1200];
 
 /// A dish with the given [priority]; macros are distinct per priority.
 KuchniaDish dish(String name, int priority, {double grams = 300}) =>
@@ -53,5 +53,5 @@ LogStorageService freshStorage() {
 
 /// `desc@slot` for every live entry logged today, in write order.
 Future<List<String>> loggedToday(LogStorageService storage) async => [
-  for (final e in await storage.todayEntries()) '${e.desc}@${e.slot}',
+  for (final e in await storage.todayEntries()) '${e.desc}@${e.slotMinute}',
 ];

@@ -50,33 +50,28 @@ class ScheduleEntry {
 }
 
 /// Returns the wire/disk form of one entry's value.
+///
+/// Goes through [scheduleToWire], so a whole-hour schedule is stored exactly
+/// as before minutes existed (`{f, l, n, t}`) and an older build still reads
+/// it; `fm`/`lm` appear only for an off-the-hour endpoint.
 Map<String, Object?> scheduleEntryToJson(ScheduleEntry entry) => {
-  'f': entry.schedule.first,
-  'l': entry.schedule.last,
-  'n': entry.schedule.count,
+  ...scheduleToWire(entry.schedule),
   't': entry.editedAt,
 };
 
 /// Returns an entry parsed from its stored value, or null if unusable.
 ///
 /// Never throws: a malformed entry is skipped so one bad field from a peer
-/// cannot take out the whole history.
+/// cannot take out the whole history. [scheduleFromWire] normalises on the
+/// way in, so a peer running a future version with a wider range cannot hand
+/// us a schedule we would derive differently.
 ScheduleEntry? scheduleEntryFromJson(String effectiveFrom, Object? raw) {
-  if (raw is! Map) return null;
-  final first = raw['f'];
-  final last = raw['l'];
-  final count = raw['n'];
-  if (first is! int || last is! int || count is! int) return null;
+  final schedule = scheduleFromWire(raw);
+  if (schedule == null || raw is! Map) return null;
   final editedAt = raw['t'];
   return ScheduleEntry(
     effectiveFrom: effectiveFrom,
-    // Normalising on the way in means a peer running a future version with a
-    // wider range cannot hand us a schedule we would derive differently.
-    schedule: MealSchedule(
-      first: first,
-      last: last,
-      count: count,
-    ).normalized(),
+    schedule: schedule,
     editedAt: editedAt is String ? editedAt : _epochIso,
   );
 }

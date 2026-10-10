@@ -1,5 +1,8 @@
+import 'package:diet_guard_app/models/meal_schedule.dart';
+import 'package:diet_guard_app/services/notification_backend.dart';
 import 'package:diet_guard_app/services/notification_backend_io.dart';
 import 'package:diet_guard_app/services/notification_service.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -41,98 +44,134 @@ void main() {
       expect(await NotificationService.instance.requestPermission(), isTrue);
     });
 
-    test('syncToSlots shows due slots and cancels the rest', () async {
-      final log = installFakeAndroidNotifications();
+    Future<List<MethodCall>> ready({Map<int, String>? active}) async {
+      final log = installFakeAndroidNotifications(active: active);
       NotificationService.resetForTesting(
         backend: LocalNotificationsBackend(FlutterLocalNotificationsPlugin()),
       );
       await NotificationService.init();
       log.clear();
+      return log;
+    }
 
-      await NotificationService.instance.syncToSlots([12, 20]);
+    Set<Object?> ids(List<MethodCall> log, String method) => {
+      for (final call in log)
+        if (call.method == method) (call.arguments as Map)['id'],
+    };
 
-      final shown = log
-          .where((c) => c.method == 'show')
-          .map((c) => (c.arguments as Map)['id'])
-          .toSet();
-      final cancelled = log
-          .where((c) => c.method == 'cancel')
-          .map((c) => (c.arguments as Map)['id'])
-          .toSet();
-      expect(shown, {12, 20});
-      // Every other id in the 0..23 space is cancelled, not just the other
-      // slots of the current schedule -- see syncToSlots' comment.
-      expect(cancelled, containsAll(<int>{8, 16}));
-      expect(cancelled.intersection(shown), isEmpty);
+    test('syncToSlots shows due slots and cancels other reminders', () async {
+      final log = await ready(
+        active: {480: reminderChannelId, 720: reminderChannelId},
+      );
+
+      await NotificationService.instance.syncToSlots([720, 1200]);
+
+      expect(ids(log, 'show'), {720, 1200});
+      expect(ids(log, 'cancel'), {480});
     });
 
-    test('syncToSlots with no due slots cancels every id in the day', () async {
-      final log = installFakeAndroidNotifications();
-      NotificationService.resetForTesting(
-        backend: LocalNotificationsBackend(FlutterLocalNotificationsPlugin()),
-      );
-      await NotificationService.init();
-      log.clear();
+    test('a quiet tick costs one lookup and no cancels', () async {
+      // The cost bound: the old design swept every id each tick, which at
+      // minute resolution would be 1440 platform calls per background run.
+      final log = await ready();
 
       await NotificationService.instance.syncToSlots(const []);
 
-      expect(log.where((c) => c.method == 'show'), isEmpty);
-      // 24, not 4: the slot hour doubles as the notification id, so a
-      // schedule change would otherwise orphan the ids it no longer contains.
-      expect(log.where((c) => c.method == 'cancel'), hasLength(24));
+      expect(log.map((c) => c.method), ['getActiveNotifications']);
+    });
+
+    test('the upgrade cancels reminders keyed by the old slot hours', () async {
+      // Older builds used the slot *hour* as the id. Nothing in the minute
+      // schedule names 8/12/16, so only the active lookup can find them.
+      final log = await ready(
+        active: {
+          8: reminderChannelId,
+          12: reminderChannelId,
+          16: reminderChannelId,
+        },
+      );
+
+      await NotificationService.instance.syncToSlots([720]);
+
+      expect(ids(log, 'cancel'), {8, 12, 16});
+      expect(ids(log, 'show'), {720});
     });
 
     test('syncToSlots cancels ids orphaned by a schedule change', () async {
-      // The regression this guards: the slot hour *is* the notification id,
-      // and syncToSlots used to iterate only the current schedule's slots.
-      // Switching 08/12/16/20 -> 08/11/14/17/20 therefore left ids 12 and 16
-      // posted with nothing that would ever cancel them, so the phone nagged
-      // forever about checkpoints that no longer existed.
-      final log = installFakeAndroidNotifications();
-      NotificationService.resetForTesting(
-        backend: LocalNotificationsBackend(FlutterLocalNotificationsPlugin()),
-      );
-      await NotificationService.init();
-
-      // Due under the old four-meal schedule.
-      await NotificationService.instance.syncToSlots([12, 16]);
+      // The regression this guards: the slot minute *is* the notification
+      // id, so iterating only the current schedule's slots would leave the
+      // old schedule's reminders posted forever.
+      final log = await ready();
+      await NotificationService.instance.syncToSlots([720, 960]);
       log.clear();
-      // Now due under a five-meal schedule, which has neither 12 nor 16.
-      await NotificationService.instance.syncToSlots([11]);
 
-      final cancelled = log
-          .where((c) => c.method == 'cancel')
-          .map((c) => (c.arguments as Map)['id'])
-          .toSet();
-      expect(cancelled, containsAll(<int>{12, 16}));
+      // Now due under a schedule that has neither 720 nor 960.
+      await NotificationService.instance.syncToSlots([660]);
+
+      expect(ids(log, 'cancel'), {720, 960});
+    });
+
+    test('leaves notifications on other channels alone', () async {
+      final log = await ready(active: {5: 'some_other_channel'});
+
+      await NotificationService.instance.syncToSlots(const []);
+
+      expect(ids(log, 'cancel'), isEmpty);
     });
 
     test(
       'syncToSlots cancels a slot whose meal was logged after it fired',
       () async {
-        final log = installFakeAndroidNotifications();
-        NotificationService.resetForTesting(
-          backend: LocalNotificationsBackend(
-            FlutterLocalNotificationsPlugin(),
-          ),
-        );
-        await NotificationService.init();
-
-        await NotificationService.instance.syncToSlots([12]);
+        final log = await ready();
+        await NotificationService.instance.syncToSlots([720]);
         log.clear();
         await NotificationService.instance.syncToSlots(const []); // logged
 
-        expect(
-          log
-              .where((c) => c.method == 'cancel')
-              .map((c) => (c.arguments as Map)['id']),
-          contains(12),
-        );
+        expect(ids(log, 'cancel'), {720});
       },
     );
+  });
+
+  test('a failed active lookup falls back to sweeping every id', () async {
+    final backend = _FakeBackend()..failLookup = true;
+    NotificationService.resetForTesting(backend: backend);
+    await NotificationService.init();
+
+    await NotificationService.instance.syncToSlots([435]);
+
+    expect(backend.shown, [435]);
+    expect(backend.cancelled, hasLength(kMinutesPerDay - 1));
+    expect(backend.cancelled, isNot(contains(435)));
+    expect(backend.cancelled, containsAll(<int>[0, 8, 23, 720, 1439]));
   });
 
   test('instance throws before init has ever been called', () {
     expect(() => NotificationService.instance, throwsA(anything));
   });
+}
+
+/// A platform-free backend for the paths the channel fake cannot reach.
+class _FakeBackend implements NotificationBackend {
+  bool failLookup = false;
+  final shown = <int>[];
+  final cancelled = <int>[];
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<bool?> requestPermission() async => null;
+
+  @override
+  Future<void> show(int slot, String title, String body) async =>
+      shown.add(slot);
+
+  @override
+  Future<void> cancel(int slot) async => cancelled.add(slot);
+
+  @override
+  Future<Set<int>> activeIds() async {
+    if (failLookup) throw StateError('no notification service');
+    return {};
+  }
 }

@@ -7,8 +7,10 @@ import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/local_time.dart';
 import 'package:diet_guard_app/models/meal_component.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
+import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/document_store.dart';
 import 'package:diet_guard_app/services/document_store_factory.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -102,11 +104,12 @@ class LogStorageService {
   /// Mirrors `_state.log_meal`: always assigns a fresh `id`, never computes
   /// an `hmac` (the phone never holds the shared key -- the PC re-signs on
   /// merge, see Milestone 3). [when] lets a caller pre-log a meal against a
-  /// future date/slot; must not be in the past.
+  /// future date/slot; must not be in the past. [slotMinute] is the slot's
+  /// minute of day (`slotForLog`'s result), never an hour.
   Future<FoodEntry> logMeal(
     String desc,
     Nutrition nutrition, {
-    int? slot,
+    int? slotMinute,
     List<MealComponent>? components,
     DateTime? when,
   }) async {
@@ -124,7 +127,7 @@ class LogStorageService {
       carbsG: nutrition.carbsG,
       fatG: nutrition.fatG,
       source: nutrition.source,
-      slot: slot,
+      slotMinute: slotMinute,
       components: components,
     );
     final log = await readLog();
@@ -229,10 +232,17 @@ class LogStorageService {
     }
   }
 
-  /// Returns the slot hours already satisfied today, mirrors
+  /// Returns today's slot minutes already satisfied, mirrors
   /// `_state.logged_slots_today`.
+  ///
+  /// Each entry satisfies the slot *nearest* its recorded minute under the
+  /// schedule in force now. Stored minutes are never rewritten, so an exact
+  /// match would let a schedule edit (07:00 -> 07:15) un-log a meal already
+  /// eaten and re-nag for it -- and disagree with the PC, which snaps too.
   Future<Set<int>> loggedSlotsToday() async {
     final entries = await todayEntries();
-    return entries.where((e) => e.slot != null).map((e) => e.slot!).toSet();
+    return satisfiedSlots([
+      for (final entry in entries) ?entry.slotMinute,
+    ], MealScheduleService.current);
   }
 }

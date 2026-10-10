@@ -90,7 +90,7 @@ void main() {
   ) async {
     await tester.runAsync(() async {
       await MealScheduleService.instance.recordChange(
-        const MealSchedule(first: 8, last: 20, count: 5),
+        const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
       );
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await settle(tester);

@@ -149,7 +149,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     await LogStorageService.instance.logMeal(
       desc,
       nutritionFromControllers(_macros, _source),
-      slot: target.slot,
+      slotMinute: target.slot,
       when: target.when,
     );
     resetFutureLog();

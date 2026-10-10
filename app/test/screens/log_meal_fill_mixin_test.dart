@@ -134,7 +134,7 @@ void main() {
     expect(await t.runAsync(() => loggedToday(storage)), hasLength(4));
     expect(host.publishes, 1, reason: 'one publish per batch, not per dish');
     expect(KuchniaQueueService.remaining, 0);
-    expect(host.loggedSlots, {8, 12, 16, 20});
+    expect(host.loggedSlots, {480, 720, 960, 1200});
     expect(host.desc.text, isEmpty, reason: 'D1 was logged by the fill');
   });
 
@@ -144,7 +144,7 @@ void main() {
       await storage.logMeal(
         'own breakfast',
         dishNutrition(dish('own', 1)),
-        slot: 8,
+        slotMinute: 480,
       );
       await host.onFillAll();
       await host.onFillAll();

@@ -97,13 +97,15 @@ void main() {
         await storage.logMeal(
           row['desc'] as String,
           _seedNutrition,
-          slot: row['slot'] as int,
+          // Fixture slots are resolved minutes: seeded through logMeal, so
+          // storage writes them via slotFields, never as a raw hour.
+          slotMinute: row['slot'] as int,
         );
       }
       final returned = await logDishes(spread(testCase), storage: storage);
       final logged = [
         for (final e in (await storage.todayEntries()).skip(seeded.length))
-          [e.desc, e.slot],
+          [e.desc, e.slotMinute],
       ];
       final reason = 'logDishes diverged for ${entry.key}';
       expect(logged, equals(testCase['expected']), reason: reason);

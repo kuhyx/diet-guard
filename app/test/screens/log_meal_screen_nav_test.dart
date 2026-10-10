@@ -163,7 +163,7 @@ void main() {
             carbsG: 40,
             fatG: 5,
             source: 'manual',
-            slot: 8,
+            slotMinute: 480,
           ),
         ],
       });

@@ -23,40 +23,40 @@ void main() {
     test('an empty day keeps every dish', () {
       final slotted = assignSlots(dishes(4), defaultSlots);
       expect(_names(fillPlan(slotted, {})), [
-        'D1@8',
-        'D2@12',
-        'D3@16',
-        'D4@20',
+        'D1@480',
+        'D2@720',
+        'D3@960',
+        'D4@1200',
       ]);
     });
 
     test('an occupied slot is skipped, the others stay', () {
       final slotted = assignSlots(dishes(4), defaultSlots);
-      expect(_names(fillPlan(slotted, {12})), ['D1@8', 'D3@16', 'D4@20']);
+      expect(_names(fillPlan(slotted, {720})), ['D1@480', 'D3@960', 'D4@1200']);
     });
 
     test('5 dishes on 4 slots: both dishes of one empty slot stay', () {
       final slotted = assignSlots(dishes(5), defaultSlots);
       // The spread doubles the first slot; occupancy is read once, so the
       // first dish must not shadow the second.
-      expect(_names(slotted).take(2), ['D1@8', 'D2@8']);
+      expect(_names(slotted).take(2), ['D1@480', 'D2@480']);
       expect(_names(fillPlan(slotted, {})), hasLength(5));
-      expect(_names(fillPlan(slotted, {16})), [
-        'D1@8',
-        'D2@8',
-        'D3@12',
-        'D5@20',
+      expect(_names(fillPlan(slotted, {960})), [
+        'D1@480',
+        'D2@480',
+        'D3@720',
+        'D5@1200',
       ]);
     });
 
     test('an occupied doubled slot drops both of its dishes', () {
       final slotted = assignSlots(dishes(5), defaultSlots);
-      expect(_names(fillPlan(slotted, {8})), ['D3@12', 'D4@16', 'D5@20']);
+      expect(_names(fillPlan(slotted, {480})), ['D3@720', 'D4@960', 'D5@1200']);
     });
 
     test('a full day yields an empty plan', () {
       final slotted = assignSlots(dishes(4), defaultSlots);
-      expect(fillPlan(slotted, {8, 12, 16, 20}), isEmpty);
+      expect(fillPlan(slotted, {480, 720, 960, 1200}), isEmpty);
     });
   });
 
@@ -79,16 +79,16 @@ void main() {
       () async {
         final storage = freshStorage();
         final chosen = [
-          at(dish('D1', 1, grams: 250), 8),
-          at(dish('D3', 3), 16),
+          at(dish('D1', 1, grams: 250), 480),
+          at(dish('D3', 3), 960),
         ];
 
         final written = await logDishes(chosen, storage: storage);
 
-        expect(_names(written), ['D1@8', 'D3@16']);
+        expect(_names(written), ['D1@480', 'D3@960']);
         final entries = await storage.todayEntries();
         expect(entries.map((e) => e.desc), ['D1', 'D3']);
-        expect(entries.map((e) => e.slot), [8, 16]);
+        expect(entries.map((e) => e.slotMinute), [480, 960]);
         expect(entries.map((e) => e.source), everyElement('kuchnia wikinga'));
         expect(entries.map((e) => e.grams), [250, 300]);
         expect(entries.map((e) => e.kcal), [100, 300]);
@@ -97,15 +97,15 @@ void main() {
 
     test('skips a dish already logged in that slot', () async {
       final storage = freshStorage();
-      await storage.logMeal('  d1 ', dishNutrition(dish('D1', 1)), slot: 8);
+      await storage.logMeal('  d1 ', dishNutrition(dish('D1', 1)), slotMinute: 480);
 
       final written = await logDishes([
-        at(dish('D1', 1), 8),
-        at(dish('D2', 2), 12),
+        at(dish('D1', 1), 480),
+        at(dish('D2', 2), 720),
       ], storage: storage);
 
       // Case and surrounding whitespace do not make it a different meal.
-      expect(_names(written), ['D2@12']);
+      expect(_names(written), ['D2@720']);
       expect(await storage.todayEntries(), hasLength(2));
     });
 
@@ -114,30 +114,30 @@ void main() {
       final twin = dish('Twin', 1);
 
       final written = await logDishes([
-        at(twin, 8),
-        at(twin, 8),
+        at(twin, 480),
+        at(twin, 480),
       ], storage: storage);
 
-      expect(_names(written), ['Twin@8']);
-      expect(await loggedToday(storage), ['Twin@8']);
+      expect(_names(written), ['Twin@480']);
+      expect(await loggedToday(storage), ['Twin@480']);
     });
 
     test('the same dish in a different slot is not a duplicate', () async {
       final storage = freshStorage();
-      await storage.logMeal('D1', dishNutrition(dish('D1', 1)), slot: 8);
+      await storage.logMeal('D1', dishNutrition(dish('D1', 1)), slotMinute: 480);
 
       final written = await logDishes([
-        at(dish('D1', 1), 12),
+        at(dish('D1', 1), 720),
       ], storage: storage);
 
-      expect(_names(written), ['D1@12']);
-      expect(await loggedToday(storage), ['D1@8', 'D1@12']);
+      expect(_names(written), ['D1@720']);
+      expect(await loggedToday(storage), ['D1@480', 'D1@720']);
     });
   });
 
   group('planSummary', () {
     test('lists slot, dish and the kcal total', () {
-      final plan = [at(dish('D1', 1), 8), at(dish('D2', 2), 12)];
+      final plan = [at(dish('D1', 1), 480), at(dish('D2', 2), 720)];
       expect(
         planSummary(plan),
         'Will log 2 (300 kcal): 08:00 D1, 12:00 D2 — tap Confirm.',

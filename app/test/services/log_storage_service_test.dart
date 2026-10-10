@@ -59,11 +59,11 @@ void main() {
       final entry = await LogStorageService.instance.logMeal(
         'toast',
         _manual,
-        slot: 8,
+        slotMinute: 480,
       );
       expect(entry.id, isNotEmpty);
       expect(entry.hmac, isNull);
-      expect(entry.slot, 8);
+      expect(entry.slotMinute, 480);
       expect(entry.desc, 'toast');
     });
 
@@ -100,7 +100,7 @@ void main() {
       final entry = await LogStorageService.instance.logMeal(
         'future meal',
         _manual,
-        slot: 12,
+        slotMinute: 720,
         when: future,
       );
       final log = await LogStorageService.instance.readLog();
@@ -195,9 +195,17 @@ void main() {
   });
   group('loggedSlotsToday', () {
     test('returns only the slots with a logged entry', () async {
-      await LogStorageService.instance.logMeal('a', _manual, slot: 8);
+      await LogStorageService.instance.logMeal('a', _manual, slotMinute: 480);
       await LogStorageService.instance.logMeal('b', _manual);
-      expect(await LogStorageService.instance.loggedSlotsToday(), {8});
+      expect(await LogStorageService.instance.loggedSlotsToday(), {480});
+    });
+
+    test('snaps an off-slot minute to the nearest slot', () async {
+      // 07:30 under the default 08/12/16/20 schedule satisfies 08:00, and
+      // two meals snapping onto one slot satisfy only that slot.
+      await LogStorageService.instance.logMeal('a', _manual, slotMinute: 450);
+      await LogStorageService.instance.logMeal('b', _manual, slotMinute: 500);
+      expect(await LogStorageService.instance.loggedSlotsToday(), {480});
     });
   });
 }

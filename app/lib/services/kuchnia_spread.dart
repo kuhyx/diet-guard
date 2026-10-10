@@ -27,19 +27,19 @@ library;
 
 import 'package:diet_guard_app/models/kuchnia_dish.dart';
 
-/// A dish paired with the meal-slot hour it was assigned to.
+/// A dish paired with the meal-slot minute it was assigned to.
 class SlottedDish {
-  /// Pairs [dish] with the [slot] hour it should be logged against.
+  /// Pairs [dish] with the [slot] minute it should be logged against.
   const SlottedDish({required this.dish, required this.slot});
 
   /// The dish itself.
   final KuchniaDish dish;
 
-  /// The slot hour, e.g. `12` for the 12:00 checkpoint.
+  /// The slot's minute of day, e.g. `720` for the 12:00 checkpoint.
   final int slot;
 }
 
-/// Pairs each dish with a slot hour, following the provider's meal order.
+/// Pairs each dish with a slot minute, following the provider's meal order.
 ///
 /// Returns an empty list when either input is empty -- a day with no delivery
 /// and a schedule with no slots are both "nothing to assign", not errors.

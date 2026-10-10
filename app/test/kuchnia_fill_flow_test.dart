@@ -76,7 +76,7 @@ void main() {
     final outcome = await flow.tap();
 
     expect(outcome!.message, 'Logged 4 catering dishes.');
-    expect(await loggedToday(storage), ['D1@8', 'D2@12', 'D3@16', 'D4@20']);
+    expect(await loggedToday(storage), ['D1@480', 'D2@720', 'D3@960', 'D4@1200']);
     expect(
       (await storage.todayEntries()).map((e) => e.source),
       everyElement(kuchniaSource),
@@ -94,18 +94,18 @@ void main() {
       await storage.logMeal(
         'my own lunch',
         dishNutrition(dish('x', 1)),
-        slot: 12,
+        slotMinute: 720,
       );
-      occupied = {12};
+      occupied = {720};
 
       final outcome = await flow.tap();
 
       expect(outcome!.message, 'Logged 3 catering dishes.');
       expect(await loggedToday(storage), [
-        'my own lunch@12',
-        'D1@8',
-        'D3@16',
-        'D4@20',
+        'my own lunch@720',
+        'D1@480',
+        'D3@960',
+        'D4@1200',
       ]);
       expect(occupancyReads, 2, reason: 'once to propose, once to confirm');
     },
@@ -113,7 +113,7 @@ void main() {
 
   test('a confirm into a now-full day writes nothing', () async {
     await flow.tap();
-    occupied = {8, 12, 16, 20};
+    occupied = {480, 720, 960, 1200};
 
     final outcome = await flow.tap();
 
@@ -131,11 +131,11 @@ void main() {
       await flow.tap();
 
       expect(await loggedToday(storage), [
-        'D1@8',
-        'D2@8',
-        'D3@12',
-        'D4@16',
-        'D5@20',
+        'D1@480',
+        'D2@480',
+        'D3@720',
+        'D4@960',
+        'D5@1200',
       ]);
     },
   );
@@ -193,7 +193,7 @@ void main() {
     });
 
     test('all slots full arms nothing', () async {
-      occupied = {8, 12, 16, 20};
+      occupied = {480, 720, 960, 1200};
       final outcome = await flow.tap();
 
       expect(outcome!.message, nothingToFillMessage);

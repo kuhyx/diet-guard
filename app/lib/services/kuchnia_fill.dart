@@ -11,6 +11,7 @@ library;
 
 import 'package:diet_guard_app/models/kuchnia_dish.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
+import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/kuchnia_spread.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 
@@ -19,6 +20,11 @@ import 'package:diet_guard_app/services/log_storage_service.dart';
 const kuchniaSource = 'kuchnia wikinga';
 
 /// Keeps only the dishes whose slot has nothing logged in it today.
+///
+/// [occupied] holds slot minutes *satisfied* today (see
+/// `LogStorageService.loggedSlotsToday`), i.e. entries already snapped to
+/// the nearest current slot -- not raw recorded minutes, or a meal logged
+/// under yesterday's schedule would leave its slot looking empty.
 ///
 /// Fills *empty* slots: a slot the user already logged something into keeps
 /// that meal rather than gaining a second one. [occupied] is read once, before
@@ -48,8 +54,12 @@ Nutrition dishNutrition(KuchniaDish dish) => nutritionForPortion(
   source: kuchniaSource,
 );
 
-String _dedupKey(String desc, int? slot) =>
-    '${desc.trim().toLowerCase()}\u0000$slot';
+/// Keyed by the entry's *recorded* slot minute, unsnapped, mirroring Python's
+/// `_already_logged` exact comparison. Deliberately not snapped: occupancy
+/// ([fillPlan]) already snaps, so this only has to catch the exact dish this
+/// batch or an earlier fill wrote into the same slot.
+String _dedupKey(String desc, int? slotMinute) =>
+    '${desc.trim().toLowerCase()}\u0000$slotMinute';
 
 /// Logs each chosen dish, skipping any already logged today in that slot.
 ///
@@ -68,7 +78,7 @@ Future<List<SlottedDish>> logDishes(
   final store = storage ?? LogStorageService.instance;
   final seen = {
     for (final entry in await store.todayEntries())
-      _dedupKey(entry.desc, entry.slot),
+      _dedupKey(entry.desc, entry.slotMinute),
   };
   final written = <SlottedDish>[];
   for (final item in chosen) {
@@ -77,7 +87,7 @@ Future<List<SlottedDish>> logDishes(
     await store.logMeal(
       item.dish.name,
       dishNutrition(item.dish),
-      slot: item.slot,
+      slotMinute: item.slot,
     );
     written.add(item);
   }
@@ -95,11 +105,7 @@ String _g(double value) {
 String planSummary(List<SlottedDish> plan) {
   final total = plan.fold<double>(0, (sum, item) => sum + item.dish.kcal);
   final listing = plan
-      .map(
-        (item) =>
-            '${item.slot.toString().padLeft(2, '0')}:00 '
-            '${item.dish.name}',
-      )
+      .map((item) => '${slotLabel(item.slot)} ${item.dish.name}')
       .join(', ');
   return 'Will log ${plan.length} (${_g(total)} kcal): $listing'
       ' — tap Confirm.';

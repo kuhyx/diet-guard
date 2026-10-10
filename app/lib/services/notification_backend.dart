@@ -25,4 +25,12 @@ abstract class NotificationBackend {
 
   /// Removes the notification for [slot], if one is showing.
   Future<void> cancel(int slot);
+
+  /// Returns the ids of the meal reminders currently showing.
+  ///
+  /// Must include reminders posted by *earlier* builds and runs (on Android
+  /// the hour-keyed ids an older version left behind), because this is what
+  /// lets `NotificationService.syncToSlots` cancel orphans without sweeping
+  /// every possible id. May throw; the caller then falls back to a sweep.
+  Future<Set<int>> activeIds();
 }

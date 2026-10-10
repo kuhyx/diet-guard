@@ -12,7 +12,6 @@ import 'dart:async';
 
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/meal_schedule.dart';
-import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/screens/github_mirror_screen.dart';
 import 'package:diet_guard_app/screens/settings_kuchnia.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
@@ -22,6 +21,7 @@ import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/google_sign_in_backend.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
+import 'package:diet_guard_app/widgets/meal_schedule_editor.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

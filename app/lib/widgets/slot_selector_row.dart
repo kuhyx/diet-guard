@@ -3,15 +3,16 @@
 /// used to be three separate stacked elements.
 library;
 
+import 'package:diet_guard_app/models/meal_schedule.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 
-/// One row of [ChoiceChip]s, one per today's slot hour. Each chip is
-/// simultaneously selectable (tap to log for that slot) and status-colored
-/// (green+check = logged, red = due, grey = upcoming), so no separate status
-/// bar or caption text is needed.
+/// One row of [ChoiceChip]s, one per today's slot (labelled `HH:MM`). Each
+/// chip is simultaneously selectable (tap to log for that slot) and
+/// status-colored (green+check = logged, red = due, grey = upcoming), so no
+/// separate status bar or caption text is needed.
 ///
 /// There used to be a fifth "Snack" chip that selected no slot at all,
 /// removed 2026-08-14. Entries with a null slot still exist in storage and
@@ -24,20 +25,27 @@ class SlotSelectorRow extends StatelessWidget {
     required this.loggedSlots,
     required this.selectedSlot,
     required this.onSlotSelected,
+    this.schedule,
     super.key,
   });
 
   /// Reference time used to decide which slots are due.
   final DateTime now;
 
-  /// Slot hours already satisfied by today's log.
+  /// The schedule whose slots to show; defaults to the one in force today.
+  ///
+  /// Passed explicitly for a future day so the chips and [loggedSlots] (which
+  /// the caller snapped against that day's schedule) can never disagree.
+  final MealSchedule? schedule;
+
+  /// Slot minutes already satisfied by the day's log (`satisfiedSlots`).
   final Set<int> loggedSlots;
 
   /// The slot currently chosen to log for. Nullable for historical reasons
   /// (see the class doc); no chip in this row selects null any more.
   final int? selectedSlot;
 
-  /// Called with the tapped slot's hour. Never called with null.
+  /// Called with the tapped slot's minute. Never called with null.
   final ValueChanged<int?> onSlotSelected;
 
   @override
@@ -49,7 +57,7 @@ class SlotSelectorRow extends StatelessWidget {
     // matches production exactly when the extension is genuinely absent.
     final statusColors =
         Theme.of(context).extension<AppStatusColors>() ?? AppStatusColors.dark;
-    final schedule = MealScheduleService.current;
+    final schedule = this.schedule ?? MealScheduleService.current;
     final elapsed = elapsedSlots(now, schedule).toSet();
     // One row, always. A Wrap dropped the later pills onto a second line as
     // soon as the row outgrew the width, which it does even at four: a logged

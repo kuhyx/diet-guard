@@ -179,7 +179,7 @@ mixin LogMealSyncMixin<T extends StatefulWidget> on State<T>
   /// The meal-schedule editor lives in settings, and [SlotSelectorRow] reads
   /// `MealScheduleService.current` at build time, so refreshing is enough to
   /// re-derive the row -- but the selected slot also has to be recomputed,
-  /// since the hour it referred to may no longer be a checkpoint at all.
+  /// since the minute it referred to may no longer be a checkpoint at all.
   ///
   /// Found on the phone: without this the settings preview and the overdue
   /// reminder both updated while the row behind them kept the old four

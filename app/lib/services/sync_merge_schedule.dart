@@ -47,12 +47,10 @@ Hlc scheduleHlc(ScheduleEntry entry) {
 /// default over a peer's real value.
 Map<String, (dynamic, Hlc)> scheduleFields(List<ScheduleEntry> entries) => {
   for (final entry in entries)
+    // scheduleToWire keeps a whole-hour schedule byte-identical to the
+    // pre-minute `{f, l, n}`, so a peer that predates minutes still reads it.
     '$scheduleFieldPrefix${entry.effectiveFrom}': (
-      {
-        'f': entry.schedule.first,
-        'l': entry.schedule.last,
-        'n': entry.schedule.count,
-      },
+      scheduleToWire(entry.schedule),
       scheduleHlc(entry),
     ),
 };
@@ -69,23 +67,15 @@ List<ScheduleEntry> logToScheduleHistory(Log log) {
   final entries = <ScheduleEntry>[];
   for (final field in record.fields.entries) {
     if (!field.key.startsWith(scheduleFieldPrefix)) continue;
-    final value = field.value.$1;
-    if (value is! Map) continue;
-    final first = value['f'];
-    final last = value['l'];
-    final count = value['n'];
-    if (first is! int || last is! int || count is! int) continue;
+    // Normalised on the way in (scheduleFromWire), so a peer running a future
+    // version with a wider range cannot hand us a schedule we would derive
+    // slots differently from.
+    final schedule = scheduleFromWire(field.value.$1);
+    if (schedule == null) continue;
     entries.add(
       ScheduleEntry(
         effectiveFrom: field.key.substring(scheduleFieldPrefix.length),
-        // Normalised on the way in, so a peer running a future version with a
-        // wider range cannot hand us a schedule we would derive slots
-        // differently from.
-        schedule: MealSchedule(
-          first: first,
-          last: last,
-          count: count,
-        ).normalized(),
+        schedule: schedule,
         editedAt: DateTime.fromMillisecondsSinceEpoch(
           field.value.$2.wallTimeMs,
           isUtc: true,

@@ -56,7 +56,7 @@ void main() {
       expect(find.text('12:00'), findsOneWidget);
 
       await MealScheduleService.instance.recordChange(
-        const MealSchedule(first: 8, last: 20, count: 5),
+        const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
       );
       final state = tester.state<State<LogMealScreen>>(
         find.byType(LogMealScreen),

@@ -17,7 +17,7 @@ void main() {
     test('round trips', () {
       const entry = ScheduleEntry(
         effectiveFrom: '2026-08-16',
-        schedule: MealSchedule(first: 8, last: 20, count: 5),
+        schedule: MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
         editedAt: '2026-08-16T12:00:00.000',
       );
       expect(
@@ -32,7 +32,7 @@ void main() {
         'l': 20,
         'n': 99,
       });
-      expect(entry!.schedule, const MealSchedule(first: 8, last: 20, count: 6));
+      expect(entry!.schedule, const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 6));
     });
 
     test('falls back to the epoch when the stamp is missing', () {
@@ -86,7 +86,7 @@ void main() {
       final history = MealScheduleHistory(const [
         ScheduleEntry(
           effectiveFrom: '2026-08-16',
-          schedule: MealSchedule(first: 8, last: 20, count: 5),
+          schedule: MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
           editedAt: 't',
         ),
       ]);
@@ -97,7 +97,7 @@ void main() {
       final history = MealScheduleHistory(const [
         ScheduleEntry(
           effectiveFrom: '2026-08-16',
-          schedule: MealSchedule(first: 8, last: 20, count: 5),
+          schedule: MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
           editedAt: 't1',
         ),
         ScheduleEntry(
@@ -108,30 +108,30 @@ void main() {
       ]);
       expect(
         history.forDay('2026-08-16'),
-        const MealSchedule(first: 8, last: 20, count: 5),
+        const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
       );
       expect(history.forDay('2026-05-01'), kDefaultSchedule);
     });
 
     test('upsert replaces a same-day re-edit', () {
       final once = MealScheduleHistory.empty.upsert(
-        const MealSchedule(first: 8, last: 20, count: 5),
+        const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
         when: _at('2026-08-16'),
       );
       final twice = once.upsert(
-        const MealSchedule(first: 9, last: 21, count: 3),
+        const MealSchedule(firstMinute: 9 * 60, lastMinute: 21 * 60, count: 3),
         when: _at('2026-08-16'),
       );
       expect(twice.entries, hasLength(1));
       expect(
         twice.entries.single.schedule,
-        const MealSchedule(first: 9, last: 21, count: 3),
+        const MealSchedule(firstMinute: 9 * 60, lastMinute: 21 * 60, count: 3),
       );
     });
 
     test('upsert defaults to now', () {
       final history = MealScheduleHistory.empty.upsert(
-        const MealSchedule(first: 8, last: 20, count: 5),
+        const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
       );
       expect(history.entries, hasLength(1));
     });

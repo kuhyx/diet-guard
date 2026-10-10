@@ -36,7 +36,7 @@ void main() {
       final fields = scheduleFields([
         _entry(
           '2026-08-16',
-          const MealSchedule(first: 8, last: 20, count: 5),
+          const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
           '2026-08-16T10:00:00+02:00',
         ),
       ]);
@@ -51,7 +51,7 @@ void main() {
     test('the Hlc is deterministic', () {
       final entry = _entry(
         '2026-08-16',
-        const MealSchedule(first: 8, last: 20, count: 5),
+        const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
         '2026-08-16T10:00:00+02:00',
       );
       expect(
@@ -63,7 +63,7 @@ void main() {
     test('an unparsable timestamp falls back to the epoch', () {
       final entry = _entry(
         '2026-08-16',
-        const MealSchedule(first: 8, last: 20, count: 5),
+        const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
         'not-a-timestamp',
       );
       expect(scheduleHlc(entry).wallTimeMs, 0);
@@ -80,7 +80,7 @@ void main() {
         budgetToLog(_record, const [], [
           _entry(
             '2026-08-16',
-            const MealSchedule(first: 8, last: 20, count: 5),
+            const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
             '2026-08-16T10:00:00+02:00',
           ),
         ]),
@@ -89,7 +89,7 @@ void main() {
       expect(back.single.effectiveFrom, '2026-08-16');
       expect(
         back.single.schedule,
-        const MealSchedule(first: 8, last: 20, count: 5),
+        const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
       );
     });
 
@@ -103,7 +103,7 @@ void main() {
       );
       expect(
         logToScheduleHistory(log).single.schedule,
-        const MealSchedule(first: 8, last: 20, count: 6),
+        const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 6),
       );
     });
 
@@ -127,7 +127,7 @@ void main() {
         _entry('1970-01-01', kDefaultSchedule, '1970-01-01T00:00:00.000Z'),
         _entry(
           '2026-08-16',
-          const MealSchedule(first: 8, last: 20, count: 5),
+          const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
           '2026-08-16T10:00:00+02:00',
         ),
       ]);
@@ -141,7 +141,7 @@ void main() {
 
       expect(logToScheduleHistory(merged).map((e) => e.schedule), [
         kDefaultSchedule,
-        const MealSchedule(first: 8, last: 20, count: 5),
+        const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
       ]);
     });
 
@@ -149,14 +149,14 @@ void main() {
       final older = budgetToLog(_record, const [], [
         _entry(
           '2026-08-16',
-          const MealSchedule(first: 8, last: 20, count: 5),
+          const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
           '2026-08-16T10:00:00+02:00',
         ),
       ]);
       final newer = budgetToLog(_record, const [], [
         _entry(
           '2026-08-16',
-          const MealSchedule(first: 7, last: 21, count: 3),
+          const MealSchedule(firstMinute: 7 * 60, lastMinute: 21 * 60, count: 3),
           '2026-08-16T18:00:00+02:00',
         ),
       ]);
@@ -164,7 +164,7 @@ void main() {
       final merged = mergeLogs(parseRemoteBudget(_wire(older)), newer);
       expect(
         logToScheduleHistory(merged).single.schedule,
-        const MealSchedule(first: 7, last: 21, count: 3),
+        const MealSchedule(firstMinute: 7 * 60, lastMinute: 21 * 60, count: 3),
       );
     });
   });

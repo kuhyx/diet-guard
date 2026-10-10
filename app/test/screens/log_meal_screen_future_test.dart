@@ -85,7 +85,7 @@ void main() {
         final log = await LogStorageService.instance.readLog();
         final future = log[tomorrowKey]!.single;
         expect(future.desc, 'future meal');
-        expect(future.slot, firstSlot);
+        expect(future.slotMinute, firstSlot);
         expect(future.time.startsWith(tomorrowKey), isTrue);
 
         // Back to logging for today.

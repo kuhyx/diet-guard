@@ -75,37 +75,42 @@ void main() {
   });
 
   test(
-    'shows due-and-unlogged slots, cancels logged and upcoming ones',
+    'shows due-and-unlogged slots, cancels one once its meal is logged',
     () async {
-      await LogStorageService.instance.logMeal('lunch', _manual, slot: 12);
+      await checkAndNotify(now: DateTime(2026, 1, 1, 16));
+      Set<Object?> ids(String method) => {
+        for (final call in notificationLog)
+          if (call.method == method) (call.arguments as Map)['id'],
+      };
+      // Ids are slot minutes: 08:00, 12:00 and 16:00 are due by 16:00.
+      expect(ids('show'), {480, 720, 960});
+      notificationLog.clear();
 
+      await LogStorageService.instance.logMeal(
+        'lunch',
+        _manual,
+        slotMinute: 720,
+      );
       await checkAndNotify(now: DateTime(2026, 1, 1, 16));
 
-      final shown = notificationLog
-          .where((c) => c.method == 'show')
-          .map((c) => (c.arguments as Map)['id'])
-          .toSet();
-      final cancelled = notificationLog
-          .where((c) => c.method == 'cancel')
-          .map((c) => (c.arguments as Map)['id'])
-          .toSet();
-      expect(shown, {8, 16});
-      // Every other id in the 0..23 space is cancelled, not just the other
-      // slots of the current schedule -- see syncToSlots' comment.
-      expect(cancelled, containsAll(<int>{12, 20}));
-      expect(cancelled.intersection(shown), isEmpty);
+      expect(ids('show'), {480, 960});
+      expect(ids('cancel'), {720});
     },
   );
 
-  test('cancels everything when every due slot is logged', () async {
-    await LogStorageService.instance.logMeal('breakfast', _manual, slot: 8);
+  test('a tick with every due slot logged posts and cancels nothing', () async {
+    await LogStorageService.instance.logMeal(
+      'breakfast',
+      _manual,
+      slotMinute: 480,
+    );
 
     await checkAndNotify(now: DateTime(2026, 1, 1, 8));
 
     expect(notificationLog.where((c) => c.method == 'show'), isEmpty);
-    // 24, not 4: syncToSlots sweeps the whole id space so a schedule change
-    // cannot orphan the ids it no longer contains.
-    expect(notificationLog.where((c) => c.method == 'cancel'), hasLength(24));
+    // Nothing is showing, so nothing is cancelled: the active-id lookup
+    // replaced a sweep of the whole id space on every tick.
+    expect(notificationLog.where((c) => c.method == 'cancel'), isEmpty);
   });
 
   test('uses the real clock when now is omitted', () async {
@@ -119,7 +124,11 @@ void main() {
   });
 
   test('still syncs when nothing is due', () async {
-    await LogStorageService.instance.logMeal('breakfast', _manual, slot: 8);
+    await LogStorageService.instance.logMeal(
+      'breakfast',
+      _manual,
+      slotMinute: 480,
+    );
     SharedPreferences.setMockInitialValues({
       'sync.owner': 'o',
       'sync.repo': 'r',
@@ -216,6 +225,6 @@ void main() {
         .where((c) => c.method == 'show')
         .map((c) => (c.arguments as Map)['id'])
         .toSet();
-    expect(shown, isNot(contains(12)));
+    expect(shown, isNot(contains(720)));
   });
 }

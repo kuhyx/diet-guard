@@ -2,6 +2,8 @@
 library;
 
 import 'package:diet_guard_app/models/meal_component.dart';
+import 'package:diet_guard_app/models/meal_schedule.dart';
+import 'package:diet_guard_app/models/slot.dart';
 
 /// One logged meal, as stored in `food_log.json` under its date key.
 ///
@@ -20,7 +22,7 @@ class FoodEntry {
     required this.fatG,
     required this.source,
     this.id,
-    this.slot,
+    this.slotMinute,
     this.hmac,
     this.components,
     this.deleted = false,
@@ -40,7 +42,7 @@ class FoodEntry {
     carbsG: (json['carbs_g'] as num?)?.toDouble() ?? 0,
     fatG: (json['fat_g'] as num?)?.toDouble() ?? 0,
     source: json['source'] as String? ?? 'manual',
-    slot: json['slot'] as int?,
+    slotMinute: entrySlotMinute(json),
     hmac: json['hmac'] as String?,
     components: (json['components'] as List?)
         ?.cast<Map<String, dynamic>>()
@@ -79,16 +81,26 @@ class FoodEntry {
   /// Provenance label (e.g. `"manual"`, `"food bank"`, `"meal"`).
   final String source;
 
-  /// The meal-slot hour this entry satisfies (8/12/16/20), or null for a
-  /// snack that counts toward calories but satisfies no slot.
+  /// The meal-slot minute of day this entry was logged against (480 for
+  /// 08:00, 435 for 07:15), or null for a snack that satisfies no slot.
+  ///
+  /// A *recorded* minute, not a live checkpoint: which slot it satisfies is
+  /// decided at read time by `satisfiedSlots`, so an entry written under an
+  /// older schedule still counts after the schedule moves.
+  ///
+  /// Read through `entrySlotMinute` (`slot_min` wins, else `slot` x 60) and
+  /// written back through `slotFields`, so a PC entry carrying `slot_min`
+  /// survives a round trip through this device. Keeping only the hour would
+  /// make every edit or tombstone republish a stripped copy, and the merge
+  /// would spread that lossy copy back to the PC.
   ///
   /// Nothing writes null any more -- the "Snack" chip was removed on
-  /// 2026-08-14 and every remaining writer resolves a concrete hour through
+  /// 2026-08-14 and every remaining writer resolves a concrete slot through
   /// `slotForLog`/`slot_for_log` -- but entries already on disk and arriving
   /// over sync still carry no `slot` key, so the null case and every
   /// `slot != null` filter built on it are load-bearing. Dropping them would
   /// make those historical entries retroactively satisfy meal slots.
-  final int? slot;
+  final int? slotMinute;
 
   /// HMAC signature, present on entries that have passed through the PC's
   /// signing step. Never computed on the phone -- it never holds the key.
@@ -122,7 +134,7 @@ class FoodEntry {
     'carbs_g': carbsG,
     'fat_g': fatG,
     'source': source,
-    if (slot != null) 'slot': slot,
+    ..._slotJson(slotMinute),
     if (components != null)
       'components': components!.map((c) => c.toJson()).toList(),
     if (deleted) 'deleted': true,
@@ -139,9 +151,26 @@ class FoodEntry {
     carbsG: carbsG,
     fatG: fatG,
     source: source,
-    slot: slot,
+    slotMinute: slotMinute,
     hmac: hmac,
     components: components,
     deleted: true,
   );
+}
+
+/// Returns the wire fields for [minute], total over every value it can hold.
+///
+/// [slotFields] throws outside the day, but [entrySlotMinute] does not
+/// range-check what a peer sent. A single `slot: 24` arriving over sync would
+/// otherwise make every later `writeLog` throw -- one bad entry blocking all
+/// logging. Such a value is echoed back unrepaired, by the same whole-hour
+/// rule (so a legacy `slot: 24` stays byte-identical), with `~/` only on a
+/// non-negative operand -- a negative value travels as `slot_min` alone.
+Map<String, int> _slotJson(int? minute) {
+  if (minute == null) return const {};
+  if (minute >= 0 && minute < kMinutesPerDay) return slotFields(minute);
+  return {
+    if (minute >= 0) 'slot': minute ~/ 60,
+    if (minute < 0 || minute % 60 != 0) 'slot_min': minute,
+  };
 }

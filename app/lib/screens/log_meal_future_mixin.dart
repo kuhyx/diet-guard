@@ -9,8 +9,12 @@
 /// a day that hasn't started.
 library;
 
+import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/local_time.dart';
+import 'package:diet_guard_app/models/meal_schedule.dart';
+import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/slot_selector_row.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +24,7 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
   DateTime? _futureDate;
   int? _futureSlot;
   Set<int> _futureLoggedSlots = {};
+  MealSchedule? _futureSchedule;
 
   /// The date currently chosen for a future log, or null when logging for
   /// today through the screen's normal flow.
@@ -34,6 +39,7 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
       _futureDate = null;
       _futureSlot = null;
       _futureLoggedSlots = {};
+      _futureSchedule = null;
     });
   }
 
@@ -49,12 +55,18 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
     if (picked == null || !mounted) return;
     final log = await LogStorageService.instance.readLog();
     if (!mounted) return;
-    final logged = (log[localDateKey(picked)] ?? const [])
-        .where((entry) => !entry.deleted && entry.slot != null)
-        .map((entry) => entry.slot!)
-        .toSet();
+    final day = localDateKey(picked);
+    final schedule = MealScheduleService.history.forDay(day);
+    // Snapped against the schedule for *that* day, the same rule as
+    // `loggedSlotsToday`: an exact match would show a pre-logged meal's slot
+    // as open again after a schedule edit, inviting a duplicate.
+    final logged = satisfiedSlots([
+      for (final entry in log[day] ?? const <FoodEntry>[])
+        if (!entry.deleted) ?entry.slotMinute,
+    ], schedule);
     setState(() {
       _futureDate = picked;
+      _futureSchedule = schedule;
       _futureLoggedSlots = logged;
       _futureSlot = null;
     });
@@ -107,6 +119,7 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
     }
     return SlotSelectorRow(
       now: DateTime(date.year, date.month, date.day),
+      schedule: _futureSchedule,
       loggedSlots: _futureLoggedSlots,
       selectedSlot: _futureSlot,
       onSlotSelected: (slot) => setState(() => _futureSlot = slot),
@@ -132,7 +145,9 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
     return (
       error: null,
       slot: slot,
-      when: DateTime(date.year, date.month, date.day, slot),
+      // The slot is a minute of day, not an hour: passing it as the hour
+      // argument would roll 720 (12:00) forward a whole month.
+      when: DateTime(date.year, date.month, date.day, slot ~/ 60, slot % 60),
     );
   }
 }

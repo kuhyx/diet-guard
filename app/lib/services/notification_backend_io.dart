@@ -66,6 +66,17 @@ class LocalNotificationsBackend implements NotificationBackend {
 
   @override
   Future<void> cancel(int slot) => plugin.cancel(id: slot);
+
+  /// Asks Android which notifications this app has in the shade (API 23+;
+  /// minSdk is 26), restricted to the reminder channel so nothing else the
+  /// app might ever post is swept up. Older builds posted on this same
+  /// channel id, so their hour-keyed reminders are included -- which is what
+  /// makes the upgrade orphan-free.
+  @override
+  Future<Set<int>> activeIds() async => {
+    for (final active in await plugin.getActiveNotifications())
+      if (active.channelId == _channelId && active.id != null) active.id!,
+  };
 }
 
 /// Opens the platform notification backend.

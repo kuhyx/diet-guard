@@ -56,13 +56,13 @@ void main() {
       () async {
         await MealScheduleService.initForTesting(store);
         await MealScheduleService.instance.recordChange(
-          const MealSchedule(first: 8, last: 20, count: 5),
+          const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
         );
 
         await MealScheduleService.initForTesting(store);
         expect(
           MealScheduleService.current,
-          const MealSchedule(first: 8, last: 20, count: 5),
+          const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
         );
         // The whole point of the history: a day before the edit keeps the
         // four-meal schedule it was actually judged against.
@@ -103,7 +103,7 @@ void main() {
       () async {
         await MealScheduleService.initForTesting(store);
         await MealScheduleService.instance.recordChange(
-          const MealSchedule(first: 8, last: 20, count: 5),
+          const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
         );
 
         // A pre-feature peer contributes no `sched:` fields; writing that back
@@ -111,20 +111,20 @@ void main() {
         await MealScheduleService.instance.applyMerged(const []);
         expect(
           MealScheduleService.current,
-          const MealSchedule(first: 8, last: 20, count: 5),
+          const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
         );
 
         final stamp = DateTime.parse('2026-08-16T09:00:00.000');
         await MealScheduleService.instance.applyMerged([
           ScheduleEntry(
             effectiveFrom: kScheduleEpochDay,
-            schedule: const MealSchedule(first: 7, last: 19, count: 3),
+            schedule: const MealSchedule(firstMinute: 7 * 60, lastMinute: 19 * 60, count: 3),
             editedAt: stamp.toIso8601String(),
           ),
         ], updatedAt: stamp);
         expect(
           MealScheduleService.current,
-          const MealSchedule(first: 7, last: 19, count: 3),
+          const MealSchedule(firstMinute: 7 * 60, lastMinute: 19 * 60, count: 3),
         );
         // The winner's stamp is kept verbatim, so re-syncing is idempotent.
         expect(MealScheduleService.updatedAt, stamp);
@@ -134,7 +134,7 @@ void main() {
     test('the stored document is plain readable JSON', () async {
       await MealScheduleService.initForTesting(store);
       await MealScheduleService.instance.recordChange(
-        const MealSchedule(first: 8, last: 20, count: 5),
+        const MealSchedule(firstMinute: 8 * 60, lastMinute: 20 * 60, count: 5),
         when: _at('2026-08-16'),
       );
       final decoded =

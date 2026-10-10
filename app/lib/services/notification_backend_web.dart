@@ -50,6 +50,13 @@ class WebNotificationBackend implements NotificationBackend {
   Future<void> cancel(int slot) async {
     _shown.remove(slot)?.close();
   }
+
+  /// The page's own live notifications. Complete for this surface: a browser
+  /// notification cannot outlive the page that raised it in any way this
+  /// page could still close, so nothing posted by an earlier load (or an
+  /// older, hour-keyed build) is reachable to orphan.
+  @override
+  Future<Set<int>> activeIds() async => _shown.keys.toSet();
 }
 
 /// Opens the platform notification backend.
