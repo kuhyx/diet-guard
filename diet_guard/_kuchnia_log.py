@@ -18,6 +18,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from diet_guard._estimator import Nutrition
+from diet_guard._meal_schedule_store import current_schedule
+from diet_guard._slot_wire import entry_slot_minute, satisfied_by_entries, slot_fields
 from diet_guard._state import log_meal
 from diet_guard._state_today import today_entries
 
@@ -33,11 +35,18 @@ SOURCE = "kuchnia wikinga"
 
 
 def _already_logged(entries: Sequence[dict[str, object]], name: str, slot: int) -> bool:
-    """Return True when today's log already holds this dish in this slot."""
+    """Return True when today's log already holds this dish at this slot minute.
+
+    Compares the entry's *recorded* minute (:func:`entry_slot_minute`), not its
+    snapped slot -- the app's catering fill uses the same rule, which is the
+    point: both devices must agree on which dishes are duplicates, or one
+    re-logs what the other skipped.  Snapping still guards the fill flow,
+    because :func:`fill_plan` skips any slot an entry snaps to (occupancy).
+    """
     wanted = name.strip().casefold()
     return any(
         str(entry.get("desc", "")).strip().casefold() == wanted
-        and entry.get("slot") == slot
+        and entry_slot_minute(entry) == slot
         for entry in entries
     )
 
@@ -56,7 +65,7 @@ def fill_plan(slotted: Sequence[SlottedDish]) -> list[SlottedDish]:
     Returns:
         The dishes to log, in the order given.
     """
-    taken = {entry.get("slot") for entry in today_entries()}
+    taken = satisfied_by_entries(today_entries(), current_schedule())
     return [item for item in slotted if item.slot not in taken]
 
 
@@ -95,6 +104,6 @@ def log_dishes(chosen: Sequence[SlottedDish]) -> list[str]:
         log_meal(dish.name, dish_nutrition(dish), item.slot)
         # Reflect the write locally so two identical dishes in one batch do not
         # both land: today_entries() was read once, before the loop.
-        entries = [*entries, {"desc": dish.name, "slot": item.slot}]
+        entries = [*entries, {"desc": dish.name, **slot_fields(item.slot)}]
         written.append(dish.name)
     return written

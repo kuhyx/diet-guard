@@ -166,6 +166,20 @@ class TestEntryRecordRoundTrip:
         entry = _entry(id="x")
         assert record_to_entry(entry_to_record(entry)) == entry
 
+    def test_an_off_hour_slot_survives_a_merge(self) -> None:
+        """``slot_min`` rides in the opaque body, so a merge keeps it.
+
+        Merged from both sides so neither argument order can drop it -- a
+        lost ``slot_min`` would silently move a 07:15 meal to 07:00.
+        """
+        entry = _entry(id="x", slot=7, slot_min=435)
+        for merged in (
+            _merge_daylogs({"2026-06-22": [entry]}, {}),
+            _merge_daylogs({}, {"2026-06-22": [entry]}),
+        ):
+            assert merged["2026-06-22"][0]["slot_min"] == 435
+            assert merged["2026-06-22"][0]["slot"] == 7
+
     def test_round_trip_of_a_deleted_entry_preserves_the_tombstone(self) -> None:
         entry = _entry(id="x", deleted=True)
         assert record_to_entry(entry_to_record(entry))["deleted"] is True

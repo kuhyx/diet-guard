@@ -194,14 +194,14 @@ class TestRecord:
 
     def test_demo_logs_without_slot(self, gate: MealGate) -> None:
         """A demo record banks the food but tags no real slot."""
-        gate._pending = [8]
+        gate._pending = [480]
         with patch.object(_gatelock_mealflow, "log_meal") as log:
             gate._record("apple", _nutrition(95, 100))
         assert log.call_args.args[2] is None
 
     def test_last_slot_unlocks(self, gate: MealGate) -> None:
         """Recording the final pending slot triggers the unlock."""
-        gate._pending = [8]
+        gate._pending = [480]
         with (
             patch.object(_gatelock_mealflow, "log_meal"),
             patch.object(_gatelock_mealflow, "remember_food"),
@@ -212,13 +212,13 @@ class TestRecord:
 
     def test_more_slots_continue(self, gate: MealGate) -> None:
         """With slots remaining, the form clears and prompts the next."""
-        gate._pending = [8, 12]
+        gate._pending = [480, 720]
         with (
             patch.object(_gatelock_mealflow, "log_meal"),
             patch.object(_gatelock_mealflow, "remember_food"),
         ):
             gate._record("apple", _nutrition(95, 100))
-        assert gate._pending == [12]
+        assert gate._pending == [720]
         assert "next meal" in gate._vars.status.get()
 
     def test_unlock_schedules_close(self, gate: MealGate) -> None:

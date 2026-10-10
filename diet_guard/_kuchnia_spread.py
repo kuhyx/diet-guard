@@ -12,7 +12,7 @@ non-decreasing, keeps the first dish on the first slot and the last on the
 last, and doubles up the earliest slots rather than dropping anything.
 
 Integer ``//`` only, never ``round()``.  That is repo convention for slot
-arithmetic (``docs/meal-schedule.md``): Python's banker's rounding and Dart's
+arithmetic (``docs/DOCS-meal-schedule.md``): Python's banker's rounding and Dart's
 half-away-from-zero disagree on ``.5``, and a slot one device offers while the
 other does not is a checkpoint that can never be satisfied.
 
@@ -44,18 +44,19 @@ if TYPE_CHECKING:
 
 
 class SlottedDish(NamedTuple):
-    """A dish paired with the meal-slot hour it was assigned to."""
+    """A dish paired with the meal-slot minute it was assigned to."""
 
     dish: Dish
     slot: int
 
 
 def assign_slots(dishes: Sequence[Dish], slots: Sequence[int]) -> list[SlottedDish]:
-    """Pair each dish with a slot hour, following the provider's meal order.
+    """Pair each dish with a slot minute, following the provider's meal order.
 
     Args:
         dishes: The day's dishes, in any order (sorted here by ``priority``).
-        slots: The configured slot hours, ascending, e.g. ``(8, 12, 16, 20)``.
+        slots: The configured slot minutes, ascending, e.g.
+            ``(480, 720, 960, 1200)``.
 
     Returns:
         One :class:`SlottedDish` per dish, ordered by the provider's priority.

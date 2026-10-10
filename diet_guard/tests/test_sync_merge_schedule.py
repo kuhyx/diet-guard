@@ -42,7 +42,13 @@ class TestScheduleFields:
     def test_one_field_per_entry(self) -> None:
         """Each entry becomes its own ``sched:<date>`` field."""
         fields = schedule_fields(
-            (_entry("2026-08-16", MealSchedule(8, 20, 5), "2026-08-16T10:00:00+02:00"),)
+            (
+                _entry(
+                    "2026-08-16",
+                    MealSchedule(480, 1200, 5),
+                    "2026-08-16T10:00:00+02:00",
+                ),
+            )
         )
         assert set(fields) == {f"{SCHEDULE_FIELD_PREFIX}2026-08-16"}
         value, _ = fields[f"{SCHEDULE_FIELD_PREFIX}2026-08-16"]
@@ -51,7 +57,7 @@ class TestScheduleFields:
     def test_hlc_is_deterministic(self) -> None:
         """Re-syncing an unchanged history is a no-op, not a fresh write."""
         entry = _entry(
-            "2026-08-16", MealSchedule(8, 20, 5), "2026-08-16T10:00:00+02:00"
+            "2026-08-16", MealSchedule(480, 1200, 5), "2026-08-16T10:00:00+02:00"
         )
         first = schedule_fields((entry,))[f"{SCHEDULE_FIELD_PREFIX}2026-08-16"][1]
         second = schedule_fields((entry,))[f"{SCHEDULE_FIELD_PREFIX}2026-08-16"][1]
@@ -59,7 +65,7 @@ class TestScheduleFields:
 
     def test_unparsable_timestamp_falls_back_to_the_epoch(self) -> None:
         """A malformed stamp still yields a clock, so the entry still merges."""
-        entry = _entry("2026-08-16", MealSchedule(8, 20, 5), "not-a-timestamp")
+        entry = _entry("2026-08-16", MealSchedule(480, 1200, 5), "not-a-timestamp")
         hlc = schedule_fields((entry,))[f"{SCHEDULE_FIELD_PREFIX}2026-08-16"][1]
         assert hlc.wall_time_ms == 0
 
@@ -74,12 +80,30 @@ class TestLogToScheduleHistory:
     def test_round_trips(self) -> None:
         """What one device pushes is what the other reads back."""
         entries = (
-            _entry("2026-08-16", MealSchedule(8, 20, 5), "2026-08-16T10:00:00+02:00"),
+            _entry(
+                "2026-08-16", MealSchedule(480, 1200, 5), "2026-08-16T10:00:00+02:00"
+            ),
         )
         back = log_to_schedule_history(budget_to_log(_RECORD, (), entries))
         assert len(back) == 1
         assert back[0].effective_from == "2026-08-16"
-        assert back[0].schedule == MealSchedule(8, 20, 5)
+        assert back[0].schedule == MealSchedule(480, 1200, 5)
+
+    def test_round_trips_an_off_hour_schedule(self) -> None:
+        """07:15-19:00 crosses the wire with its minutes, ``f`` still an hour.
+
+        An older peer reads ``f``/``l`` and relays ``fm`` untouched; a peer on
+        this build reads ``fm`` and derives the same slots as the editor.
+        """
+        entries = (
+            _entry(
+                "2026-08-16", MealSchedule(435, 1140, 5), "2026-08-16T10:00:00+02:00"
+            ),
+        )
+        value, _ = schedule_fields(entries)[f"{SCHEDULE_FIELD_PREFIX}2026-08-16"]
+        assert value == {"f": 7, "l": 19, "n": 5, "fm": 435}
+        back = log_to_schedule_history(budget_to_log(_RECORD, (), entries))
+        assert back[0].schedule == MealSchedule(435, 1140, 5)
 
     def test_normalizes_a_peers_out_of_range_schedule(self) -> None:
         """A future peer cannot make this device derive different slots."""
@@ -90,7 +114,7 @@ class TestLogToScheduleHistory:
             {"f": 8, "l": 20, "n": 99},
             hlc,
         )
-        assert log_to_schedule_history(log)[0].schedule == MealSchedule(8, 20, 6)
+        assert log_to_schedule_history(log)[0].schedule == MealSchedule(480, 1200, 6)
 
     def test_skips_malformed_values(self) -> None:
         """One bad field from a peer cannot take out the whole history."""
@@ -118,7 +142,9 @@ class TestCrossDeviceMerge:
         """
         entries = (
             _entry("1970-01-01", DEFAULT_SCHEDULE, "1970-01-01T00:00:00+00:00"),
-            _entry("2026-08-16", MealSchedule(8, 20, 5), "2026-08-16T10:00:00+02:00"),
+            _entry(
+                "2026-08-16", MealSchedule(480, 1200, 5), "2026-08-16T10:00:00+02:00"
+            ),
         )
         ours = budget_to_log(_RECORD, (), entries)
         peer = budget_to_log(
@@ -130,7 +156,7 @@ class TestCrossDeviceMerge:
 
         assert [entry.schedule for entry in back] == [
             DEFAULT_SCHEDULE,
-            MealSchedule(8, 20, 5),
+            MealSchedule(480, 1200, 5),
         ]
 
     def test_the_newer_edit_wins_per_day(self) -> None:
@@ -140,7 +166,9 @@ class TestCrossDeviceMerge:
             (),
             (
                 _entry(
-                    "2026-08-16", MealSchedule(8, 20, 5), "2026-08-16T10:00:00+02:00"
+                    "2026-08-16",
+                    MealSchedule(480, 1200, 5),
+                    "2026-08-16T10:00:00+02:00",
                 ),
             ),
         )
@@ -149,10 +177,12 @@ class TestCrossDeviceMerge:
             (),
             (
                 _entry(
-                    "2026-08-16", MealSchedule(7, 21, 3), "2026-08-16T18:00:00+02:00"
+                    "2026-08-16",
+                    MealSchedule(420, 1260, 3),
+                    "2026-08-16T18:00:00+02:00",
                 ),
             ),
         )
 
         merged = merge_logs(parse_remote_budget(_wire(older)), newer)
-        assert log_to_schedule_history(merged)[0].schedule == MealSchedule(7, 21, 3)
+        assert log_to_schedule_history(merged)[0].schedule == MealSchedule(420, 1260, 3)

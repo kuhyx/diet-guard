@@ -97,7 +97,7 @@ def _pending_slots(*, demo_mode: bool) -> list[int]:
         demo_mode: Whether the window is a safe sandbox.
 
     Returns:
-        The slot hours to collect, ascending.
+        The slot minutes to collect, ascending.
     """
     pending = list(due_slots())
     if pending:

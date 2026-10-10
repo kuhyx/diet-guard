@@ -1,6 +1,6 @@
 # CLAUDE.md — diet_guard
 
-A log-to-unlock gate. Every ~30 min `diet-guard-gate.timer` checks whether a
+A log-to-unlock gate. Every ~15 min `diet-guard-gate.timer` checks whether a
 meal slot (08:00, 12:00, 16:00, 20:00 by default — the schedule is
 user-configurable, see below) elapsed unlogged; if so it opens a
 fullscreen Tk window that blocks the desktop until the user logs what they
@@ -29,7 +29,7 @@ catch-up rule).
 
 ## Scheduling
 
-`diet-guard-gate.timer` is wall-clock (`OnCalendar=*-*-* *:00/30:00`,
+`diet-guard-gate.timer` is wall-clock (`OnCalendar=*-*-* *:00/15:00`,
 `Persistent=true`), not boot-relative — a boot-relative timer collided with
 fullscreen games grabbing input. `diet-guard-gate.service` is `Type=oneshot`
 and exits 0 immediately when no lock is due. It needs `DISPLAY`/`XAUTHORITY`;
@@ -178,13 +178,14 @@ changing either hides the entire local food log).
 
 ## The meal schedule
 
-The slot hours are user-configurable: a first meal, a last meal, and how
-many meals fall between them, evenly divided. Default `(8, 20, 4)` is the
-old hardcoded 08/12/16/20. Four load-bearing rules (integer-only
-arithmetic, whole-hour slots, the count clamp, the `last + 2h` cutoff), the
-forward-only history, and the two edit surfaces are documented in
-[docs/DOCS-meal-schedule.md](docs/DOCS-meal-schedule.md) — read it before touching
-`_slots.py` / `slot.dart`.
+Slots are **minutes of day**: a first meal and a last meal (any `HH:MM`) and
+how many meals fall between them; interior slots round to the 15-min grid.
+Default `(480, 1200, 4)` is the old hardcoded 08/12/16/20. The load-bearing
+rules (integer-only arithmetic, the additive `slot`+`slot_min` /
+`f`/`l`/`n`+`fm`/`lm` wire, the count clamp, the `last + 120 min` cutoff,
+nearest-slot satisfaction), the forward-only history, and the two edit
+surfaces are in [docs/DOCS-meal-schedule.md](docs/DOCS-meal-schedule.md) —
+read it before touching `_slots.py` / `_slot_wire.py` / `slot.dart`.
 
 ## Averages (`_averages.py` / `average_service.dart`)
 

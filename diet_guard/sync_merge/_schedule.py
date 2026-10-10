@@ -11,7 +11,9 @@ predates meal schedules neither clobbers those fields nor blocks them -- it
 relays them untouched.  That is what makes this shippable without a
 coordinated release.
 
-The value is a small map (``{"f": 8, "l": 20, "n": 5}``) rather than a scalar.
+The value is a small map (``{"f": 8, "l": 20, "n": 5}``, plus ``fm``/``lm``
+minutes only for an off-hour endpoint -- see
+:func:`diet_guard._meal_schedule.schedule_to_wire`) rather than a scalar.
 ``Record.to_dict``/``from_dict`` round-trip nested values unchanged, and a
 malformed one is skipped exactly as a non-int ``hist:`` value is.
 """
@@ -24,7 +26,7 @@ from typing import TYPE_CHECKING
 from crdt_sync import Hlc
 
 from diet_guard._device import device_id
-from diet_guard._meal_schedule import MealSchedule
+from diet_guard._meal_schedule import schedule_from_wire, schedule_to_wire
 from diet_guard._meal_schedule_store import ScheduleEntry
 from diet_guard.sync_merge._clock import _EPOCH
 
@@ -64,11 +66,7 @@ def schedule_fields(
     """
     return {
         f"{SCHEDULE_FIELD_PREFIX}{entry.effective_from}": (
-            {
-                "f": entry.schedule.first,
-                "l": entry.schedule.last,
-                "n": entry.schedule.count,
-            },
+            schedule_to_wire(entry.schedule),
             schedule_hlc(entry),
         )
         for entry in entries
@@ -90,21 +88,17 @@ def log_to_schedule_history(log: Log) -> tuple[ScheduleEntry, ...]:
     for name, (value, hlc) in record.fields.items():
         if not name.startswith(SCHEDULE_FIELD_PREFIX):
             continue
-        if not isinstance(value, dict):
-            continue
-        first, last, count = value.get("f"), value.get("l"), value.get("n")
-        if not (
-            isinstance(first, int) and isinstance(last, int) and isinstance(count, int)
-        ) or any(isinstance(part, bool) for part in (first, last, count)):
+        # Normalised on the way in, so a peer running a future version with a
+        # wider range cannot hand us a schedule we would derive slots
+        # differently from.
+        schedule = schedule_from_wire(value)
+        if schedule is None:
             continue
         edited = datetime.fromtimestamp(hlc.wall_time_ms / 1000, tz=UTC)
         entries.append(
             ScheduleEntry(
                 effective_from=name[len(SCHEDULE_FIELD_PREFIX) :],
-                # Normalised on the way in, so a peer running a future version
-                # with a wider range cannot hand us a schedule we would derive
-                # slots differently from.
-                schedule=MealSchedule(first, last, count).normalized(),
+                schedule=schedule,
                 edited_at=edited.astimezone().isoformat(timespec="seconds"),
             ),
         )

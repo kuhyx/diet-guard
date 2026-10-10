@@ -216,5 +216,5 @@ class TestGateReadsFreshState:
         """At 09:00 only the 08:00 slot is due; logging it flips the decision."""
         now = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)
         assert gate_is_due(now) is True
-        log_meal("oatmeal", self._nutrition(), slot=8)
+        log_meal("oatmeal", self._nutrition(), slot=480)
         assert gate_is_due(now) is False

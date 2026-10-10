@@ -28,7 +28,7 @@ from diet_guard._gatelock_kuchnia import start_delivery_fetch
 from diet_guard._kuchnia_log import fill_plan, log_dishes
 from diet_guard._kuchnia_spread import assign_slots
 from diet_guard._meal_schedule_store import current_schedule
-from diet_guard._slots import day_slots
+from diet_guard._slots import day_slots, slot_label
 from diet_guard._state import now_local
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -144,7 +144,9 @@ class FillAllFlow:
         self._plan = plan
         self._label.set(f"✓ Confirm ({len(plan)})")
         total = sum(item.dish.kcal for item in plan)
-        listing = ", ".join(f"{item.slot:02d}:00 {item.dish.name}" for item in plan)
+        listing = ", ".join(
+            f"{slot_label(item.slot)} {item.dish.name}" for item in plan
+        )
         self._set_status(
             f"Will log {len(plan)} ({total:g} kcal): {listing} — click Confirm."
         )

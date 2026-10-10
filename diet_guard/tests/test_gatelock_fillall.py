@@ -24,6 +24,7 @@ from diet_guard._gatelock_fillall import FILL_LABEL, FillAllFlow, FillHooks
 from diet_guard._gatelock_kuchnia import DeliveryResult
 from diet_guard._kuchnia_parse import Dish
 from diet_guard._meal_schedule_store import current_schedule
+from diet_guard._slot_wire import entry_slot_minute
 from diet_guard._slots import day_slots
 from diet_guard._state import log_meal, now_local
 from diet_guard._state_today import today_entries
@@ -89,10 +90,11 @@ def delivered(*dishes: Dish) -> DeliveryResult:
 
 
 def logged() -> dict[int, list[str]]:
-    """Today's on-disk log as slot -> descriptions."""
+    """Today's on-disk log as recorded slot minute -> descriptions."""
     by_slot: dict[int, list[str]] = {}
     for entry in today_entries():
-        by_slot.setdefault(int(entry["slot"]), []).append(str(entry["desc"]))
+        slot = entry_slot_minute(entry) or 0
+        by_slot.setdefault(slot, []).append(str(entry["desc"]))
     return by_slot
 
 
@@ -104,7 +106,7 @@ def propose(h: Harness) -> None:
 
 def test_default_schedule_precondition() -> None:
     # Every expectation below assumes the redirected (default) schedule.
-    assert day_slots(current_schedule()) == (8, 12, 16, 20)
+    assert day_slots(current_schedule()) == (480, 720, 960, 1200)
 
 
 class TestFirstClick:
@@ -160,7 +162,7 @@ class TestFirstClick:
         assert h.label.get() == FILL_LABEL
 
     def test_every_slot_already_logged(self) -> None:
-        for slot in (8, 12, 16, 20):
+        for slot in (480, 720, 960, 1200):
             log_meal(f"mine {slot}", _nutrition(), slot)
         h = Harness()
         with fetching(delivered(*FOUR)):
@@ -169,7 +171,7 @@ class TestFirstClick:
         assert h.label.get() == FILL_LABEL
 
     def test_the_proposal_writes_nothing(self) -> None:
-        log_meal("my sandwich", _nutrition(), 12)
+        log_meal("my sandwich", _nutrition(), 720)
         h = Harness()
         with fetching(delivered(*FOUR)):
             propose(h)
@@ -178,23 +180,23 @@ class TestFirstClick:
             "Will log 3 (1144 kcal): 08:00 Owsianka, 16:00 Obiad, "
             "20:00 Kolacja — click Confirm."
         )
-        assert logged() == {12: ["my sandwich"]}
+        assert logged() == {720: ["my sandwich"]}
         h.on_logged.assert_not_called()
 
 
 class TestConfirm:
     def test_confirm_fills_only_the_empty_slots(self) -> None:
-        log_meal("my sandwich", _nutrition(), 12)
+        log_meal("my sandwich", _nutrition(), 720)
         h = Harness()
         with fetching(delivered(*FOUR)) as start:
             propose(h)
             h.flow.click()
         assert start.call_count == 1  # the confirm did not refetch
         assert logged() == {
-            8: ["Owsianka"],
-            12: ["my sandwich"],
-            16: ["Obiad"],
-            20: ["Kolacja"],
+            480: ["Owsianka"],
+            720: ["my sandwich"],
+            960: ["Obiad"],
+            1200: ["Kolacja"],
         }
         assert h.status == "Logged 3 catering dish(es)."
         h.on_logged.assert_called_once_with()
@@ -207,7 +209,7 @@ class TestConfirm:
         with fetching(delivered(*five)):
             propose(h)
             h.flow.click()
-        assert logged()[8] == ["Owsianka", "Wrap"]
+        assert logged()[480] == ["Owsianka", "Wrap"]
         assert h.status == "Logged 5 catering dish(es)."
 
     def test_a_meal_typed_between_the_clicks_keeps_its_slot(self) -> None:
@@ -215,16 +217,16 @@ class TestConfirm:
         with fetching(delivered(*FOUR)):
             propose(h)
         assert h.label.get() == "✓ Confirm (4)"
-        log_meal("toast", _nutrition(), 8)
+        log_meal("toast", _nutrition(), 480)
         h.flow.click()
-        assert logged()[8] == ["toast"]
+        assert logged()[480] == ["toast"]
         assert h.status == "Logged 3 catering dish(es)."
 
     def test_every_slot_taken_between_the_clicks(self) -> None:
         h = Harness()
         with fetching(delivered(*FOUR)):
             propose(h)
-        for slot in (8, 12, 16, 20):
+        for slot in (480, 720, 960, 1200):
             log_meal(f"mine {slot}", _nutrition(), slot)
         h.flow.click()
         assert h.status == "Every slot already has a meal — nothing to fill."
@@ -240,10 +242,8 @@ class TestConfirm:
             with patch.object(_gatelock_fillall, "now_local", return_value=tomorrow):
                 h.flow.click()
         assert start.call_count == 2
-        assert start.call_args.args == (
-            _gatelock_fillall._refresh_delivery,
-            tomorrow.date(),
-        )
+        refetch = (_gatelock_fillall._refresh_delivery, tomorrow.date())
+        assert start.call_args.args == refetch
         assert logged() == {}
         h.on_logged.assert_not_called()
         assert h.label.get() == FILL_LABEL

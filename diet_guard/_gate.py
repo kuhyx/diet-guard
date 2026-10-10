@@ -39,7 +39,7 @@ def due_slots(now: datetime | None = None) -> tuple[int, ...]:
         now: Reference time (defaults to the current local time); injectable.
 
     Returns:
-        The slot hours that still need a meal logged (empty == nothing due).
+        The slot minutes that still need a meal logged (empty == nothing due).
 
     Empty on a shared free day, whatever the schedule says. The pool is read
     from a single local file and never the network, so this cannot hang the
@@ -49,7 +49,11 @@ def due_slots(now: datetime | None = None) -> tuple[int, ...]:
     reference = now if now is not None else now_local()
     if freedays.is_free_day(reference.date()):
         return ()
-    return missing_slots(reference, logged_slots_today(), current_schedule())
+    # One schedule for both halves: snapping the log onto a different schedule
+    # than the one deriving the due slots would leave a logged meal covering a
+    # checkpoint that is not on the list -- and the real one nagging.
+    schedule = current_schedule()
+    return missing_slots(reference, logged_slots_today(schedule), schedule)
 
 
 def gate_is_due(now: datetime | None = None) -> bool:

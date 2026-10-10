@@ -26,9 +26,12 @@ import re
 from typing import TYPE_CHECKING
 
 from diet_guard._meal_schedule import MINUTES_PER_DAY, is_wire_int
+from diet_guard._slots import satisfied_slots
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping
+
+    from diet_guard._meal_schedule import MealSchedule
 
 # ASCII digits only: ``\d`` would also accept Arabic-Indic and other Unicode
 # digits, which ``int()`` happily parses.
@@ -79,6 +82,30 @@ def entry_slot_minute(entry: Mapping[str, object]) -> int | None:
     if is_wire_int(slot):
         return slot * 60
     return None
+
+
+def satisfied_by_entries(
+    entries: Iterable[Mapping[str, object]], schedule: MealSchedule
+) -> set[int]:
+    """Return the slots of ``schedule`` that ``entries`` satisfy.
+
+    The one composition every "is this slot logged?" site goes through: read
+    each entry's recorded minute, then snap it to its nearest slot.  Routing
+    every site through here is what keeps the gate, the CLI, MCP and the
+    catering import from disagreeing about one entry after a schedule edit --
+    an exact-match site would re-nag for a meal another site counts.
+
+    Args:
+        entries: Decoded log entries; ones recording no slot are ignored.
+        schedule: The schedule in force on the entries' day.
+
+    Returns:
+        The satisfied slot minutes (possibly empty).
+    """
+    minutes = (entry_slot_minute(entry) for entry in entries)
+    return satisfied_slots(
+        (minute for minute in minutes if minute is not None), schedule
+    )
 
 
 def parse_hhmm(text: str) -> int:

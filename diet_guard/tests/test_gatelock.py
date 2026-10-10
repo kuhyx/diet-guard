@@ -69,8 +69,8 @@ class TestModuleHelpers:
 
     def test_pending_slots_due(self) -> None:
         """When slots are due, those are returned verbatim."""
-        with patch.object(_gatelock, "due_slots", return_value=[12, 16]):
-            assert _pending_slots(demo_mode=False) == [12, 16]
+        with patch.object(_gatelock, "due_slots", return_value=[720, 960]):
+            assert _pending_slots(demo_mode=False) == [720, 960]
 
     def test_pending_slots_demo_fallback(self) -> None:
         """Demo mode invents a representative slot when nothing is due."""

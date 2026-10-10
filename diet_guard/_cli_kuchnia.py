@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from diet_guard._kuchnia_spread import assign_slots
 from diet_guard._meal_schedule_store import current_schedule
-from diet_guard._slots import day_slots
+from diet_guard._slots import day_slots, slot_label
 from diet_guard._state import now_local
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -99,7 +99,7 @@ def cmd_kuchnia(
     emit(f"{len(dishes)} dish(es) delivered today, banked:")
     for item in slotted:
         emit(
-            f"  {item.slot:02d}:00  {item.dish.name}  "
+            f"  {slot_label(item.slot)}  {item.dish.name}  "
             f"({item.dish.kcal:g} kcal, {item.dish.grams:g} g)",
         )
     total = sum(dish.kcal for dish in dishes)

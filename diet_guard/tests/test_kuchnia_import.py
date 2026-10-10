@@ -194,8 +194,8 @@ class TestRefreshOnce:
 class TestLogDishes:
     def test_logs_each_dish_into_its_slot(self) -> None:
         chosen = [
-            SlottedDish(dish=_dish("A", kcal=100.0), slot=8),
-            SlottedDish(dish=_dish("B", kcal=200.0), slot=12),
+            SlottedDish(dish=_dish("A", kcal=100.0), slot=480),
+            SlottedDish(dish=_dish("B", kcal=200.0), slot=720),
         ]
         assert log_dishes(chosen) == ["A", "B"]
         entries = today_entries()
@@ -203,33 +203,41 @@ class TestLogDishes:
         assert today_total_kcal() == 300.0
 
     def test_records_the_provenance(self) -> None:
-        log_dishes([SlottedDish(dish=_dish("A"), slot=8)])
+        log_dishes([SlottedDish(dish=_dish("A"), slot=480)])
         (entry,) = today_entries()
         assert entry["source"] == "kuchnia wikinga"
 
     def test_a_second_run_logs_nothing(self) -> None:
-        chosen = [SlottedDish(dish=_dish("A"), slot=8)]
+        chosen = [SlottedDish(dish=_dish("A"), slot=480)]
         log_dishes(chosen)
         assert log_dishes(chosen) == []
         assert len(today_entries()) == 1
 
     def test_the_same_dish_in_a_different_slot_is_a_separate_meal(self) -> None:
-        log_dishes([SlottedDish(dish=_dish("A"), slot=8)])
-        assert log_dishes([SlottedDish(dish=_dish("A"), slot=12)]) == ["A"]
+        log_dishes([SlottedDish(dish=_dish("A"), slot=480)])
+        assert log_dishes([SlottedDish(dish=_dish("A"), slot=720)]) == ["A"]
         assert len(today_entries()) == 2
 
     def test_duplicates_within_one_batch_land_once(self) -> None:
         # today_entries() is read once, before the loop; without reflecting the
         # writes locally both copies would be logged.
         chosen = [
-            SlottedDish(dish=_dish("A"), slot=8),
-            SlottedDish(dish=_dish("A"), slot=8),
+            SlottedDish(dish=_dish("A"), slot=480),
+            SlottedDish(dish=_dish("A"), slot=480),
         ]
         assert log_dishes(chosen) == ["A"]
 
     def test_matching_ignores_case_and_padding(self) -> None:
-        log_dishes([SlottedDish(dish=_dish("Kaszotto"), slot=8)])
-        assert log_dishes([SlottedDish(dish=_dish("  kaszotto  "), slot=8)]) == []
+        log_dishes([SlottedDish(dish=_dish("Kaszotto"), slot=480)])
+        assert log_dishes([SlottedDish(dish=_dish("  kaszotto  "), slot=480)]) == []
+
+    def test_dedup_compares_the_recorded_minute_not_the_snapped_slot(self) -> None:
+        # Parity with the app: dedup is (name, recorded minute). An 08:15 copy
+        # is a different key from 08:00 even though both snap to 08:00 --
+        # the fill flow is kept from doubling it by fill_plan's occupancy.
+        log_dishes([SlottedDish(dish=_dish("A"), slot=495)])
+        assert log_dishes([SlottedDish(dish=_dish("A"), slot=495)]) == []
+        assert log_dishes([SlottedDish(dish=_dish("A"), slot=480)]) == ["A"]
 
     def test_logging_nothing_is_not_an_error(self) -> None:
         assert log_dishes([]) == []

@@ -34,8 +34,8 @@ class TestGetStatus:
                 _mcp_read, "today_total_macros", return_value=(30.0, 50.0, 12.0)
             ),
             patch.object(_mcp_read, "consumption_band", return_value="on track"),
-            patch.object(_mcp_read, "due_slots", return_value=(12,)),
-            patch.object(_mcp_read, "logged_slots_today", return_value={8}),
+            patch.object(_mcp_read, "due_slots", return_value=(720,)),
+            patch.object(_mcp_read, "logged_slots_today", return_value={480}),
             patch.object(_mcp_read, "current_slot", return_value=12),
             patch.object(_mcp, "now_local"),
             patch.object(_mcp_read, "slot_label", return_value="12:00"),
@@ -46,7 +46,7 @@ class TestGetStatus:
         assert out["consumption_band"] == "on track"
         assert out["budget_initialized"] is True
         assert out["due_slots"] == ["12:00"]
-        assert out["logged_slots"] == [8]
+        assert out["logged_slots"] == [480]
         assert out["current_slot"] == 12
 
     def test_no_budget_hides_band(self) -> None:
@@ -92,7 +92,8 @@ class TestListToday:
         view = out["entries"][0]
         assert view["desc"] == "big mac"
         assert view["kcal"] == 550.0
-        assert view["slot"] == 12
+        # The legacy on-disk hour is reported as a minute, like every slot.
+        assert view["slot"] == 720
         assert "hmac" not in view
 
     def test_empty(self) -> None:
@@ -104,14 +105,13 @@ class TestListToday:
 class TestGetSlots:
     def test_lists_slots_and_current(self) -> None:
         with (
-            patch.object(_mcp_read, "day_slots", return_value=(8, 12, 16, 20)),
-            patch.object(_mcp_read, "current_slot", return_value=16),
+            patch.object(_mcp_read, "day_slots", return_value=(435, 720, 960, 1200)),
+            patch.object(_mcp_read, "current_slot", return_value=960),
             patch.object(_mcp, "now_local"),
-            patch.object(_mcp_read, "slot_label", side_effect=lambda s: f"{s:02d}:00"),
         ):
             out = _mcp.get_slots()
-        assert out["current_slot"] == 16
-        assert out["day_slots"][0] == {"hour": 8, "label": "08:00"}
+        assert out["current_slot"] == 960
+        assert out["day_slots"][0] == {"minute": 435, "label": "07:15"}
         assert len(out["day_slots"]) == 4
 
 
@@ -141,7 +141,7 @@ class TestLogMealGate:
         )
         record.assert_not_called()
         assert out["preview"] is True
-        assert out["target_slot"] == 12
+        assert out["target_slot"] == 720  # the legacy int hour, as minutes
         assert out["resolved"]["kcal"] == 250.0
         assert out["confirm_required"] is True
 
@@ -149,7 +149,7 @@ class TestLogMealGate:
         with (
             patch.object(_mcp, "resolve_nutrition", return_value=_nutrition()),
             patch.object(_mcp, "ManualMacros") as manual,
-            patch.object(_mcp, "slot_for_log", return_value=8),
+            patch.object(_mcp, "slot_for_log", return_value=480),
             patch.object(_mcp, "now_local"),
             patch.object(_mcp, "record_meal") as record,
         ):
@@ -157,7 +157,7 @@ class TestLogMealGate:
         manual.assert_not_called()
         record.assert_not_called()
         assert out["preview"] is True
-        assert out["target_slot"] == 8
+        assert out["target_slot"] == 480
 
     def test_confirm_applies_signed(self) -> None:
         entry = {"desc": "apple", "hmac": "sig"}
@@ -169,7 +169,7 @@ class TestLogMealGate:
         record.assert_called_once()
         assert out["applied"] is True
         assert out["signed"] is True
-        assert out["target_slot"] == 8
+        assert out["target_slot"] == 480
 
     def test_confirm_applies_unsigned(self) -> None:
         entry = {"desc": "apple"}

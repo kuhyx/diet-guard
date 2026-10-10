@@ -32,6 +32,7 @@ from diet_guard import _kuchnia_log
 from diet_guard._kuchnia_import import dish_to_record
 from diet_guard._kuchnia_parse import Dish, parse_menu
 from diet_guard._kuchnia_spread import SlottedDish, assign_slots
+from diet_guard._slot_wire import slot_fields
 
 FIXTURE = Path(__file__).resolve().parents[2] / "tests/fixtures/kuchnia_day.json"
 
@@ -151,6 +152,12 @@ def test_bank_record_numbers_are_floats(dishes: list[Dish]) -> None:
         assert not isinstance(record["count"], bool)
 
 
+def _as_entry(row: dict[str, Any]) -> dict[str, Any]:
+    """Turn a fixture row's resolved ``slot`` minute into on-disk entry fields."""
+    fields = {key: value for key, value in row.items() if key != "slot"}
+    return {**fields, **slot_fields(row["slot"])}
+
+
 def _spread(
     dishes: list[Dish], fill: dict[str, Any], case: dict[str, Any]
 ) -> list[SlottedDish]:
@@ -168,7 +175,10 @@ def test_fill_plan_matches(
     fill = fixture["expected"]["fill"]
     assert fill["fill_plan"], "fixture carries no fill_plan cases"
     for key, case in fill["fill_plan"].items():
-        today = [{"slot": slot} for slot in case["occupied"]]
+        # ``occupied`` holds RESOLVED slot minutes, not on-disk fields: seed
+        # them through the writer's encoding, never as a raw ``{"slot": m}``
+        # (which the reader would take for an hour, i.e. ``m * 60``).
+        today = [slot_fields(slot) for slot in case["occupied"]]
         monkeypatch.setattr(_kuchnia_log, "today_entries", lambda t=today: t)
         kept = _kuchnia_log.fill_plan(_spread(dishes, fill, case))
         actual = [[item.dish.name, item.slot] for item in kept]
@@ -185,7 +195,8 @@ def test_log_dishes_matches(
     fill = fixture["expected"]["fill"]
     for key, case in fill["log_dishes"].items():
         recorder = MagicMock()
-        monkeypatch.setattr(_kuchnia_log, "today_entries", lambda c=case: c["today"])
+        today = [_as_entry(row) for row in case["today"]]
+        monkeypatch.setattr(_kuchnia_log, "today_entries", lambda t=today: t)
         monkeypatch.setattr(_kuchnia_log, "log_meal", recorder)
         _kuchnia_log.log_dishes(_spread(dishes, fill, case))
         written = [[call.args[0], call.args[2]] for call in recorder.call_args_list]

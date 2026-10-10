@@ -2,10 +2,13 @@
 Description=Periodically run the Diet Guard gate check
 
 [Timer]
-# Check on a WALL-CLOCK schedule (every 30 min, on the hour and half-hour).
-# The 5-hour "log a meal" threshold and the 08:00-22:00 eating window are
-# enforced inside gate_is_due(), so the timer only needs to fire often enough to
-# notice the boundary; 30 min is plenty.
+# Check on a WALL-CLOCK schedule (every 15 min: :00, :15, :30, :45).
+# The meal slots and the enforcement window are enforced inside gate_is_due(),
+# so the timer only needs to fire often enough to notice a slot opening. Slots
+# can sit on any quarter hour (interior slots round to the 15-minute grid, and
+# a 07:15 first meal is common), so a 30-min tick would let a slot go
+# unenforced for up to half an hour; 15 min lands on every grid slot exactly.
+# A first/last meal typed off the grid (07:23) is caught by the next tick.
 #
 # Why OnCalendar and not OnBootSec/OnUnitActiveSec: the gate is a *blocking*
 # oneshot -- it stays up until a meal is logged -- and a monotonic schedule
@@ -13,7 +16,7 @@ Description=Periodically run the Diet Guard gate check
 # reboot), leaving the timer dormant (NextElapse=infinity). OnCalendar re-arms
 # every period regardless of how long the gate stayed open, and Persistent
 # catches a run missed while the machine was suspended.
-OnCalendar=*-*-* *:00/30:00
+OnCalendar=*-*-* *:00/15:00
 Persistent=true
 
 [Install]

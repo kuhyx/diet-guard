@@ -22,7 +22,8 @@ from diet_guard._kuchnia_import import refresh_delivery_once
 from diet_guard._meal_schedule_store import current_schedule
 from diet_guard._portions import DEFAULT_ITEM_GRAMS, estimate_unit_grams
 from diet_guard._resolve import ManualMacros, resolve_nutrition
-from diet_guard._slots import resolve_future_when, slot_for_log
+from diet_guard._slot_wire import parse_hhmm
+from diet_guard._slots import resolve_future_when, slot_for_log, slot_label
 from diet_guard._state import log_meal, now_local
 from diet_guard._sync_events import publish_after_log_detached
 
@@ -66,15 +67,17 @@ class Portion:
             for a per-100 g label), or None to treat the macros as totals.
         date: Log against this future date (``YYYY-MM-DD``) instead of now.
             Must be given together with ``hour``. None means "now".
-        hour: The slot hour on ``date`` this meal satisfies. Required
-            together with ``date``.
+        hour: The slot on ``date`` this meal satisfies, as the user typed it
+            (``HH:MM`` or ``HH``; parsed by
+            :func:`diet_guard._slot_wire.parse_hhmm`). Required together with
+            ``date``.
     """
 
     grams: float | None
     count: float | None
     per_grams: float | None
     date: str | None = None
-    hour: int | None = None
+    hour: str | None = None
 
 
 def eaten_grams(
@@ -116,13 +119,15 @@ def _resolve_target(
     limit.
 
     Raises:
-        ValueError: ``portion.date``/``portion.hour`` are an invalid future
+        ValueError: ``portion.hour`` is not a clock time, or
+            ``portion.date``/``portion.hour`` are an invalid future
             combination -- see :func:`diet_guard._slots.resolve_future_when`.
     """
     if portion.date is None or portion.hour is None:
         return None, slot_for_log(now_local(), schedule)
-    when = resolve_future_when(portion.date, portion.hour, schedule, now_local())
-    return when, slot_for_log(when, schedule)
+    slot = parse_hhmm(portion.hour)
+    when = resolve_future_when(portion.date, slot, schedule, now_local())
+    return when, slot
 
 
 def cmd_ate(
@@ -195,7 +200,7 @@ def cmd_ate(
     emit(
         f"logged: {description}  {nutrition.kcal:g} kcal  "
         f"({macro_str})  [{nutrition.source}, {portion_str}]"
-        f"{f' for {portion.date} {portion.hour:02d}:00' if when else ''}",
+        f"{f' for {portion.date} {slot_label(slot)}' if when else ''}",
     )
     # Publish straight away rather than waiting for a periodic tick: until this
     # lands, the phone still believes this slot is unlogged and will nag for it.
