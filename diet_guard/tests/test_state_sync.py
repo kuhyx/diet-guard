@@ -185,6 +185,21 @@ class TestResignEntry:
         with patch.object(_state_today, "_today", return_value="2026-06-22"):
             assert today_entries() == [resigned]
 
+    def test_a_corrupt_peer_slot_is_relayed_not_raised_on(self) -> None:
+        """Out-of-range peer values pass through re-signing and reading.
+
+        Only our own writers encode through ``slot_fields`` (which refuses an
+        out-of-range minute); a peer's ``slot: 24`` must ride through the
+        merge path unchanged -- raising here would stall every sync tick.
+        """
+        peer = {"id": "p", "time": "2026-06-22T09:00:00+02:00", "kcal": 1.0}
+        resigned = resign_entry({**peer, "slot": 24, "slot_min": 5000})
+        assert (resigned["slot"], resigned["slot_min"]) == (24, 5000)
+        write_raw_log({"2026-06-22": [resigned]})
+        with patch.object(_state_today, "_today", return_value="2026-06-22"):
+            # 5000 snaps to the last slot rather than raising.
+            assert logged_slots_today() == {1200}
+
     def test_no_op_signature_wise_when_no_key_available(self) -> None:
         """Without an HMAC key, resign_entry produces no hmac field."""
         entry = log_meal("a", _nut(100), slot=480)

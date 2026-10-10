@@ -231,13 +231,13 @@ class TestLogDishes:
         log_dishes([SlottedDish(dish=_dish("Kaszotto"), slot=480)])
         assert log_dishes([SlottedDish(dish=_dish("  kaszotto  "), slot=480)]) == []
 
-    def test_a_dish_logged_near_the_slot_is_not_relogged(self) -> None:
-        # The phone logged it at 08:15 under an older schedule: it snaps to
-        # today's 08:00, so re-importing must not write a second copy.
+    def test_dedup_compares_the_recorded_minute_not_the_snapped_slot(self) -> None:
+        # Parity with the app: dedup is (name, recorded minute). An 08:15 copy
+        # is a different key from 08:00 even though both snap to 08:00 --
+        # the fill flow is kept from doubling it by fill_plan's occupancy.
         log_dishes([SlottedDish(dish=_dish("A"), slot=495)])
-        assert log_dishes([SlottedDish(dish=_dish("A"), slot=480)]) == []
-        (entry,) = today_entries()
-        assert entry["slot_min"] == 495
+        assert log_dishes([SlottedDish(dish=_dish("A"), slot=495)]) == []
+        assert log_dishes([SlottedDish(dish=_dish("A"), slot=480)]) == ["A"]
 
     def test_logging_nothing_is_not_an_error(self) -> None:
         assert log_dishes([]) == []

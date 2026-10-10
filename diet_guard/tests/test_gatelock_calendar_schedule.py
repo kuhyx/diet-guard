@@ -7,6 +7,7 @@ per-widget state toggle in :mod:`._gatelock_scheduleedit`.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 from unittest.mock import patch
 
@@ -72,6 +73,24 @@ class TestComboBindings:
         self._fire(gate, "<Down>")
         self._fire(gate, "<Down>")
         assert gate._cal_vars.schedule.first.get() == "07:45"
+
+
+class TestArrowNeverPosts:
+    """The popdown would map beneath the lock yet hold the grab."""
+
+    def _press(self, gate: MealGate, x: int) -> object:
+        combo = cast("FakeCombobox", gate._cal_widgets.schedule_last_entry)
+        handler = cast("Callable[[object], object]", combo.bindings["<ButtonPress-1>"])
+        return handler(SimpleNamespace(x=x, y=5))
+
+    def test_a_click_on_the_arrow_is_swallowed(self, gate: MealGate) -> None:
+        gate._on_edit_or_save_schedule()
+        assert self._press(gate, 60) == "break"
+
+    def test_a_click_on_the_text_reaches_ttk(self, gate: MealGate) -> None:
+        """So the caret still lands where the user clicked."""
+        gate._on_edit_or_save_schedule()
+        assert self._press(gate, 10) is None
 
 
 class TestStateToggle:

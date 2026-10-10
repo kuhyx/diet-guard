@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from diet_guard._estimator import Nutrition
 from diet_guard._meal_schedule_store import current_schedule
-from diet_guard._slot_wire import satisfied_by_entries, slot_fields
+from diet_guard._slot_wire import entry_slot_minute, satisfied_by_entries, slot_fields
 from diet_guard._state import log_meal
 from diet_guard._state_today import today_entries
 
@@ -28,30 +28,25 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
     from diet_guard._kuchnia_parse import Dish
     from diet_guard._kuchnia_spread import SlottedDish
-    from diet_guard._meal_schedule import MealSchedule
 
 #: Marks entries this importer created, so the provenance is visible in the log
 #: and in the food bank's ``source`` column.
 SOURCE = "kuchnia wikinga"
 
 
-def _already_logged(
-    entries: Sequence[dict[str, object]],
-    name: str,
-    slot: int,
-    schedule: MealSchedule,
-) -> bool:
-    """Return True when today's log already holds this dish in this slot.
+def _already_logged(entries: Sequence[dict[str, object]], name: str, slot: int) -> bool:
+    """Return True when today's log already holds this dish at this slot minute.
 
-    "In this slot" means the entry *snaps* to ``slot`` (its nearest slot under
-    today's schedule), the same rule the gate uses to call a slot satisfied.
-    An exact-minute comparison would re-log a dish the phone wrote under a
-    schedule that has since moved by a few minutes -- a duplicate on every peer.
+    Compares the entry's *recorded* minute (:func:`entry_slot_minute`), not its
+    snapped slot -- the app's catering fill uses the same rule, which is the
+    point: both devices must agree on which dishes are duplicates, or one
+    re-logs what the other skipped.  Snapping still guards the fill flow,
+    because :func:`fill_plan` skips any slot an entry snaps to (occupancy).
     """
     wanted = name.strip().casefold()
     return any(
         str(entry.get("desc", "")).strip().casefold() == wanted
-        and slot in satisfied_by_entries((entry,), schedule)
+        and entry_slot_minute(entry) == slot
         for entry in entries
     )
 
@@ -101,11 +96,10 @@ def log_dishes(chosen: Sequence[SlottedDish]) -> list[str]:
         The descriptions actually written, in the order they were logged.
     """
     entries = today_entries()
-    schedule = current_schedule()
     written: list[str] = []
     for item in chosen:
         dish = item.dish
-        if _already_logged(entries, dish.name, item.slot, schedule):
+        if _already_logged(entries, dish.name, item.slot):
             continue
         log_meal(dish.name, dish_nutrition(dish), item.slot)
         # Reflect the write locally so two identical dishes in one batch do not

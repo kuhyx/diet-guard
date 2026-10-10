@@ -206,3 +206,10 @@ class FakeCombobox(FakeWidget):
     def bind(self, *args: object, **kwargs: object) -> None:
         sequence, handler = args[0], args[1]
         self.bindings[str(sequence)] = handler
+
+    #: Where the fake's arrow element starts; left of it is the text area.
+    ARROW_X = 50
+
+    def identify(self, x: int, y: int) -> str:
+        """Name the element at ``x``, as clam does: text, then the arrow."""
+        return "downarrow" if x >= self.ARROW_X else "textarea"

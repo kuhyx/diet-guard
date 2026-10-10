@@ -10,13 +10,14 @@ offers every quarter hour, and the user may also type any ``HH:MM``.  The
 ``ttk`` import is load-bearing for the tests, which patch this module's
 ``ttk`` with a fake -- keep binding it at module level.
 
-**The dropdown is a popup over a lock that keeps itself on top.**  Observed on
-Xvfb (2026-10-10, demo gate): the ``ComboboxPopdown`` window maps but sits
-*beneath* the lock surface, which gatelock re-raises; on the real lock its grab
-watch also treats the popdown as "grab lost" and re-takes the grab.  So the
-list cannot be relied on: typing works, and Up/Down step the value by 15
-minutes *without* posting the list (:func:`step_time`), which keeps the row
-fully usable from the keyboard.
+**The dropdown list is never posted.**  Observed on Xvfb (2026-10-10, demo
+gate): a posted ``ComboboxPopdown`` maps *beneath* the lock surface, which
+gatelock keeps raised, yet still holds ttk's grab -- so the user sees nothing,
+the next click anywhere is swallowed to unpost it, and keystrokes meant for
+another field land in the combobox.  On the real lock the grab watch also
+fights the popdown for the grab.  So both ways of posting are intercepted:
+a click on the arrow element (:data:`_ARROW_ELEMENT`) and Down.  Typing any
+``HH:MM`` works, and Up/Down step by 15 minutes (:func:`step_time`).
 """
 
 from __future__ import annotations
@@ -45,6 +46,9 @@ __all__ = ["TIME_CHOICES", "build_schedule_row", "step_time"]
 _ENTRY_WIDTH = 4
 # "HH:MM" plus room for the caret, so a typed time is never clipped.
 _TIME_WIDTH = 6
+#: What ``Combobox.identify`` names the arrow under the gate's ``clam`` theme
+#: (verified on Xvfb: ``Combobox.field`` | ``textarea`` | ``downarrow``).
+_ARROW_ELEMENT = "downarrow"
 
 #: Every quarter hour of the day, the grid interior slots are rounded onto.
 TIME_CHOICES = tuple(
@@ -80,7 +84,7 @@ def step_time(text: str, direction: int) -> str:
 
 
 def _bind_steps(combo: ttk.Combobox, variable: tk.StringVar) -> None:
-    """Make Up/Down step the time instead of posting the dropdown list."""
+    """Make Up/Down step the time, and keep the dropdown list from posting."""
 
     def _step(direction: int) -> str:
         if str(combo.cget("state")) == "normal":
@@ -88,8 +92,17 @@ def _bind_steps(combo: ttk.Combobox, variable: tk.StringVar) -> None:
         # "break" stops ttk's own binding, which would post the popdown.
         return "break"
 
+    def _press(event: tk.Event[ttk.Combobox]) -> str | None:
+        # A click on the arrow would post the popdown -- see the module
+        # docstring for why that is unsafe here.  Clicks on the text still
+        # fall through to ttk, so the caret lands where the user clicked.
+        if _ARROW_ELEMENT in str(combo.identify(event.x, event.y)):
+            return "break"
+        return None
+
     combo.bind("<Up>", lambda _event: _step(1))
     combo.bind("<Down>", lambda _event: _step(-1))
+    combo.bind("<ButtonPress-1>", _press)
 
 
 def _time_combo(row: tk.Frame, variable: tk.StringVar) -> ttk.Combobox:
