@@ -10,7 +10,7 @@ The endpoint shape here is not the obvious one: ``.../deliveries/{id}/details``
 
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 from unittest.mock import patch
 
 import pytest
@@ -28,7 +28,7 @@ from diet_guard.tests._kuchnia_fakes import (
     write_credentials,
 )
 
-DAY = datetime.date(2026, 8, 22)
+DAY = dt.date(2026, 8, 22)
 
 
 @pytest.fixture

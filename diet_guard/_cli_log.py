@@ -103,8 +103,10 @@ def eaten_grams(
         if unit is None:
             return (
                 portion.count * DEFAULT_ITEM_GRAMS,
-                f"(assumed {DEFAULT_ITEM_GRAMS:g} g per item; "
-                "pass --grams to be exact)",
+                (
+                    f"(assumed {DEFAULT_ITEM_GRAMS:g} g per item; "
+                    "pass --grams to be exact)"
+                ),
             )
         return portion.count * unit, None
     return portion.grams, None

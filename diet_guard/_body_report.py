@@ -72,8 +72,10 @@ def bodyfat_lines(view: BodyView) -> list[str]:
         return ["Body fat: not logged (log one to use Katch-McArdle)."]
     day = max(view.body_fats)
     return [
-        f"Body fat: {_num(view.body_fats[day], 1)}% on {day} "
-        f"({len(view.body_fats)} readings) -- targets use Katch-McArdle."
+        (
+            f"Body fat: {_num(view.body_fats[day], 1)}% on {day} "
+            f"({len(view.body_fats)} readings) -- targets use Katch-McArdle."
+        )
     ]
 
 
@@ -85,8 +87,10 @@ def bmi_lines(view: BodyView) -> list[str]:
     low, high = view.numbers.healthy
     return [
         f"BMI {_num(bmi.bmi, 1)} ({bmi.category})",
-        f"Healthy weight for your height (BMI 18.5-24.9): "
-        f"{_num(low, 1)}-{_num(high, 1)} kg",
+        (
+            f"Healthy weight for your height (BMI 18.5-24.9): "
+            f"{_num(low, 1)}-{_num(high, 1)} kg"
+        ),
         f"BMI Prime {_num(bmi.prime, 2)}   Trefethen {_num(bmi.trefethen, 1)}",
         *_wrap(BMI_PRIME_NOTE, "  "),
         *_wrap(TREFETHEN_NOTE, "  "),
@@ -141,8 +145,10 @@ def target_lines(view: BodyView) -> list[str]:
     target = view.numbers.target
     if target.kcal is None or target.tdee is None:
         return [
-            f"{goal_sentence(view.goal)}: no workouts published yet "
-            "(the PC publishes them on sync)."
+            (
+                f"{goal_sentence(view.goal)}: no workouts published yet "
+                "(the PC publishes them on sync)."
+            )
         ]
     lines = [f"{goal_sentence(view.goal)} eat {target.kcal} kcal a day."]
     if target.below_floor:

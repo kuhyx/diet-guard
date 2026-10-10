@@ -15,7 +15,7 @@ is testable with no thread at all.
 
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 import queue
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
     from diet_guard._estimator import Nutrition
 
-DAY = datetime.date(2026, 8, 22)
+DAY = dt.date(2026, 8, 22)
 
 
 def _dish(name: str = "Kaszotto", priority: int = 1) -> Dish:
@@ -68,7 +68,7 @@ class TestWorker:
     def test_a_raising_call_still_feeds_the_queue(self) -> None:
         # Without the finally, the poll waits forever with the button disabled
         # and the user cannot get out from behind the lock.
-        def boom(_day: datetime.date) -> tuple[Sequence[Dish], str | None]:
+        def boom(_day: dt.date) -> tuple[Sequence[Dish], str | None]:
             msg = "kaboom"
             raise RuntimeError(msg)
 

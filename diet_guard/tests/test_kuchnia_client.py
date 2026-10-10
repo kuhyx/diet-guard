@@ -7,7 +7,7 @@ through ``sys.modules`` instead of binding it at import time.
 
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 import json
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -28,7 +28,7 @@ from diet_guard.tests._kuchnia_fakes import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-DAY = datetime.date(2026, 8, 22)
+DAY = dt.date(2026, 8, 22)
 
 
 @pytest.fixture

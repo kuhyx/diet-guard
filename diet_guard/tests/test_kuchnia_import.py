@@ -9,7 +9,7 @@ that happens, so these assert on **call count** instead.
 
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 from unittest.mock import patch
 
 from diet_guard import _kuchnia_config, _kuchnia_import
@@ -21,7 +21,7 @@ from diet_guard._kuchnia_parse import Dish
 from diet_guard._kuchnia_spread import SlottedDish
 from diet_guard._state_today import today_entries, today_total_kcal
 
-DAY = datetime.date(2026, 8, 22)
+DAY = dt.date(2026, 8, 22)
 
 
 def _dish(name: str = "Kaszotto", kcal: float = 391.0, priority: int = 1) -> Dish:
@@ -150,7 +150,7 @@ class TestRefreshOnce:
             return_value=([_dish()], None),
         ) as refresh:
             _kuchnia_import.refresh_delivery_once(DAY)
-            _kuchnia_import.refresh_delivery_once(DAY + datetime.timedelta(days=1))
+            _kuchnia_import.refresh_delivery_once(DAY + dt.timedelta(days=1))
         assert refresh.call_count == 2
 
     def test_an_outage_does_not_suppress_the_retry(self) -> None:
