@@ -168,6 +168,283 @@
       }
     ],
     "dropped_count": 5,
+    "fill": {
+      "fill_plan": {
+        "empty_day": {
+          "expected": [
+            [
+              "Marchewkowe pancakes, twarożek cynamonowy, sos truskawkowy",
+              8
+            ],
+            [
+              "Hummus paprykowy, mini wafle kukurydziane, warzywa",
+              8
+            ],
+            [
+              "Makaron farfalle z indykiem w sosie z batatów z suszonymi pomidorami, ser włoski",
+              12
+            ],
+            [
+              "Fit ciasto, jak twix white",
+              12
+            ],
+            [
+              "Kaszotto grzybowe z pieczonym kurczakiem i serem włoskim",
+              16
+            ],
+            [
+              "Twin dish",
+              16
+            ],
+            [
+              "Twin dish",
+              20
+            ],
+            [
+              "No priority, kept",
+              20
+            ]
+          ],
+          "occupied": [],
+          "take": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        "five_on_four": {
+          "expected": [
+            [
+              "Marchewkowe pancakes, twarożek cynamonowy, sos truskawkowy",
+              8
+            ],
+            [
+              "Hummus paprykowy, mini wafle kukurydziane, warzywa",
+              8
+            ],
+            [
+              "Makaron farfalle z indykiem w sosie z batatów z suszonymi pomidorami, ser włoski",
+              12
+            ],
+            [
+              "Kaszotto grzybowe z pieczonym kurczakiem i serem włoskim",
+              20
+            ]
+          ],
+          "occupied": [
+            16
+          ],
+          "take": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "full_day": {
+          "expected": [],
+          "occupied": [
+            8,
+            12,
+            16,
+            20
+          ],
+          "take": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        "occupied_12": {
+          "expected": [
+            [
+              "Marchewkowe pancakes, twarożek cynamonowy, sos truskawkowy",
+              8
+            ],
+            [
+              "Hummus paprykowy, mini wafle kukurydziane, warzywa",
+              8
+            ],
+            [
+              "Kaszotto grzybowe z pieczonym kurczakiem i serem włoskim",
+              16
+            ],
+            [
+              "Twin dish",
+              16
+            ],
+            [
+              "Twin dish",
+              20
+            ],
+            [
+              "No priority, kept",
+              20
+            ]
+          ],
+          "occupied": [
+            12
+          ],
+          "take": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        }
+      },
+      "log_dishes": {
+        "empty_day": {
+          "expected": [
+            [
+              "Marchewkowe pancakes, twarożek cynamonowy, sos truskawkowy",
+              8
+            ],
+            [
+              "Hummus paprykowy, mini wafle kukurydziane, warzywa",
+              8
+            ],
+            [
+              "Makaron farfalle z indykiem w sosie z batatów z suszonymi pomidorami, ser włoski",
+              12
+            ],
+            [
+              "Fit ciasto, jak twix white",
+              12
+            ],
+            [
+              "Kaszotto grzybowe z pieczonym kurczakiem i serem włoskim",
+              16
+            ],
+            [
+              "Twin dish",
+              16
+            ],
+            [
+              "Twin dish",
+              20
+            ],
+            [
+              "No priority, kept",
+              20
+            ]
+          ],
+          "take": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "today": []
+        },
+        "twin_logged": {
+          "expected": [
+            [
+              "Hummus paprykowy, mini wafle kukurydziane, warzywa",
+              8
+            ],
+            [
+              "Makaron farfalle z indykiem w sosie z batatów z suszonymi pomidorami, ser włoski",
+              8
+            ],
+            [
+              "Fit ciasto, jak twix white",
+              12
+            ],
+            [
+              "Kaszotto grzybowe z pieczonym kurczakiem i serem włoskim",
+              12
+            ],
+            [
+              "No priority, kept",
+              20
+            ]
+          ],
+          "take": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "today": [
+            {
+              "desc": " twin DISH ",
+              "slot": 16
+            },
+            {
+              "desc": "No priority, kept",
+              "slot": 8
+            }
+          ]
+        },
+        "twins_share_16": {
+          "expected": [
+            [
+              "Hummus paprykowy, mini wafle kukurydziane, warzywa",
+              8
+            ],
+            [
+              "Makaron farfalle z indykiem w sosie z batatów z suszonymi pomidorami, ser włoski",
+              8
+            ],
+            [
+              "Fit ciasto, jak twix white",
+              12
+            ],
+            [
+              "Kaszotto grzybowe z pieczonym kurczakiem i serem włoskim",
+              12
+            ],
+            [
+              "Twin dish",
+              16
+            ],
+            [
+              "No priority, kept",
+              20
+            ]
+          ],
+          "take": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "today": []
+        }
+      },
+      "slots": [
+        8,
+        12,
+        16,
+        20
+      ]
+    },
     "slot_order": [
       "Marchewkowe pancakes, twarożek cynamonowy, sos truskawkowy",
       "Hummus paprykowy, mini wafle kukurydziane, warzywa",

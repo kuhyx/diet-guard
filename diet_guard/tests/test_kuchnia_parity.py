@@ -15,6 +15,8 @@ What the parity actually protects, per ``docs/kuchnia-wikinga.md``:
   the curated bank republishes to every peer on every refresh.
 * **Bank keys and record values.** Divergence there is the same flood by a
   different route.
+* **Fill all with catering.** Which dishes ``fill_plan`` keeps and which
+  ``log_dishes`` writes, so both devices fill the same empty slots.
 """
 
 from __future__ import annotations
@@ -22,12 +24,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
+from diet_guard import _kuchnia_log
 from diet_guard._kuchnia_import import dish_to_record
 from diet_guard._kuchnia_parse import Dish, parse_menu
-from diet_guard._kuchnia_spread import assign_slots
+from diet_guard._kuchnia_spread import SlottedDish, assign_slots
 
 FIXTURE = Path(__file__).resolve().parents[2] / "tests/fixtures/kuchnia_day.json"
 
@@ -145,3 +149,57 @@ def test_bank_record_numbers_are_floats(dishes: list[Dish]) -> None:
         # ``count`` is the exception: an int on both sides.
         assert isinstance(record["count"], int)
         assert not isinstance(record["count"], bool)
+
+
+def _spread(
+    dishes: list[Dish], fill: dict[str, Any], case: dict[str, Any]
+) -> list[SlottedDish]:
+    """Re-spread the case's dish subset; never a slice of the full spread."""
+    return assign_slots([dishes[i] for i in case["take"]], fill["slots"])
+
+
+def test_fill_plan_matches(
+    fixture: dict[str, Any], dishes: list[Dish], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only dishes whose slot is empty today are proposed, doubles included.
+
+    Called through the module so a patched ``fill_plan`` is the one exercised.
+    """
+    fill = fixture["expected"]["fill"]
+    assert fill["fill_plan"], "fixture carries no fill_plan cases"
+    for key, case in fill["fill_plan"].items():
+        today = [{"slot": slot} for slot in case["occupied"]]
+        monkeypatch.setattr(_kuchnia_log, "today_entries", lambda t=today: t)
+        kept = _kuchnia_log.fill_plan(_spread(dishes, fill, case))
+        actual = [[item.dish.name, item.slot] for item in kept]
+        assert actual == case["expected"], f"fill_plan diverged for {key}"
+
+
+def test_log_dishes_matches(
+    fixture: dict[str, Any], dishes: list[Dish], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The same dishes are written, a twin pair in one slot landing once.
+
+    ``log_meal`` is replaced by a recorder, so nothing reaches the log.
+    """
+    fill = fixture["expected"]["fill"]
+    for key, case in fill["log_dishes"].items():
+        recorder = MagicMock()
+        monkeypatch.setattr(_kuchnia_log, "today_entries", lambda c=case: c["today"])
+        monkeypatch.setattr(_kuchnia_log, "log_meal", recorder)
+        _kuchnia_log.log_dishes(_spread(dishes, fill, case))
+        written = [[call.args[0], call.args[2]] for call in recorder.call_args_list]
+        assert written == case["expected"], f"log_dishes diverged for {key}"
+
+
+def test_twin_case_is_not_vacuous(fixture: dict[str, Any], dishes: list[Dish]) -> None:
+    """The intra-batch case really puts two identical dishes in one slot.
+
+    Without this, a regenerated fixture whose spread separates the twins would
+    keep passing while no longer testing the dedup at all.
+    """
+    fill = fixture["expected"]["fill"]
+    case = fill["log_dishes"]["twins_share_16"]
+    spread = [(item.dish.name, item.slot) for item in _spread(dishes, fill, case)]
+    assert spread.count(("Twin dish", 16)) == 2
+    assert case["expected"].count(["Twin dish", 16]) == 1

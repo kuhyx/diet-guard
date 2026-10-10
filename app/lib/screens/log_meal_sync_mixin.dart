@@ -3,7 +3,9 @@ import 'dart:developer';
 
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/background_tasks.dart';
+import 'package:diet_guard_app/services/due_slot_check.dart';
 import 'package:diet_guard_app/services/firebase_client.dart';
+import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/health_steps.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
@@ -139,6 +141,31 @@ mixin LogMealSyncMixin<T extends StatefulWidget> on State<T>
   Future<void> enqueueSyncBackstopTask() => enqueueSyncBackstop();
 
   // coverage:ignore-end
+
+  /// Everything that must follow a write to the food log, shared by the
+  /// manual submit and "Fill all" so a batch fill publishes exactly like a
+  /// typed meal. Call it once per batch, not per entry: [autoSync] is
+  /// single-flight, so a second call while the first is in flight is dropped
+  /// and the later entries would wait for the next tick.
+  ///
+  /// Returns the log as read after the write.
+  Future<DayLog> publishAfterLog() async {
+    final log = await LogStorageService.instance.readLog();
+    await FoodBankService.instance.rebuildAndPersist(log);
+    // Push the new meal now instead of waiting for the next lifecycle event,
+    // so the PC gate can see it in seconds. Fire-and-forget and best-effort:
+    // autoSync is single-flight and swallows offline/transient failures.
+    unawaited(autoSync());
+    // Offline backstop: if the push above fails (no connectivity), a
+    // connectivity-gated WorkManager task uploads the meal on reconnect.
+    unawaited(enqueueSyncBackstopTask());
+    // Clears a reminder the meal just logged has now satisfied; without it a
+    // notification already on screen survives up to 15 min and reads as a
+    // false alarm. `pullWhenDue: false` because `autoSync` above already owns
+    // the network for this submit.
+    await checkAndNotify(pullWhenDue: false);
+    return log;
+  }
 
   /// Re-reads which meal slots are already logged today.
   Future<void> refreshSlots() async {

@@ -29,10 +29,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
+from unittest.mock import patch
 
+from diet_guard import _kuchnia_log
 from diet_guard._kuchnia_import import dish_to_record
 from diet_guard._kuchnia_parse import Dish, parse_menu
-from diet_guard._kuchnia_spread import assign_slots
+from diet_guard._kuchnia_spread import SlottedDish, assign_slots
 
 FIXTURE = Path(__file__).resolve().parent.parent / "tests/fixtures/kuchnia_day.json"
 
@@ -139,6 +142,57 @@ def _dish_json(dish: Dish) -> dict[str, object]:
     }
 
 
+#: "Fill all with catering" cases. ``take`` indexes the parsed ``dishes`` list,
+#: re-spread over ``slots`` (never a slice of the full spread). The full day
+#: spreads the twins to 16 and 20, so ``twins_share_16`` drops the first dish:
+#: 7 on 4 slots puts both twins on 16, the one place intra-batch dedup bites.
+_ALL = list(range(8))
+_SLOTS = [8, 12, 16, 20]
+_PLAN_CASES = {
+    "empty_day": {"take": _ALL, "occupied": []},
+    "occupied_12": {"take": _ALL, "occupied": [12]},
+    # First five in slot order: pancakes and hummus double into 8, both kept.
+    "five_on_four": {"take": _ALL[:5], "occupied": [16]},
+    "full_day": {"take": _ALL, "occupied": _SLOTS},
+}
+# Case/space-insensitive name match, and the same name in another slot is no
+# match: log_dishes dedups by (name, slot), it does not test occupancy.
+_SEEN = [{"desc": " twin DISH ", "slot": 16}, {"desc": "No priority, kept", "slot": 8}]
+_LOG_CASES = {
+    "empty_day": {"take": _ALL, "today": []},
+    "twins_share_16": {"take": _ALL[1:], "today": []},
+    "twin_logged": {"take": _ALL[1:], "today": _SEEN},
+}
+
+
+def _spread(dishes: list[Dish], case: dict[str, Any]) -> list[SlottedDish]:
+    """Assign the case's dish subset to the default slots."""
+    return assign_slots([dishes[i] for i in case["take"]], _SLOTS)
+
+
+def _fill_cases(dishes: list[Dish]) -> dict[str, object]:
+    """Run the Python ``fill_plan``/``log_dishes`` over every case.
+
+    Both seams are patched: unpatched, ``log_meal`` writes to the live log.
+    """
+    plans: dict[str, object] = {}
+    for key, case in _PLAN_CASES.items():
+        today = [{"slot": slot} for slot in case["occupied"]]
+        with patch.object(_kuchnia_log, "today_entries", return_value=today):
+            kept = _kuchnia_log.fill_plan(_spread(dishes, case))
+        plans[key] = {**case, "expected": [[s.dish.name, s.slot] for s in kept]}
+    logs: dict[str, object] = {}
+    for key, case in _LOG_CASES.items():
+        with (
+            patch.object(_kuchnia_log, "today_entries", return_value=case["today"]),
+            patch.object(_kuchnia_log, "log_meal") as fake,
+        ):
+            _kuchnia_log.log_dishes(_spread(dishes, case))
+        written = [[call.args[0], call.args[2]] for call in fake.call_args_list]
+        logs[key] = {**case, "expected": written}
+    return {"slots": _SLOTS, "fill_plan": plans, "log_dishes": logs}
+
+
 def build() -> dict[str, object]:
     """Return the whole fixture: the payload and its expected results."""
     payload = {
@@ -172,6 +226,7 @@ def build() -> dict[str, object]:
             "slot_order": [s.dish.name for s in assign_slots(dishes, default_slots)],
             "bank_keys": [dish.name.strip().casefold() for dish in dishes],
             "bank_records": [dish_to_record(dish) for dish in dishes],
+            "fill": _fill_cases(dishes),
         },
     }
 

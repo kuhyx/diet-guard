@@ -8,17 +8,18 @@ import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_suggestion.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/screens/log_meal_actions.dart';
+import 'package:diet_guard_app/screens/log_meal_fill_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_future_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_kuchnia_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_nav_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_progress.dart';
 import 'package:diet_guard_app/screens/log_meal_sync_mixin.dart';
-import 'package:diet_guard_app/services/due_slot_check.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/autocomplete_suggestion_list.dart';
+import 'package:diet_guard_app/widgets/fill_all_row.dart';
 import 'package:diet_guard_app/widgets/log_meal_actions_row.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
 import 'package:diet_guard_app/widgets/sync_health_banner.dart';
@@ -46,6 +47,7 @@ class _LogMealScreenState extends State<LogMealScreen>
         LogMealSyncMixin<LogMealScreen>,
         LogMealNavMixin<LogMealScreen>,
         LogMealKuchniaMixin<LogMealScreen>,
+        LogMealFillMixin<LogMealScreen>,
         LogMealFutureMixin<LogMealScreen> {
   @override
   http.Client? get syncHttpClient => widget.httpClient;
@@ -113,6 +115,11 @@ class _LogMealScreenState extends State<LogMealScreen>
   MacroControllers get macroControllers => _macros;
   @override
   void onDishPrefilled() => setState(() => _source = 'catering');
+  @override
+  void showFillStatus(String message) => setState(() {
+    _status = message;
+    _progress = null;
+  });
 
   void _onSuggestionSelected(FoodSuggestion suggestion) {
     fillControllersFromSuggestion(suggestion, _descController, _macros);
@@ -146,20 +153,7 @@ class _LogMealScreenState extends State<LogMealScreen>
       when: target.when,
     );
     resetFutureLog();
-    final log = await LogStorageService.instance.readLog();
-    await FoodBankService.instance.rebuildAndPersist(log);
-    // Push the new meal now instead of waiting for the next lifecycle event,
-    // so the PC gate can see it in seconds. Fire-and-forget and best-effort:
-    // autoSync is single-flight and swallows offline/transient failures.
-    unawaited(autoSync());
-    // Offline backstop: if the push above fails (no connectivity), a
-    // connectivity-gated WorkManager task uploads the meal on reconnect.
-    unawaited(enqueueSyncBackstopTask());
-    // Clears a reminder the meal just logged has now satisfied; without it a
-    // notification already on screen survives up to 15 min and reads as a
-    // false alarm. `pullWhenDue: false` because `autoSync` above already owns
-    // the network for this submit.
-    await checkAndNotify(pullWhenDue: false);
+    final log = await publishAfterLog();
     if (!mounted) return;
     _descController.clear();
     _macros.clear();
@@ -226,6 +220,13 @@ class _LogMealScreenState extends State<LogMealScreen>
               onLog: _onLogMeal,
               deliveryBusy: deliveryBusy,
               dishesQueued: dishesStillQueued,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FillAllRow(
+              onFill: onFillAll,
+              onCancel: onFillCancel,
+              busy: fillFlow.busy || deliveryBusy,
+              armedCount: fillFlow.armedCount,
             ),
             // Mutually exclusive: _status carries a validation complaint,
             // _progress the post-log summary. A successful log clears one
