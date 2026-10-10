@@ -55,17 +55,22 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Picks "Custom…" from the open menu, typing [hhmm] in the time picker's
+  /// Taps [label]'s clock button and types [hh]:[mm] in the time picker's
   /// keyboard mode.
-  Future<void> pickCustom(WidgetTester tester, String hh, String mm) async {
-    // The menu opens centred on the current value; "Custom…" is the first
-    // item, so it is reached by scrolling up.
-    await tester.scrollUntilVisible(
-      find.text('Custom…'),
-      -300,
-      scrollable: find.byType(Scrollable).last,
+  Future<void> pickExact(
+    WidgetTester tester,
+    String label,
+    String hh,
+    String mm,
+  ) async {
+    await tester.tap(
+      find.descendant(
+        of: find.byWidgetPredicate(
+          (w) => w is MealTimeDropdown && w.label == label,
+        ),
+        matching: find.byTooltip('Type or pick an exact time'),
+      ),
     );
-    await tester.tap(find.text('Custom…').last);
     await tester.pumpAndSettle();
     expect(find.byType(TimePickerDialog), findsOneWidget);
     await tester.tap(find.byIcon(Icons.keyboard_outlined));
@@ -107,38 +112,40 @@ void main() {
     expect(find.text('07:45  ·  10:45  ·  14:00  ·  17:00  ·  20:00'), findsOne);
   });
 
-  testWidgets('Custom… opens the time picker and applies 07:23', (
+  testWidgets('the clock button opens the time picker and applies 07:23', (
     tester,
   ) async {
     await pump(tester, _fiveMeals);
 
-    await openDropdown(tester, 'First meal');
-    await pickCustom(tester, '07', '23');
+    await pickExact(tester, 'First meal', '07', '23');
 
     expect(edits.last.firstMinute, 443);
     expect(edits.last.lastMinute, 1200);
     expect(find.text('07:23'), findsWidgets);
   });
 
-  testWidgets('Custom… is the first item, above 00:00', (tester) async {
+  testWidgets('no "Custom…" item remains in either menu', (tester) async {
     await pump(tester, _fiveMeals);
 
+    for (final dropdown in tester.widgetList<DropdownButton<int>>(
+      find.byType(DropdownButton<int>),
+    )) {
+      final values = [for (final item in dropdown.items!) item.value!];
+      expect(values.every((v) => v >= 0), isTrue, reason: 'no sentinel');
+    }
     await openDropdown(tester, 'First meal');
     await tester.scrollUntilVisible(
       find.text('00:00'),
       -300,
       scrollable: find.byType(Scrollable).last,
     );
-
-    final custom = tester.getTopLeft(find.text('Custom…').last).dy;
-    expect(custom, lessThan(tester.getTopLeft(find.text('00:00').last).dy));
+    expect(find.text('Custom…'), findsNothing);
   });
 
-  testWidgets('a custom last meal before the first is clamped', (tester) async {
+  testWidgets('an exact last meal before the first is clamped', (tester) async {
     await pump(tester, _fiveMeals);
 
-    await openDropdown(tester, 'Last meal');
-    await pickCustom(tester, '06', '00');
+    await pickExact(tester, 'Last meal', '06', '00');
 
     // One grid step after 08:00: the shortest legal window, not a rejection.
     expect(edits.last.lastMinute, 495);

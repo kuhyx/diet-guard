@@ -9,8 +9,8 @@ import 'package:diet_guard_app/widgets/meal_time_dropdown.dart';
 import 'package:flutter/material.dart';
 
 /// Latest minute the *grid* offers for the first meal: 23:30, leaving one
-/// grid step for a grid-aligned last meal. "Custom…" can go later, up to the
-/// 23:44 that [MealSchedule.normalized] allows.
+/// grid step for a grid-aligned last meal. The clock button can go later, up
+/// to the 23:44 that [MealSchedule.normalized] allows.
 const int _firstGridMax = kMinutesPerDay - 2 * kSlotGridMinutes;
 
 /// Latest first-meal minute [MealSchedule.normalized] keeps: one grid step

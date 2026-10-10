@@ -1,4 +1,4 @@
-/// A minute-of-day picker: a 15-minute dropdown plus a "Custom…" escape.
+/// A minute-of-day picker: a 15-minute dropdown plus an exact-time button.
 library;
 
 import 'dart:async';
@@ -8,15 +8,15 @@ import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 
-/// The dropdown value standing for "Custom…". Negative, so it can never
-/// collide with a real minute of day (`0..1439`).
-const int _customValue = -1;
-
 /// Picks a minute of day, offering the 15-minute grid within
-/// [minMinute]..[maxMinute] and a "Custom…" item that opens a time picker
-/// for any minute in that range.
+/// [minMinute]..[maxMinute], with a clock button beside it that opens a time
+/// picker for any minute in that range.
 ///
-/// The grid is what most people want and keeps the list short; "Custom…"
+/// A separate button rather than a "Custom…" menu item: the menu opens
+/// centred on the current value, so an item at either end of ~95 entries was
+/// always a long scroll away.
+///
+/// The grid is what most people want and keeps the list short; the button
 /// exists because an endpoint may legitimately sit off the grid (07:23 to
 /// match a train), and because the PC can set such a value and sync it here.
 /// That second case is why the current [value] is always offered as an item
@@ -44,12 +44,12 @@ class MealTimeDropdown extends StatelessWidget {
   /// Earliest minute offered (inclusive).
   final int minMinute;
 
-  /// Latest minute offered (inclusive), through "Custom…" if not the grid.
+  /// Latest minute offered (inclusive), via the clock button if not the grid.
   final int maxMinute;
 
   /// Latest grid mark listed, when it must stop short of [maxMinute] (the
   /// first meal's grid ends at 23:30 so a grid-aligned last meal still fits,
-  /// while "Custom…" may go to 23:44). Defaults to [maxMinute].
+  /// while the clock button may go to 23:44). Defaults to [maxMinute].
   final int? gridMaxMinute;
 
   /// Called with the chosen minute, already clamped into
@@ -77,7 +77,7 @@ class MealTimeDropdown extends StatelessWidget {
       ? minMinute
       : (minute > maxMinute ? maxMinute : minute);
 
-  Future<void> _pickCustom(BuildContext context) async {
+  Future<void> _pickExact(BuildContext context) async {
     final picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(hour: value ~/ 60, minute: value % 60),
@@ -99,29 +99,36 @@ class MealTimeDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ConstrainedBox(
     constraints: const BoxConstraints(maxWidth: AppWidth.field),
-    child: InputDecorator(
-      decoration: InputDecoration(labelText: label),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: value,
-          isDense: true,
-          isExpanded: true,
-          // "Custom…" first: at the end it sat ~95 grid items down.
-          items: [
-            const DropdownMenuItem(value: _customValue, child: Text('Custom…')),
-            for (final minute in options)
-              DropdownMenuItem(value: minute, child: Text(slotLabel(minute))),
-          ],
-          onChanged: (minute) {
-            if (minute == null) return;
-            if (minute == _customValue) {
-              unawaited(_pickCustom(context));
-            } else {
-              onChanged(minute);
-            }
-          },
+    child: Row(
+      spacing: AppSpacing.xs,
+      children: [
+        Expanded(
+          child: InputDecorator(
+            decoration: InputDecoration(labelText: label),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value: value,
+                isDense: true,
+                isExpanded: true,
+                items: [
+                  for (final minute in options)
+                    DropdownMenuItem(
+                      value: minute,
+                      child: Text(slotLabel(minute)),
+                    ),
+                ],
+                onChanged: (minute) =>
+                    minute == null ? null : onChanged(minute),
+              ),
+            ),
+          ),
         ),
-      ),
+        IconButton(
+          icon: const Icon(Icons.schedule),
+          tooltip: 'Type or pick an exact time',
+          onPressed: () => unawaited(_pickExact(context)),
+        ),
+      ],
     ),
   );
 }
