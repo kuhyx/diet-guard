@@ -93,6 +93,20 @@ void main() {
       );
     });
 
+    test('an off-the-hour schedule round trips through the wire', () {
+      // Dropping fm/lm on either side would silently snap 07:15 to 07:00.
+      const offHour = MealSchedule(firstMinute: 435, lastMinute: 1140, count: 5);
+      final entry = _entry('2026-08-16', offHour, '2026-08-16T10:00:00+02:00');
+      expect(scheduleFields([entry]).values.single.$1, {
+        'f': 7,
+        'l': 19,
+        'n': 5,
+        'fm': 435,
+      });
+      final back = logToScheduleHistory(budgetToLog(_record, const [], [entry]));
+      expect(back.single.schedule, offHour);
+    });
+
     test("normalizes a peer's out-of-range schedule", () {
       final log = budgetToLog(_record);
       final record = log[budgetRecordId]!;

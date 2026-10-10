@@ -143,5 +143,22 @@ void main() {
       expect(decoded['v'], 1);
       expect((decoded['e']! as Map).keys, contains('2026-08-16'));
     });
+
+    test('an off-the-hour schedule survives a reload', () async {
+      const offHour = MealSchedule(firstMinute: 443, lastMinute: 1155, count: 5);
+      await MealScheduleService.initForTesting(store);
+      await MealScheduleService.instance.recordChange(offHour);
+
+      MealScheduleService.resetForTesting();
+      await MealScheduleService.initForTesting(store);
+
+      expect(MealScheduleService.current, offHour);
+      final decoded =
+          jsonDecode(store.documents[MealScheduleService.documentName]!)
+              as Map<String, Object?>;
+      final today = (decoded['e']! as Map).values.last as Map;
+      expect(today['fm'], 443);
+      expect(today['lm'], 1155);
+    });
   });
 }

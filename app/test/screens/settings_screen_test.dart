@@ -85,6 +85,23 @@ void main() {
       expect(find.text('Meals per day'), findsOneWidget);
     });
   });
+  testWidgets('picking a quarter-hour first meal saves the schedule', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+      await settle(tester);
+
+      await tester.tap(find.widgetWithText(InputDecorator, 'First meal'));
+      await settle(tester);
+      await tester.tap(find.text('07:45').last);
+      await settle(tester);
+
+      // Through the real _applySchedule: normalised, recorded, persisted.
+      expect(MealScheduleService.current.firstMinute, 465);
+      expect(find.text('07:45  ·  11:45  ·  16:00  ·  20:00'), findsOneWidget);
+    });
+  });
   testWidgets('reflects a five-meal schedule as the user\'s example', (
     tester,
   ) async {
