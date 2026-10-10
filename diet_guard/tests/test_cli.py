@@ -195,8 +195,8 @@ class TestStatus:
     def test_slot_status_all_marks(self, capsys: pytest.CaptureFixture[str]) -> None:
         """The slot line shows logged / DUE / upcoming together."""
         with (
-            patch.object(_cli, "logged_slots_today", return_value={8}),
-            patch.object(_cli, "due_slots", return_value=[12]),
+            patch.object(_cli, "logged_slots_today", return_value={480}),
+            patch.object(_cli, "due_slots", return_value=[720]),
         ):
             _cli._print_slot_status()
         out = capsys.readouterr().out

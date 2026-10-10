@@ -52,7 +52,10 @@ __all__ = [
 
 
 def _style_notebook(root: tk.Misc) -> None:
-    """Theme the ``ttk.Notebook`` tab strip to match the gate's dark palette.
+    """Theme the History tab's ttk widgets to match the gate's dark palette.
+
+    Covers the ``ttk.Notebook`` tab strip and the schedule row's
+    ``ttk.Combobox`` fields.
 
     ``ttk`` widgets ignore plain ``bg=``/``fg=`` -- unlike every other widget
     here, they only take color from a named ``ttk.Style``. Without this the
@@ -76,4 +79,22 @@ def _style_notebook(root: tk.Misc) -> None:
         "TNotebook.Tab",
         background=[("selected", _ACCENT)],
         foreground=[("selected", _COLORS.palette.on_fill)],
+    )
+    # The meal-schedule row's HH:MM comboboxes.  Locked they are ``disabled``,
+    # which clam greys out; mapping the disabled state back to the field
+    # colours keeps the stored schedule legible, matching the read-only
+    # ``tk.Entry`` beside them.
+    style.configure(
+        "TCombobox",
+        fieldbackground=_FIELD_BG,
+        background=_FIELD_BG,
+        foreground=FG,
+        arrowcolor=FG,
+        insertcolor=FG,
+    )
+    style.map(
+        "TCombobox",
+        fieldbackground=[("disabled", _FIELD_BG), ("readonly", _FIELD_BG)],
+        foreground=[("disabled", FG)],
+        arrowcolor=[("disabled", _COLORS.palette.muted)],
     )

@@ -137,18 +137,20 @@ def _dish(priority: int, name: str = "d") -> Dish:
 class TestAssignSlots:
     def test_follows_the_providers_priority_not_payload_order(self) -> None:
         dishes = [_dish(3), _dish(1), _dish(2)]
-        assigned = assign_slots(dishes, (8, 12, 16))
+        assigned = assign_slots(dishes, (480, 720, 960))
         assert [item.dish.name for item in assigned] == ["d1", "d2", "d3"]
-        assert [item.slot for item in assigned] == [8, 12, 16]
+        assert [item.slot for item in assigned] == [480, 720, 960]
 
     def test_five_dishes_over_four_slots_double_up_the_earliest(self) -> None:
-        assigned = assign_slots([_dish(i) for i in range(1, 6)], (8, 12, 16, 20))
-        assert [item.slot for item in assigned] == [8, 8, 12, 16, 20]
+        assigned = assign_slots([_dish(i) for i in range(1, 6)], (480, 720, 960, 1200))
+        assert [item.slot for item in assigned] == [480, 480, 720, 960, 1200]
 
     def test_five_dishes_over_five_slots_map_one_to_one(self) -> None:
         # kuhy's real schedule; the catering plan is also five meals.
-        assigned = assign_slots([_dish(i) for i in range(1, 6)], (8, 11, 14, 17, 20))
-        assert [item.slot for item in assigned] == [8, 11, 14, 17, 20]
+        assigned = assign_slots(
+            [_dish(i) for i in range(1, 6)], (480, 660, 840, 1020, 1200)
+        )
+        assert [item.slot for item in assigned] == [480, 660, 840, 1020, 1200]
 
     @pytest.mark.parametrize("count", range(1, 9))
     @pytest.mark.parametrize("span", range(2, 7))
@@ -170,8 +172,8 @@ class TestAssignSlots:
         # Two dishes sharing a priority must not reshuffle between runs: an
         # unstable order looks like a change and re-stamps every bank record.
         dishes = [_dish(1, "b"), _dish(1, "a")]
-        first = [item.dish.name for item in assign_slots(dishes, (8, 12))]
-        second = [item.dish.name for item in assign_slots(dishes[::-1], (8, 12))]
+        first = [item.dish.name for item in assign_slots(dishes, (480, 720))]
+        second = [item.dish.name for item in assign_slots(dishes[::-1], (480, 720))]
         assert first == second
 
     @pytest.mark.parametrize(

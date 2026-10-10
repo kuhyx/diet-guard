@@ -40,33 +40,40 @@ def _eat(desc: str, slot: int) -> None:
 
 class TestFillPlan:
     def test_an_empty_day_fills_every_slot(self) -> None:
-        plan = [_slotted("A", 8), _slotted("B", 12), _slotted("C", 20)]
+        plan = [_slotted("A", 480), _slotted("B", 720), _slotted("C", 1200)]
         assert fill_plan(plan) == plan
 
     def test_a_slot_with_a_meal_keeps_it(self) -> None:
-        _eat("apple", 12)
-        plan = fill_plan([_slotted("A", 8), _slotted("B", 12), _slotted("C", 20)])
-        assert [item.slot for item in plan] == [8, 20]
+        _eat("apple", 720)
+        plan = fill_plan([_slotted("A", 480), _slotted("B", 720), _slotted("C", 1200)])
+        assert [item.slot for item in plan] == [480, 1200]
 
     def test_two_dishes_sharing_an_empty_slot_both_land(self) -> None:
         # 5 dishes on 4 slots double up the first; occupancy is read once,
         # before the batch, so the second dish is not refused by the first.
-        plan = fill_plan([_slotted("A", 8), _slotted("B", 8)])
+        plan = fill_plan([_slotted("A", 480), _slotted("B", 480)])
         assert log_dishes(plan) == ["A", "B"]
 
     def test_a_full_day_fills_nothing(self) -> None:
-        for slot in (8, 12):
+        for slot in (480, 720):
             _eat("apple", slot)
-        assert fill_plan([_slotted("A", 8), _slotted("B", 12)]) == []
+        assert fill_plan([_slotted("A", 480), _slotted("B", 720)]) == []
+
+    def test_a_meal_near_a_slot_occupies_it(self) -> None:
+        # Logged at 08:15 (say, under an older schedule): it snaps to 08:00,
+        # the same rule the gate uses, so catering must not double that slot.
+        _eat("apple", 495)
+        plan = fill_plan([_slotted("A", 480), _slotted("B", 720)])
+        assert [item.slot for item in plan] == [720]
 
 
 class TestCliFill:
     def test_log_skips_a_taken_slot(self) -> None:
         # Two dishes on the default four slots spread to 08:00 and 16:00.
-        _eat("apple", 8)
+        _eat("apple", 480)
         dishes = [
-            replace(_slotted("Owsianka", 8).dish, priority=1),
-            replace(_slotted("Kaszotto", 16).dish, priority=2),
+            replace(_slotted("Owsianka", 480).dish, priority=1),
+            replace(_slotted("Kaszotto", 960).dish, priority=2),
         ]
         lines: list[str] = []
         with patch.object(

@@ -44,14 +44,18 @@ from pydantic import BaseModel
 # the names are genuinely used -- drop this and the server starts write-only.
 from diet_guard._mcp_read import get_averages, get_slots, get_status, list_today
 from diet_guard._mcp_server import APPENDS, logger, mcp
+from diet_guard._meal_schedule import is_wire_int
 from diet_guard._meal_schedule_store import current_schedule
 from diet_guard._resolve import ManualMacros, resolve_nutrition
-from diet_guard._slots import slot_for_log
+from diet_guard._slot_wire import parse_hhmm
+from diet_guard._slots import day_slots, slot_for_log, slot_label
 from diet_guard._state import (
     log_meal as record_meal,
 )
 from diet_guard._state import now_local
 from diet_guard._sync_events import publish_after_log
+
+_HOURS_PER_DAY = 24
 
 # ──────────────────────────────────────────────────────────────
 # Gated write tool (preview unless confirm=True; NEVER allowlist this)
@@ -74,12 +78,43 @@ class Macros(BaseModel):
     fat: float = 0.0
 
 
+def _resolve_slot_arg(slot: int | str | None) -> int:
+    """Return the slot minute ``log_meal``'s ``slot`` argument names.
+
+    An int is the legacy whole-hour form (``12`` -> 720), kept so an existing
+    caller's prompt does not silently start logging at 00:12; a string is
+    ``"HH:MM"``.  The result must be one of today's slots: an entry tagged
+    with a minute the schedule never offers would still snap to *some* slot,
+    but which one would be a surprise to the caller.
+
+    Raises:
+        ValueError: ``slot`` is not a clock time, or not one of today's slots.
+    """
+    schedule = current_schedule()
+    if slot is None:
+        return slot_for_log(now_local(), schedule)
+    if isinstance(slot, str):
+        minute = parse_hhmm(slot)
+    elif is_wire_int(slot) and 0 <= slot < _HOURS_PER_DAY:
+        # ``is_wire_int`` rejects ``True``: as an int it is 1, i.e. 01:00.
+        minute = slot * 60
+    else:
+        msg = f"slot {slot} is not an hour 0-23; pass a time like '07:15'"
+        raise ValueError(msg)
+    slots = day_slots(schedule)
+    if minute not in slots:
+        labels = ", ".join(slot_label(each) for each in slots)
+        msg = f"{slot_label(minute)} is not a meal slot today; choose one of {labels}"
+        raise ValueError(msg)
+    return minute
+
+
 @mcp.tool(title="Log a meal (gated write)", annotations=APPENDS)
 def log_meal(
     description: str,
     grams: float | None = None,
     macros: Macros | None = None,
-    slot: int | None = None,
+    slot: int | str | None = None,
     *,
     confirm: bool = False,
 ) -> dict[str, Any]:
@@ -104,15 +139,22 @@ def log_meal(
         macros: Manually-entered nutrition (``kcal`` plus optional
             protein/carbs/fat). When given, lookups are skipped and the meal is
             logged exactly as specified.
-        slot: The meal-slot hour to satisfy; when omitted (or None) it falls
-            back to ``slot_for_log``, which clamps to a real hour rather than
-            returning None, so the entry always satisfies some slot.
+        slot: The meal slot to satisfy, as ``"HH:MM"`` (e.g. ``"07:15"``) or
+            a legacy int hour (e.g. ``12`` for 12:00); it must be one of
+            today's slots (see ``get_slots``).  When omitted (or None) it
+            falls back to ``slot_for_log``, which clamps to a real slot rather
+            than returning None, so the entry always satisfies some slot.
+            ``target_slot`` in the result is the slot's minute of day.
         confirm: Set ``True`` to actually append the entry; otherwise preview.
 
     Returns:
         A preview or applied result dict; ``{"ok": false, "reason": ...}`` when
         the food cannot be resolved or the log cannot be written.
     """
+    try:
+        target_slot = _resolve_slot_arg(slot)
+    except ValueError as exc:
+        return {"ok": False, "reason": str(exc)}
     manual_macros = (
         ManualMacros(
             kcal=macros.kcal,
@@ -132,9 +174,6 @@ def log_meal(
                 "or Open Food Facts. Pass kcal=<number> to log it manually."
             ),
         }
-    target_slot = (
-        slot if slot is not None else slot_for_log(now_local(), current_schedule())
-    )
     resolved = {
         "kcal": nutrition.kcal,
         "protein_g": nutrition.protein_g,

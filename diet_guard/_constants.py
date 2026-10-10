@@ -76,18 +76,11 @@ OFF_USER_AGENT: str = "diet_guard/1.0 (personal diet tracker)"
 DEFAULT_PORTION_GRAMS: float = 100.0
 
 # --- Gate (log-to-unlock) ---------------------------------------------------
-# The gate is driven by FIXED MEAL SLOTS, not by a gap timer.  Starting at the
-# day-start hour, a slot opens every interval; once a slot's hour has passed,
-# that slot must carry a logged meal or the screen locks until it does.  This
-# makes tracking fully automatic (you are prompted on a schedule rather than
-# trusted to log voluntarily) and nudges regular eating.  Coming home late
-# naturally produces several unlogged elapsed slots at once -> one lock that
-# backfills the whole day, which is the "requirement to access the PC" behavior.
-GATE_DAY_START_HOUR: int = 8  # first slot (08:00); also the "beginning of day"
-GATE_SLOT_INTERVAL_HOURS: int = 4  # slots at 08:00, 12:00, 16:00, 20:00
-# Past this hour the gate never fires, so an unlogged late slot lapses quietly
-# instead of locking you out overnight.  (A new day resets all slots at 00:00.)
-GATE_EATING_END_HOUR: int = 22  # exclusive (22:00)
+# The gate is driven by MEAL SLOTS, not by a gap timer: once a slot's minute has
+# passed, that slot must carry a logged meal or the screen locks until it does.
+# Coming home late naturally produces several unlogged elapsed slots at once ->
+# one lock that backfills the whole day.  The slot minutes and the overnight
+# cutoff come from the user's schedule (``_meal_schedule``), not constants here.
 # flock single-instance guard: stops a timer from stacking lock windows.
 GATE_LOCK_FILE: Path = DATA_DIR / ".gate.lock"
 

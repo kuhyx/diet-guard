@@ -18,6 +18,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from diet_guard._estimator import Nutrition
+from diet_guard._meal_schedule_store import current_schedule
+from diet_guard._slot_wire import satisfied_by_entries, slot_fields
 from diet_guard._state import log_meal
 from diet_guard._state_today import today_entries
 
@@ -26,18 +28,30 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
     from diet_guard._kuchnia_parse import Dish
     from diet_guard._kuchnia_spread import SlottedDish
+    from diet_guard._meal_schedule import MealSchedule
 
 #: Marks entries this importer created, so the provenance is visible in the log
 #: and in the food bank's ``source`` column.
 SOURCE = "kuchnia wikinga"
 
 
-def _already_logged(entries: Sequence[dict[str, object]], name: str, slot: int) -> bool:
-    """Return True when today's log already holds this dish in this slot."""
+def _already_logged(
+    entries: Sequence[dict[str, object]],
+    name: str,
+    slot: int,
+    schedule: MealSchedule,
+) -> bool:
+    """Return True when today's log already holds this dish in this slot.
+
+    "In this slot" means the entry *snaps* to ``slot`` (its nearest slot under
+    today's schedule), the same rule the gate uses to call a slot satisfied.
+    An exact-minute comparison would re-log a dish the phone wrote under a
+    schedule that has since moved by a few minutes -- a duplicate on every peer.
+    """
     wanted = name.strip().casefold()
     return any(
         str(entry.get("desc", "")).strip().casefold() == wanted
-        and entry.get("slot") == slot
+        and slot in satisfied_by_entries((entry,), schedule)
         for entry in entries
     )
 
@@ -56,7 +70,7 @@ def fill_plan(slotted: Sequence[SlottedDish]) -> list[SlottedDish]:
     Returns:
         The dishes to log, in the order given.
     """
-    taken = {entry.get("slot") for entry in today_entries()}
+    taken = satisfied_by_entries(today_entries(), current_schedule())
     return [item for item in slotted if item.slot not in taken]
 
 
@@ -87,14 +101,15 @@ def log_dishes(chosen: Sequence[SlottedDish]) -> list[str]:
         The descriptions actually written, in the order they were logged.
     """
     entries = today_entries()
+    schedule = current_schedule()
     written: list[str] = []
     for item in chosen:
         dish = item.dish
-        if _already_logged(entries, dish.name, item.slot):
+        if _already_logged(entries, dish.name, item.slot, schedule):
             continue
         log_meal(dish.name, dish_nutrition(dish), item.slot)
         # Reflect the write locally so two identical dishes in one batch do not
         # both land: today_entries() was read once, before the loop.
-        entries = [*entries, {"desc": dish.name, "slot": item.slot}]
+        entries = [*entries, {"desc": dish.name, **slot_fields(item.slot)}]
         written.append(dish.name)
     return written

@@ -46,7 +46,7 @@ The band boundaries are the calendar's own (at or under budget / up to 20%
 over / more than 20% over), so a period and its day cells can never disagree
 about what "over" means.
 
-The timer runs the gate automatically every ~30 minutes; no manual
+The timer runs the gate automatically every ~15 minutes; no manual
 invocation is needed once installed.
 
 ## MCP server

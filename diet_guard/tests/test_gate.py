@@ -36,8 +36,8 @@ class TestDueSlots:
 
     def test_injected_now(self) -> None:
         """With 08:00 logged at 13:00, only 12:00 is due."""
-        with _logged({8}):
-            assert due_slots(_at(13)) == (12,)
+        with _logged({480}):
+            assert due_slots(_at(13)) == (720,)
 
     def test_default_now_uses_clock(self) -> None:
         """Omitting ``now`` reads the real clock (mocked here for determinism)."""
@@ -48,7 +48,7 @@ class TestDueSlots:
                 return_value=_at(9),
             ),
         ):
-            assert due_slots() == (8,)
+            assert due_slots() == (480,)
 
 
 class TestGateIsDue:
@@ -61,7 +61,7 @@ class TestGateIsDue:
 
     def test_not_due_when_all_logged(self) -> None:
         """Everything elapsed is logged -> no lock."""
-        with _logged({8, 12}):
+        with _logged({480, 720}):
             assert gate_is_due(_at(13)) is False
 
 
@@ -70,12 +70,12 @@ class TestGateMessage:
 
     def test_all_logged(self) -> None:
         """Nothing missing -> the up-to-date message."""
-        with _logged({8, 12}):
+        with _logged({480, 720}):
             assert "up to date" in gate_message(_at(13))
 
     def test_single_missing(self) -> None:
         """One missing slot -> singular phrasing."""
-        with _logged({8}):
+        with _logged({480}):
             assert gate_message(_at(13)) == "Log your 12:00 meal to unlock."
 
     def test_multiple_missing(self) -> None:

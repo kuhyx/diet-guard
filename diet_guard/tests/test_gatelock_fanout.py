@@ -8,21 +8,15 @@ touched the first surface fails here and nowhere else.
 
 from __future__ import annotations
 
-from contextlib import ExitStack
 import tkinter as tk
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from diet_guard import _gatelock_calendar
 from diet_guard._gatelock import MealGate
-from diet_guard.tests.conftest import (
-    _FAKE_TK,
-    _FAKE_TTK,
-    _GATE_TK_MODULES,
-    TWO_OUTPUTS,
-)
+from diet_guard.tests._gate_fixtures import fake_tk
+from diet_guard.tests.conftest import TWO_OUTPUTS
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -32,10 +26,10 @@ if TYPE_CHECKING:
 def dual_gate(dual_output: None) -> Iterator[MealGate]:
     """A demo gate built across two live outputs."""
     del dual_output
-    with ExitStack() as stack:
-        for module in _GATE_TK_MODULES:
-            stack.enter_context(patch.object(module, "tk", _FAKE_TK))
-        stack.enter_context(patch.object(_gatelock_calendar, "ttk", _FAKE_TTK))
+    # The shared patch set, never a hand-picked copy: a copy silently misses
+    # the next module that starts building widgets (the schedule row's ttk
+    # comboboxes were exactly that).
+    with fake_tk():
         yield MealGate(demo_mode=True)
 
 

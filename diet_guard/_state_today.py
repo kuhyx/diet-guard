@@ -18,14 +18,21 @@ already import them from.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from diet_guard._budget import daily_budget
 from diet_guard._constants import BUDGET_WARN_FRACTION
+from diet_guard._meal_schedule_store import current_schedule
+from diet_guard._slot_wire import satisfied_by_entries
 from diet_guard._state import (
     _entry_float,
     _today,
     entry_kcal,
     load_log,
 )
+
+if TYPE_CHECKING:
+    from diet_guard._meal_schedule import MealSchedule
 
 __all__ = [
     "consumption_band",
@@ -65,8 +72,14 @@ def today_total_macros() -> tuple[float, float, float]:
     return round(protein, 1), round(carbs, 1), round(fat, 1)
 
 
-def logged_slots_today() -> set[int]:
-    """Return the set of meal-slot hours already covered by today's log.
+def logged_slots_today(schedule: MealSchedule | None = None) -> set[int]:
+    """Return the set of today's slot minutes already covered by today's log.
+
+    Each entry satisfies the slot *nearest* its recorded minute
+    (:func:`diet_guard._slot_wire.satisfied_by_entries`), so a meal logged at
+    07:00 still covers a checkpoint the user has since moved to 07:15.
+    Without the snap, every schedule edit would re-open the slots already
+    eaten that day and lock the user out for meals they did log.
 
     Only valid (HMAC-verified) entries count, so stripping entries to dodge a
     checkpoint makes that slot reappear as unsatisfied -- the fail-closed
@@ -74,23 +87,22 @@ def logged_slots_today() -> set[int]:
     checkpoint) contributes calories but satisfies no slot.
 
     Nothing produces a slot-less entry any more: the phone's "Snack" chip was
-    removed on 2026-08-14, and every remaining writer resolves a concrete hour
+    removed on 2026-08-14, and every remaining writer resolves a concrete slot
     through ``slot_for_log`` -- the CLI (:mod:`_cli`), the gate
     (:mod:`_gatelock_mealflow`) and the MCP tool (:mod:`_mcp`, which falls back
-    to it whenever its ``slot`` argument is omitted or None).  The check below
-    is still load-bearing for entries already on disk and arriving over sync --
-    removing it would make every historical snack retroactively satisfy a meal
-    slot.
+    to it whenever its ``slot`` argument is omitted or None).  Skipping
+    slot-less entries (in ``satisfied_by_entries``) is still load-bearing for
+    entries already on disk and arriving over sync -- removing it would make
+    every historical snack retroactively satisfy a meal slot.
+
+    Args:
+        schedule: The schedule to snap onto; defaults to today's.
 
     Returns:
-        The distinct integer slot hours logged today (possibly empty).
+        The distinct slot minutes satisfied today (possibly empty).
     """
-    slots: set[int] = set()
-    for entry in today_entries():
-        value = entry.get("slot")
-        if isinstance(value, int) and not isinstance(value, bool):
-            slots.add(value)
-    return slots
+    resolved = schedule if schedule is not None else current_schedule()
+    return satisfied_by_entries(today_entries(), resolved)
 
 
 def remaining_budget() -> float:

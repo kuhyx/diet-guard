@@ -22,6 +22,7 @@ from unittest.mock import MagicMock
 
 from diet_guard import (
     _gatelock_calendar,
+    _gatelock_calendar_schedule,
     _gatelock_calendar_ui,
     _gatelock_ui,
     _gatelock_widgetgroups,
@@ -149,6 +150,7 @@ def test_fake_tk_actually_replaces_real_tkinter() -> None:
         assert not wrong, f"fake_tk() left real tkinter in place for: {wrong}"
         assert _gatelock_calendar.ttk is _FAKE_TTK
         assert _gatelock_calendar_ui.ttk is _FAKE_TTK
+        assert _gatelock_calendar_schedule.ttk is _FAKE_TTK
 
     # ...and is restored afterwards, so the fake cannot leak into other tests.
     assert _gatelock_ui.tk is tk

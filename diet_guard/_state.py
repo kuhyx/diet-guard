@@ -24,6 +24,7 @@ from gatelock.log_integrity import (
 
 from diet_guard._coerce import as_float
 from diet_guard._constants import FOOD_LOG_FILE
+from diet_guard._slot_wire import slot_fields
 
 if TYPE_CHECKING:
     from diet_guard._estimator import Nutrition
@@ -137,9 +138,12 @@ def log_meal(
     Args:
         description: The user's free-text meal description.
         nutrition: Estimated nutrition for the portion eaten.
-        slot: The meal-slot hour this entry satisfies (e.g. ``12`` for the
-            12:00 checkpoint).  When None the entry still counts toward the
-            day's calories but does not mark any slot as logged.
+        slot: The meal-slot *minute of day* this entry satisfies (e.g.
+            ``720`` for the 12:00 checkpoint, ``435`` for 07:15).  Encoded
+            through :func:`diet_guard._slot_wire.slot_fields`, so a whole-hour
+            slot is written exactly as before the move to minutes.  When None
+            the entry still counts toward the day's calories but does not mark
+            any slot as logged.
         components: For a composite (multi-item) meal, each component's own
             name and macros.  Carried on the log entry itself -- not just the
             food bank -- so a bank rebuilt purely by replaying the log (the
@@ -173,7 +177,9 @@ def log_meal(
         "source": nutrition.source,
     }
     if slot is not None:
-        entry["slot"] = slot
+        # Before signing: the HMAC covers the whole dict, so a ``slot_min``
+        # added afterwards would make the entry fail verification and vanish.
+        entry.update(slot_fields(slot))
     if components is not None:
         entry["components"] = list(components)
     signature = compute_entry_hmac(entry)

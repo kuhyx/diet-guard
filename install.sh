@@ -10,7 +10,7 @@
 #      site-packages (the systemd service runs /usr/bin/python directly, not
 #      a venv, so the package must live where that interpreter can find it —
 #      see CLAUDE.md's "Production dependency installation" section)
-#   3. Installs + enables the systemd user timer that fires the gate every ~30m
+#   3. Installs + enables the systemd user timer that fires the gate every ~15m
 #   4. Installs + enables the systemd user timer that syncs the log every ~15m
 #      (the sync itself stays unconfigured -- and a no-op -- until you create
 #      a sync token; see the reminder this step prints)
@@ -57,7 +57,7 @@ cp "$SERVICE_SRC" "$SYSTEMD_USER_DIR/diet-guard-gate.service"
 cp "$TIMER_SRC" "$SYSTEMD_USER_DIR/diet-guard-gate.timer"
 systemctl --user daemon-reload
 systemctl --user enable --now diet-guard-gate.timer
-echo "  Timer enabled and started (fires the gate every ~30 min)."
+echo "  Timer enabled and started (fires the gate every ~15 min)."
 
 # 4. Retire the old periodic sync timer ---------------------------------------
 # Sync is event-driven now (before a lock, after a meal is logged -- see
@@ -96,6 +96,6 @@ else
 fi
 
 echo "=== Installation complete ==="
-echo "The gate checks every ~30 min (08:00-22:00) and locks until you log a meal"
-echo "once you have gone 5h without logging."
+echo "The gate checks every ~15 min and locks until you log a meal once a meal"
+echo "slot passes unlogged (08:00/12:00/16:00/20:00 by default; editable)."
 echo "Test the lock now (safe, closeable): python -m diet_guard gate --demo"

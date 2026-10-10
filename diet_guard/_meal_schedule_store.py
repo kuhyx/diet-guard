@@ -34,7 +34,12 @@ import json
 import logging
 
 from diet_guard._constants import MEAL_SCHEDULE_FILE
-from diet_guard._meal_schedule import DEFAULT_SCHEDULE, MealSchedule
+from diet_guard._meal_schedule import (
+    DEFAULT_SCHEDULE,
+    MealSchedule,
+    schedule_from_wire,
+    schedule_to_wire,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -65,33 +70,27 @@ class ScheduleEntry:
 
 def entry_to_json(entry: ScheduleEntry) -> dict[str, object]:
     """Return the wire/disk form of one entry's value."""
-    return {
-        "f": entry.schedule.first,
-        "l": entry.schedule.last,
-        "n": entry.schedule.count,
-        "t": entry.edited_at,
-    }
+    # ``schedule_to_wire`` keeps a whole-hour schedule byte-identical to the
+    # pre-minute ``{"f", "l", "n"}`` form, so an older build reading this file
+    # still sees the hours it understands.
+    return {**schedule_to_wire(entry.schedule), "t": entry.edited_at}
 
 
 def entry_from_json(effective_from: str, raw: object) -> ScheduleEntry | None:
     """Return an entry parsed from its stored value, or None if unusable.
 
     Never raises: a malformed entry is skipped so one bad field from a peer
-    cannot take out the whole history.
+    cannot take out the whole history.  ``schedule_from_wire`` normalises on
+    the way in, so a peer running a future version with a wider range cannot
+    hand us a schedule we would derive differently.
     """
-    if not isinstance(raw, dict):
-        return None
-    first, last, count = raw.get("f"), raw.get("l"), raw.get("n")
-    if not (
-        isinstance(first, int) and isinstance(last, int) and isinstance(count, int)
-    ):
+    schedule = schedule_from_wire(raw)
+    if schedule is None or not isinstance(raw, dict):
         return None
     edited_at = raw.get("t")
     return ScheduleEntry(
         effective_from=effective_from,
-        # Normalising on the way in means a peer running a future version with
-        # a wider range cannot hand us a schedule we would derive differently.
-        schedule=MealSchedule(first, last, count).normalized(),
+        schedule=schedule,
         edited_at=edited_at if isinstance(edited_at, str) else _EPOCH_ISO,
     )
 

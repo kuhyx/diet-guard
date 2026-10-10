@@ -7,7 +7,7 @@ Type=oneshot
 # DISPLAY mirrors wake-alarm.service: the gate opens a Tk window when a lock
 # is due, so without DISPLAY it would crash with "no display name and no
 # $DISPLAY" before it could even check. The command self-checks gate_is_due()
-# and exits 0 when no lock is needed, so running it every ~30 min is cheap.
+# and exits 0 when no lock is needed, so running it every ~15 min is cheap.
 # No PYTHONPATH needed: diet_guard is pip-installed (see install.sh / README),
 # so /usr/bin/python finds it via user site-packages.
 #

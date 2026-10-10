@@ -135,7 +135,7 @@ class TestTheGateAdvancesTheQueue:
         a dead letter: the form clears and the remaining dishes are stranded
         behind another button click, which is an unguarded network walk each.
         """
-        gate._pending = [8, 12]
+        gate._pending = [480, 720]
         gate._delivery_pending = (_dish("Second course"),)
         with (
             patch.object(_gatelock_mealflow, "log_meal"),

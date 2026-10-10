@@ -21,6 +21,7 @@ rather than merely asserting that a widget was constructed.
 from __future__ import annotations
 
 __all__ = [
+    "FakeCombobox",
     "FakeNotebook",
     "FakeRadiobutton",
     "FakeStyle",
@@ -181,3 +182,27 @@ class FakeStyle:
 
     def map(self, style_name: str, **kwargs: object) -> None:
         self.configured.setdefault(style_name, {}).update(kwargs)
+
+
+class FakeCombobox(FakeWidget):
+    """A functional stand-in for ``ttk.Combobox``.
+
+    Reads and writes go through its ``textvariable`` (as the real widget's
+    do), ``state`` is readable via ``cget``, and ``bind`` keeps each handler
+    so a test can fire the Up/Down step bindings the way a keypress would.
+    """
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)
+        self.bindings: dict[str, object] = {}
+
+    def cget(self, key: str) -> object:
+        return self.configured.get(key, "")
+
+    def get(self) -> str:
+        variable = self.configured.get("textvariable")
+        return str(variable.get()) if hasattr(variable, "get") else ""
+
+    def bind(self, *args: object, **kwargs: object) -> None:
+        sequence, handler = args[0], args[1]
+        self.bindings[str(sequence)] = handler

@@ -81,25 +81,25 @@ class TestLogAndTotals:
 
     def test_log_and_total(self) -> None:
         """A logged meal counts toward the day's calories."""
-        log_meal("toast", _nut(150), slot=8)
+        log_meal("toast", _nut(150), slot=480)
         assert today_total_kcal() == 150.0
 
     def test_entry_carries_signature(self) -> None:
         """With a key present, the stored entry is signed."""
-        entry = log_meal("toast", _nut(150), slot=8)
+        entry = log_meal("toast", _nut(150), slot=480)
         assert "hmac" in entry
 
     def test_unsigned_when_no_key(self) -> None:
         """With no key, the entry is written unsigned and still read back."""
         with patch.object(_state, "compute_entry_hmac", return_value=None):
-            log_meal("toast", _nut(150), slot=8)
+            log_meal("toast", _nut(150), slot=480)
             assert "hmac" not in _raw()[next(iter(_raw()))][0]
             assert today_total_kcal() == 150.0
 
     def test_macros_sum(self) -> None:
         """today_total_macros sums protein/carbs/fat across entries."""
-        log_meal("eggs", _nut(140, protein=12, carbs=1, fat=10), slot=8)
-        log_meal("rice", _nut(200, protein=4, carbs=44, fat=1), slot=12)
+        log_meal("eggs", _nut(140, protein=12, carbs=1, fat=10), slot=480)
+        log_meal("rice", _nut(200, protein=4, carbs=44, fat=1), slot=720)
         assert today_total_macros() == (16.0, 45.0, 11.0)
 
     def test_slotless_entry_counts_calories_only(self) -> None:
@@ -141,12 +141,12 @@ class TestVerification:
 
     def test_valid_entry_kept(self) -> None:
         """A correctly signed entry survives verification."""
-        log_meal("toast", _nut(150), slot=8)
+        log_meal("toast", _nut(150), slot=480)
         assert today_entries()
 
     def test_tampered_entry_dropped(self) -> None:
         """An edited calorie value invalidates the signature and is dropped."""
-        log_meal("toast", _nut(150), slot=8)
+        log_meal("toast", _nut(150), slot=480)
         raw = _raw()
         day = next(iter(raw))
         raw[day][0]["kcal"] = 999
@@ -184,19 +184,19 @@ class TestIdAndComponents:
 
     def test_entry_has_id(self) -> None:
         """Every logged entry carries a UUID id."""
-        entry = log_meal("toast", _nut(150), slot=8)
+        entry = log_meal("toast", _nut(150), slot=480)
         assert isinstance(entry["id"], str)
         assert entry["id"]
 
     def test_ids_are_unique(self) -> None:
         """Two entries never collide on id."""
-        first = log_meal("a", _nut(1), slot=8)
-        second = log_meal("b", _nut(1), slot=12)
+        first = log_meal("a", _nut(1), slot=480)
+        second = log_meal("b", _nut(1), slot=720)
         assert first["id"] != second["id"]
 
     def test_components_omitted_by_default(self) -> None:
         """A single-food entry carries no components field."""
-        entry = log_meal("toast", _nut(150), slot=8)
+        entry = log_meal("toast", _nut(150), slot=480)
         assert "components" not in entry
 
     def test_components_carried_through(self) -> None:
@@ -211,7 +211,7 @@ class TestIdAndComponents:
                 "grams": 100.0,
             }
         ]
-        entry = log_meal("dinner", _nut(165), slot=20, components=parts)
+        entry = log_meal("dinner", _nut(165), slot=1200, components=parts)
         assert entry["components"] == parts
 
 
@@ -221,7 +221,7 @@ class TestFutureLogging:
     def test_buckets_under_the_future_date(self) -> None:
         """A future ``when`` places the entry under that date, not today."""
         future = now_local() + timedelta(days=1)
-        entry = log_meal("future meal", _nut(200), slot=12, when=future)
+        entry = log_meal("future meal", _nut(200), slot=720, when=future)
         future_day = future.date().isoformat()
         assert today_total_kcal() == 0.0
         assert load_log()[future_day][0]["desc"] == "future meal"
@@ -231,5 +231,5 @@ class TestFutureLogging:
         """A ``when`` before now raises ValueError and writes nothing."""
         past = now_local() - timedelta(days=1)
         with pytest.raises(ValueError, match="in the past"):
-            log_meal("late", _nut(50), slot=8, when=past)
+            log_meal("late", _nut(50), slot=480, when=past)
         assert load_log() == {}

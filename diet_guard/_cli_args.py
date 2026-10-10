@@ -87,9 +87,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     ate.add_argument(
         "--hour",
-        type=int,
+        type=str,
         default=None,
-        help="Slot hour on --date this meal satisfies (e.g. 20); requires --date.",
+        help="Meal slot on --date this meal satisfies, as HH:MM or HH (e.g."
+        " 07:15 or 20); must be one of that day's slots. Requires --date.",
     )
 
     sub.add_parser("status", help="Show today's calories and budget band.")

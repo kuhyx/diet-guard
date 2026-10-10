@@ -199,6 +199,9 @@ def fake_tk() -> Iterator[None]:
             stack.enter_context(patch.object(module, "tk", _FAKE_TK))
         stack.enter_context(patch.object(_gatelock_calendar, "ttk", _FAKE_TTK))
         stack.enter_context(patch.object(_gatelock_calendar_ui, "ttk", _FAKE_TTK))
+        # The schedule row's HH:MM comboboxes are ttk widgets; left real, they
+        # would be built against a fake parent.
+        stack.enter_context(patch.object(_gatelock_calendar_schedule, "ttk", _FAKE_TTK))
         yield
 
 

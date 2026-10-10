@@ -45,7 +45,7 @@ class TestRunSync:
 
     def test_pushes_local_log_when_no_other_devices_have_synced(self) -> None:
         _write_token()
-        log_meal("oatmeal", _nutrition(), slot=8)
+        log_meal("oatmeal", _nutrition(), slot=480)
         client = _mock_client(devices=())
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             merged = _sync.run_sync()
@@ -192,7 +192,7 @@ class TestRunSync:
 
     def test_rebuilds_the_food_bank_after_merge(self) -> None:
         _write_token()
-        log_meal("oatmeal", _nutrition(), slot=8)
+        log_meal("oatmeal", _nutrition(), slot=480)
         client = _mock_client(devices=())
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()

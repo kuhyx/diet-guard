@@ -145,11 +145,11 @@ class TestSyncBudget:
         """
         _write_token()
         write_budget(2000)
-        record_schedule_change(MealSchedule(8, 20, 5))
+        record_schedule_change(MealSchedule(480, 1200, 5))
         client = _mock_client(devices=())
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
-        assert load_schedule_entries()[-1].schedule == MealSchedule(8, 20, 5)
+        assert load_schedule_entries()[-1].schedule == MealSchedule(480, 1200, 5)
 
     def test_malformed_remote_budget_is_skipped(self) -> None:
         """A corrupt remote budget.json is skipped, not a crash."""

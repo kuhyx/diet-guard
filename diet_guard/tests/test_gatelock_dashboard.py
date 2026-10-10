@@ -54,10 +54,10 @@ class TestDashboard:
         gate._pending = []
         gate._refresh_slot_header()
         assert "All meals logged" in gate._vars.slot_header.get()
-        gate._pending = [8]
+        gate._pending = [480]
         gate._refresh_slot_header()
         assert "Log your" in gate._vars.slot_header.get()
-        gate._pending = [8, 12]
+        gate._pending = [480, 720]
         gate._refresh_slot_header()
         assert "remaining" in gate._vars.slot_header.get()
 
@@ -74,14 +74,14 @@ class TestSlotWalk:
 
     def test_slot_for_log_demo_is_none(self, gate: MealGate) -> None:
         """A demo gate tags logs with no real slot."""
-        gate._pending = [8]
+        gate._pending = [480]
         assert gate._slot_for_log() is None
 
     def test_slot_for_log_production_is_slot(self, gate: MealGate) -> None:
         """A production gate tags logs with the current slot."""
         gate.demo_mode = False
-        gate._pending = [12]
-        assert gate._slot_for_log() == 12
+        gate._pending = [720]
+        assert gate._slot_for_log() == 720
 
     def test_clear_inputs_resets_the_form(self, gate: MealGate) -> None:
         """Clearing between slots empties the description and the macros."""
@@ -93,7 +93,7 @@ class TestSlotWalk:
 
     def test_finish_slot_unlocks_on_last(self, gate: MealGate) -> None:
         """Finishing the final slot triggers unlock."""
-        gate._pending = [20]
+        gate._pending = [1200]
         with patch.object(gate, "_unlock") as unlock:
             gate._finish_slot("done")
         unlock.assert_called_once()
@@ -126,7 +126,7 @@ class TestFetchFromSync:
     def test_pull_failure_keeps_lock(self, gate: MealGate) -> None:
         """A failed pull shows the reason and leaves pending slots intact."""
         gate.demo_mode = False
-        gate._pending = [8, 12]
+        gate._pending = [480, 720]
         with patch.object(
             _gatelock_delivery,
             "pull_peer_logs",
@@ -134,52 +134,52 @@ class TestFetchFromSync:
         ):
             gate._on_fetch_sync()
             _drive_fetch(gate)
-        assert gate._pending == [8, 12]
+        assert gate._pending == [480, 720]
         assert "still locked" in gate._vars.status.get()
 
     def test_no_new_meals_keeps_all_slots(self, gate: MealGate) -> None:
         """A clean pull that satisfies nothing reports so and keeps the slots."""
         gate.demo_mode = False
-        gate._pending = [8, 12]
+        gate._pending = [480, 720]
         with (
             patch.object(_gatelock_delivery, "pull_peer_logs", return_value=None),
-            patch.object(_gatelock_delivery, "due_slots", return_value=(8, 12)),
+            patch.object(_gatelock_delivery, "due_slots", return_value=(480, 720)),
         ):
             gate._on_fetch_sync()
             _drive_fetch(gate)
-        assert gate._pending == [8, 12]
+        assert gate._pending == [480, 720]
         assert "No new meals" in gate._vars.status.get()
 
     def test_partial_advances_to_next_slot(self, gate: MealGate) -> None:
         """One slot pulled in leaves the rest; the window advances (singular)."""
         gate.demo_mode = False
-        gate._pending = [8, 12]
+        gate._pending = [480, 720]
         with (
             patch.object(_gatelock_delivery, "pull_peer_logs", return_value=None),
-            patch.object(_gatelock_delivery, "due_slots", return_value=(12,)),
+            patch.object(_gatelock_delivery, "due_slots", return_value=(720,)),
         ):
             gate._on_fetch_sync()
             _drive_fetch(gate)
-        assert gate._pending == [12]
+        assert gate._pending == [720]
         assert "Pulled 1 meal " in gate._vars.status.get()
 
     def test_partial_plural_wording(self, gate: MealGate) -> None:
         """Two slots pulled in uses the plural 'meals'."""
         gate.demo_mode = False
-        gate._pending = [8, 12, 16]
+        gate._pending = [480, 720, 960]
         with (
             patch.object(_gatelock_delivery, "pull_peer_logs", return_value=None),
-            patch.object(_gatelock_delivery, "due_slots", return_value=(16,)),
+            patch.object(_gatelock_delivery, "due_slots", return_value=(960,)),
         ):
             gate._on_fetch_sync()
             _drive_fetch(gate)
-        assert gate._pending == [16]
+        assert gate._pending == [960]
         assert "Pulled 2 meals" in gate._vars.status.get()
 
     def test_all_satisfied_unlocks(self, gate: MealGate) -> None:
         """When the pull satisfies every pending slot, the gate unlocks."""
         gate.demo_mode = False
-        gate._pending = [8, 12]
+        gate._pending = [480, 720]
         with (
             patch.object(_gatelock_delivery, "pull_peer_logs", return_value=None),
             patch.object(_gatelock_delivery, "due_slots", return_value=()),

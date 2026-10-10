@@ -25,7 +25,7 @@ from diet_guard._gatelock_layout import build_layout
 from diet_guard._gatelock_mealflow import _UNLOCK_DELAY_MS
 from diet_guard._gatelock_ui import GateCallbacks, make_vars
 from diet_guard._state import log_meal, now_local
-from diet_guard._state_today import today_entries
+from diet_guard._state_today import logged_slots_today
 from diet_guard.tests._gate_fixtures import fake_tk
 from diet_guard.tests.conftest import _nutrition
 from diet_guard.tests.test_gatelock_fillall import (
@@ -50,7 +50,7 @@ def _due_from_log(pending: list[int]) -> Callable[[], tuple[int, ...]]:
     """``due_slots`` as the log on disk says, so an unlock needs a real write."""
 
     def due() -> tuple[int, ...]:
-        taken = {entry.get("slot") for entry in today_entries()}
+        taken = logged_slots_today()
         return tuple(slot for slot in pending if slot not in taken)
 
     return due
@@ -86,29 +86,29 @@ class TestTheGateDrivesTheFlow:
 
     def test_fill_and_confirm_unlocks_from_catering(self, gate: MealGate) -> None:
         gate.demo_mode = False  # read once, when the flow is first built
-        gate._pending = [8, 12]
+        gate._pending = [480, 720]
         # Fill all also banks the dishes for one-at-a-time offering; the
         # unlock line must not then call them "still delivered".
         gate._delivery_pending = FOUR
-        due = _due_from_log([8, 12])
+        due = _due_from_log([480, 720])
         with patch.object(_gatelock_delivery, "due_slots", side_effect=due):
             _fill(gate, delivered(*FOUR))
         status = gate._vars.status.get()
         assert status == "Filled from catering — all meals logged, unlocking…"
         assert gate._pending == []
         gate.root.after.assert_called_with(_UNLOCK_DELAY_MS, gate.close)
-        assert sorted(logged()) == [8, 12, 16, 20]
+        assert sorted(logged()) == [480, 720, 960, 1200]
         assert gate._vars.fill_label.get() == FILL_LABEL
 
     def test_a_partial_fill_advances_instead_of_unlocking(self, gate: MealGate) -> None:
         gate.demo_mode = False
-        gate._pending = [8, 12]
-        due = _due_from_log([8, 12])
+        gate._pending = [480, 720]
+        due = _due_from_log([480, 720])
         # Two dishes spread onto 08:00 and 16:00: 12:00 is still owed.
         two = (dish("Owsianka", 1), dish("Obiad", 2))
         with patch.object(_gatelock_delivery, "due_slots", side_effect=due):
             _fill(gate, delivered(*two))
-        assert gate._pending == [12]
+        assert gate._pending == [720]
         assert "Pulled 1 meal " in gate._vars.status.get()
         assert "unlocking" not in gate._vars.status.get()
 

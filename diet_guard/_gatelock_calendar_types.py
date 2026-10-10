@@ -19,6 +19,7 @@ from gatelock import LockConfig
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from tkinter import ttk
 
 # BG/FG/ERR come from _gatelock_ui's public exports (themselves sourced from
 # LockConfig -- see DESIGN_AUDIT_TODO.md). The rest of the calendar's palette
@@ -60,7 +61,9 @@ class ScheduleVars:
 
     status: tk.StringVar
     first: tk.StringVar
+    """The first meal as ``HH:MM`` text, parsed only on save."""
     last: tk.StringVar
+    """The last meal as ``HH:MM`` text, parsed only on save."""
     count: tk.StringVar
     times: tk.StringVar
     """The derived checkpoint times, e.g. ``"08:00  11:00  14:00"``."""
@@ -89,8 +92,8 @@ class CalendarWidgets:
     budget_entry: tk.Entry
     budget_edit_button: tk.Button
     budget_status_label: tk.Label
-    schedule_first_entry: tk.Entry
-    schedule_last_entry: tk.Entry
+    schedule_first_entry: ttk.Combobox
+    schedule_last_entry: ttk.Combobox
     schedule_count_entry: tk.Entry
     schedule_edit_button: tk.Button
     schedule_status_label: tk.Label

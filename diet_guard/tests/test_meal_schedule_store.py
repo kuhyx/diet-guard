@@ -30,16 +30,32 @@ class TestEntryJson:
         """Encoding then decoding preserves the schedule and the stamp."""
         entry = store.ScheduleEntry(
             effective_from="2026-08-16",
-            schedule=MealSchedule(8, 20, 5),
+            schedule=MealSchedule(480, 1200, 5),
             edited_at="2026-08-16T12:00:00+00:00",
         )
         assert store.entry_from_json("2026-08-16", store.entry_to_json(entry)) == entry
+
+    def test_a_whole_hour_schedule_encodes_exactly_as_before(self) -> None:
+        """No ``fm``/``lm`` for whole hours: an older build reads it unchanged."""
+        entry = store.ScheduleEntry("2026-08-16", MealSchedule(480, 1200, 5), "t")
+        assert store.entry_to_json(entry) == {"f": 8, "l": 20, "n": 5, "t": "t"}
+
+    def test_an_off_hour_schedule_round_trips_its_minutes(self) -> None:
+        """07:15-19:00 keeps its quarter hour; ``f`` still carries the hour."""
+        entry = store.ScheduleEntry("2026-08-16", MealSchedule(435, 1140, 5), "t")
+        raw = store.entry_to_json(entry)
+        assert raw == {"f": 7, "l": 19, "n": 5, "fm": 435, "t": "t"}
+        assert store.entry_from_json("2026-08-16", raw) == entry
+
+    def test_rejects_a_bool_field(self) -> None:
+        """``true`` is not an int on the Dart side, so it is not one here."""
+        assert store.entry_from_json("2026-08-16", {"f": True, "l": 20, "n": 4}) is None
 
     def test_normalizes_on_the_way_in(self) -> None:
         """A peer's out-of-range schedule is clamped, not trusted verbatim."""
         entry = store.entry_from_json("2026-08-16", {"f": 8, "l": 20, "n": 99})
         assert entry is not None
-        assert entry.schedule == MealSchedule(8, 20, 6)
+        assert entry.schedule == MealSchedule(480, 1200, 6)
 
     def test_missing_timestamp_falls_back_to_the_epoch(self) -> None:
         """An entry with no stamp still parses, losing only its ordering."""
@@ -62,7 +78,7 @@ class TestHistoryJson:
     def test_round_trips_and_sorts(self) -> None:
         """Entries come back ascending regardless of insertion order."""
         entries = (
-            store.ScheduleEntry("2026-08-16", MealSchedule(8, 20, 5), "t1"),
+            store.ScheduleEntry("2026-08-16", MealSchedule(480, 1200, 5), "t1"),
             store.ScheduleEntry("2026-01-01", DEFAULT_SCHEDULE, "t0"),
         )
         parsed = store.history_from_json(store.history_to_json(entries))
@@ -90,17 +106,21 @@ class TestScheduleForDay:
 
     def test_defaults_when_the_history_is_silent(self) -> None:
         """A day before any entry uses the default, not the newest entry."""
-        entries = (store.ScheduleEntry("2026-08-16", MealSchedule(8, 20, 5), "t"),)
+        entries = (store.ScheduleEntry("2026-08-16", MealSchedule(480, 1200, 5), "t"),)
         assert store.schedule_for_day(entries, "2026-08-15") == DEFAULT_SCHEDULE
 
     def test_uses_the_newest_applicable_entry(self) -> None:
         """The latest entry effective on or before the day wins."""
         entries = (
-            store.ScheduleEntry("2026-01-01", MealSchedule(8, 20, 4), "t0"),
-            store.ScheduleEntry("2026-08-16", MealSchedule(8, 20, 5), "t1"),
+            store.ScheduleEntry("2026-01-01", MealSchedule(480, 1200, 4), "t0"),
+            store.ScheduleEntry("2026-08-16", MealSchedule(480, 1200, 5), "t1"),
         )
-        assert store.schedule_for_day(entries, "2026-08-16") == MealSchedule(8, 20, 5)
-        assert store.schedule_for_day(entries, "2026-05-01") == MealSchedule(8, 20, 4)
+        assert store.schedule_for_day(entries, "2026-08-16") == MealSchedule(
+            480, 1200, 5
+        )
+        assert store.schedule_for_day(entries, "2026-05-01") == MealSchedule(
+            480, 1200, 4
+        )
 
 
 class TestUpsert:
@@ -108,16 +128,16 @@ class TestUpsert:
 
     def test_appends_a_new_day(self) -> None:
         """An edit on a fresh day adds an entry."""
-        entries = store.upsert((), MealSchedule(8, 20, 5), _at("2026-08-16"))
+        entries = store.upsert((), MealSchedule(480, 1200, 5), _at("2026-08-16"))
         assert len(entries) == 1
         assert entries[0].effective_from == "2026-08-16"
 
     def test_replaces_a_same_day_re_edit(self) -> None:
         """Editing twice in one day leaves one entry, not two."""
-        first = store.upsert((), MealSchedule(8, 20, 5), _at("2026-08-16"))
-        second = store.upsert(first, MealSchedule(9, 21, 3), _at("2026-08-16"))
+        first = store.upsert((), MealSchedule(480, 1200, 5), _at("2026-08-16"))
+        second = store.upsert(first, MealSchedule(540, 1260, 3), _at("2026-08-16"))
         assert len(second) == 1
-        assert second[0].schedule == MealSchedule(9, 21, 3)
+        assert second[0].schedule == MealSchedule(540, 1260, 3)
 
 
 class TestSeedDefault:
@@ -144,10 +164,10 @@ class TestPersistence:
 
     def test_round_trips_through_disk(self) -> None:
         """What is written is what is read back."""
-        store.record_schedule_change(MealSchedule(8, 20, 5), when=_at("2026-08-16"))
+        store.record_schedule_change(MealSchedule(480, 1200, 5), when=_at("2026-08-16"))
         assert store.schedule_for_day(
             store.load_entries(), "2026-08-16"
-        ) == MealSchedule(8, 20, 5)
+        ) == MealSchedule(480, 1200, 5)
 
     def test_recording_grandfathers_earlier_days(self) -> None:
         """Switching to five meals leaves past days on the four-meal schedule.
@@ -156,10 +176,12 @@ class TestPersistence:
         past day would adopt the schedule chosen today and look like it had
         missed a checkpoint.
         """
-        store.record_schedule_change(MealSchedule(8, 20, 5), when=_at("2026-08-16"))
+        store.record_schedule_change(MealSchedule(480, 1200, 5), when=_at("2026-08-16"))
         entries = store.load_entries()
         assert store.schedule_for_day(entries, "2020-01-01") == DEFAULT_SCHEDULE
-        assert store.schedule_for_day(entries, "2026-08-16") == MealSchedule(8, 20, 5)
+        assert store.schedule_for_day(entries, "2026-08-16") == MealSchedule(
+            480, 1200, 5
+        )
 
     def test_corrupt_file_degrades_to_the_default(self) -> None:
         """Unparsable JSON is treated as "no history", never a crash."""
@@ -189,8 +211,8 @@ class TestPersistence:
 
     def test_record_defaults_to_now(self) -> None:
         """Omitting ``when`` stamps the edit with the current time."""
-        store.record_schedule_change(MealSchedule(7, 19, 3))
+        store.record_schedule_change(MealSchedule(420, 1140, 3))
         today = datetime.now(tz=UTC).astimezone().date().isoformat()
         assert store.schedule_for_day(store.load_entries(), today) == MealSchedule(
-            7, 19, 3
+            420, 1140, 3
         )

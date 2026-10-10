@@ -21,6 +21,7 @@ from diet_guard._budget import BudgetError, current_schedule, daily_budget
 from diet_guard._gate import due_slots
 from diet_guard._mcp_server import READS_ONLY, mcp
 from diet_guard._meal_schedule_store import current_schedule as current_meal_schedule
+from diet_guard._slot_wire import entry_slot_minute
 from diet_guard._slots import current_slot, day_slots, slot_label
 from diet_guard._state import (
     load_log,
@@ -62,7 +63,9 @@ def _entry_view(entry: dict[str, object]) -> dict[str, Any]:
         "fat_g": entry.get("fat_g"),
         "grams": entry.get("grams"),
         "source": entry.get("source"),
-        "slot": entry.get("slot"),
+        # The recorded slot minute (``slot_min``, else the legacy hour x 60),
+        # in the same unit as every other slot this server reports.
+        "slot": entry_slot_minute(entry),
     }
 
 
@@ -78,8 +81,9 @@ def get_status() -> dict[str, Any]:
     Reports the calories and macros *consumed* so far, the qualitative
     :func:`consumption_band` (``"on track"`` / ``"approaching limit"`` /
     ``"OVER BUDGET"``, or ``None`` when no budget has been set yet), and the
-    meal-slot picture (which slots are due, which are already logged, and the
-    current slot). The raw budget number is intentionally withheld -- only the
+    meal-slot picture (which slots are due, as ``HH:MM`` labels; which are
+    already logged and the current slot, as minutes of day -- e.g. 435 for
+    07:15). The raw budget number is intentionally withheld -- only the
     band is exposed, mirroring how the CLI status shows a label to an automated
     caller rather than the anchor number.
     """
@@ -88,14 +92,15 @@ def get_status() -> dict[str, Any]:
     except BudgetError:
         # No budget set (or a corrupt file): surface the absence, not a number.
         band = None
+    schedule = current_meal_schedule()
     return {
         "consumed_kcal": today_total_kcal(),
         "consumed_macros_g": _macros_dict(today_total_macros()),
         "consumption_band": band,
         "budget_initialized": band is not None,
         "due_slots": [slot_label(slot) for slot in due_slots()],
-        "logged_slots": sorted(logged_slots_today()),
-        "current_slot": current_slot(now_local(), current_meal_schedule()),
+        "logged_slots": sorted(logged_slots_today(schedule)),
+        "current_slot": current_slot(now_local(), schedule),
     }
 
 
@@ -104,8 +109,8 @@ def list_today() -> dict[str, Any]:
     """List today's logged meals (valid entries only), newest last.
 
     Returns the per-entry description, calories, macros, portion, source, and
-    slot -- the same data the CLI ``status`` listing renders, minus the internal
-    HMAC signature.
+    recorded slot minute -- the same data the CLI ``status`` listing renders,
+    minus the internal HMAC signature.
     """
     entries = today_entries()
     return {
@@ -172,15 +177,18 @@ def get_averages() -> dict[str, Any]:
 
 @mcp.tool(title="Meal slots for the day", annotations=READS_ONLY)
 def get_slots() -> dict[str, Any]:
-    """Return the day's fixed meal slots and which one is current.
+    """Return today's meal slots and which one is current.
 
     Pure schedule information (08:00 / 12:00 / 16:00 / 20:00 by default) with no
-    budget or intake data attached.
+    budget or intake data attached.  Each slot is ``{"minute": m, "label":
+    "HH:MM"}`` with ``m`` the minute of day (e.g. 435 for 07:15); the label is
+    what ``log_meal``'s ``slot`` argument accepts.  ``current_slot`` is a
+    minute too, or None before the first slot.
     """
     schedule = current_meal_schedule()
     return {
         "day_slots": [
-            {"hour": slot, "label": slot_label(slot)} for slot in day_slots(schedule)
+            {"minute": slot, "label": slot_label(slot)} for slot in day_slots(schedule)
         ],
         "current_slot": current_slot(now_local(), schedule),
     }

@@ -116,10 +116,11 @@ def _print_entry_line(entry: dict[str, object]) -> None:
 
 def _print_slot_status() -> None:
     """Print each meal slot as logged / DUE / upcoming for today."""
-    logged = logged_slots_today()
+    schedule = current_schedule()
+    logged = logged_slots_today(schedule)
     due = set(due_slots())
     parts: list[str] = []
-    for slot in day_slots(current_schedule()):
+    for slot in day_slots(schedule):
         if slot in logged:
             mark = "logged"
         elif slot in due:
