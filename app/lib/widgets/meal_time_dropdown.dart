@@ -106,10 +106,11 @@ class MealTimeDropdown extends StatelessWidget {
           value: value,
           isDense: true,
           isExpanded: true,
+          // "Custom…" first: at the end it sat ~95 grid items down.
           items: [
+            const DropdownMenuItem(value: _customValue, child: Text('Custom…')),
             for (final minute in options)
               DropdownMenuItem(value: minute, child: Text(slotLabel(minute))),
-            const DropdownMenuItem(value: _customValue, child: Text('Custom…')),
           ],
           onChanged: (minute) {
             if (minute == null) return;

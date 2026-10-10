@@ -58,9 +58,11 @@ void main() {
   /// Picks "Custom…" from the open menu, typing [hhmm] in the time picker's
   /// keyboard mode.
   Future<void> pickCustom(WidgetTester tester, String hh, String mm) async {
+    // The menu opens centred on the current value; "Custom…" is the first
+    // item, so it is reached by scrolling up.
     await tester.scrollUntilVisible(
       find.text('Custom…'),
-      300,
+      -300,
       scrollable: find.byType(Scrollable).last,
     );
     await tester.tap(find.text('Custom…').last);
@@ -116,6 +118,20 @@ void main() {
     expect(edits.last.firstMinute, 443);
     expect(edits.last.lastMinute, 1200);
     expect(find.text('07:23'), findsWidgets);
+  });
+
+  testWidgets('Custom… is the first item, above 00:00', (tester) async {
+    await pump(tester, _fiveMeals);
+
+    await openDropdown(tester, 'First meal');
+    await tester.scrollUntilVisible(
+      find.text('00:00'),
+      -300,
+      scrollable: find.byType(Scrollable).last,
+    );
+
+    final custom = tester.getTopLeft(find.text('Custom…').last).dy;
+    expect(custom, lessThan(tester.getTopLeft(find.text('00:00').last).dy));
   });
 
   testWidgets('a custom last meal before the first is clamped', (tester) async {
