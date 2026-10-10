@@ -86,7 +86,9 @@ Editable on both surfaces: the app's Settings screen
 (`_gatelock_scheduleedit.py`, widgets in `_gatelock_calendar_schedule.py`).
 The gate's first/last fields are `ttk.Combobox`es offering every quarter hour
 and accepting any typed `HH:MM`; Up/Down step 15 minutes without posting the
-dropdown, which gatelock's grab watch would close over the real lock.
+dropdown. Typing and Up/Down are the real paths: the popdown list maps
+*beneath* the lock surface (gatelock keeps it raised), and on the real lock the
+grab watch re-takes the grab from it.
 
 `diet-guard-gate.timer` fires every 15 minutes (`*:00/15:00`), so it lands on
 every grid slot exactly; an off-grid first/last meal is caught by the next

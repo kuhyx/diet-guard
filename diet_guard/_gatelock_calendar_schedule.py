@@ -10,12 +10,13 @@ offers every quarter hour, and the user may also type any ``HH:MM``.  The
 ``ttk`` import is load-bearing for the tests, which patch this module's
 ``ttk`` with a fake -- keep binding it at module level.
 
-**The dropdown is a popup over a grabbed lock.**  gatelock's grab watch treats
-a ``ttk.Combobox`` popdown as "grab lost" and re-takes the grab within about a
-second, which closes the list.  So the list is a convenience, never the only
-path: typing works, and Up/Down step the value by 15 minutes *without* posting
-the list (:func:`step_time`), which keeps the row fully usable from the
-keyboard on the real lock.
+**The dropdown is a popup over a lock that keeps itself on top.**  Observed on
+Xvfb (2026-10-10, demo gate): the ``ComboboxPopdown`` window maps but sits
+*beneath* the lock surface, which gatelock re-raises; on the real lock its grab
+watch also treats the popdown as "grab lost" and re-takes the grab.  So the
+list cannot be relied on: typing works, and Up/Down step the value by 15
+minutes *without* posting the list (:func:`step_time`), which keeps the row
+fully usable from the keyboard.
 """
 
 from __future__ import annotations
