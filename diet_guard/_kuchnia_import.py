@@ -130,7 +130,8 @@ def refresh_delivery_once(day: date) -> tuple[list[Dish], str | None]:
     if last_import_day() == stamp:
         return [], None
     dishes, reason = refresh_delivery(day)
-    if reason is None:
-        # Only a clean fetch counts: an outage must not suppress the retry.
+    if reason is None and dishes:
+        # Only a fetch that found dishes counts: an outage, or a walk that
+        # missed the delivery, must not suppress the day's retries.
         record_import_day(stamp)
     return dishes, reason

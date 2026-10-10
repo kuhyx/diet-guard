@@ -139,7 +139,9 @@ class KuchniaQueueService {
     if (service == null) return const KuchniaRefresh();
     if (service.alreadyFetched(day)) return const KuchniaRefresh();
     final result = await refreshDelivery(day);
-    if (result.ok) await service.recordFetched(day);
+    // Only a fetch that found dishes counts: an outage, or a walk that missed
+    // the delivery, must not suppress the day's retries.
+    if (result.ok && result.dishes.isNotEmpty) await service.recordFetched(day);
     return result;
   }
 }

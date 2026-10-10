@@ -2,7 +2,9 @@
 
 Three calls, and the shape of the walk is not what the endpoint names suggest:
 
-1. ``company/customer/order/active-ids`` -> ``[orderId]``.
+1. ``company/customer/order/active-ids`` -> ``[orderId, ...]``.  More than one
+   while a renewal overlaps the running order, **newest first** -- so the first
+   id is the future order and today's delivery sits in a later one.
 2. ``company/customer/order/{orderId}`` -> the order, which **embeds every
    delivery** with its date.  No enumeration call is needed, but the embedded
    ``deliveryMeals`` carry ids only -- no dish names, no macros.
@@ -29,12 +31,12 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from diet_guard._kuchnia_parse import Dish
 
 
-def _active_order_id(session: PanelSession) -> object | None:
-    """Return the first active order id, or None when there is no active order."""
+def _active_order_ids(session: PanelSession) -> list[object]:
+    """Return every active order id, empty when there is no active order."""
     payload = session.get_json("company/customer/order/active-ids")
-    if not isinstance(payload, list) or not payload:
-        return None
-    return payload[0]
+    if not isinstance(payload, list):
+        return []
+    return payload
 
 
 def _delivery_id_for(payload: object, wanted: str) -> object | None:
@@ -76,11 +78,14 @@ def fetch_dishes(session: PanelSession, day: date) -> list[Dish]:
     Raises:
         KuchniaError: When the panel cannot be read.
     """
-    order_id = _active_order_id(session)
-    if order_id is None:
-        return []
-    order = session.get_json(f"company/customer/order/{order_id}")
-    delivery_id = _delivery_id_for(order, day.isoformat())
+    # Never trust the list's order: on 2026-10-10 a renewal starting 10-24
+    # came first, and reading only it made every day look delivery-free.
+    delivery_id = None
+    for order_id in _active_order_ids(session):
+        order = session.get_json(f"company/customer/order/{order_id}")
+        delivery_id = _delivery_id_for(order, day.isoformat())
+        if delivery_id is not None:
+            break
     if delivery_id is None:
         return []
     menu = session.get_json(f"company/general/menus/delivery/{delivery_id}/new")

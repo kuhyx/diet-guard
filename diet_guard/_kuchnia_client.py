@@ -15,11 +15,13 @@ still wins over the lazy hook.
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from importlib import import_module
 import sys
 import time
 from typing import TYPE_CHECKING
 
+from diet_guard import _kuchnia_config
 from diet_guard._constants import (
     KUCHNIA_API_BASE,
     KUCHNIA_COMPANY,
@@ -119,6 +121,13 @@ class PanelSession:
         )
         if not response.ok:
             msg = f"catering login rejected (HTTP {response.status_code})"
+            if response.status_code == HTTPStatus.UNAUTHORIZED:
+                # The PC reads the hand-written file first, so that is the
+                # password to fix -- not the synced copy.
+                msg += (
+                    " -- check the password in "
+                    f"{_kuchnia_config.KUCHNIA_CREDENTIALS_FILE}"
+                )
             raise KuchniaError(msg)
         cookie = self._session.cookies.get(SESSION_COOKIE)
         if cookie is None:

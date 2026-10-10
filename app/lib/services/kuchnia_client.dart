@@ -134,8 +134,13 @@ class KuchniaSession {
       throw KuchniaError('catering panel unreachable: $error');
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      // A 401 is a wrong password, and on the phone the only place to fix it
+      // is Settings; any other status is the panel's problem, not the user's.
+      final hint = response.statusCode == 401
+          ? ' — check the password in Settings'
+          : '';
       throw KuchniaError(
-        'catering login rejected (HTTP ${response.statusCode})',
+        'catering login rejected (HTTP ${response.statusCode})$hint',
       );
     }
     final cookie = sessionCookieFrom(response.headers['set-cookie']);

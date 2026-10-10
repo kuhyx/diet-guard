@@ -106,13 +106,22 @@ class TestAuthenticate:
         assert session.calls == []
         assert session.cookies["SESSION"] == "cached"
 
-    def test_a_rejected_login_raises(self, creds: None) -> None:
+    def test_a_rejected_login_names_the_password_to_fix(self, creds: None) -> None:
         session = _session_with([FakeResponse(401, {})])
         with (
             patch.object(_kuchnia_client, "requests", fake_requests(session)),
-            pytest.raises(KuchniaError, match="login rejected"),
+            pytest.raises(KuchniaError, match=r"login rejected.*check the password"),
         ):
             PanelSession().authenticate()
+
+    def test_a_server_error_at_login_blames_no_password(self, creds: None) -> None:
+        session = _session_with([FakeResponse(500, {})])
+        with (
+            patch.object(_kuchnia_client, "requests", fake_requests(session)),
+            pytest.raises(KuchniaError, match="login rejected") as raised,
+        ):
+            PanelSession().authenticate()
+        assert "password" not in str(raised.value)
 
     def test_a_login_that_sets_no_cookie_raises(self, creds: None) -> None:
         session = _session_with([FakeResponse(200, {})])

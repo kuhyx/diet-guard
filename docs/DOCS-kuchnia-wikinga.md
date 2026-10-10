@@ -52,7 +52,10 @@ responses on 2026-08-22. Re-check if the bundle hashes change.
 
 The walk is three calls:
 
-1. `company/customer/order/active-ids` → `[orderId]`
+1. `company/customer/order/active-ids` → `[orderId, …]`, **newest first**. A
+   renewal overlapping the running order makes it two ids, and the first is
+   the *future* order — so every id is walked until one has the day's
+   delivery (2026-10-10: reading only `[0]` made every day look empty).
 2. `company/customer/order/{orderId}` → the order, which **embeds every
    delivery** with its date. No enumeration call needed — but `deliveryMeals`
    carries ids only, no names and no macros.

@@ -3,7 +3,9 @@
 /// The Dart mirror of `diet_guard/_kuchnia_orders.py`. Three calls, and the
 /// shape of the walk is not what the endpoint names suggest:
 ///
-/// 1. `company/customer/order/active-ids` -> `[orderId]`.
+/// 1. `company/customer/order/active-ids` -> `[orderId, ...]`. More than one
+///    while a renewal overlaps the running order, **newest first** -- so the
+///    first id is the future order and today's delivery sits in a later one.
 /// 2. `company/customer/order/{orderId}` -> the order, which **embeds every
 ///    delivery** with its date. No enumeration call is needed, but the
 ///    embedded `deliveryMeals` carry ids only -- no names, no macros.
@@ -21,10 +23,10 @@ import 'package:diet_guard_app/services/kuchnia_client.dart';
 import 'package:diet_guard_app/services/kuchnia_errors.dart';
 import 'package:diet_guard_app/services/kuchnia_parse.dart';
 
-/// Returns the first active order id, or null when there is no active order.
-Object? activeOrderId(Object? payload) {
-  if (payload is! List || payload.isEmpty) return null;
-  return payload.first;
+/// Returns every active order id, empty when there is no active order.
+List<Object?> activeOrderIds(Object? payload) {
+  if (payload is! List) return const [];
+  return payload;
 }
 
 /// Returns the delivery id whose date is [wanted] (an ISO `YYYY-MM-DD`).
@@ -59,14 +61,18 @@ Future<List<KuchniaDish>> fetchDishes(
   KuchniaSession session,
   DateTime day,
 ) async {
-  final orderId = activeOrderId(await session.getJson(
+  final orderIds = activeOrderIds(await session.getJson(
     'company/customer/order/active-ids',
   ));
-  if (orderId == null) return const [];
-
-  final order = await session.getJson('company/customer/order/$orderId');
   final wanted = isoDay(day);
-  final deliveryId = deliveryIdFor(order, wanted);
+  // Never trust the list's order: on 2026-10-10 a renewal starting 10-24
+  // came first, and reading only it made every day look delivery-free.
+  Object? deliveryId;
+  for (final orderId in orderIds) {
+    final order = await session.getJson('company/customer/order/$orderId');
+    deliveryId = deliveryIdFor(order, wanted);
+    if (deliveryId != null) break;
+  }
   if (deliveryId == null) return const [];
 
   final menu = await session.getJson(

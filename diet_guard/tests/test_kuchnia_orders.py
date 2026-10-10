@@ -117,3 +117,42 @@ class TestFetchDishes:
         panel, session = self._panel([FakeResponse(200, {"not": "a list"})])
         with patch.object(_kuchnia_client, "requests", fake_requests(session)):
             assert fetch_dishes(panel, DAY) == []
+
+    def test_every_active_order_is_walked_for_the_day(self, creds: None) -> None:
+        # The panel lists ids newest first: while a renewal overlaps the running
+        # order, the first id is the *future* order and today sits in the next.
+        panel, session = self._panel(
+            [
+                FakeResponse(200, [2, 1]),
+                FakeResponse(200, order_payload(date="2026-10-24", delivery_id=999)),
+                FakeResponse(200, order_payload(delivery_id=111)),
+                FakeResponse(200, menu_payload(2)),
+            ],
+        )
+        with patch.object(_kuchnia_client, "requests", fake_requests(session)):
+            dishes = fetch_dishes(panel, DAY)
+        assert len(dishes) == 2
+        assert any("menus/delivery/111/new" in url for _, url in session.calls)
+
+    def test_the_walk_stops_at_the_first_order_with_the_day(self, creds: None) -> None:
+        panel, session = self._panel(
+            [
+                FakeResponse(200, [1, 2]),
+                FakeResponse(200, order_payload(delivery_id=111)),
+                FakeResponse(200, menu_payload(1)),
+            ],
+        )
+        with patch.object(_kuchnia_client, "requests", fake_requests(session)):
+            fetch_dishes(panel, DAY)
+        assert not any(url.endswith("order/2") for _, url in session.calls)
+
+    def test_no_order_with_the_day_is_not_an_error(self, creds: None) -> None:
+        panel, session = self._panel(
+            [
+                FakeResponse(200, [2, 1]),
+                FakeResponse(200, order_payload(date="2026-10-24")),
+                FakeResponse(200, order_payload(date="2026-01-01")),
+            ],
+        )
+        with patch.object(_kuchnia_client, "requests", fake_requests(session)):
+            assert fetch_dishes(panel, DAY) == []

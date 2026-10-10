@@ -163,6 +163,16 @@ class TestRefreshOnce:
             _kuchnia_import.refresh_delivery_once(DAY)
         assert refresh.call_count == 2, "a failed day must be retried"
 
+    def test_an_empty_fetch_does_not_suppress_the_retry(self) -> None:
+        # "No delivery" is what a walk that missed the order looks like too;
+        # stamping it hid a whole day's delivery on 2026-10-10.
+        with patch.object(
+            _kuchnia_import, "refresh_delivery", return_value=([], None)
+        ) as refresh:
+            _kuchnia_import.refresh_delivery_once(DAY)
+            _kuchnia_import.refresh_delivery_once(DAY)
+        assert refresh.call_count == 2
+
     def test_an_unreadable_marker_just_means_fetch_again(self) -> None:
         marker = _kuchnia_config.KUCHNIA_LAST_IMPORT_FILE
         marker.parent.mkdir(parents=True, exist_ok=True)
