@@ -1,94 +1,87 @@
 /// Tests for the pure meal-schedule derivation.
 ///
-/// The vector table below is duplicated verbatim from
-/// `diet_guard/tests/test_meal_schedule.py`. KEEP THE TWO IN SYNC: it is the
-/// only thing that catches a Python/Dart divergence before it reaches a
-/// device, and a divergence there means one device nags for a checkpoint the
-/// other never offers -- a slot that can never be satisfied, i.e. a permanent
-/// lock.
+/// The cross-language exact values live in the shared fixture
+/// `tests/fixtures/meal_schedule_vectors.json`, asserted by
+/// `meal_schedule_vectors_test.dart` (and by its Python mirror). This file
+/// holds the properties: the grid sweep, the hour-formula regression and the
+/// clamps a human should read without opening the fixture. The sweeps are
+/// duplicated loop-for-loop in `diet_guard/tests/test_meal_schedule.py`.
 library;
 
 import 'package:diet_guard_app/models/meal_schedule.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// (first, last, count, expected slots). Shared with the Python mirror.
-const List<(int, int, int, List<int>)> scheduleVectors = [
-  // The eating window the user described, at every supported meal count.
-  (8, 20, 2, [8, 20]),
-  (8, 20, 3, [8, 14, 20]),
-  (8, 20, 4, [8, 12, 16, 20]), // today's hardcoded schedule
-  (8, 20, 5, [8, 11, 14, 17, 20]), // the user's stated example
-  (8, 20, 6, [8, 10, 13, 15, 18, 20]),
-  // A window that does not divide evenly: 14 hours across 3 gaps.
-  (7, 21, 4, [7, 12, 16, 21]),
-  (7, 21, 5, [7, 11, 14, 18, 21]),
-  (9, 19, 4, [9, 12, 16, 19]),
-  // Narrow windows: count is capped at the number of whole hours available,
-  // so the slots stay distinct instead of repeating an hour.
-  (8, 12, 6, [8, 9, 10, 11, 12]),
-  (8, 10, 5, [8, 9, 10]),
-  (8, 9, 4, [8, 9]),
-  // Whole-day extremes.
-  (0, 23, 6, [0, 5, 9, 14, 18, 23]),
-  (0, 1, 2, [0, 1]),
-];
+const int _h = 60;
+
+/// The pre-minute whole-hour derivation, converted to minutes.
+List<int> _oldHourSlots(int first, int last, int count) {
+  final span = last - first;
+  final divisions = count - 1;
+  return [
+    for (var index = 0; index < count; index++)
+      (first + (index * span + divisions ~/ 2) ~/ divisions) * _h,
+  ];
+}
+
+bool _strictlyAscending(List<int> slots) {
+  for (var i = 1; i < slots.length; i++) {
+    if (slots[i - 1] >= slots[i]) return false;
+  }
+  return true;
+}
+
+MealSchedule _s(int first, int last, int count) =>
+    MealSchedule(firstMinute: first, lastMinute: last, count: count);
 
 void main() {
   group('slots', () {
-    for (final (first, last, count, expected) in scheduleVectors) {
-      test('$first-$last x$count derives $expected', () {
+    test('the default is the historical schedule', () {
+      expect(kDefaultSchedule.slots(), [480, 720, 960, 1200]);
+    });
+
+    // Upgrading must not move a checkpoint for the schedules people actually
+    // have, or every existing hour-tagged entry would satisfy a neighbour.
+    for (final (first, last, count) in const [
+      (8, 20, 4),
+      (8, 20, 5),
+      (7, 19, 5),
+    ]) {
+      test('$first-$last x$count matches the old hour formula', () {
         expect(
-          MealSchedule(first: first, last: last, count: count).slots(),
-          expected,
+          _s(first * _h, last * _h, count).slots(),
+          _oldHourSlots(first, last, count),
         );
       });
     }
 
-    test('the default is the historical schedule', () {
-      expect(kDefaultSchedule.slots(), [8, 12, 16, 20]);
+    test('off-grid endpoints are exact; only the interior snaps', () {
+      final slots = _s(443, 1181, 5).slots();
+      expect(slots.first, 443);
+      expect(slots.last, 1181);
+      for (final slot in slots.sublist(1, slots.length - 1)) {
+        expect(slot % kSlotGridMinutes, 0);
+      }
     });
 
-    test('endpoints stay exact when the spacing rounds', () {
-      final slots = const MealSchedule(first: 8, last: 20, count: 6).slots();
-      expect(slots.first, 8);
-      expect(slots.last, 20);
+    test("the user's quarter-hour schedule", () {
+      expect(_s(435, 1140, 5).slots(), [435, 615, 795, 960, 1140]);
     });
   });
 
   group('normalized', () {
-    const cases = <(MealSchedule, MealSchedule)>[
-      (
-        MealSchedule(first: 8, last: 20, count: 99),
-        MealSchedule(first: 8, last: 20, count: kMaxMealCount),
-      ),
-      (
-        MealSchedule(first: 8, last: 20, count: 0),
-        MealSchedule(first: 8, last: 20, count: kMinMealCount),
-      ),
-      (
-        MealSchedule(first: -5, last: 20, count: 4),
-        MealSchedule(first: 0, last: 20, count: 4),
-      ),
-      (
-        MealSchedule(first: 8, last: 99, count: 4),
-        MealSchedule(first: 8, last: 23, count: 4),
-      ),
-      // last <= first is pulled forward to leave a one-hour window.
-      (
-        MealSchedule(first: 12, last: 12, count: 4),
-        MealSchedule(first: 12, last: 13, count: 2),
-      ),
-      (
-        MealSchedule(first: 12, last: 3, count: 4),
-        MealSchedule(first: 12, last: 13, count: 2),
-      ),
-      // first cannot occupy the final hour, or no window would remain.
-      (
-        MealSchedule(first: 23, last: 23, count: 2),
-        MealSchedule(first: 22, last: 23, count: 2),
-      ),
+    final cases = <(MealSchedule, MealSchedule)>[
+      (_s(480, 1200, 99), _s(480, 1200, kMaxMealCount)),
+      (_s(480, 1200, 0), _s(480, 1200, kMinMealCount)),
+      (_s(-5, 1200, 4), _s(0, 1200, 4)),
+      (_s(480, 9999, 4), _s(480, 1439, 4)),
+      // last <= first is pulled forward to leave one grid step of window.
+      (_s(720, 720, 4), _s(720, 735, 2)),
+      (_s(720, 3, 4), _s(720, 735, 2)),
+      // first cannot sit in the final grid step, or no window remains.
+      (_s(1439, 1439, 2), _s(1424, 1439, 2)),
+      // Count is capped by the grid: 60 minutes hold 5 quarter-hour marks.
+      (_s(480, 540, 6), _s(480, 540, 5)),
     ];
-
     for (final (input, expected) in cases) {
       test('$input clamps to $expected', () {
         expect(input.normalized(), expected);
@@ -96,56 +89,82 @@ void main() {
     }
 
     test('garbage still yields usable slots', () {
-      expect(
-        const MealSchedule(first: 99, last: -5, count: 999).slots(),
-        [22, 23],
-      );
+      expect(_s(9999, -5, 999).slots(), [1424, 1439]);
     });
   });
 
-  group('enforcementEndHour', () {
+  group('enforcementEndMinute', () {
     test('the default keeps the historical 22:00 cutoff', () {
-      expect(kDefaultSchedule.enforcementEndHour, 22);
+      expect(kDefaultSchedule.enforcementEndMinute, 22 * _h);
     });
 
-    test('the tail follows the last meal', () {
-      expect(
-        const MealSchedule(first: 8, last: 18, count: 4).enforcementEndHour,
-        20,
-      );
+    test('the tail follows the last meal, to the minute', () {
+      expect(_s(480, 1095, 4).enforcementEndMinute, 1215);
     });
 
     test('is clamped to the end of the day', () {
-      // An unclamped 23 + 2 = 25 would make `hour < cutoff` vacuously true,
-      // so the enforcement window would never close.
-      expect(
-        const MealSchedule(first: 8, last: 23, count: 4).enforcementEndHour,
-        24,
-      );
+      // An unclamped 1380 + 120 = 1500 would make `minute < cutoff`
+      // vacuously true, so the enforcement window would never close.
+      expect(_s(480, 1380, 4).enforcementEndMinute, kMinutesPerDay);
+    });
+
+    test('follows the normalised last meal', () {
+      final schedule = _s(720, 3, 4);
+      expect(schedule.enforcementEndMinute, schedule.slots().last + 120);
     });
   });
 
-  test('every input yields ascending slots with exact endpoints', () {
-    // The Dart half of the cross-language parity guarantee; the Python mirror
-    // runs the identical sweep.
-    for (var first = -2; first < 26; first++) {
-      for (var last = -2; last < 26; last++) {
-        for (var count = -2; count < 10; count++) {
-          final schedule = MealSchedule(
-            first: first,
-            last: last,
-            count: count,
-          );
+  group('wire', () {
+    test('a whole-hour schedule encodes exactly as before', () {
+      expect(scheduleToWire(kDefaultSchedule), {'f': 8, 'l': 20, 'n': 4});
+    });
+
+    test('off-hour endpoints add minute fields', () {
+      expect(scheduleToWire(_s(435, 1181, 5)), {
+        'f': 7,
+        'l': 19,
+        'n': 5,
+        'fm': 435,
+        'lm': 1181,
+      });
+    });
+
+    test('unusable values decode to null', () {
+      expect(scheduleFromWire({'f': true, 'l': 20, 'n': 4}), isNull);
+      expect(scheduleFromWire('not a map'), isNull);
+    });
+  });
+
+  test('grid sweep yields ascending slots with exact endpoints', () {
+    // The Python mirror runs the identical loop. A wire round trip rides
+    // along, because it is the same sweep's worth of schedules. Plain checks
+    // with `fail` rather than `expect` per cell keep 46k cells fast.
+    for (var first = 0; first < kMinutesPerDay; first += kSlotGridMinutes) {
+      for (var last = 0; last < kMinutesPerDay; last += kSlotGridMinutes) {
+        for (var count = kMinMealCount; count <= kMaxMealCount; count++) {
+          final schedule = _s(first, last, count);
           final normalized = schedule.normalized();
           final slots = schedule.slots();
+          final ok =
+              slots.first == normalized.firstMinute &&
+              slots.last == normalized.lastMinute &&
+              slots.length == normalized.count &&
+              _strictlyAscending(slots) &&
+              slots.first >= 0 &&
+              slots.last < kMinutesPerDay &&
+              scheduleFromWire(scheduleToWire(schedule)) == normalized;
+          if (!ok) fail('$schedule derived $slots');
+        }
+      }
+    }
+  });
 
-          expect(slots.first, normalized.first);
-          expect(slots.last, normalized.last);
-          expect(slots.length, normalized.count);
-          expect(slots.toSet().length, slots.length);
-          expect(slots, orderedEquals(List<int>.of(slots)..sort()));
-          expect(slots.length, greaterThanOrEqualTo(kMinMealCount));
-          expect(slots.length, lessThanOrEqualTo(kMaxMealCount));
+  test('off-grid sweep stays strictly ascending', () {
+    for (var first = 0; first < 120; first += 7) {
+      for (var width = 15; width < 200; width += 11) {
+        for (var count = kMinMealCount; count <= kMaxMealCount; count++) {
+          final slots = _s(first, first + width, count).slots();
+          if (!_strictlyAscending(slots)) fail('$first+$width x$count: $slots');
         }
       }
     }

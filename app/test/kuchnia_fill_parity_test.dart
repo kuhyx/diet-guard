@@ -116,7 +116,7 @@ void main() {
     // silently stops testing the intra-batch dedup.
     final testCase = cases('log_dishes')['twins_share_16'] as Map;
     final input = _pairs(spread(testCase.cast<String, dynamic>()));
-    bool isTwin16(List<Object?> p) => p[0] == 'Twin dish' && p[1] == 16;
+    bool isTwin16(List<Object?> p) => p[0] == 'Twin dish' && p[1] == 960;
     expect(input.where(isTwin16), hasLength(2));
     expect(
       (testCase['expected'] as List).cast<List<Object?>>().where(isTwin16),

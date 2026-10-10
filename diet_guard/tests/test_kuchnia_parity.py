@@ -57,7 +57,7 @@ def _dishes(fixture: dict[str, Any]) -> list[Dish]:
 
 
 def _slots_for(key: str) -> tuple[int, ...]:
-    """Turn a fixture slot key such as ``"8,12,16,20"`` into slot hours."""
+    """Turn a fixture slot key such as ``"480,720,960,1200"`` into slot minutes."""
     return tuple(int(part) for part in key.split(","))
 
 
@@ -107,8 +107,8 @@ def test_slot_assignment_matches(fixture: dict[str, Any], dishes: list[Dish]) ->
     """``i * S // N`` lands each dish on the slot the Dart side also picks."""
     for key, expected in fixture["expected"]["slots"].items():
         subject = dishes[:3] if key.startswith("first_three_") else dishes
-        hours = _slots_for(key.removeprefix("first_three_"))
-        actual = [item.slot for item in assign_slots(subject, hours)]
+        minutes = _slots_for(key.removeprefix("first_three_"))
+        actual = [item.slot for item in assign_slots(subject, minutes)]
         assert actual == expected, f"slot assignment diverged for {key}"
 
 
@@ -119,7 +119,7 @@ def test_slot_order_matches(fixture: dict[str, Any], dishes: list[Dish]) -> None
     dishes sharing both priority and name are the case that forces both
     comparators to be total.
     """
-    ordered = assign_slots(dishes, (8, 12, 16, 20))
+    ordered = assign_slots(dishes, (480, 720, 960, 1200))
     assert [item.dish.name for item in ordered] == fixture["expected"]["slot_order"]
 
 
@@ -201,5 +201,5 @@ def test_twin_case_is_not_vacuous(fixture: dict[str, Any], dishes: list[Dish]) -
     fill = fixture["expected"]["fill"]
     case = fill["log_dishes"]["twins_share_16"]
     spread = [(item.dish.name, item.slot) for item in _spread(dishes, fill, case)]
-    assert spread.count(("Twin dish", 16)) == 2
-    assert case["expected"].count(["Twin dish", 16]) == 1
+    assert spread.count(("Twin dish", 960)) == 2
+    assert case["expected"].count(["Twin dish", 960]) == 1

@@ -106,9 +106,9 @@ void main() {
         subject = dishes.take(3).toList();
         key = key.substring('first_three_'.length);
       }
-      final hours = [for (final part in key.split(',')) int.parse(part)];
+      final minutes = [for (final part in key.split(',')) int.parse(part)];
       final actual = [
-        for (final item in assignSlots(subject, hours)) item.slot,
+        for (final item in assignSlots(subject, minutes)) item.slot,
       ];
       expect(
         actual,
@@ -124,10 +124,10 @@ void main() {
     // total. Run repeatedly: an unstable sort need not misbehave every time.
     for (var attempt = 0; attempt < 5; attempt++) {
       final ordered = assignSlots(parseMenu(fixture['payload']), const [
-        8,
-        12,
-        16,
-        20,
+        480,
+        720,
+        960,
+        1200,
       ]);
       expect(
         [for (final item in ordered) item.dish.name],

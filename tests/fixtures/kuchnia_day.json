@@ -174,35 +174,35 @@
           "expected": [
             [
               "Marchewkowe pancakes, twarożek cynamonowy, sos truskawkowy",
-              8
+              480
             ],
             [
               "Hummus paprykowy, mini wafle kukurydziane, warzywa",
-              8
+              480
             ],
             [
               "Makaron farfalle z indykiem w sosie z batatów z suszonymi pomidorami, ser włoski",
-              12
+              720
             ],
             [
               "Fit ciasto, jak twix white",
-              12
+              720
             ],
             [
               "Kaszotto grzybowe z pieczonym kurczakiem i serem włoskim",
-              16
+              960
             ],
             [
               "Twin dish",
-              16
+              960
             ],
             [
               "Twin dish",
-              20
+              1200
             ],
             [
               "No priority, kept",
-              20
+              1200
             ]
           ],
           "occupied": [],
@@ -221,23 +221,23 @@
           "expected": [
             [
               "Marchewkowe pancakes, twarożek cynamonowy, sos truskawkowy",
-              8
+              480
             ],
             [
               "Hummus paprykowy, mini wafle kukurydziane, warzywa",
-              8
+              480
             ],
             [
               "Makaron farfalle z indykiem w sosie z batatów z suszonymi pomidorami, ser włoski",
-              12
+              720
             ],
             [
               "Kaszotto grzybowe z pieczonym kurczakiem i serem włoskim",
-              20
+              1200
             ]
           ],
           "occupied": [
-            16
+            960
           ],
           "take": [
             0,
@@ -250,10 +250,10 @@
         "full_day": {
           "expected": [],
           "occupied": [
-            8,
-            12,
-            16,
-            20
+            480,
+            720,
+            960,
+            1200
           ],
           "take": [
             0,
@@ -270,31 +270,31 @@
           "expected": [
             [
               "Marchewkowe pancakes, twarożek cynamonowy, sos truskawkowy",
-              8
+              480
             ],
             [
               "Hummus paprykowy, mini wafle kukurydziane, warzywa",
-              8
+              480
             ],
             [
               "Kaszotto grzybowe z pieczonym kurczakiem i serem włoskim",
-              16
+              960
             ],
             [
               "Twin dish",
-              16
+              960
             ],
             [
               "Twin dish",
-              20
+              1200
             ],
             [
               "No priority, kept",
-              20
+              1200
             ]
           ],
           "occupied": [
-            12
+            720
           ],
           "take": [
             0,
@@ -313,35 +313,35 @@
           "expected": [
             [
               "Marchewkowe pancakes, twarożek cynamonowy, sos truskawkowy",
-              8
+              480
             ],
             [
               "Hummus paprykowy, mini wafle kukurydziane, warzywa",
-              8
+              480
             ],
             [
               "Makaron farfalle z indykiem w sosie z batatów z suszonymi pomidorami, ser włoski",
-              12
+              720
             ],
             [
               "Fit ciasto, jak twix white",
-              12
+              720
             ],
             [
               "Kaszotto grzybowe z pieczonym kurczakiem i serem włoskim",
-              16
+              960
             ],
             [
               "Twin dish",
-              16
+              960
             ],
             [
               "Twin dish",
-              20
+              1200
             ],
             [
               "No priority, kept",
-              20
+              1200
             ]
           ],
           "take": [
@@ -360,23 +360,23 @@
           "expected": [
             [
               "Hummus paprykowy, mini wafle kukurydziane, warzywa",
-              8
+              480
             ],
             [
               "Makaron farfalle z indykiem w sosie z batatów z suszonymi pomidorami, ser włoski",
-              8
+              480
             ],
             [
               "Fit ciasto, jak twix white",
-              12
+              720
             ],
             [
               "Kaszotto grzybowe z pieczonym kurczakiem i serem włoskim",
-              12
+              720
             ],
             [
               "No priority, kept",
-              20
+              1200
             ]
           ],
           "take": [
@@ -391,11 +391,11 @@
           "today": [
             {
               "desc": " twin DISH ",
-              "slot": 16
+              "slot": 960
             },
             {
               "desc": "No priority, kept",
-              "slot": 8
+              "slot": 480
             }
           ]
         },
@@ -403,27 +403,27 @@
           "expected": [
             [
               "Hummus paprykowy, mini wafle kukurydziane, warzywa",
-              8
+              480
             ],
             [
               "Makaron farfalle z indykiem w sosie z batatów z suszonymi pomidorami, ser włoski",
-              8
+              480
             ],
             [
               "Fit ciasto, jak twix white",
-              12
+              720
             ],
             [
               "Kaszotto grzybowe z pieczonym kurczakiem i serem włoskim",
-              12
+              720
             ],
             [
               "Twin dish",
-              16
+              960
             ],
             [
               "No priority, kept",
-              20
+              1200
             ]
           ],
           "take": [
@@ -439,10 +439,10 @@
         }
       },
       "slots": [
-        8,
-        12,
-        16,
-        20
+        480,
+        720,
+        960,
+        1200
       ]
     },
     "slot_order": [
@@ -456,30 +456,30 @@
       "No priority, kept"
     ],
     "slots": {
-      "8,12,16,20": [
-        8,
-        8,
-        12,
-        12,
-        16,
-        16,
-        20,
-        20
+      "480,720,960,1200": [
+        480,
+        480,
+        720,
+        720,
+        960,
+        960,
+        1200,
+        1200
       ],
-      "8,12,16,20,22": [
-        8,
-        8,
-        12,
-        12,
-        16,
-        20,
-        20,
-        22
+      "480,720,960,1200,1320": [
+        480,
+        480,
+        720,
+        720,
+        960,
+        1200,
+        1200,
+        1320
       ],
-      "first_three_8,12,16,20": [
-        8,
-        12,
-        16
+      "first_three_480,720,960,1200": [
+        480,
+        720,
+        960
       ]
     }
   },

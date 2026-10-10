@@ -1,0 +1,4640 @@
+{
+  "_comment": "Shared parity fixture for meal-slot minutes. Read by BOTH diet_guard/tests/test_meal_schedule_vectors.py and app/test/models/meal_schedule_vectors_test.dart. Regenerate with scripts/build_meal_schedule_fixture.py.",
+  "entry_slot_minute": [
+    {
+      "entry": {
+        "slot": 8
+      },
+      "minute": 480
+    },
+    {
+      "entry": {
+        "slot": 0
+      },
+      "minute": 0
+    },
+    {
+      "entry": {
+        "slot": 7,
+        "slot_min": 435
+      },
+      "minute": 435
+    },
+    {
+      "entry": {
+        "slot_min": 435
+      },
+      "minute": 435
+    },
+    {
+      "entry": {
+        "slot": 5,
+        "slot_min": 0
+      },
+      "minute": 0
+    },
+    {
+      "entry": {
+        "slot": 8,
+        "slot_min": true
+      },
+      "minute": 480
+    },
+    {
+      "entry": {
+        "slot": 8,
+        "slot_min": false
+      },
+      "minute": 480
+    },
+    {
+      "entry": {
+        "slot": true
+      },
+      "minute": null
+    },
+    {
+      "entry": {
+        "slot": "8"
+      },
+      "minute": null
+    },
+    {
+      "entry": {
+        "slot": 8.0
+      },
+      "minute": null
+    },
+    {
+      "entry": {
+        "slot": null
+      },
+      "minute": null
+    },
+    {
+      "entry": {},
+      "minute": null
+    }
+  ],
+  "labels": [
+    {
+      "label": "00:00",
+      "minute": 0
+    },
+    {
+      "label": "00:05",
+      "minute": 5
+    },
+    {
+      "label": "00:59",
+      "minute": 59
+    },
+    {
+      "label": "01:00",
+      "minute": 60
+    },
+    {
+      "label": "07:15",
+      "minute": 435
+    },
+    {
+      "label": "08:00",
+      "minute": 480
+    },
+    {
+      "label": "10:15",
+      "minute": 615
+    },
+    {
+      "label": "20:00",
+      "minute": 1200
+    },
+    {
+      "label": "23:59",
+      "minute": 1439
+    },
+    {
+      "label": "00:00",
+      "minute": 1440
+    },
+    {
+      "label": "23:45",
+      "minute": -15
+    }
+  ],
+  "missing": [
+    {
+      "logged": [
+        480,
+        720
+      ],
+      "minute": 780,
+      "missing": [],
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "logged": [
+        480
+      ],
+      "minute": 1020,
+      "missing": [
+        720,
+        960
+      ],
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "logged": [],
+      "minute": 1380,
+      "missing": [],
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "logged": [
+        435
+      ],
+      "minute": 615,
+      "missing": [
+        615
+      ],
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "logged": [],
+      "minute": 614,
+      "missing": [
+        435
+      ],
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    }
+  ],
+  "nearest": [
+    {
+      "minute": -60,
+      "nearest": 480,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 0,
+      "nearest": 480,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 480,
+      "nearest": 480,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 599,
+      "nearest": 480,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 600,
+      "nearest": 480,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 601,
+      "nearest": 720,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 720,
+      "nearest": 720,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 839,
+      "nearest": 720,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 840,
+      "nearest": 720,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 841,
+      "nearest": 960,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 960,
+      "nearest": 960,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 1079,
+      "nearest": 960,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 1080,
+      "nearest": 960,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 1081,
+      "nearest": 1200,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 1200,
+      "nearest": 1200,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 1439,
+      "nearest": 1200,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": 1800,
+      "nearest": 1200,
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "minute": -60,
+      "nearest": 480,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 0,
+      "nearest": 480,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 480,
+      "nearest": 480,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 569,
+      "nearest": 480,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 570,
+      "nearest": 480,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 571,
+      "nearest": 660,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 660,
+      "nearest": 660,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 749,
+      "nearest": 660,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 750,
+      "nearest": 660,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 751,
+      "nearest": 840,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 840,
+      "nearest": 840,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 929,
+      "nearest": 840,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 930,
+      "nearest": 840,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 931,
+      "nearest": 1020,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 1020,
+      "nearest": 1020,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 1109,
+      "nearest": 1020,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 1110,
+      "nearest": 1020,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 1111,
+      "nearest": 1200,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 1200,
+      "nearest": 1200,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 1439,
+      "nearest": 1200,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": 1800,
+      "nearest": 1200,
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "minute": -60,
+      "nearest": 435,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 0,
+      "nearest": 435,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 435,
+      "nearest": 435,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 524,
+      "nearest": 435,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 525,
+      "nearest": 435,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 526,
+      "nearest": 615,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 615,
+      "nearest": 615,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 704,
+      "nearest": 615,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 705,
+      "nearest": 615,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 706,
+      "nearest": 795,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 795,
+      "nearest": 795,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 876,
+      "nearest": 795,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 877,
+      "nearest": 795,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 878,
+      "nearest": 960,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 960,
+      "nearest": 960,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 1049,
+      "nearest": 960,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 1050,
+      "nearest": 960,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 1051,
+      "nearest": 1140,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 1140,
+      "nearest": 1140,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 1439,
+      "nearest": 1140,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": 1800,
+      "nearest": 1140,
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "minute": -60,
+      "nearest": 443,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 0,
+      "nearest": 443,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 443,
+      "nearest": 443,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 565,
+      "nearest": 443,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 566,
+      "nearest": 443,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 567,
+      "nearest": 690,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 690,
+      "nearest": 690,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 809,
+      "nearest": 690,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 810,
+      "nearest": 690,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 811,
+      "nearest": 930,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 930,
+      "nearest": 930,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 1054,
+      "nearest": 930,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 1055,
+      "nearest": 930,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 1056,
+      "nearest": 1181,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 1181,
+      "nearest": 1181,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 1439,
+      "nearest": 1181,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": 1800,
+      "nearest": 1181,
+      "schedule": [
+        443,
+        1181,
+        4
+      ]
+    },
+    {
+      "minute": -60,
+      "nearest": 0,
+      "schedule": [
+        0,
+        720,
+        3
+      ]
+    },
+    {
+      "minute": 0,
+      "nearest": 0,
+      "schedule": [
+        0,
+        720,
+        3
+      ]
+    },
+    {
+      "minute": 179,
+      "nearest": 0,
+      "schedule": [
+        0,
+        720,
+        3
+      ]
+    },
+    {
+      "minute": 180,
+      "nearest": 0,
+      "schedule": [
+        0,
+        720,
+        3
+      ]
+    },
+    {
+      "minute": 181,
+      "nearest": 360,
+      "schedule": [
+        0,
+        720,
+        3
+      ]
+    },
+    {
+      "minute": 360,
+      "nearest": 360,
+      "schedule": [
+        0,
+        720,
+        3
+      ]
+    },
+    {
+      "minute": 539,
+      "nearest": 360,
+      "schedule": [
+        0,
+        720,
+        3
+      ]
+    },
+    {
+      "minute": 540,
+      "nearest": 360,
+      "schedule": [
+        0,
+        720,
+        3
+      ]
+    },
+    {
+      "minute": 541,
+      "nearest": 720,
+      "schedule": [
+        0,
+        720,
+        3
+      ]
+    },
+    {
+      "minute": 720,
+      "nearest": 720,
+      "schedule": [
+        0,
+        720,
+        3
+      ]
+    },
+    {
+      "minute": 1439,
+      "nearest": 720,
+      "schedule": [
+        0,
+        720,
+        3
+      ]
+    },
+    {
+      "minute": 1800,
+      "nearest": 720,
+      "schedule": [
+        0,
+        720,
+        3
+      ]
+    },
+    {
+      "minute": -60,
+      "nearest": 0,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 0,
+      "nearest": 0,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 141,
+      "nearest": 0,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 142,
+      "nearest": 0,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 143,
+      "nearest": 285,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 285,
+      "nearest": 285,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 426,
+      "nearest": 285,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 427,
+      "nearest": 285,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 428,
+      "nearest": 570,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 570,
+      "nearest": 570,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 719,
+      "nearest": 570,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 720,
+      "nearest": 570,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 721,
+      "nearest": 870,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 870,
+      "nearest": 870,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 1011,
+      "nearest": 870,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 1012,
+      "nearest": 870,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 1013,
+      "nearest": 1155,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 1155,
+      "nearest": 1155,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 1296,
+      "nearest": 1155,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 1297,
+      "nearest": 1155,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 1298,
+      "nearest": 1439,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 1439,
+      "nearest": 1439,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": 1800,
+      "nearest": 1439,
+      "schedule": [
+        0,
+        1439,
+        6
+      ]
+    },
+    {
+      "minute": -60,
+      "nearest": 1320,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ]
+    },
+    {
+      "minute": 0,
+      "nearest": 1320,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ]
+    },
+    {
+      "minute": 1320,
+      "nearest": 1320,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ]
+    },
+    {
+      "minute": 1349,
+      "nearest": 1320,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ]
+    },
+    {
+      "minute": 1350,
+      "nearest": 1320,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ]
+    },
+    {
+      "minute": 1351,
+      "nearest": 1380,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ]
+    },
+    {
+      "minute": 1380,
+      "nearest": 1380,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ]
+    },
+    {
+      "minute": 1408,
+      "nearest": 1380,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ]
+    },
+    {
+      "minute": 1409,
+      "nearest": 1380,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ]
+    },
+    {
+      "minute": 1410,
+      "nearest": 1439,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ]
+    },
+    {
+      "minute": 1439,
+      "nearest": 1439,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ]
+    },
+    {
+      "minute": 1800,
+      "nearest": 1439,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ]
+    }
+  ],
+  "satisfied": [
+    {
+      "entry_minutes": [],
+      "name": "empty input satisfies nothing",
+      "satisfied": [],
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "entry_minutes": [
+        420,
+        600
+      ],
+      "name": "old 07:00/10:00 meals after moving to 07:15",
+      "satisfied": [
+        435,
+        615
+      ],
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "entry_minutes": [
+        480,
+        540
+      ],
+      "name": "two meals snap onto one slot",
+      "satisfied": [
+        480
+      ],
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "entry_minutes": [
+        480,
+        720
+      ],
+      "name": "legacy hour entries under five meals",
+      "satisfied": [
+        480,
+        660
+      ],
+      "schedule": [
+        480,
+        1200,
+        5
+      ]
+    },
+    {
+      "entry_minutes": [
+        600,
+        840
+      ],
+      "name": "exact halfway goes to the earlier slot",
+      "satisfied": [
+        480,
+        720
+      ],
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "entry_minutes": [
+        0,
+        1439
+      ],
+      "name": "out-of-window minutes clamp to the ends",
+      "satisfied": [
+        480,
+        1200
+      ],
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "entry_minutes": [
+        480,
+        720,
+        960,
+        1200
+      ],
+      "name": "every slot exactly",
+      "satisfied": [
+        480,
+        720,
+        960,
+        1200
+      ],
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    }
+  ],
+  "schedule_wire_decode": [
+    {
+      "raw": {
+        "f": 8,
+        "l": 20,
+        "n": 4
+      },
+      "schedule": [
+        480,
+        1200,
+        4
+      ]
+    },
+    {
+      "raw": {
+        "f": 7,
+        "fm": 435,
+        "l": 19,
+        "n": 5
+      },
+      "schedule": [
+        435,
+        1140,
+        5
+      ]
+    },
+    {
+      "raw": {
+        "f": 7,
+        "fm": 443,
+        "l": 19,
+        "lm": 1181,
+        "n": 5
+      },
+      "schedule": [
+        443,
+        1181,
+        5
+      ]
+    },
+    {
+      "raw": {
+        "f": 7,
+        "fm": 600,
+        "l": 19,
+        "n": 5
+      },
+      "schedule": [
+        600,
+        1140,
+        5
+      ]
+    },
+    {
+      "raw": {
+        "f": 7,
+        "fm": true,
+        "l": 19,
+        "n": 5
+      },
+      "schedule": [
+        420,
+        1140,
+        5
+      ]
+    },
+    {
+      "raw": {
+        "f": 7,
+        "fm": 435.0,
+        "l": 19,
+        "n": 5
+      },
+      "schedule": [
+        420,
+        1140,
+        5
+      ]
+    },
+    {
+      "raw": {
+        "f": 7,
+        "l": 19,
+        "lm": null,
+        "n": 5
+      },
+      "schedule": [
+        420,
+        1140,
+        5
+      ]
+    },
+    {
+      "raw": {
+        "f": true,
+        "l": 20,
+        "n": 4
+      },
+      "schedule": null
+    },
+    {
+      "raw": {
+        "f": 8,
+        "l": 20
+      },
+      "schedule": null
+    },
+    {
+      "raw": {
+        "f": "8",
+        "l": 20,
+        "n": 4
+      },
+      "schedule": null
+    },
+    {
+      "raw": {
+        "f": 99,
+        "l": -5,
+        "n": 999
+      },
+      "schedule": [
+        1424,
+        1439,
+        2
+      ]
+    },
+    {
+      "raw": [
+        8,
+        20,
+        4
+      ],
+      "schedule": null
+    },
+    {
+      "raw": null,
+      "schedule": null
+    }
+  ],
+  "schedules": [
+    {
+      "enforcement_end_minute": 1320,
+      "input": [
+        480,
+        1200,
+        0
+      ],
+      "normalized": [
+        480,
+        1200,
+        2
+      ],
+      "slots": [
+        480,
+        1200
+      ],
+      "wire": {
+        "f": 8,
+        "l": 20,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 1320,
+      "input": [
+        480,
+        1200,
+        2
+      ],
+      "normalized": [
+        480,
+        1200,
+        2
+      ],
+      "slots": [
+        480,
+        1200
+      ],
+      "wire": {
+        "f": 8,
+        "l": 20,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 1320,
+      "input": [
+        480,
+        1200,
+        3
+      ],
+      "normalized": [
+        480,
+        1200,
+        3
+      ],
+      "slots": [
+        480,
+        840,
+        1200
+      ],
+      "wire": {
+        "f": 8,
+        "l": 20,
+        "n": 3
+      }
+    },
+    {
+      "enforcement_end_minute": 1320,
+      "input": [
+        480,
+        1200,
+        4
+      ],
+      "normalized": [
+        480,
+        1200,
+        4
+      ],
+      "slots": [
+        480,
+        720,
+        960,
+        1200
+      ],
+      "wire": {
+        "f": 8,
+        "l": 20,
+        "n": 4
+      }
+    },
+    {
+      "enforcement_end_minute": 1320,
+      "input": [
+        480,
+        1200,
+        5
+      ],
+      "normalized": [
+        480,
+        1200,
+        5
+      ],
+      "slots": [
+        480,
+        660,
+        840,
+        1020,
+        1200
+      ],
+      "wire": {
+        "f": 8,
+        "l": 20,
+        "n": 5
+      }
+    },
+    {
+      "enforcement_end_minute": 1320,
+      "input": [
+        480,
+        1200,
+        6
+      ],
+      "normalized": [
+        480,
+        1200,
+        6
+      ],
+      "slots": [
+        480,
+        630,
+        765,
+        915,
+        1050,
+        1200
+      ],
+      "wire": {
+        "f": 8,
+        "l": 20,
+        "n": 6
+      }
+    },
+    {
+      "enforcement_end_minute": 1320,
+      "input": [
+        480,
+        1200,
+        7
+      ],
+      "normalized": [
+        480,
+        1200,
+        6
+      ],
+      "slots": [
+        480,
+        630,
+        765,
+        915,
+        1050,
+        1200
+      ],
+      "wire": {
+        "f": 8,
+        "l": 20,
+        "n": 6
+      }
+    },
+    {
+      "enforcement_end_minute": 1260,
+      "input": [
+        435,
+        1140,
+        0
+      ],
+      "normalized": [
+        435,
+        1140,
+        2
+      ],
+      "slots": [
+        435,
+        1140
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 435,
+        "l": 19,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 1260,
+      "input": [
+        435,
+        1140,
+        2
+      ],
+      "normalized": [
+        435,
+        1140,
+        2
+      ],
+      "slots": [
+        435,
+        1140
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 435,
+        "l": 19,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 1260,
+      "input": [
+        435,
+        1140,
+        3
+      ],
+      "normalized": [
+        435,
+        1140,
+        3
+      ],
+      "slots": [
+        435,
+        795,
+        1140
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 435,
+        "l": 19,
+        "n": 3
+      }
+    },
+    {
+      "enforcement_end_minute": 1260,
+      "input": [
+        435,
+        1140,
+        4
+      ],
+      "normalized": [
+        435,
+        1140,
+        4
+      ],
+      "slots": [
+        435,
+        675,
+        900,
+        1140
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 435,
+        "l": 19,
+        "n": 4
+      }
+    },
+    {
+      "enforcement_end_minute": 1260,
+      "input": [
+        435,
+        1140,
+        5
+      ],
+      "normalized": [
+        435,
+        1140,
+        5
+      ],
+      "slots": [
+        435,
+        615,
+        795,
+        960,
+        1140
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 435,
+        "l": 19,
+        "n": 5
+      }
+    },
+    {
+      "enforcement_end_minute": 1260,
+      "input": [
+        435,
+        1140,
+        6
+      ],
+      "normalized": [
+        435,
+        1140,
+        6
+      ],
+      "slots": [
+        435,
+        570,
+        720,
+        855,
+        1005,
+        1140
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 435,
+        "l": 19,
+        "n": 6
+      }
+    },
+    {
+      "enforcement_end_minute": 1260,
+      "input": [
+        435,
+        1140,
+        7
+      ],
+      "normalized": [
+        435,
+        1140,
+        6
+      ],
+      "slots": [
+        435,
+        570,
+        720,
+        855,
+        1005,
+        1140
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 435,
+        "l": 19,
+        "n": 6
+      }
+    },
+    {
+      "enforcement_end_minute": 1301,
+      "input": [
+        443,
+        1181,
+        0
+      ],
+      "normalized": [
+        443,
+        1181,
+        2
+      ],
+      "slots": [
+        443,
+        1181
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 443,
+        "l": 19,
+        "lm": 1181,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 1301,
+      "input": [
+        443,
+        1181,
+        2
+      ],
+      "normalized": [
+        443,
+        1181,
+        2
+      ],
+      "slots": [
+        443,
+        1181
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 443,
+        "l": 19,
+        "lm": 1181,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 1301,
+      "input": [
+        443,
+        1181,
+        3
+      ],
+      "normalized": [
+        443,
+        1181,
+        3
+      ],
+      "slots": [
+        443,
+        810,
+        1181
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 443,
+        "l": 19,
+        "lm": 1181,
+        "n": 3
+      }
+    },
+    {
+      "enforcement_end_minute": 1301,
+      "input": [
+        443,
+        1181,
+        4
+      ],
+      "normalized": [
+        443,
+        1181,
+        4
+      ],
+      "slots": [
+        443,
+        690,
+        930,
+        1181
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 443,
+        "l": 19,
+        "lm": 1181,
+        "n": 4
+      }
+    },
+    {
+      "enforcement_end_minute": 1301,
+      "input": [
+        443,
+        1181,
+        5
+      ],
+      "normalized": [
+        443,
+        1181,
+        5
+      ],
+      "slots": [
+        443,
+        630,
+        810,
+        990,
+        1181
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 443,
+        "l": 19,
+        "lm": 1181,
+        "n": 5
+      }
+    },
+    {
+      "enforcement_end_minute": 1301,
+      "input": [
+        443,
+        1181,
+        6
+      ],
+      "normalized": [
+        443,
+        1181,
+        6
+      ],
+      "slots": [
+        443,
+        585,
+        735,
+        885,
+        1035,
+        1181
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 443,
+        "l": 19,
+        "lm": 1181,
+        "n": 6
+      }
+    },
+    {
+      "enforcement_end_minute": 1301,
+      "input": [
+        443,
+        1181,
+        7
+      ],
+      "normalized": [
+        443,
+        1181,
+        6
+      ],
+      "slots": [
+        443,
+        585,
+        735,
+        885,
+        1035,
+        1181
+      ],
+      "wire": {
+        "f": 7,
+        "fm": 443,
+        "l": 19,
+        "lm": 1181,
+        "n": 6
+      }
+    },
+    {
+      "enforcement_end_minute": 1440,
+      "input": [
+        0,
+        1439,
+        0
+      ],
+      "normalized": [
+        0,
+        1439,
+        2
+      ],
+      "slots": [
+        0,
+        1439
+      ],
+      "wire": {
+        "f": 0,
+        "l": 23,
+        "lm": 1439,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 1440,
+      "input": [
+        0,
+        1439,
+        2
+      ],
+      "normalized": [
+        0,
+        1439,
+        2
+      ],
+      "slots": [
+        0,
+        1439
+      ],
+      "wire": {
+        "f": 0,
+        "l": 23,
+        "lm": 1439,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 1440,
+      "input": [
+        0,
+        1439,
+        3
+      ],
+      "normalized": [
+        0,
+        1439,
+        3
+      ],
+      "slots": [
+        0,
+        720,
+        1439
+      ],
+      "wire": {
+        "f": 0,
+        "l": 23,
+        "lm": 1439,
+        "n": 3
+      }
+    },
+    {
+      "enforcement_end_minute": 1440,
+      "input": [
+        0,
+        1439,
+        4
+      ],
+      "normalized": [
+        0,
+        1439,
+        4
+      ],
+      "slots": [
+        0,
+        480,
+        960,
+        1439
+      ],
+      "wire": {
+        "f": 0,
+        "l": 23,
+        "lm": 1439,
+        "n": 4
+      }
+    },
+    {
+      "enforcement_end_minute": 1440,
+      "input": [
+        0,
+        1439,
+        5
+      ],
+      "normalized": [
+        0,
+        1439,
+        5
+      ],
+      "slots": [
+        0,
+        360,
+        720,
+        1080,
+        1439
+      ],
+      "wire": {
+        "f": 0,
+        "l": 23,
+        "lm": 1439,
+        "n": 5
+      }
+    },
+    {
+      "enforcement_end_minute": 1440,
+      "input": [
+        0,
+        1439,
+        6
+      ],
+      "normalized": [
+        0,
+        1439,
+        6
+      ],
+      "slots": [
+        0,
+        285,
+        570,
+        870,
+        1155,
+        1439
+      ],
+      "wire": {
+        "f": 0,
+        "l": 23,
+        "lm": 1439,
+        "n": 6
+      }
+    },
+    {
+      "enforcement_end_minute": 1440,
+      "input": [
+        0,
+        1439,
+        7
+      ],
+      "normalized": [
+        0,
+        1439,
+        6
+      ],
+      "slots": [
+        0,
+        285,
+        570,
+        870,
+        1155,
+        1439
+      ],
+      "wire": {
+        "f": 0,
+        "l": 23,
+        "lm": 1439,
+        "n": 6
+      }
+    },
+    {
+      "enforcement_end_minute": 1260,
+      "input": [
+        420,
+        1140,
+        5
+      ],
+      "normalized": [
+        420,
+        1140,
+        5
+      ],
+      "slots": [
+        420,
+        600,
+        780,
+        960,
+        1140
+      ],
+      "wire": {
+        "f": 7,
+        "l": 19,
+        "n": 5
+      }
+    },
+    {
+      "enforcement_end_minute": 1380,
+      "input": [
+        420,
+        1260,
+        4
+      ],
+      "normalized": [
+        420,
+        1260,
+        4
+      ],
+      "slots": [
+        420,
+        705,
+        975,
+        1260
+      ],
+      "wire": {
+        "f": 7,
+        "l": 21,
+        "n": 4
+      }
+    },
+    {
+      "enforcement_end_minute": 1380,
+      "input": [
+        420,
+        1260,
+        5
+      ],
+      "normalized": [
+        420,
+        1260,
+        5
+      ],
+      "slots": [
+        420,
+        630,
+        840,
+        1050,
+        1260
+      ],
+      "wire": {
+        "f": 7,
+        "l": 21,
+        "n": 5
+      }
+    },
+    {
+      "enforcement_end_minute": 1260,
+      "input": [
+        540,
+        1140,
+        4
+      ],
+      "normalized": [
+        540,
+        1140,
+        4
+      ],
+      "slots": [
+        540,
+        735,
+        945,
+        1140
+      ],
+      "wire": {
+        "f": 9,
+        "l": 19,
+        "n": 4
+      }
+    },
+    {
+      "enforcement_end_minute": 840,
+      "input": [
+        0,
+        720,
+        3
+      ],
+      "normalized": [
+        0,
+        720,
+        3
+      ],
+      "slots": [
+        0,
+        360,
+        720
+      ],
+      "wire": {
+        "f": 0,
+        "l": 12,
+        "n": 3
+      }
+    },
+    {
+      "enforcement_end_minute": 180,
+      "input": [
+        0,
+        60,
+        2
+      ],
+      "normalized": [
+        0,
+        60,
+        2
+      ],
+      "slots": [
+        0,
+        60
+      ],
+      "wire": {
+        "f": 0,
+        "l": 1,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 180,
+      "input": [
+        0,
+        60,
+        6
+      ],
+      "normalized": [
+        0,
+        60,
+        5
+      ],
+      "slots": [
+        0,
+        15,
+        30,
+        45,
+        60
+      ],
+      "wire": {
+        "f": 0,
+        "l": 1,
+        "n": 5
+      }
+    },
+    {
+      "enforcement_end_minute": 1440,
+      "input": [
+        1320,
+        1439,
+        3
+      ],
+      "normalized": [
+        1320,
+        1439,
+        3
+      ],
+      "slots": [
+        1320,
+        1380,
+        1439
+      ],
+      "wire": {
+        "f": 22,
+        "l": 23,
+        "lm": 1439,
+        "n": 3
+      }
+    },
+    {
+      "enforcement_end_minute": 1440,
+      "input": [
+        1380,
+        1439,
+        6
+      ],
+      "normalized": [
+        1380,
+        1439,
+        4
+      ],
+      "slots": [
+        1380,
+        1395,
+        1425,
+        1439
+      ],
+      "wire": {
+        "f": 23,
+        "l": 23,
+        "lm": 1439,
+        "n": 4
+      }
+    },
+    {
+      "enforcement_end_minute": 615,
+      "input": [
+        480,
+        495,
+        6
+      ],
+      "normalized": [
+        480,
+        495,
+        2
+      ],
+      "slots": [
+        480,
+        495
+      ],
+      "wire": {
+        "f": 8,
+        "l": 8,
+        "lm": 495,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 630,
+      "input": [
+        480,
+        510,
+        6
+      ],
+      "normalized": [
+        480,
+        510,
+        3
+      ],
+      "slots": [
+        480,
+        495,
+        510
+      ],
+      "wire": {
+        "f": 8,
+        "l": 8,
+        "lm": 510,
+        "n": 3
+      }
+    },
+    {
+      "enforcement_end_minute": 645,
+      "input": [
+        480,
+        525,
+        6
+      ],
+      "normalized": [
+        480,
+        525,
+        4
+      ],
+      "slots": [
+        480,
+        495,
+        510,
+        525
+      ],
+      "wire": {
+        "f": 8,
+        "l": 8,
+        "lm": 525,
+        "n": 4
+      }
+    },
+    {
+      "enforcement_end_minute": 660,
+      "input": [
+        480,
+        540,
+        6
+      ],
+      "normalized": [
+        480,
+        540,
+        5
+      ],
+      "slots": [
+        480,
+        495,
+        510,
+        525,
+        540
+      ],
+      "wire": {
+        "f": 8,
+        "l": 9,
+        "n": 5
+      }
+    },
+    {
+      "enforcement_end_minute": 674,
+      "input": [
+        480,
+        554,
+        6
+      ],
+      "normalized": [
+        480,
+        554,
+        5
+      ],
+      "slots": [
+        480,
+        495,
+        510,
+        540,
+        554
+      ],
+      "wire": {
+        "f": 8,
+        "l": 9,
+        "lm": 554,
+        "n": 5
+      }
+    },
+    {
+      "enforcement_end_minute": 675,
+      "input": [
+        480,
+        555,
+        6
+      ],
+      "normalized": [
+        480,
+        555,
+        6
+      ],
+      "slots": [
+        480,
+        495,
+        510,
+        525,
+        540,
+        555
+      ],
+      "wire": {
+        "f": 8,
+        "l": 9,
+        "lm": 555,
+        "n": 6
+      }
+    },
+    {
+      "enforcement_end_minute": 616,
+      "input": [
+        481,
+        496,
+        3
+      ],
+      "normalized": [
+        481,
+        496,
+        2
+      ],
+      "slots": [
+        481,
+        496
+      ],
+      "wire": {
+        "f": 8,
+        "fm": 481,
+        "l": 8,
+        "lm": 496,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 682,
+      "input": [
+        487,
+        562,
+        6
+      ],
+      "normalized": [
+        487,
+        562,
+        6
+      ],
+      "slots": [
+        487,
+        495,
+        510,
+        525,
+        540,
+        562
+      ],
+      "wire": {
+        "f": 8,
+        "fm": 487,
+        "l": 9,
+        "lm": 562,
+        "n": 6
+      }
+    },
+    {
+      "enforcement_end_minute": 1320,
+      "input": [
+        -5,
+        1200,
+        4
+      ],
+      "normalized": [
+        0,
+        1200,
+        4
+      ],
+      "slots": [
+        0,
+        405,
+        795,
+        1200
+      ],
+      "wire": {
+        "f": 0,
+        "l": 20,
+        "n": 4
+      }
+    },
+    {
+      "enforcement_end_minute": 1440,
+      "input": [
+        1430,
+        1439,
+        2
+      ],
+      "normalized": [
+        1424,
+        1439,
+        2
+      ],
+      "slots": [
+        1424,
+        1439
+      ],
+      "wire": {
+        "f": 23,
+        "fm": 1424,
+        "l": 23,
+        "lm": 1439,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 1440,
+      "input": [
+        1439,
+        1439,
+        2
+      ],
+      "normalized": [
+        1424,
+        1439,
+        2
+      ],
+      "slots": [
+        1424,
+        1439
+      ],
+      "wire": {
+        "f": 23,
+        "fm": 1424,
+        "l": 23,
+        "lm": 1439,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 1440,
+      "input": [
+        2000,
+        -5,
+        999
+      ],
+      "normalized": [
+        1424,
+        1439,
+        2
+      ],
+      "slots": [
+        1424,
+        1439
+      ],
+      "wire": {
+        "f": 23,
+        "fm": 1424,
+        "l": 23,
+        "lm": 1439,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 1440,
+      "input": [
+        480,
+        5000,
+        4
+      ],
+      "normalized": [
+        480,
+        1439,
+        4
+      ],
+      "slots": [
+        480,
+        795,
+        1125,
+        1439
+      ],
+      "wire": {
+        "f": 8,
+        "l": 23,
+        "lm": 1439,
+        "n": 4
+      }
+    },
+    {
+      "enforcement_end_minute": 855,
+      "input": [
+        720,
+        720,
+        4
+      ],
+      "normalized": [
+        720,
+        735,
+        2
+      ],
+      "slots": [
+        720,
+        735
+      ],
+      "wire": {
+        "f": 12,
+        "l": 12,
+        "lm": 735,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 855,
+      "input": [
+        720,
+        100,
+        4
+      ],
+      "normalized": [
+        720,
+        735,
+        2
+      ],
+      "slots": [
+        720,
+        735
+      ],
+      "wire": {
+        "f": 12,
+        "l": 12,
+        "lm": 735,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 855,
+      "input": [
+        720,
+        734,
+        2
+      ],
+      "normalized": [
+        720,
+        735,
+        2
+      ],
+      "slots": [
+        720,
+        735
+      ],
+      "wire": {
+        "f": 12,
+        "l": 12,
+        "lm": 735,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 1320,
+      "input": [
+        480,
+        1200,
+        -3
+      ],
+      "normalized": [
+        480,
+        1200,
+        2
+      ],
+      "slots": [
+        480,
+        1200
+      ],
+      "wire": {
+        "f": 8,
+        "l": 20,
+        "n": 2
+      }
+    },
+    {
+      "enforcement_end_minute": 1320,
+      "input": [
+        480,
+        1200,
+        99
+      ],
+      "normalized": [
+        480,
+        1200,
+        6
+      ],
+      "slots": [
+        480,
+        630,
+        765,
+        915,
+        1050,
+        1200
+      ],
+      "wire": {
+        "f": 8,
+        "l": 20,
+        "n": 6
+      }
+    },
+    {
+      "enforcement_end_minute": 143,
+      "input": [
+        8,
+        20,
+        4
+      ],
+      "normalized": [
+        8,
+        23,
+        2
+      ],
+      "slots": [
+        8,
+        23
+      ],
+      "wire": {
+        "f": 0,
+        "fm": 8,
+        "l": 0,
+        "lm": 23,
+        "n": 2
+      }
+    }
+  ],
+  "slot_fields": [
+    {
+      "fields": {
+        "slot": 0
+      },
+      "minute": 0
+    },
+    {
+      "fields": {
+        "slot": 0,
+        "slot_min": 59
+      },
+      "minute": 59
+    },
+    {
+      "fields": {
+        "slot": 1
+      },
+      "minute": 60
+    },
+    {
+      "fields": {
+        "slot": 7,
+        "slot_min": 435
+      },
+      "minute": 435
+    },
+    {
+      "fields": {
+        "slot": 8
+      },
+      "minute": 480
+    },
+    {
+      "fields": {
+        "slot": 20
+      },
+      "minute": 1200
+    },
+    {
+      "fields": {
+        "slot": 23,
+        "slot_min": 1439
+      },
+      "minute": 1439
+    },
+    {
+      "error": true,
+      "minute": -1
+    },
+    {
+      "error": true,
+      "minute": 1440
+    }
+  ],
+  "time_edges": [
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 0,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 480,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 479,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 480,
+      "within_window": false
+    },
+    {
+      "current_slot": 480,
+      "elapsed": [
+        480
+      ],
+      "minute": 480,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 480,
+      "within_window": true
+    },
+    {
+      "current_slot": 480,
+      "elapsed": [
+        480
+      ],
+      "minute": 481,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 480,
+      "within_window": true
+    },
+    {
+      "current_slot": 480,
+      "elapsed": [
+        480
+      ],
+      "minute": 719,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 480,
+      "within_window": true
+    },
+    {
+      "current_slot": 720,
+      "elapsed": [
+        480,
+        720
+      ],
+      "minute": 720,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 720,
+      "within_window": true
+    },
+    {
+      "current_slot": 720,
+      "elapsed": [
+        480,
+        720
+      ],
+      "minute": 721,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 720,
+      "within_window": true
+    },
+    {
+      "current_slot": 720,
+      "elapsed": [
+        480,
+        720
+      ],
+      "minute": 959,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 720,
+      "within_window": true
+    },
+    {
+      "current_slot": 960,
+      "elapsed": [
+        480,
+        720,
+        960
+      ],
+      "minute": 960,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 960,
+      "within_window": true
+    },
+    {
+      "current_slot": 960,
+      "elapsed": [
+        480,
+        720,
+        960
+      ],
+      "minute": 961,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 960,
+      "within_window": true
+    },
+    {
+      "current_slot": 960,
+      "elapsed": [
+        480,
+        720,
+        960
+      ],
+      "minute": 1199,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 960,
+      "within_window": true
+    },
+    {
+      "current_slot": 1200,
+      "elapsed": [
+        480,
+        720,
+        960,
+        1200
+      ],
+      "minute": 1200,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 1200,
+      "within_window": true
+    },
+    {
+      "current_slot": 1200,
+      "elapsed": [
+        480,
+        720,
+        960,
+        1200
+      ],
+      "minute": 1201,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 1200,
+      "within_window": true
+    },
+    {
+      "current_slot": 1200,
+      "elapsed": [
+        480,
+        720,
+        960,
+        1200
+      ],
+      "minute": 1319,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 1200,
+      "within_window": true
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1320,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 1200,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1321,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 1200,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1439,
+      "schedule": [
+        480,
+        1200,
+        4
+      ],
+      "slot_for_log": 1200,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 0,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 480,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 479,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 480,
+      "within_window": false
+    },
+    {
+      "current_slot": 480,
+      "elapsed": [
+        480
+      ],
+      "minute": 480,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 480,
+      "within_window": true
+    },
+    {
+      "current_slot": 480,
+      "elapsed": [
+        480
+      ],
+      "minute": 481,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 480,
+      "within_window": true
+    },
+    {
+      "current_slot": 480,
+      "elapsed": [
+        480
+      ],
+      "minute": 659,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 480,
+      "within_window": true
+    },
+    {
+      "current_slot": 660,
+      "elapsed": [
+        480,
+        660
+      ],
+      "minute": 660,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 660,
+      "within_window": true
+    },
+    {
+      "current_slot": 660,
+      "elapsed": [
+        480,
+        660
+      ],
+      "minute": 661,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 660,
+      "within_window": true
+    },
+    {
+      "current_slot": 660,
+      "elapsed": [
+        480,
+        660
+      ],
+      "minute": 839,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 660,
+      "within_window": true
+    },
+    {
+      "current_slot": 840,
+      "elapsed": [
+        480,
+        660,
+        840
+      ],
+      "minute": 840,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 840,
+      "within_window": true
+    },
+    {
+      "current_slot": 840,
+      "elapsed": [
+        480,
+        660,
+        840
+      ],
+      "minute": 841,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 840,
+      "within_window": true
+    },
+    {
+      "current_slot": 840,
+      "elapsed": [
+        480,
+        660,
+        840
+      ],
+      "minute": 1019,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 840,
+      "within_window": true
+    },
+    {
+      "current_slot": 1020,
+      "elapsed": [
+        480,
+        660,
+        840,
+        1020
+      ],
+      "minute": 1020,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 1020,
+      "within_window": true
+    },
+    {
+      "current_slot": 1020,
+      "elapsed": [
+        480,
+        660,
+        840,
+        1020
+      ],
+      "minute": 1021,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 1020,
+      "within_window": true
+    },
+    {
+      "current_slot": 1020,
+      "elapsed": [
+        480,
+        660,
+        840,
+        1020
+      ],
+      "minute": 1199,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 1020,
+      "within_window": true
+    },
+    {
+      "current_slot": 1200,
+      "elapsed": [
+        480,
+        660,
+        840,
+        1020,
+        1200
+      ],
+      "minute": 1200,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 1200,
+      "within_window": true
+    },
+    {
+      "current_slot": 1200,
+      "elapsed": [
+        480,
+        660,
+        840,
+        1020,
+        1200
+      ],
+      "minute": 1201,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 1200,
+      "within_window": true
+    },
+    {
+      "current_slot": 1200,
+      "elapsed": [
+        480,
+        660,
+        840,
+        1020,
+        1200
+      ],
+      "minute": 1319,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 1200,
+      "within_window": true
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1320,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 1200,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1321,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 1200,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1439,
+      "schedule": [
+        480,
+        1200,
+        5
+      ],
+      "slot_for_log": 1200,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 0,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 435,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 434,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 435,
+      "within_window": false
+    },
+    {
+      "current_slot": 435,
+      "elapsed": [
+        435
+      ],
+      "minute": 435,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 435,
+      "within_window": true
+    },
+    {
+      "current_slot": 435,
+      "elapsed": [
+        435
+      ],
+      "minute": 436,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 435,
+      "within_window": true
+    },
+    {
+      "current_slot": 435,
+      "elapsed": [
+        435
+      ],
+      "minute": 614,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 435,
+      "within_window": true
+    },
+    {
+      "current_slot": 615,
+      "elapsed": [
+        435,
+        615
+      ],
+      "minute": 615,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 615,
+      "within_window": true
+    },
+    {
+      "current_slot": 615,
+      "elapsed": [
+        435,
+        615
+      ],
+      "minute": 616,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 615,
+      "within_window": true
+    },
+    {
+      "current_slot": 615,
+      "elapsed": [
+        435,
+        615
+      ],
+      "minute": 794,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 615,
+      "within_window": true
+    },
+    {
+      "current_slot": 795,
+      "elapsed": [
+        435,
+        615,
+        795
+      ],
+      "minute": 795,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 795,
+      "within_window": true
+    },
+    {
+      "current_slot": 795,
+      "elapsed": [
+        435,
+        615,
+        795
+      ],
+      "minute": 796,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 795,
+      "within_window": true
+    },
+    {
+      "current_slot": 795,
+      "elapsed": [
+        435,
+        615,
+        795
+      ],
+      "minute": 959,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 795,
+      "within_window": true
+    },
+    {
+      "current_slot": 960,
+      "elapsed": [
+        435,
+        615,
+        795,
+        960
+      ],
+      "minute": 960,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 960,
+      "within_window": true
+    },
+    {
+      "current_slot": 960,
+      "elapsed": [
+        435,
+        615,
+        795,
+        960
+      ],
+      "minute": 961,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 960,
+      "within_window": true
+    },
+    {
+      "current_slot": 960,
+      "elapsed": [
+        435,
+        615,
+        795,
+        960
+      ],
+      "minute": 1139,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 960,
+      "within_window": true
+    },
+    {
+      "current_slot": 1140,
+      "elapsed": [
+        435,
+        615,
+        795,
+        960,
+        1140
+      ],
+      "minute": 1140,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 1140,
+      "within_window": true
+    },
+    {
+      "current_slot": 1140,
+      "elapsed": [
+        435,
+        615,
+        795,
+        960,
+        1140
+      ],
+      "minute": 1141,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 1140,
+      "within_window": true
+    },
+    {
+      "current_slot": 1140,
+      "elapsed": [
+        435,
+        615,
+        795,
+        960,
+        1140
+      ],
+      "minute": 1259,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 1140,
+      "within_window": true
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1260,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 1140,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1261,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 1140,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1439,
+      "schedule": [
+        435,
+        1140,
+        5
+      ],
+      "slot_for_log": 1140,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 0,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 443,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 442,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 443,
+      "within_window": false
+    },
+    {
+      "current_slot": 443,
+      "elapsed": [
+        443
+      ],
+      "minute": 443,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 443,
+      "within_window": true
+    },
+    {
+      "current_slot": 443,
+      "elapsed": [
+        443
+      ],
+      "minute": 444,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 443,
+      "within_window": true
+    },
+    {
+      "current_slot": 443,
+      "elapsed": [
+        443
+      ],
+      "minute": 689,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 443,
+      "within_window": true
+    },
+    {
+      "current_slot": 690,
+      "elapsed": [
+        443,
+        690
+      ],
+      "minute": 690,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 690,
+      "within_window": true
+    },
+    {
+      "current_slot": 690,
+      "elapsed": [
+        443,
+        690
+      ],
+      "minute": 691,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 690,
+      "within_window": true
+    },
+    {
+      "current_slot": 690,
+      "elapsed": [
+        443,
+        690
+      ],
+      "minute": 929,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 690,
+      "within_window": true
+    },
+    {
+      "current_slot": 930,
+      "elapsed": [
+        443,
+        690,
+        930
+      ],
+      "minute": 930,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 930,
+      "within_window": true
+    },
+    {
+      "current_slot": 930,
+      "elapsed": [
+        443,
+        690,
+        930
+      ],
+      "minute": 931,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 930,
+      "within_window": true
+    },
+    {
+      "current_slot": 930,
+      "elapsed": [
+        443,
+        690,
+        930
+      ],
+      "minute": 1180,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 930,
+      "within_window": true
+    },
+    {
+      "current_slot": 1181,
+      "elapsed": [
+        443,
+        690,
+        930,
+        1181
+      ],
+      "minute": 1181,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 1181,
+      "within_window": true
+    },
+    {
+      "current_slot": 1181,
+      "elapsed": [
+        443,
+        690,
+        930,
+        1181
+      ],
+      "minute": 1182,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 1181,
+      "within_window": true
+    },
+    {
+      "current_slot": 1181,
+      "elapsed": [
+        443,
+        690,
+        930,
+        1181
+      ],
+      "minute": 1300,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 1181,
+      "within_window": true
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1301,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 1181,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1302,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 1181,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1439,
+      "schedule": [
+        443,
+        1181,
+        4
+      ],
+      "slot_for_log": 1181,
+      "within_window": false
+    },
+    {
+      "current_slot": 0,
+      "elapsed": [
+        0
+      ],
+      "minute": 0,
+      "schedule": [
+        0,
+        720,
+        3
+      ],
+      "slot_for_log": 0,
+      "within_window": true
+    },
+    {
+      "current_slot": 0,
+      "elapsed": [
+        0
+      ],
+      "minute": 1,
+      "schedule": [
+        0,
+        720,
+        3
+      ],
+      "slot_for_log": 0,
+      "within_window": true
+    },
+    {
+      "current_slot": 0,
+      "elapsed": [
+        0
+      ],
+      "minute": 359,
+      "schedule": [
+        0,
+        720,
+        3
+      ],
+      "slot_for_log": 0,
+      "within_window": true
+    },
+    {
+      "current_slot": 360,
+      "elapsed": [
+        0,
+        360
+      ],
+      "minute": 360,
+      "schedule": [
+        0,
+        720,
+        3
+      ],
+      "slot_for_log": 360,
+      "within_window": true
+    },
+    {
+      "current_slot": 360,
+      "elapsed": [
+        0,
+        360
+      ],
+      "minute": 361,
+      "schedule": [
+        0,
+        720,
+        3
+      ],
+      "slot_for_log": 360,
+      "within_window": true
+    },
+    {
+      "current_slot": 360,
+      "elapsed": [
+        0,
+        360
+      ],
+      "minute": 719,
+      "schedule": [
+        0,
+        720,
+        3
+      ],
+      "slot_for_log": 360,
+      "within_window": true
+    },
+    {
+      "current_slot": 720,
+      "elapsed": [
+        0,
+        360,
+        720
+      ],
+      "minute": 720,
+      "schedule": [
+        0,
+        720,
+        3
+      ],
+      "slot_for_log": 720,
+      "within_window": true
+    },
+    {
+      "current_slot": 720,
+      "elapsed": [
+        0,
+        360,
+        720
+      ],
+      "minute": 721,
+      "schedule": [
+        0,
+        720,
+        3
+      ],
+      "slot_for_log": 720,
+      "within_window": true
+    },
+    {
+      "current_slot": 720,
+      "elapsed": [
+        0,
+        360,
+        720
+      ],
+      "minute": 839,
+      "schedule": [
+        0,
+        720,
+        3
+      ],
+      "slot_for_log": 720,
+      "within_window": true
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 840,
+      "schedule": [
+        0,
+        720,
+        3
+      ],
+      "slot_for_log": 720,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 841,
+      "schedule": [
+        0,
+        720,
+        3
+      ],
+      "slot_for_log": 720,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1439,
+      "schedule": [
+        0,
+        720,
+        3
+      ],
+      "slot_for_log": 720,
+      "within_window": false
+    },
+    {
+      "current_slot": 0,
+      "elapsed": [
+        0
+      ],
+      "minute": 0,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 0,
+      "within_window": true
+    },
+    {
+      "current_slot": 0,
+      "elapsed": [
+        0
+      ],
+      "minute": 1,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 0,
+      "within_window": true
+    },
+    {
+      "current_slot": 0,
+      "elapsed": [
+        0
+      ],
+      "minute": 284,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 0,
+      "within_window": true
+    },
+    {
+      "current_slot": 285,
+      "elapsed": [
+        0,
+        285
+      ],
+      "minute": 285,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 285,
+      "within_window": true
+    },
+    {
+      "current_slot": 285,
+      "elapsed": [
+        0,
+        285
+      ],
+      "minute": 286,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 285,
+      "within_window": true
+    },
+    {
+      "current_slot": 285,
+      "elapsed": [
+        0,
+        285
+      ],
+      "minute": 569,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 285,
+      "within_window": true
+    },
+    {
+      "current_slot": 570,
+      "elapsed": [
+        0,
+        285,
+        570
+      ],
+      "minute": 570,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 570,
+      "within_window": true
+    },
+    {
+      "current_slot": 570,
+      "elapsed": [
+        0,
+        285,
+        570
+      ],
+      "minute": 571,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 570,
+      "within_window": true
+    },
+    {
+      "current_slot": 570,
+      "elapsed": [
+        0,
+        285,
+        570
+      ],
+      "minute": 869,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 570,
+      "within_window": true
+    },
+    {
+      "current_slot": 870,
+      "elapsed": [
+        0,
+        285,
+        570,
+        870
+      ],
+      "minute": 870,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 870,
+      "within_window": true
+    },
+    {
+      "current_slot": 870,
+      "elapsed": [
+        0,
+        285,
+        570,
+        870
+      ],
+      "minute": 871,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 870,
+      "within_window": true
+    },
+    {
+      "current_slot": 870,
+      "elapsed": [
+        0,
+        285,
+        570,
+        870
+      ],
+      "minute": 1154,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 870,
+      "within_window": true
+    },
+    {
+      "current_slot": 1155,
+      "elapsed": [
+        0,
+        285,
+        570,
+        870,
+        1155
+      ],
+      "minute": 1155,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 1155,
+      "within_window": true
+    },
+    {
+      "current_slot": 1155,
+      "elapsed": [
+        0,
+        285,
+        570,
+        870,
+        1155
+      ],
+      "minute": 1156,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 1155,
+      "within_window": true
+    },
+    {
+      "current_slot": 1155,
+      "elapsed": [
+        0,
+        285,
+        570,
+        870,
+        1155
+      ],
+      "minute": 1438,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 1155,
+      "within_window": true
+    },
+    {
+      "current_slot": 1439,
+      "elapsed": [
+        0,
+        285,
+        570,
+        870,
+        1155,
+        1439
+      ],
+      "minute": 1439,
+      "schedule": [
+        0,
+        1439,
+        6
+      ],
+      "slot_for_log": 1439,
+      "within_window": true
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 0,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ],
+      "slot_for_log": 1320,
+      "within_window": false
+    },
+    {
+      "current_slot": null,
+      "elapsed": [],
+      "minute": 1319,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ],
+      "slot_for_log": 1320,
+      "within_window": false
+    },
+    {
+      "current_slot": 1320,
+      "elapsed": [
+        1320
+      ],
+      "minute": 1320,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ],
+      "slot_for_log": 1320,
+      "within_window": true
+    },
+    {
+      "current_slot": 1320,
+      "elapsed": [
+        1320
+      ],
+      "minute": 1321,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ],
+      "slot_for_log": 1320,
+      "within_window": true
+    },
+    {
+      "current_slot": 1320,
+      "elapsed": [
+        1320
+      ],
+      "minute": 1379,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ],
+      "slot_for_log": 1320,
+      "within_window": true
+    },
+    {
+      "current_slot": 1380,
+      "elapsed": [
+        1320,
+        1380
+      ],
+      "minute": 1380,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ],
+      "slot_for_log": 1380,
+      "within_window": true
+    },
+    {
+      "current_slot": 1380,
+      "elapsed": [
+        1320,
+        1380
+      ],
+      "minute": 1381,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ],
+      "slot_for_log": 1380,
+      "within_window": true
+    },
+    {
+      "current_slot": 1380,
+      "elapsed": [
+        1320,
+        1380
+      ],
+      "minute": 1438,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ],
+      "slot_for_log": 1380,
+      "within_window": true
+    },
+    {
+      "current_slot": 1439,
+      "elapsed": [
+        1320,
+        1380,
+        1439
+      ],
+      "minute": 1439,
+      "schedule": [
+        1320,
+        1439,
+        3
+      ],
+      "slot_for_log": 1439,
+      "within_window": true
+    }
+  ]
+}

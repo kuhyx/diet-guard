@@ -146,18 +146,21 @@ def _dish_json(dish: Dish) -> dict[str, object]:
 #: re-spread over ``slots`` (never a slice of the full spread). The full day
 #: spreads the twins to 16 and 20, so ``twins_share_16`` drops the first dish:
 #: 7 on 4 slots puts both twins on 16, the one place intra-batch dedup bites.
+#: Slots are MINUTES OF DAY, ``occupied``/``today[].slot`` too: resolved slot
+#: minutes, not the on-disk hour (seed real entries via ``slot_fields``).
 _ALL = list(range(8))
-_SLOTS = [8, 12, 16, 20]
+_SLOTS = [480, 720, 960, 1200]
 _PLAN_CASES = {
     "empty_day": {"take": _ALL, "occupied": []},
-    "occupied_12": {"take": _ALL, "occupied": [12]},
-    # First five in slot order: pancakes and hummus double into 8, both kept.
-    "five_on_four": {"take": _ALL[:5], "occupied": [16]},
+    "occupied_12": {"take": _ALL, "occupied": [720]},
+    # First five in slot order: pancakes and hummus double into 08:00, both kept.
+    "five_on_four": {"take": _ALL[:5], "occupied": [960]},
     "full_day": {"take": _ALL, "occupied": _SLOTS},
 }
 # Case/space-insensitive name match, and the same name in another slot is no
 # match: log_dishes dedups by (name, slot), it does not test occupancy.
-_SEEN = [{"desc": " twin DISH ", "slot": 16}, {"desc": "No priority, kept", "slot": 8}]
+_TWIN_SEEN = {"desc": " twin DISH ", "slot": 960}
+_SEEN = [_TWIN_SEEN, {"desc": "No priority, kept", "slot": 480}]
 _LOG_CASES = {
     "empty_day": {"take": _ALL, "today": []},
     "twins_share_16": {"take": _ALL[1:], "today": []},
@@ -201,7 +204,10 @@ def build() -> dict[str, object]:
         "showNutrition": True,
     }
     dishes = parse_menu(payload)
-    default_slots = (8, 12, 16, 20)
+    spreads = {  # slot-minute keys, comma-joined; both tests parse them back
+        ",".join(map(str, slots)): [s.slot for s in assign_slots(dishes, slots)]
+        for slots in (_SLOTS, (*_SLOTS, 1320))
+    }
     return {
         "_comment": (
             "Shared parity fixture for the Kuchnia Wikinga catering import. "
@@ -214,16 +220,13 @@ def build() -> dict[str, object]:
             "dishes": [_dish_json(dish) for dish in dishes],
             "dropped_count": len(payload["deliveryMenuMeal"]) - len(dishes),
             "slots": {
-                "8,12,16,20": [s.slot for s in assign_slots(dishes, default_slots)],
-                "8,12,16,20,22": [
-                    s.slot for s in assign_slots(dishes, (8, 12, 16, 20, 22))
-                ],
+                **spreads,
                 # The other direction: fewer dishes than slots.
-                "first_three_8,12,16,20": [
-                    s.slot for s in assign_slots(dishes[:3], default_slots)
+                "first_three_480,720,960,1200": [
+                    s.slot for s in assign_slots(dishes[:3], _SLOTS)
                 ],
             },
-            "slot_order": [s.dish.name for s in assign_slots(dishes, default_slots)],
+            "slot_order": [s.dish.name for s in assign_slots(dishes, _SLOTS)],
             "bank_keys": [dish.name.strip().casefold() for dish in dishes],
             "bank_records": [dish_to_record(dish) for dish in dishes],
             "fill": _fill_cases(dishes),
