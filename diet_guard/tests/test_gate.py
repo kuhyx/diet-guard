@@ -122,10 +122,11 @@ class TestFreeDays:
             assert gate_is_due(_at(20))
 
 
-def _mark_sick(tmp_path: Path, day: date) -> None:
+def _mark_sick(tmp_path: Path, day: date, keep: tuple[str, ...] = ()) -> None:
     """Put ``day`` in the (temp) sick-day pool; the redirect lives in conftest."""
     sickdays.add_sick_day(
         day,
+        keep=keep,
         is_free=lambda _day: False,
         paths=sickdays.Paths.under(tmp_path / "sickdays"),
         now=day,
@@ -142,6 +143,24 @@ class TestSickDays:
             assert due_slots(_at(20)) == ()
             assert not gate_is_due(_at(20))
             assert gate_message(_at(20)) == "All meals are logged. You're up to date."
+
+    def test_a_sick_day_that_keeps_diet_stays_armed(self, tmp_path: Path) -> None:
+        """A kept locker behaves exactly as on a normal day."""
+        with _logged(set()):
+            _mark_sick(tmp_path, _at(20).date(), keep=(sickdays.LOCKER_DIET,))
+            assert due_slots(_at(20))
+            assert gate_is_due(_at(20))
+
+    def test_a_sick_day_keeping_another_locker_still_stands_down(
+        self, tmp_path: Path
+    ) -> None:
+        with _logged(set()):
+            _mark_sick(
+                tmp_path,
+                _at(20).date(),
+                keep=(sickdays.LOCKER_WORKOUT, sickdays.LOCKER_ALARM),
+            )
+            assert due_slots(_at(20)) == ()
 
     def test_a_sick_day_on_another_date_changes_nothing(self, tmp_path: Path) -> None:
         with _logged(set()):

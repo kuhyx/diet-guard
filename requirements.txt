@@ -20,4 +20,4 @@ pytest-xdist==3.8.0
 pytest-xvfb==3.1.1
 requests==2.34.2
 ruff==0.17.1
-sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.1.0#subdirectory=sickdays
+sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.2.0#subdirectory=sickdays
