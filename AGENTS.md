@@ -32,8 +32,8 @@ catch-up rule).
 `diet-guard-gate.timer` is wall-clock (`OnCalendar=*-*-* *:00/15:00`,
 `Persistent=true`), not boot-relative — a boot-relative timer collided with
 fullscreen games grabbing input. `diet-guard-gate.service` is `Type=oneshot`
-and exits 0 immediately when no lock is due. It needs `DISPLAY`/`XAUTHORITY`;
-see the unit file's comments and `wait_for_display()`.
+and exits 0 at once when no lock is due (free/sick day: [docs/DOCS-sick-days.md](docs/DOCS-sick-days.md)).
+Needs `DISPLAY`/`XAUTHORITY`; see the unit file and `wait_for_display()`.
 
 ## Cross-device sync
 

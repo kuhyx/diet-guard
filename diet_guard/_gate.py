@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import freedays
+import sickdays
 
 from diet_guard._meal_schedule_store import current_schedule
 from diet_guard._slots import missing_slots, slot_label
@@ -41,13 +42,16 @@ def due_slots(now: datetime | None = None) -> tuple[int, ...]:
     Returns:
         The slot minutes that still need a meal logged (empty == nothing due).
 
-    Empty on a shared free day, whatever the schedule says. The pool is read
-    from a single local file and never the network, so this cannot hang the
-    systemd-fired gate, and an unreadable pool reads as "not free" -- the
-    normal rules apply rather than the gate switching itself off.
+    Empty on a shared free day or a sick day, whatever the schedule says: the
+    gate stands down, so no lock opens and nothing accrues -- unlogged meals
+    leave no debt, and logging a meal still works as on any day. Each pool is
+    read from a single local file and never the network, so this cannot hang
+    the systemd-fired gate, and an unreadable pool reads as "not free" / "not
+    sick" -- the normal rules apply rather than the gate switching itself off.
     """
     reference = now if now is not None else now_local()
-    if freedays.is_free_day(reference.date()):
+    day = reference.date()
+    if freedays.is_free_day(day) or sickdays.is_sick_day(day):
         return ()
     # One schedule for both halves: snapping the log onto a different schedule
     # than the one deriving the due slots would leave a logged meal covering a

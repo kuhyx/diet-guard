@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import freedays
+import sickdays
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -27,6 +28,12 @@ def state_redirects(tmp_path: Path) -> list[_patch[object]]:
         patch(
             "freedays._api.resolve_paths",
             lambda paths: paths or freedays.Paths.under(tmp_path / "freedays"),
+        ),
+        # Same for the sick-day pool: a real sick day on this machine must not
+        # silently stand the gate down for the whole suite.
+        patch(
+            "sickdays._api.resolve_paths",
+            lambda paths: paths or sickdays.Paths.under(tmp_path / "sickdays"),
         ),
         patch(
             "diet_guard._budget.BUDGET_FILE",

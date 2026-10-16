@@ -6,13 +6,17 @@ here the logged set is mocked and ``now`` is injected to drive each decision.
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time, timedelta
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import freedays
+import sickdays
 
+from diet_guard._estimator import Nutrition
 from diet_guard._gate import due_slots, gate_is_due, gate_message
+from diet_guard._state import log_meal, now_local
+from diet_guard._state_today import logged_slots_today, today_total_kcal
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -116,3 +120,55 @@ class TestFreeDays:
         (pool_dir / "free_days.json").write_text("{ not json", encoding="utf-8")
         with _logged(set()):
             assert gate_is_due(_at(20))
+
+
+def _mark_sick(tmp_path: Path, day: date) -> None:
+    """Put ``day`` in the (temp) sick-day pool; the redirect lives in conftest."""
+    sickdays.add_sick_day(
+        day,
+        is_free=lambda _day: False,
+        paths=sickdays.Paths.under(tmp_path / "sickdays"),
+        now=day,
+    )
+
+
+class TestSickDays:
+    """The sick-day pool stands the gate down, like a free day."""
+
+    def test_a_sick_day_leaves_nothing_due(self, tmp_path: Path) -> None:
+        with _logged(set()):
+            assert due_slots(_at(20)), "precondition: slots are due without a sick day"
+            _mark_sick(tmp_path, _at(20).date())
+            assert due_slots(_at(20)) == ()
+            assert not gate_is_due(_at(20))
+            assert gate_message(_at(20)) == "All meals are logged. You're up to date."
+
+    def test_a_sick_day_on_another_date_changes_nothing(self, tmp_path: Path) -> None:
+        with _logged(set()):
+            _mark_sick(tmp_path, date(2026, 12, 24))
+            assert due_slots(_at(20))
+            assert gate_is_due(_at(20))
+
+    def test_the_day_after_a_sick_day_is_armed_again(self, tmp_path: Path) -> None:
+        _mark_sick(tmp_path, _at(20).date())
+        tomorrow = _at(20) + timedelta(days=1)
+        with _logged(set()):
+            assert gate_is_due(tomorrow)
+
+    def test_an_unreadable_pool_leaves_the_gate_armed(self, tmp_path: Path) -> None:
+        """Fail closed: a corrupt pool must not switch the gate off."""
+        pool_dir = tmp_path / "sickdays"
+        pool_dir.mkdir(exist_ok=True)
+        (pool_dir / "sick_days.json").write_text("{ not json", encoding="utf-8")
+        with _logged(set()):
+            assert gate_is_due(_at(20))
+
+    def test_logging_still_works_on_a_sick_day(self, tmp_path: Path) -> None:
+        """The gate stands down; the log does not: a meal is still recorded."""
+        today = now_local().date()
+        _mark_sick(tmp_path, today)
+        log_meal("soup", Nutrition(300, 10, 30, 5, 250, "manual"), slot=480)
+        assert logged_slots_today() == {480}
+        assert today_total_kcal() == 300
+        late = datetime.combine(today, time(23, 0), tzinfo=now_local().tzinfo)
+        assert not gate_is_due(late)
