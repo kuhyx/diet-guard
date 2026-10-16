@@ -9,9 +9,9 @@ freedays @ git+https://github.com/kuhyx/utils@freedays-v0.4.0#subdirectory=freed
 gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.9.0#subdirectory=gatelock
 mcp==2.3.0
 mypy==2.4.0
-pre-commit==4.6.2
-pydantic==2.14.0
-pylint==4.1.2
+pre-commit==4.7.0
+pydantic==2.14.1
+pylint==4.1.3
 pytest==9.1.1
 pytest-cov==7.1.0
 pytest-randomly==5.0.0
@@ -19,5 +19,5 @@ pytest-sugar==1.1.1
 pytest-xdist==3.8.0
 pytest-xvfb==3.1.1
 requests==2.34.2
-ruff==0.17.0
+ruff==0.17.1
 sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.1.0#subdirectory=sickdays
