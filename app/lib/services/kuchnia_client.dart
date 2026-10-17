@@ -32,11 +32,15 @@ const kuchniaCompany = 'kuchniavikinga';
 /// The panel's own launcher tag for a browser panel session.
 const kuchniaLauncherType = 'BROWSER_PANEL';
 
-/// The only cookie the panel issues on login.
-///
-/// It sets no `XSRF-TOKEN`, so the CSRF echo its own JavaScript performs is a
-/// no-op for this account -- the session cookie alone authenticates.
+/// The cookie that authenticates every call after login.
 const kuchniaSessionCookie = 'SESSION';
+
+/// Spring's CSRF cookie. Since ~2026-10 the panel refuses a login without it
+/// echoed back in [kuchniaXsrfHeader], answering with a bare 403 that sets it.
+const kuchniaXsrfCookie = 'XSRF-TOKEN';
+
+/// The header that echoes [kuchniaXsrfCookie].
+const kuchniaXsrfHeader = 'X-XSRF-TOKEN';
 
 /// Per-request timeout.
 const kuchniaTimeout = Duration(seconds: 8);
@@ -58,14 +62,18 @@ const kuchniaWebUnsupportedReason =
 /// a panel that sets more than one cookie hands over
 /// `SESSION=abc; Path=/, OTHER=def; Path=/`. Returns null when the cookie is
 /// absent, which the caller treats as a failed login rather than guessing.
-String? sessionCookieFrom(String? setCookieHeader) {
+String? sessionCookieFrom(String? setCookieHeader) =>
+    cookieFrom(setCookieHeader, kuchniaSessionCookie);
+
+/// Extracts the cookie called [name] the same way as [sessionCookieFrom].
+String? cookieFrom(String? setCookieHeader, String name) {
   if (setCookieHeader == null || setCookieHeader.isEmpty) return null;
   // Split on both separators: ',' joins whole cookies, ';' separates a
   // cookie's attributes from its value.
   for (final part in setCookieHeader.split(RegExp('[,;]'))) {
     final trimmed = part.trim();
-    if (trimmed.startsWith('$kuchniaSessionCookie=')) {
-      final value = trimmed.substring(kuchniaSessionCookie.length + 1);
+    if (trimmed.startsWith('$name=')) {
+      final value = trimmed.substring(name.length + 1);
       if (value.isNotEmpty) return value;
     }
   }
@@ -81,8 +89,7 @@ class KuchniaSession {
     http.Client? client,
     DateTime? startedAt,
   }) : _client = client ?? http.Client(),
-       _deadline =
-           (startedAt ?? DateTime.now()).add(kuchniaTotalDeadline);
+       _deadline = (startedAt ?? DateTime.now()).add(kuchniaTotalDeadline);
 
   /// The panel e-mail.
   final String username;
@@ -120,25 +127,23 @@ class KuchniaSession {
   /// sticky JSON default would mislabel it. Passing a `Map` to `http.post`
   /// sets the right one automatically.
   Future<void> login() async {
-    _checkDeadline();
-    final http.Response response;
-    try {
-      response = await _client
-          .post(
-            Uri.parse('$kuchniaApiBase/auth/login'),
-            headers: _headers,
-            body: {'username': username, 'password': password},
-          )
-          .timeout(kuchniaTimeout);
-    } on Exception catch (error) {
-      throw KuchniaError('catering panel unreachable: $error');
+    var response = await _postLogin(null);
+    final xsrf = cookieFrom(response.headers['set-cookie'], kuchniaXsrfCookie);
+    if (response.statusCode == 403 && xsrf != null) {
+      // The CSRF handshake: the 403 handed out the token, echo it once.
+      response = await _postLogin(xsrf);
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       // A 401 is a wrong password, and on the phone the only place to fix it
-      // is Settings; any other status is the panel's problem, not the user's.
-      final hint = response.statusCode == 401
-          ? ' — check the password in Settings'
-          : '';
+      // is Settings. A 403 that survives the handshake is the panel's
+      // protection; any other status is the panel's problem, not the user's.
+      final hint = switch (response.statusCode) {
+        401 => ' — check the password in Settings',
+        403 =>
+          " — the panel's CSRF/bot protection refused it, "
+              'not a password problem',
+        _ => '',
+      };
       throw KuchniaError(
         'catering login rejected (HTTP ${response.statusCode})$hint',
       );
@@ -148,6 +153,28 @@ class KuchniaSession {
       throw const KuchniaError('catering login returned no session cookie');
     }
     sessionCookie = cookie;
+  }
+
+  Future<http.Response> _postLogin(String? xsrf) async {
+    _checkDeadline();
+    final headers = {
+      ..._headers,
+      if (xsrf != null) ...{
+        kuchniaXsrfHeader: xsrf,
+        'Cookie': '$kuchniaXsrfCookie=$xsrf',
+      },
+    };
+    try {
+      return await _client
+          .post(
+            Uri.parse('$kuchniaApiBase/auth/login'),
+            headers: headers,
+            body: {'username': username, 'password': password},
+          )
+          .timeout(kuchniaTimeout);
+    } on Exception catch (error) {
+      throw KuchniaError('catering panel unreachable: $error');
+    }
   }
 
   /// GETs [path] and decodes it, re-logging in once if the cookie expired.

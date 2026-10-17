@@ -98,6 +98,7 @@ def state_redirects(tmp_path: Path) -> list[_patch[object]]:
         patch("diet_guard._cli_gate.publish_after_log", return_value=None),
         patch("diet_guard._mcp.publish_after_log", return_value=None),
         patch("diet_guard._cli_body.publish_after_log", return_value=None),
+        patch("diet_guard._cli_kuchnia.publish_after_log", return_value=None),
         # The gate's pre-lock refresh is a *second*, independent network
         # entry point (narrow peer-log pull, not the full tick). Without
         # this every test that reaches `_should_lock` hits the real remote.

@@ -160,3 +160,50 @@ def test_unknown_lazy_attribute_raises() -> None:
     missing = "not_a_real_helper"
     with pytest.raises(AttributeError, match="no attribute"):
         getattr(_cli_kuchnia, missing)
+
+
+class TestPublish:
+    """``--log`` pushes the new entries, like every other write path.
+
+    Without it the phone kept offering "5 more to go" for dishes the PC had
+    already logged (2026-10-17), inviting a double log.
+    """
+
+    def _log(self, lines: list[str], written: list[str]) -> object:
+        with (
+            patch.object(
+                _cli_kuchnia, "refresh_delivery", return_value=([_dish()], None)
+            ),
+            patch.object(_cli_kuchnia, "log_dishes", return_value=written),
+            patch.object(_cli_kuchnia, "publish_after_log", return_value=None) as pub,
+        ):
+            _cli_kuchnia.cmd_kuchnia(lines.append, lambda _p: "y", log=True, yes=True)
+        return pub
+
+    def test_logging_publishes_once(self) -> None:
+        assert self._log([], ["A", "B"]).call_count == 1
+
+    def test_a_dry_run_does_not_publish(self) -> None:
+        with (
+            patch.object(
+                _cli_kuchnia, "refresh_delivery", return_value=([_dish()], None)
+            ),
+            patch.object(_cli_kuchnia, "publish_after_log") as pub,
+        ):
+            _cli_kuchnia.cmd_kuchnia([].append, lambda _p: "y", log=False, yes=False)
+        assert pub.call_count == 0
+
+    def test_an_outage_is_reported_not_raised(self) -> None:
+        lines: list[str] = []
+        with (
+            patch.object(
+                _cli_kuchnia, "refresh_delivery", return_value=([_dish()], None)
+            ),
+            patch.object(_cli_kuchnia, "log_dishes", return_value=["A"]),
+            patch.object(_cli_kuchnia, "publish_after_log", return_value="offline"),
+        ):
+            code = _cli_kuchnia.cmd_kuchnia(
+                lines.append, lambda _p: "y", log=True, yes=True
+            )
+        assert code == 0
+        assert any("not yet published (offline)" in line for line in lines)

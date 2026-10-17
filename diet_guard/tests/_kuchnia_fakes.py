@@ -25,10 +25,21 @@ class FakeResponse:
     """The slice of ``requests.Response`` the client actually touches."""
 
     def __init__(
-        self, status: int = 200, payload: object = None, *, text: str = ""
+        self,
+        status: int = 200,
+        payload: object = None,
+        *,
+        text: str = "",
+        cookies: dict[str, str] | None = None,
     ) -> None:
-        """Build a response with ``status`` and either JSON or raw text."""
+        """Build a response with ``status`` and either JSON or raw text.
+
+        ``cookies`` land in the session's jar when the response is replayed,
+        the way ``requests`` absorbs a ``Set-Cookie`` -- the panel's CSRF 403
+        hands out its ``XSRF-TOKEN`` that way.
+        """
         self.status_code = status
+        self.cookies = cookies or {}
         self._payload = payload
         self.text = text or (json.dumps(payload) if payload is not None else "")
 
@@ -62,6 +73,8 @@ class FakeSession:
         self.cookies = FakeCookieJar()
         self.calls: list[tuple[str, str]] = []
         self.bodies: list[dict[str, str]] = []
+        # A snapshot per request: the session-level dict mutates afterwards.
+        self.sent_headers: list[dict[str, str]] = []
         self._responses: Iterator[FakeResponse] = iter(responses or [])
         self.login_cookie: str | None = "session-abc"
         self.raise_on_request: Exception | None = None
@@ -78,14 +91,17 @@ class FakeSession:
         if self.raise_on_request is not None:
             raise self.raise_on_request
         self.calls.append((method, url))
+        self.sent_headers.append(dict(self.headers))
         if data is not None:
             self.bodies.append(data)
         if method == "POST" and url.endswith("auth/login") and self.login_cookie:
             self.cookies.set("SESSION", self.login_cookie)
         try:
-            return next(self._responses)
+            response = next(self._responses)
         except StopIteration:
             return FakeResponse(200, {})
+        self.cookies.update(response.cookies)
+        return response
 
 
 def fake_requests(session: FakeSession) -> SimpleNamespace:

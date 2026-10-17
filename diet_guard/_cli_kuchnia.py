@@ -21,6 +21,7 @@ from diet_guard._kuchnia_spread import assign_slots
 from diet_guard._meal_schedule_store import current_schedule
 from diet_guard._slots import day_slots, slot_label
 from diet_guard._state import now_local
+from diet_guard._sync_events import publish_after_log
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import argparse
@@ -134,5 +135,11 @@ def _log_into_empty_slots(
     if not yes and ask(question).strip().lower() != "y":
         emit("nothing logged.")
         return
-    written = sys.modules[__name__].log_dishes(plan)
+    module = sys.modules[__name__]
+    written = module.log_dishes(plan)
     emit(f"logged {len(written)} meal(s).")
+    # Push now, like every other write path: until a peer sees these, the
+    # phone keeps offering the same dishes and invites a double log.
+    failure = publish_after_log()
+    if failure is not None:
+        emit(f"saved locally, not yet published ({failure}).")

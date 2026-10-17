@@ -79,7 +79,7 @@ every idle tick to approximate the two moments state actually changes here.
 - Every test that logs a meal would otherwise hit the network through these new
   call sites; `conftest._isolate_state` patches each one
   (listed in `tests/_state_redirects.py`: `_cli_log`, `_cli_gate`, `_mcp`,
-  `_cli_body` publish sites and `_cli_gate.pull_peer_logs`) — not on
+  `_cli_body`, `_cli_kuchnia` publish sites and `_cli_gate.pull_peer_logs`) — not on
   `_sync_events`, so a direct test still exercises the real helper. A new
   network entry point missing from that list reaches the real remote.
 

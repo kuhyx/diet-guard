@@ -72,9 +72,9 @@ Three traps worth knowing before touching `_kuchnia_orders.py`:
   and the one the bundles pass a `deliveryId` to. The menu endpoint above is
   the one that answers.
 - **`deliveryId` is opaque, never a date.** The date form 400s.
-- **No `XSRF-TOKEN` cookie is issued**, so the CSRF echo the panel's own
-  JavaScript performs is a no-op here. The client skips it when absent rather
-  than sending an empty header.
+- **CSRF is enforced at login since ~2026-10.** No `X-XSRF-TOKEN` → a bare
+  403 that sets the `XSRF-TOKEN` cookie; both clients retry once echoing it. A
+  login 403 is never a wrong password (that is 401). Logins rate-limit (429).
 
 ### Macros are per portion
 

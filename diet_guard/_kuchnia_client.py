@@ -45,6 +45,11 @@ _LAZY_ATTRS = ("requests",)
 
 _COOKIE_DOMAIN = "panel.kuchniavikinga.pl"
 
+# Spring's CSRF pair: the panel sets the cookie on a refused login and wants it
+# echoed back in the header.
+_XSRF_COOKIE = "XSRF-TOKEN"
+_XSRF_HEADER = "X-XSRF-TOKEN"
+
 
 def __getattr__(name: str) -> object:
     """Resolve the deferred ``requests`` import on first attribute access."""
@@ -111,14 +116,25 @@ class PanelSession:
             msg = f"catering panel unreachable: {exc}"
             raise KuchniaError(msg) from exc
 
+    def _post_login(self) -> requests.Response:
+        """POST the stored credentials, answering the CSRF handshake once.
+
+        The panel enforces CSRF since ~2026-10: a login without the header gets
+        a bare 403 that also sets the ``XSRF-TOKEN`` cookie. ``requests``
+        stores that cookie, so one retry echoing it gets the real answer.
+        """
+        username, password = read_credentials()
+        body = {"username": username, "password": password}
+        response = self._request("POST", "auth/login", data=body)
+        token = self._session.cookies.get(_XSRF_COOKIE)
+        if response.status_code == HTTPStatus.FORBIDDEN and token:
+            self._session.headers[_XSRF_HEADER] = token
+            response = self._request("POST", "auth/login", data=body)
+        return response
+
     def _login(self) -> None:
         """Authenticate with the stored credentials and cache the cookie."""
-        username, password = read_credentials()
-        response = self._request(
-            "POST",
-            "auth/login",
-            data={"username": username, "password": password},
-        )
+        response = self._post_login()
         if not response.ok:
             msg = f"catering login rejected (HTTP {response.status_code})"
             if response.status_code == HTTPStatus.UNAUTHORIZED:
@@ -127,6 +143,13 @@ class PanelSession:
                 msg += (
                     " -- check the password in "
                     f"{_kuchnia_config.KUCHNIA_CREDENTIALS_FILE}"
+                )
+            elif response.status_code == HTTPStatus.FORBIDDEN:
+                # A wrong password is a 401 even behind CSRF; a 403 that
+                # survives the handshake is the panel's protection refusing.
+                msg += (
+                    " -- the panel's CSRF/bot protection refused it, "
+                    "not a password problem"
                 )
             raise KuchniaError(msg)
         cookie = self._session.cookies.get(SESSION_COOKIE)
