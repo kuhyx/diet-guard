@@ -77,7 +77,7 @@ install_desktop_entry() {
     cat > "$DESKTOP_DIR/$ICON_NAME.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=diet guard
+Name=DietGuard
 Comment=Diet logging and budget companion
 Exec=$LAUNCHER
 Icon=$ICON_NAME

@@ -24,7 +24,7 @@
          perceived lateness, which trades robustness for precision we don't
          need. -->
     <application
-        android:label="diet_guard_app"
+        android:label="DietGuard"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

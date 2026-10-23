@@ -76,7 +76,7 @@ WRAPPER
   install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/diet-guard-app.desktop" <<'DESKTOP'
 [Desktop Entry]
 Type=Application
-Name=diet guard
+Name=DietGuard
 Comment=Diet logging and budget companion
 Exec=/usr/bin/diet-guard-app
 Icon=diet-guard-app
