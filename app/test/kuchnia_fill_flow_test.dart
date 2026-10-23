@@ -49,8 +49,8 @@ void main() {
     flow = FillAllFlow(
       fetch: fetcher.call,
       now: () => clock,
-      slots: () => defaultSlots,
-      occupiedSlots: () async {
+      slots: (_) => defaultSlots,
+      occupiedSlots: (_) async {
         occupancyReads++;
         if (occupancyGate != null) await occupancyGate!.future;
         return {...occupied};

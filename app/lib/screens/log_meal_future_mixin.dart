@@ -33,6 +33,10 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
   /// The slot chosen for [futureDate], or null until one is picked.
   int? get futureSlot => _futureSlot;
 
+  /// Called after the picked date changes (including back to today), for
+  /// state keyed to the old date to drop itself. No-op unless overridden.
+  void onLogDateChanged() {}
+
   /// Clears back to "log for today", dropping the picked date and slot.
   void resetFutureLog() {
     setState(() {
@@ -41,6 +45,7 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
       _futureLoggedSlots = {};
       _futureSchedule = null;
     });
+    onLogDateChanged();
   }
 
   Future<void> _pickFutureDate() async {
@@ -53,6 +58,12 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
       initialDate: _futureDate ?? tomorrow,
     );
     if (picked == null || !mounted) return;
+    await selectLogDate(picked);
+  }
+
+  /// Switches the form to log against [picked] (strictly after today): what
+  /// the date picker does once a date is chosen.
+  Future<void> selectLogDate(DateTime picked) async {
     final log = await LogStorageService.instance.readLog();
     if (!mounted) return;
     final day = localDateKey(picked);
@@ -70,6 +81,7 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
       _futureLoggedSlots = logged;
       _futureSlot = null;
     });
+    onLogDateChanged();
   }
 
   /// The "When" row: a "Log for later" button, or the picked date with a

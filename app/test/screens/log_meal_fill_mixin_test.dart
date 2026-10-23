@@ -12,7 +12,9 @@
 library;
 
 import 'package:diet_guard_app/models/kuchnia_dish.dart';
+import 'package:diet_guard_app/models/local_time.dart';
 import 'package:diet_guard_app/screens/log_meal_fill_mixin.dart';
+import 'package:diet_guard_app/screens/log_meal_future_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_kuchnia_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_sync_mixin.dart';
 import 'package:diet_guard_app/services/kuchnia_fill.dart';
@@ -42,6 +44,7 @@ class _HostState extends State<_Host>
         WidgetsBindingObserver,
         LogMealSyncMixin<_Host>,
         LogMealKuchniaMixin<_Host>,
+        LogMealFutureMixin<_Host>,
         LogMealFillMixin<_Host> {
   final TextEditingController desc = TextEditingController();
   final MacroControllers macros = MacroControllers();
@@ -65,7 +68,7 @@ class _HostState extends State<_Host>
     super.initState();
     fillFlow = FillAllFlow(
       fetch: (_) async => KuchniaRefresh(dishes: widget.delivery),
-      slots: () => defaultSlots,
+      slots: (_) => defaultSlots,
       storage: widget.storage,
     );
   }
@@ -175,8 +178,8 @@ void main() {
     await pumpHost(t);
     host.fillFlow = FillAllFlow(
       fetch: (_) async => KuchniaRefresh(dishes: delivery),
-      slots: () => defaultSlots,
-      occupiedSlots: () async => throw Exception('storage unavailable'),
+      slots: (_) => defaultSlots,
+      occupiedSlots: (_) async => throw Exception('storage unavailable'),
       storage: storage,
     );
 
@@ -185,5 +188,44 @@ void main() {
     expect(host.status, startsWith('Fill all failed'));
     expect(host.publishes, 1, reason: 'a partial batch must still sync');
     expect(host.fillFlow.busy, isFalse);
+  });
+
+  testWidgets('a later-day fill leaves today alone and returns to it', (
+    t,
+  ) async {
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    await pumpHost(t);
+    await t.runAsync(() async {
+      await host.selectLogDate(tomorrow);
+      await host.onFillAll();
+      await host.onFillAll();
+    });
+
+    expect(
+      host.status,
+      'Logged 4 catering dishes for ${localDateKey(tomorrow)}.',
+    );
+    final log = await t.runAsync(storage.readLog);
+    expect(log![localDateKey(tomorrow)], hasLength(4));
+    expect(await t.runAsync(storage.todayEntries), isEmpty);
+    expect(host.publishes, 1);
+    expect(KuchniaQueueService.remaining, 4, reason: "today's queue untouched");
+    expect(host.desc.text, 'D1');
+    expect(host.futureDate, isNull);
+  });
+
+  testWidgets('changing the date disarms a proposal', (t) async {
+    final now = DateTime.now();
+    await pumpHost(t);
+    await t.runAsync(() async {
+      await host.selectLogDate(DateTime(now.year, now.month, now.day + 1));
+      await host.onFillAll();
+    });
+    expect(host.fillFlow.armedCount, 4);
+
+    host.resetFutureLog();
+
+    expect(host.fillFlow.armedCount, 0);
   });
 }

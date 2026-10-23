@@ -6,6 +6,7 @@
 /// `kuchnia_fill_flow.dart`; this only connects them to the screen.
 library;
 
+import 'package:diet_guard_app/screens/log_meal_future_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_kuchnia_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_sync_mixin.dart';
 import 'package:diet_guard_app/services/kuchnia_fill_flow.dart';
@@ -15,7 +16,7 @@ import 'package:flutter/material.dart';
 
 /// Drives the screen's [FillAllFlow] and tidies the screen after a fill.
 mixin LogMealFillMixin<T extends StatefulWidget>
-    on LogMealSyncMixin<T>, LogMealKuchniaMixin<T> {
+    on LogMealSyncMixin<T>, LogMealKuchniaMixin<T>, LogMealFutureMixin<T> {
   /// The flow behind the button. Per-screen, so leaving the screen drops an
   /// armed proposal along with it.
   FillAllFlow fillFlow = FillAllFlow();
@@ -23,9 +24,19 @@ mixin LogMealFillMixin<T extends StatefulWidget>
   /// Shows [message] in the form's status line. Supplied by the screen.
   void showFillStatus(String message);
 
+  /// A proposal belongs to the date it was fetched for; picking another (or
+  /// going back to today) must not leave "Confirm (N)" offering it.
+  @override
+  void onLogDateChanged() {
+    super.onLogDateChanged();
+    fillFlow.cancel();
+  }
+
   /// Runs one tap: the first proposes, a second on the same day confirms.
+  /// Fills the "Log for later" date when one is picked, else today.
   Future<void> onFillAll() async {
-    final pending = fillFlow.tap();
+    final day = futureDate;
+    final pending = fillFlow.tap(day: day);
     setState(() {}); // show the busy label while the fetch/writes run
     final FillOutcome? outcome;
     try {
@@ -44,7 +55,9 @@ mixin LogMealFillMixin<T extends StatefulWidget>
     if (!mounted) return;
     setState(() {});
     if (outcome == null) return;
-    if (outcome.written.isNotEmpty) await _afterFill(outcome.written);
+    if (outcome.written.isNotEmpty) {
+      await _afterFill(outcome.written, later: day != null);
+    }
     if (!mounted) return;
     showFillStatus(outcome.message);
   }
@@ -58,7 +71,20 @@ mixin LogMealFillMixin<T extends StatefulWidget>
   /// Publishes the batch once and drops the filled dishes from the delivery
   /// queue, so "Today's delivery (N more to go)" and the prefilled form do
   /// not keep offering meals that were just logged.
-  Future<void> _afterFill(List<SlottedDish> written) async {
+  ///
+  /// A [later] fill logged another day's delivery: today's queue and form are
+  /// left alone, and the screen goes back to today, as after a manual
+  /// "Log for later" -- the picked day's slot row would otherwise be stale.
+  Future<void> _afterFill(
+    List<SlottedDish> written, {
+    required bool later,
+  }) async {
+    if (later) {
+      resetFutureLog();
+      await publishAfterLog();
+      await refreshSlots();
+      return;
+    }
     if (KuchniaQueueService.isInitialized) {
       for (final item in written) {
         KuchniaQueueService.instance.markLogged(item.dish);

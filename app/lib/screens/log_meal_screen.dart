@@ -47,8 +47,8 @@ class _LogMealScreenState extends State<LogMealScreen>
         LogMealSyncMixin<LogMealScreen>,
         LogMealNavMixin<LogMealScreen>,
         LogMealKuchniaMixin<LogMealScreen>,
-        LogMealFillMixin<LogMealScreen>,
-        LogMealFutureMixin<LogMealScreen> {
+        LogMealFutureMixin<LogMealScreen>,
+        LogMealFillMixin<LogMealScreen> {
   @override
   http.Client? get syncHttpClient => widget.httpClient;
 

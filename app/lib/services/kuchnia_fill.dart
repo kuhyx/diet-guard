@@ -9,11 +9,14 @@
 /// reached from the second tap of `FillAllFlow`.
 library;
 
+import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/kuchnia_dish.dart';
+import 'package:diet_guard_app/models/local_time.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/kuchnia_spread.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/meal_schedule_service.dart';
 
 /// Marks entries this feature created, the same tag the PC's Fill all writes
 /// (`_kuchnia_log.SOURCE`), so both devices' batch fills read alike.
@@ -61,23 +64,49 @@ Nutrition dishNutrition(KuchniaDish dish) => nutritionForPortion(
 String _dedupKey(String desc, int? slotMinute) =>
     '${desc.trim().toLowerCase()}\u0000$slotMinute';
 
-/// Logs each chosen dish, skipping any already logged today in that slot.
+/// Returns [day]'s live entries; today's when [day] is null.
+Future<List<FoodEntry>> dayEntries(
+  LogStorageService store,
+  DateTime? day,
+) async {
+  if (day == null) return await store.todayEntries();
+  final log = await store.readLog();
+  return [
+    for (final entry in log[localDateKey(day)] ?? const <FoodEntry>[])
+      if (!entry.deleted) entry,
+  ];
+}
+
+/// [day]'s satisfied slot minutes under the schedule in force *that* day --
+/// `LogStorageService.loggedSlotsToday` for any date, as the "Log for later"
+/// slot row computes it.
+Future<Set<int>> loggedSlotsOn(LogStorageService store, DateTime day) async {
+  final entries = await dayEntries(store, day);
+  return satisfiedSlots([
+    for (final entry in entries) ?entry.slotMinute,
+  ], MealScheduleService.history.forDay(localDateKey(day)));
+}
+
+/// Logs each chosen dish, skipping any already logged that day in that slot.
 ///
 /// Mirrors `log_dishes`, including its intra-batch skip: two identical dishes
 /// spread into the same slot land once, because the write is reflected in the
 /// seen set before the next dish is checked.
 ///
 /// Writes through [LogStorageService.logMeal], the same call a manual log
-/// makes; the caller then publishes once for the whole batch.
+/// makes; the caller then publishes once for the whole batch. With [day]
+/// (a "Log for later" date, strictly after today) each dish is stamped at its
+/// slot's time on that day; without it, now -- as a manual log is.
 ///
 /// Returns the dishes actually written, in order.
 Future<List<SlottedDish>> logDishes(
   List<SlottedDish> chosen, {
   LogStorageService? storage,
+  DateTime? day,
 }) async {
   final store = storage ?? LogStorageService.instance;
   final seen = {
-    for (final entry in await store.todayEntries())
+    for (final entry in await dayEntries(store, day))
       _dedupKey(entry.desc, entry.slotMinute),
   };
   final written = <SlottedDish>[];
@@ -88,6 +117,15 @@ Future<List<SlottedDish>> logDishes(
       item.dish.name,
       dishNutrition(item.dish),
       slotMinute: item.slot,
+      when: day == null
+          ? null
+          : DateTime(
+              day.year,
+              day.month,
+              day.day,
+              item.slot ~/ 60,
+              item.slot % 60,
+            ),
     );
     written.add(item);
   }

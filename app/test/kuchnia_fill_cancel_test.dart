@@ -25,8 +25,8 @@ void main() {
         return KuchniaRefresh(dishes: dishes(4));
       },
       now: () => DateTime(2026, 8, 23, 10),
-      slots: () => defaultSlots,
-      occupiedSlots: () async => <int>{},
+      slots: (_) => defaultSlots,
+      occupiedSlots: (_) async => <int>{},
       storage: freshStorage(),
     );
 
