@@ -119,27 +119,79 @@ flutter_clean_env() {
 # hooks) then the full test suite. Deliberately fails rather than skips when
 # flutter is missing -- a gate that quietly passes on a machine without the
 # toolchain is the same as no gate.
-run_flutter_gates() {
+require_app() {
     if [[ ! -f "$APP_DIR/pubspec.yaml" ]]; then
         log "no app/pubspec.yaml — skipping the Flutter gates"
-        return
+        return 1
     fi
     if ! command -v flutter >/dev/null 2>&1; then
         fail "flutter is not on PATH but app/ exists (cannot verify the app)"
     fi
+}
+
+run_flutter_analyze() {
+    require_app || return 0
     log "flutter analyze (app/)"
     (cd "$APP_DIR" && flutter_clean_env analyze) || fail "flutter analyze"
+}
+
+run_flutter_test() {
+    require_app || return 0
     log "flutter test (app/)"
     (cd "$APP_DIR" && flutter_clean_env test) || fail "flutter test"
 }
 
+run_flutter_gates() {
+    run_flutter_analyze
+    run_flutter_test
+}
+
+# Bucket I of N of the app's test files (every N-th, sorted), so the N buckets
+# partition the suite exactly. Each bucket stays under the 60 s action cap.
+run_flutter_test_shard() {
+    [[ ${1:-} =~ ^([0-9]+)/([1-9][0-9]*)$ ]] || fail "flutter-test --shard wants I/N, got '${1:-}'"
+    local index=${BASH_REMATCH[1]} total=${BASH_REMATCH[2]} hooks i=0 file
+    local -a files=()
+    hooks="$(grep -c '^      - id: ci-mirror-flutter-test-[0-9]' "$ROOT/.pre-commit-config.yaml" || true)"
+    ((total == hooks && index < total)) \
+        || fail "shard $index/$total does not match the $hooks ci-mirror-flutter-test-N hooks"
+    require_app || return 0
+    while IFS= read -r file; do
+        if ((i % total == index)); then
+            files+=("${file#"$APP_DIR"/}")
+        fi
+        i=$((i + 1))
+    done < <(find "$APP_DIR/test" -name '*_test.dart' | LC_ALL=C sort)
+    ((${#files[@]} > 0)) || fail "flutter test shard $index/$total has no test files"
+    log "flutter test shard $index/$total (${#files[@]} files)"
+    (cd "$APP_DIR" && flutter_clean_env test "${files[@]}") || fail "flutter test shard $index/$total"
+}
+
+# No phase argument (or pytest options) runs everything, exactly as CI does.
 main() {
     require_file
-    ensure_venv
-    run_precommit_all_files
-    run_pytest_clean_venv "$@"
-    run_flutter_gates
-    log "all CI gates passed locally — safe to push"
+    case "${1:-all}" in
+        venv) ensure_venv ;;
+        precommit) run_precommit_all_files ;;
+        pytest)
+            shift
+            ensure_venv
+            run_pytest_clean_venv "$@"
+            ;;
+        flutter-analyze) run_flutter_analyze ;;
+        flutter-test)
+            [[ "${2:-}" == "--shard" ]] || fail "usage: ci_mirror.sh flutter-test --shard I/N"
+            run_flutter_test_shard "${3:-}"
+            ;;
+        *)
+            [[ "${1:-}" == "all" ]] && shift
+            ensure_venv
+            run_precommit_all_files
+            run_pytest_clean_venv "$@"
+            run_flutter_gates
+            ;;
+    esac
+    log "gates passed locally — safe to push"
 }
 
 main "$@"
