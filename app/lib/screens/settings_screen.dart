@@ -1,11 +1,6 @@
-/// App settings: kcal goal, notifications, and links to the two sync
-/// surfaces.
-///
-/// "Sync settings" is the shared `sync_settings_ui` package (Firebase
-/// only -- diet_guard has no local backup format, so `BackupSlot` is null).
-/// "Advanced sync (GitHub)" stays app-local ([GitHubMirrorScreen]) because
-/// connecting it also triggers a real log sync via `runSync`, which the
-/// shared package's Firebase section does not do -- it only saves settings.
+/// App settings: kcal goal, notifications, data export/import, and links to
+/// the shared Firebase "Sync settings" and the app-local GitHub mirror (its
+/// connect also runs a real `runSync`, which the shared screen does not).
 library;
 
 import 'dart:async';
@@ -21,6 +16,7 @@ import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/google_sign_in_backend.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
+import 'package:diet_guard_app/widgets/data_backup_row.dart';
 import 'package:diet_guard_app/widgets/meal_schedule_editor.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -202,6 +198,11 @@ class _SettingsScreenState extends State<SettingsScreen>
                 subtitle: const Text('Cutover mirror — not recommended'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => unawaited(_openGitHubMirror()),
+              ),
+              DataBackupRow(
+                onImported: () => _kcalGoalController.text = AppSettingsService
+                    .dailyKcalGoal
+                    .toString(),
               ),
               const SizedBox(height: 24),
               const Divider(),

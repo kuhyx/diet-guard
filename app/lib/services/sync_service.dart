@@ -12,22 +12,23 @@
 /// since a budget (unlike a food-log entry) can be edited repeatedly.
 library;
 
+import 'dart:developer';
+
 import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
-import 'package:diet_guard_app/services/app_settings_service.dart';
-import 'package:diet_guard_app/services/budget_history_service.dart';
+import 'package:diet_guard_app/services/export_keyring_default.dart';
+import 'package:diet_guard_app/services/export_keyring_sync.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/kuchnia_credential_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
-import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/sync_body.dart';
+import 'package:diet_guard_app/services/sync_budget_local.dart';
 import 'package:diet_guard_app/services/sync_device_id.dart';
 import 'package:diet_guard_app/services/sync_merge.dart';
 import 'package:diet_guard_app/services/sync_merge_kuchnia.dart';
-import 'package:diet_guard_app/services/sync_merge_schedule.dart';
 import 'package:diet_guard_app/services/sync_state_factory.dart';
 
-const _devicesDir = 'diet-guard-sync/devices';
+const String _devicesDir = syncDevicesDir;
 
 /// Runs one full sync tick: pull, merge, persist, push.
 ///
@@ -63,6 +64,7 @@ Future<DayLog> runSync(RemoteStore client, {SyncStateStore? stateStore}) async {
   await _syncFoodBank(client);
   await _syncManualBank(client);
   await _syncKuchniaCredential(client);
+  await _syncExportKeys(client);
   await syncBody(client, devicesDir: _devicesDir);
   return merged;
 }
@@ -110,72 +112,37 @@ Future<void> _syncManualBank(RemoteStore client) async {
 }
 
 /// Pulls other devices' budgets, merges, applies the winner locally, pushes.
-///
-/// Reuses [syncLog] (it always pushes the merged result, even an empty
-/// one -- harmless and consistent with the food-log sync above). This
-/// device contributes nothing to the merge until the goal has been
-/// explicitly set at least once (see
-/// [AppSettingsService.dailyKcalGoalUpdatedAt]), so a fresh install's
-/// unset 2200 default can never spuriously outrank a real budget synced
-/// from elsewhere.
 Future<void> _syncBudget(RemoteStore client) async {
-  final updatedAt = AppSettingsService.dailyKcalGoalUpdatedAt;
-  final scheduleEntries = MealScheduleService.history.entries;
-  // `budgetToLog` returns an empty Log for a null record, which would also
-  // drop the `sched:` fields. A device that has edited its schedule but never
-  // its budget still has something to contribute, so synthesise a record from
-  // the schedule's own edit time in that case. Its `value` carries the
-  // unset-default budget, but that loses every LWW race against a device that
-  // has actually set one, because this stamp is older than any real edit.
-  final scheduleStamp = MealScheduleService.updatedAt;
-  final recordStamp =
-      updatedAt ?? (scheduleEntries.isEmpty ? null : scheduleStamp);
-  final localRecord = recordStamp == null
-      ? null
-      : <String, dynamic>{
-          'v': 2,
-          'b': AppSettingsService.dailyKcalGoal,
-          't': (updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
-              .toIso8601String(),
-        };
-
   final mergedBudgetLog = await syncLog(
     client: client,
     deviceId: currentSyncDeviceId,
     legacyDeviceId: legacySyncDeviceId,
     pathPrefix: _devicesDir,
-    localLog: budgetToLog(
-      localRecord,
-      BudgetHistoryService.schedule.entries,
-      scheduleEntries,
-    ),
+    localLog: localBudgetLog(),
     encode: encodeBudgetForPush,
     decode: parseRemoteBudget,
     filename: 'budget.json',
     commitMessage: 'diet_guard_app sync',
   );
+  await applyBudgetLog(mergedBudgetLog);
+}
 
-  // The history merges by field union, so it is applied unconditionally --
-  // independently of whether the scalar budget resolved to anything.
-  await BudgetHistoryService.instance.applyMerged(
-    logToHistory(mergedBudgetLog),
-  );
-  // Same reasoning for the meal schedule: field-union merge, so applied
-  // regardless of how the scalar budget resolved.
-  if (MealScheduleService.isInitialized) {
-    await MealScheduleService.instance.applyMerged(
-      logToScheduleHistory(mergedBudgetLog),
-      updatedAt: scheduleStamp,
+/// Syncs the export keyring; best effort, since sync must not fail on it.
+Future<void> _syncExportKeys(RemoteStore client) async {
+  try {
+    await syncExportKeys(
+      client,
+      keyring: defaultKeyring(),
+      devicesDir: _devicesDir,
+    );
+  } on Object catch (error, stackTrace) {
+    log(
+      'export key sync failed',
+      level: 900,
+      error: error,
+      stackTrace: stackTrace,
     );
   }
-
-  final merged = logToBudget(mergedBudgetLog);
-  final mergedKcal = merged?['b'];
-  if (merged == null || mergedKcal is! int) return;
-  await AppSettingsService.instance.applySyncedBudget(
-    mergedKcal,
-    updatedAt: DateTime.tryParse(merged['t'] as String? ?? ''),
-  );
 }
 
 /// Pulls peers' catering credentials, merges, applies the winner locally.

@@ -5,6 +5,9 @@ import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+/// Where every device's synced files live on the remote.
+const syncDevicesDir = 'diet-guard-sync/devices';
+
 /// SharedPreferences key holding this install's device id.
 ///
 /// The same key the sibling apps (`todo`, `home_inventory`, `wake_alarm`)

@@ -2,7 +2,7 @@ name: diet_guard_app
 description: "Companion phone app for diet_guard: log meals on the go."
 publish_to: 'none'
 
-version: 1.0.124+1
+version: 1.0.125+1
 
 environment:
   sdk: ^3.12.2
@@ -14,6 +14,14 @@ dependencies:
       ref: crdt_sync_dart-v0.11.3
       path: crdt_sync_dart
   crypto: 3.0.8
+  cryptography: 2.9.0
+
+  # Export/import file plumbing (Save-as picker, open picker), shared.
+  data_transfer_flutter:
+    git:
+      url: https://github.com/kuhyx/utils
+      ref: data_transfer_flutter-v0.2.0
+      path: data_transfer_flutter
   fl_chart: 1.3.0
   flutter:
     sdk: flutter

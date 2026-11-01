@@ -90,9 +90,9 @@ void main() {
     expect(ok, isTrue);
     // syncLog always pushes, even an empty merged result: food_log.json,
     // budget.json, food_bank.json, food_bank_manual.json, kuchnia.json,
-    // body.json. Six data files plus this device's revision, which is what
-    // lets a later tick skip an unchanged peer.
-    expect(puts, 7);
+    // export_keys.json, body.json. Seven data files plus this device's
+    // revision, which is what lets a later tick skip an unchanged peer.
+    expect(puts, 8);
   });
 
   test('pushes under the persisted uuid, not the legacy role id', () async {
