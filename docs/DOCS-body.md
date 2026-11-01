@@ -115,8 +115,8 @@ every formula's daily total. Heart-rate input was dropped at the user's call.
 ## Calculations (`_body_calc.py`, `_body_energy.py`, `_week_plan.py`)
 
 - **BMI** kg/m², BMI Prime, Trefethen; WHO bands, not applied under 20.
-- **Ideal weight**: Devine, Robinson, Miller, Hamwi (undefined < 152.4 cm),
-  Broca, modified Broca, Lorentz, Creff (the one that uses age), Peterson;
+- **Ideal weight**: Devine, Robinson, Miller (undefined < 152.4 cm), Peterson;
+  Broca, modified Broca, Lorentz, Creff and Hamwi were dropped (unvalidated);
   then their average and min-max "ideal range". The BMI 18.5-24.9 healthy
   range sits with BMI.
 - **BMR**: Mifflin-St Jeor, Harris-Benedict (1984), and with a body fat

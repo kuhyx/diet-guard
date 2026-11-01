@@ -23,7 +23,6 @@ from diet_guard._budget_biometrics import Biometrics, mifflin_st_jeor_bmr
 
 __all__ = [
     "BMI_PRIME_NOTE",
-    "BROCA_NOTE",
     "KATCH_MCARDLE",
     "TREFETHEN_NOTE",
     "BmiReport",
@@ -38,7 +37,7 @@ __all__ = [
 ]
 
 _CM_PER_INCH = 2.54
-# The inch-based formulas (Devine, Robinson, Miller, Hamwi) are all
+# The inch-based formulas (Devine, Robinson, Miller) are all
 # "base + k per inch over five feet"; below five feet they are undefined.
 _FIVE_FEET_IN = 60.0
 # Adult BMI categories are WHO's and do not apply to anyone still growing.
@@ -71,10 +70,6 @@ TREFETHEN_NOTE = (
     "over-reads tall people and under-reads short ones."
 )
 KATCH_MCARDLE = "Katch-McArdle"
-BROCA_NOTE = (
-    "Broca = height in cm - 100 (1871); it overshoots, so Broca (modified) "
-    "takes 10% off it for men and 15% for women."
-)
 
 
 def half_up(value: float, digits: int = 0) -> float:
@@ -140,9 +135,11 @@ def _per_inch(
 def ideal_weights(bio: Biometrics) -> tuple[Formula, ...]:
     """Every ideal-body-weight formula we can evaluate, in kg.
 
-    Only Creff uses age -- it is the one that answers "ideal weight for my age
-    and height". The BMI healthy range is :func:`healthy_range`, shown with
-    BMI rather than here; :func:`ideal_summary` averages these.
+    Only data-backed ones: Devine and its MetLife-table refits (Robinson,
+    Miller), and Peterson (NHANES). Broca, its derivatives (modified Broca,
+    Lorentz, Creff) and Hamwi were dropped as unvalidated rules of thumb.
+    The BMI healthy range is :func:`healthy_range`, shown with BMI rather than
+    here; :func:`ideal_summary` averages these.
     """
     h = bio.height_cm
     inches = h / _CM_PER_INCH - _FIVE_FEET_IN
@@ -161,14 +158,6 @@ def ideal_weights(bio: Biometrics) -> tuple[Formula, ...]:
                 inches, 56.2 if male else 53.1, 1.41 if male else 1.36, defined=ok
             ),
         ),
-        Formula(
-            "Hamwi",
-            _per_inch(inches, 48.0 if male else 45.5, 2.7 if male else 2.2, defined=ok),
-        ),
-        Formula("Broca", h - 100.0),
-        Formula("Broca (modified)", (h - 100.0) * (0.9 if male else 0.85)),
-        Formula("Lorentz", h - 100.0 - (h - 150.0) / (4.0 if male else 2.0)),
-        Formula("Creff (age)", (h - 100.0 + bio.age_years / 10.0) * 0.9),
         Formula(
             "Peterson (BMI 22)", 2.2 * _TARGET_BMI + 3.5 * _TARGET_BMI * (metres - 1.5)
         ),

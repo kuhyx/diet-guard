@@ -66,10 +66,9 @@ class IdealWeightCard extends StatelessWidget {
             '${oneDecimal(summary.$2)}-${oneDecimal(summary.$3)} kg',
           ),
         ],
-        const BodyNote(brocaNote),
         if (undefined)
           const BodyNote(
-            'Devine, Robinson, Miller and Hamwi are undefined below 152.4 cm.',
+            'Devine, Robinson and Miller are undefined below 152.4 cm.',
           ),
       ],
     );

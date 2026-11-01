@@ -18,6 +18,7 @@ from diet_guard._body_calc import (
     bmr_formulas,
     half_up,
     ideal_summary,
+    ideal_weights,
     table_bmr,
 )
 from diet_guard._body_energy import (
@@ -80,6 +81,11 @@ class TestBmr:
 
     def test_ideal_summary_is_none_when_nothing_applies(self) -> None:
         assert ideal_summary(()) is None
+
+    def test_only_data_backed_ideal_weight_formulas(self) -> None:
+        # Broca, its derivatives and Hamwi are unvalidated rules of thumb.
+        names = tuple(f.name for f in ideal_weights(_MAN))
+        assert names == ("Devine", "Robinson", "Miller", "Peterson (BMI 22)")
 
 
 class TestGoal:

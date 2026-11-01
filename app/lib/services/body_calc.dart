@@ -41,11 +41,6 @@ const String trefethenNote =
     "Trefethen's new BMI = 1.3 x kg / m^2.5: corrects classic BMI, which "
     'over-reads tall people and under-reads short ones.';
 
-/// Broca explained, shown under the ideal-weight list.
-const String brocaNote =
-    'Broca = height in cm - 100 (1871); it overshoots, so Broca (modified) '
-    'takes 10% off it for men and 15% for women.';
-
 /// The lean-mass formula the calorie table switches to with a body fat %.
 const String katchMcArdle = 'Katch-McArdle';
 
@@ -150,8 +145,9 @@ double? _perInch(
 
 /// Every ideal-body-weight formula we can evaluate, in kg.
 ///
-/// Only Creff uses age. The BMI healthy range is [healthyRange], shown with
-/// BMI; [idealSummary] averages these.
+/// Only data-backed ones (Devine, its MetLife refits, Peterson); Broca, its
+/// derivatives and Hamwi were dropped. The BMI healthy range is
+/// [healthyRange], shown with BMI; [idealSummary] averages these.
 List<Formula> idealWeights(Biometrics bio) {
   final h = bio.heightCm;
   final inches = h / _cmPerInch - _fiveFeetIn;
@@ -168,14 +164,6 @@ List<Formula> idealWeights(Biometrics bio) {
       'Miller',
       _perInch(inches, male ? 56.2 : 53.1, male ? 1.41 : 1.36, defined: ok),
     ),
-    Formula(
-      'Hamwi',
-      _perInch(inches, male ? 48 : 45.5, male ? 2.7 : 2.2, defined: ok),
-    ),
-    Formula('Broca', h - 100.0),
-    Formula('Broca (modified)', (h - 100.0) * (male ? 0.9 : 0.85)),
-    Formula('Lorentz', h - 100.0 - (h - 150.0) / (male ? 4.0 : 2.0)),
-    Formula('Creff (age)', (h - 100.0 + bio.ageYears / 10.0) * 0.9),
     Formula(
       'Peterson (BMI 22)',
       2.2 * _targetBmi + 3.5 * _targetBmi * (metres - 1.5),

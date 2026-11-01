@@ -71,7 +71,7 @@ void main() {
     expect(find.text('24.7'), findsOneWidget);
     expect(find.text('59.9-80.7 kg'), findsOneWidget);
     expect(find.text('Average of all'), findsOneWidget);
-    expect(find.textContaining('Broca = height'), findsOneWidget);
+    expect(find.textContaining('Broca'), findsNothing);
     expect(find.text('1780 kcal'), findsOneWidget);
     expect(find.text('n/a -- log a body-fat %'), findsNWidgets(2));
     // 5000 steps over baseline x 0.747 m x 0.5 x 80 kg = 149.4 kcal, and

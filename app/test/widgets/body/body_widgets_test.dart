@@ -77,7 +77,7 @@ void main() {
         children: [BmiCard(bio: _short), IdealWeightCard(bio: _short)],
       ),
     );
-    expect(find.text('n/a'), findsNWidgets(4));
+    expect(find.text('n/a'), findsNWidgets(3));
     expect(find.textContaining('undefined below 152.4 cm'), findsOneWidget);
     expect(find.text('adult categories do not apply under 20'), findsOneWidget);
   });

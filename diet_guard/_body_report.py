@@ -16,7 +16,7 @@ from diet_guard._activity_kcal import (
     METHODS_NOTE,
     session_kcal,
 )
-from diet_guard._body_calc import BMI_PRIME_NOTE, BROCA_NOTE, TREFETHEN_NOTE, half_up
+from diet_guard._body_calc import BMI_PRIME_NOTE, TREFETHEN_NOTE, half_up
 from diet_guard._body_energy import KCAL_PER_KG, MIN_TARGET_KCAL, activity_label
 from diet_guard._body_steps import STEP_BASELINE
 from diet_guard._body_store import age_on
@@ -114,7 +114,6 @@ def ideal_lines(view: BodyView) -> list[str]:
         avg, low, high = summary
         lines.append(f"  {'Average of all':<{_NAME_W}}{_num(avg, 1)} kg")
         lines.append(f"  {'Ideal range':<{_NAME_W}}{_num(low, 1)}-{_num(high, 1)} kg")
-    lines.extend(_wrap(BROCA_NOTE, "  "))
     return lines
 
 
