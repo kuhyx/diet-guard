@@ -15,6 +15,7 @@ import 'package:diet_guard_app/screens/log_meal_nav_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_progress.dart';
 import 'package:diet_guard_app/screens/log_meal_sync_mixin.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
+import 'package:diet_guard_app/services/log_feedback.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
@@ -25,7 +26,6 @@ import 'package:diet_guard_app/widgets/macro_input_row.dart';
 import 'package:diet_guard_app/widgets/sync_health_banner.dart';
 import 'package:diet_guard_app/widgets/today_progress_card.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 /// Lets the user log one food item, with food-bank autocomplete and
@@ -148,8 +148,8 @@ class _LogMealScreenState extends State<LogMealScreen>
       return;
     }
     // On the tap, before the write/sync: waiting for them is just latency.
-    unawaited(HapticFeedback.mediumImpact());
-    await LogStorageService.instance.logMeal(
+    LogFeedback.mealLogged();
+    final entry = await LogStorageService.instance.logMeal(
       desc,
       nutritionFromControllers(_macros, _source),
       slotMinute: target.slot,
@@ -172,7 +172,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     advanceQueueAfterLog(desc);
     setState(() {
       _status = queueStatusLine;
-      _progress = buildTodayProgress(log);
+      _progress = buildTodayProgress(log, logged: entry);
     });
   }
 

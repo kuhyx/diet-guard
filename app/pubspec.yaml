@@ -2,12 +2,13 @@ name: diet_guard_app
 description: "Companion phone app for diet_guard: log meals on the go."
 publish_to: 'none'
 
-version: 1.0.131+1
+version: 1.0.132+1
 
 environment:
   sdk: ^3.12.2
 
 dependencies:
+  audioplayers: 6.8.1
   crdt_sync:
     git:
       url: https://github.com/kuhyx/utils
@@ -77,6 +78,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/sounds/log_confirm.ogg
 
 # Launcher icon generation. Source art is produced by the shared generator:
 #   PYTHONPATH=~/src/testsAndMisc python3 -m python_pkg.app_icons generate --app <key>

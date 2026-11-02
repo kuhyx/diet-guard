@@ -2,7 +2,9 @@
 /// today's standing against the daily budget.
 library;
 
+import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/ui/theme.dart';
+import 'package:diet_guard_app/widgets/progress_motion.dart';
 import 'package:flutter/material.dart';
 
 /// Everything [TodayProgressCard] renders, computed by the caller.
@@ -21,6 +23,10 @@ class TodayProgress {
     required this.carbsG,
     required this.fatG,
     required this.adherenceStreak,
+    this.loggedSlotMinute,
+    this.loggedKcal,
+    this.previousKcal,
+    this.previousAdherenceStreak,
   });
 
   /// Today's total calories, including the meal just logged.
@@ -41,6 +47,19 @@ class TodayProgress {
 
   /// Consecutive-day budget-adherence streak, as of today.
   final int adherenceStreak;
+
+  /// Slot (minute of day) of the meal just logged; null hides the
+  /// confirmation line.
+  final int? loggedSlotMinute;
+
+  /// Calories of the meal just logged, exactly as stored.
+  final double? loggedKcal;
+
+  /// Today's total before this meal; null means no count-up.
+  final double? previousKcal;
+
+  /// Streak before this meal; null means it equals [adherenceStreak].
+  final int? previousAdherenceStreak;
 
   /// Calories still available today; negative once over budget.
   double get remainingKcal => budgetKcal - consumedKcal;
@@ -72,66 +91,91 @@ class TodayProgressCard extends StatelessWidget {
 
   static String _grams(double value) => '${value.round()}g';
 
+  /// Whole numbers without decimals; fractions exactly, never rounded.
+  static String _kcal(double value) =>
+      value == value.truncateToDouble() ? '${value.toInt()}' : '$value';
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final remaining = progress.remainingKcal.abs().round();
-    final remainingLabel = progress.isOverBudget
-        ? '$remaining over'
-        : '$remaining left';
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        // Fill-only elevation: the shared design system forbids shadows in
-        // dark UI, and mixing a border with a fill on the same surface.
-        color: colors.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
+    final slot = progress.loggedSlotMinute;
+    final logged = progress.loggedKcal;
+    final from = progress.previousKcal ?? progress.consumedKcal;
+    final streakFrom =
+        progress.previousAdherenceStreak ?? progress.adherenceStreak;
+    return ProgressEntrance(
+      key: ObjectKey(progress),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          // Fill-only elevation: the shared design system forbids shadows in
+          // dark UI, and mixing a border with a fill on the same surface.
+          color: theme.colorScheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (slot != null && logged != null) ...[
               Text(
-                '${progress.consumedKcal.round()} / ${progress.budgetKcal}',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: progress.isOverBudget
-                      ? colors.error
-                      : colors.onSurface,
-                ),
+                '✓ ${slotLabel(slot)} · ${_kcal(logged)} kcal',
+                style: theme.textTheme.labelMedium,
               ),
-              const SizedBox(width: AppSpacing.xs),
-              Text('kcal', style: theme.textTheme.labelSmall),
-              const Spacer(),
-              Text(
-                remainingLabel,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: progress.isOverBudget
-                      ? colors.error
-                      : colors.onSurfaceVariant,
-                ),
-              ),
+              const SizedBox(height: AppSpacing.xs),
             ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'P ${_grams(progress.proteinG)}  ·  '
-            'C ${_grams(progress.carbsG)}  ·  '
-            'F ${_grams(progress.fatG)}',
-            style: theme.textTheme.labelSmall,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Adherence streak: ${progress.adherenceStreak} '
-            '${_plural(progress.adherenceStreak)}',
-            style: theme.textTheme.labelSmall,
-          ),
-        ],
+            CountUp(from: from, to: progress.consumedKcal, builder: _kcalRow),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'P ${_grams(progress.proteinG)}  ·  '
+              'C ${_grams(progress.carbsG)}  ·  '
+              'F ${_grams(progress.fatG)}',
+              style: theme.textTheme.labelSmall,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            CountUp(
+              from: streakFrom.toDouble(),
+              to: progress.adherenceStreak.toDouble(),
+              builder: (context, value) {
+                final days = value.round();
+                return Text(
+                  'Adherence streak: $days ${_plural(days)}',
+                  style: theme.textTheme.labelSmall,
+                );
+              },
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  /// The `<consumed> / <budget>` and `N left`/`N over` row at [consumed].
+  Widget _kcalRow(BuildContext context, double consumed) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final remaining = progress.budgetKcal - consumed;
+    final over = remaining < 0;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Text(
+          '${consumed.round()} / ${progress.budgetKcal}',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: over ? colors.error : colors.onSurface,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Text('kcal', style: theme.textTheme.labelSmall),
+        const Spacer(),
+        Text(
+          '${remaining.abs().round()} ${over ? 'over' : 'left'}',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: over ? colors.error : colors.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 }

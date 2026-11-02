@@ -33,6 +33,7 @@ class AppSettingsService {
   final DocumentStore _store;
   int _dailyKcalGoal = kDefaultDailyKcalGoal;
   DateTime? _dailyKcalGoalUpdatedAt;
+  bool _soundOnLog = true;
 
   /// Returns the configured daily kcal goal, or the default when
   /// uninitialised. This is the budget in force *today*; asking what applied
@@ -43,6 +44,19 @@ class AppSettingsService {
   /// Returns when the goal was last set on this device, or null if never.
   static DateTime? get dailyKcalGoalUpdatedAt =>
       _instance?._dailyKcalGoalUpdatedAt;
+
+  /// Whether a logged meal plays the confirm cue; on unless turned off.
+  ///
+  /// Device-local, deliberately not synced: a phone in a meeting and a PC
+  /// with speakers want different answers.
+  static bool get soundOnLog => _instance?._soundOnLog ?? true;
+
+  /// Persists [on] without touching the budget's edit stamp, which would
+  /// otherwise make this device win the next budget merge.
+  Future<void> setSoundOnLog({required bool on}) async {
+    _soundOnLog = on;
+    await _writeToDisk();
+  }
 
   /// Initialises the singleton against the platform document store (files on
   /// Android, IndexedDB in the browser-hosted desktop app).
@@ -105,6 +119,9 @@ class AppSettingsService {
           data['daily_kcal_goal_updated_at'] as String,
         );
       }
+      if (data is Map && data['sound_on_log'] is bool) {
+        _soundOnLog = data['sound_on_log'] as bool;
+      }
     } on Exception {
       // Ignore parse errors and keep defaults.
     }
@@ -160,6 +177,7 @@ class AppSettingsService {
         'daily_kcal_goal': _dailyKcalGoal,
         'daily_kcal_goal_updated_at': _dailyKcalGoalUpdatedAt
             ?.toIso8601String(),
+        'sound_on_log': _soundOnLog,
       }),
     );
   }

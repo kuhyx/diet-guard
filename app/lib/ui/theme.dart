@@ -202,3 +202,39 @@ abstract final class AppWidth {
   /// phone-portrait test sizes never exercise.
   static const double shortViewport = 700;
 }
+
+/// Motion durations, hand-transcribed from the shared token source
+/// `~/src/utils/unified-design-system/DOCS-motion.md`; edit both together.
+///
+/// Reduced motion collapses every step to zero via [resolve]. Haptics and
+/// sound are not motion and must NOT be routed through this.
+abstract final class AppDuration {
+  /// No animation; the reduced-motion target.
+  static const Duration instant = Duration.zero;
+
+  /// 120ms -- state change on an element already under the finger.
+  static const Duration fast = Duration(milliseconds: 120);
+
+  /// 200ms -- the default: things entering or moving within the view.
+  static const Duration base = Duration(milliseconds: 200);
+
+  /// 320ms -- full-surface change; the ceiling, not a midpoint.
+  static const Duration slow = Duration(milliseconds: 320);
+
+  /// [d], or [instant] when the OS asks for reduced motion.
+  static Duration resolve(BuildContext context, Duration d) =>
+      MediaQuery.disableAnimationsOf(context) ? instant : d;
+}
+
+/// Motion easing curves, hand-transcribed from the same token source as
+/// [AppDuration] (`DOCS-motion.md`).
+abstract final class AppCurve {
+  /// Default for anything that starts and ends on screen.
+  static const Cubic standard = Cubic(0.2, 0, 0, 1);
+
+  /// Entering the screen: full speed, eases to rest.
+  static const Cubic decelerate = Cubic(0, 0, 0, 1);
+
+  /// Leaving the screen: eases in, exits at speed.
+  static const Cubic accelerate = Cubic(0.3, 0, 1, 1);
+}

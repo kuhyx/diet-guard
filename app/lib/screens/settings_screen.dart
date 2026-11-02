@@ -17,6 +17,7 @@ import 'package:diet_guard_app/services/google_sign_in_backend.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/data_backup_row.dart';
+import 'package:diet_guard_app/widgets/log_sound_tile.dart';
 import 'package:diet_guard_app/widgets/meal_schedule_editor.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -149,11 +150,8 @@ class _SettingsScreenState extends State<SettingsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      // Centred and capped at the prose width. On the desktop surface this
-      // ListView spanned the full ~1366px window, so the explanatory
-      // paragraphs below ran ~180 characters per line -- roughly twice the
-      // readable limit (tokens.md rule 21) -- and every field stretched with
-      // them. Invisible on the phone, where the window is already narrow.
+      // Capped at the prose width: on the ~1366px desktop window the
+      // paragraphs below ran ~180 chars/line, twice tokens.md rule 21's limit.
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: AppWidth.prose),
@@ -178,7 +176,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                   onChanged: _onKcalGoalChanged,
                 ),
               ),
-              const SizedBox(height: 24),
+              const LogSoundTile(),
+              const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 8),
               ..._mealScheduleSection(context),
