@@ -13,6 +13,8 @@ import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/widgets/food_bank/fb_add_entry_dialog.dart';
 import 'package:diet_guard_app/widgets/food_bank/fb_filter.dart';
 import 'package:diet_guard_app/widgets/food_bank/fb_filter_sheet.dart';
+import 'package:diet_guard_app/widgets/food_bank/fb_record_tile.dart';
+import 'package:diet_guard_app/widgets/food_bank/fb_tile_grid.dart';
 import 'package:flutter/material.dart';
 
 /// Browses every banked food -- log-derived and manually curated -- with
@@ -129,6 +131,13 @@ class _FoodBankScreenState extends State<FoodBankScreen> {
     );
   }
 
+  /// Shows the full macro line for a tapped tile.
+  Future<void> _openDetail(FoodBankRecord record) => showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    builder: (_) => SafeArea(child: RecordTile(record)),
+  );
+
   Future<void> _openAddDialog() async {
     final result = await showDialog<FoodBankRecord>(
       context: context,
@@ -184,10 +193,7 @@ class _FoodBankScreenState extends State<FoodBankScreen> {
                 textAlign: TextAlign.center,
               ),
             )
-          : ListView.builder(
-              itemCount: _displayed.length,
-              itemBuilder: (context, i) => RecordTile(_displayed[i]),
-            ),
+          : FbTileGrid(records: _displayed, onOpen: _openDetail),
       floatingActionButton: FloatingActionButton(
         onPressed: _openAddDialog,
         tooltip: 'Add manual entry',
@@ -196,43 +202,3 @@ class _FoodBankScreenState extends State<FoodBankScreen> {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Record tile
-// ---------------------------------------------------------------------------
-
-/// One banked food: its name, macros, and how often it has been logged.
-class RecordTile extends StatelessWidget {
-  /// Creates a [RecordTile] for [record].
-  const RecordTile(this.record, {super.key});
-
-  /// The banked record this tile renders.
-  final FoodBankRecord record;
-
-  @override
-  Widget build(BuildContext context) {
-    final macros =
-        'P ${record.proteinG.toStringAsFixed(0)} g  '
-        'C ${record.carbsG.toStringAsFixed(0)} g  '
-        'F ${record.fatG.toStringAsFixed(0)} g';
-    final per = record.grams > 0
-        ? ' per ${record.grams.toStringAsFixed(0)} g'
-        : '';
-    return ListTile(
-      title: Text(record.desc),
-      subtitle: Text(
-        '${record.kcal.toStringAsFixed(0)} kcal$per  ·  $macros',
-      ),
-      trailing: record.count > 0
-          ? Text(
-              '×${record.count.toStringAsFixed(0)}',
-              style: Theme.of(context).textTheme.bodySmall,
-            )
-          : null,
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Filter sheet
-// ---------------------------------------------------------------------------

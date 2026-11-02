@@ -21,6 +21,7 @@ void main() {
   ) async {
     await seedPerson(store);
     await pumpBody(tester);
+    await openTile(tester, 'Daily calorie target');
     Future<void> choose(String word, String option) async {
       await tester.tap(find.text(word).first);
       await tester.pumpAndSettle();
@@ -84,6 +85,7 @@ void main() {
     await body.setWeight('2026-09-20', 80);
     await setGoal(body, const Goal('lose', 1, 'kg', 'week', 'measured:MET'));
     await pumpBody(tester);
+    await openTile(tester, 'Daily calorie target');
     expect(find.textContaining('no workouts published yet'), findsOneWidget);
     await tester.tap(find.text('Measured (MET)'));
     await tester.pumpAndSettle();

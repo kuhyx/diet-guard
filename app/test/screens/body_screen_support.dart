@@ -7,6 +7,7 @@ import 'package:diet_guard_app/screens/body_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/widgets/body/body_tile_grid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -87,3 +88,30 @@ Future<void> seedPerson(MemoryDocStore store, {Object? goal}) async {
 /// The top edge of [finder]'s first match.
 double topOf(WidgetTester tester, Finder finder) =>
     tester.getTopLeft(finder.first).dy;
+
+/// The overview tile titled [title].
+Finder tile(String title) =>
+    find.descendant(of: find.byType(BodyTileGrid), matching: find.text(title));
+
+/// Opens the sheet behind the tile titled [title].
+Future<void> openTile(WidgetTester tester, String title) async {
+  await tester.tap(tile(title));
+  await tester.pumpAndSettle();
+}
+
+/// Dismisses the open sheet by tapping its scrim.
+Future<void> closeSheet(WidgetTester tester) async {
+  await tester.tapAt(const Offset(5, 5));
+  await tester.pumpAndSettle();
+}
+
+/// [finder] restricted to the open sheet (the tiles stay mounted behind it).
+Finder inSheet(Finder finder) =>
+    find.descendant(of: find.byType(BottomSheet), matching: finder);
+
+/// Titles of the overview tiles, in display order.
+List<String> tileTitles(WidgetTester tester) => tester
+    .widget<BodyTileGrid>(find.byType(BodyTileGrid))
+    .tiles
+    .map((t) => t.title)
+    .toList();

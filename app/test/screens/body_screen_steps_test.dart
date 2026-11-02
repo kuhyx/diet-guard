@@ -34,6 +34,7 @@ void main() {
     stepsSource = fake;
     await pumpBody(tester);
     expect(fake.lastRead, isNull, reason: 'never reads before permission');
+    await openTile(tester, 'Activity');
 
     await tester.tap(find.text('Connect Health Connect steps'));
     await tester.pumpAndSettle();
@@ -53,6 +54,7 @@ void main() {
     final fake = FakeStepsSource();
     stepsSource = fake;
     await pumpBody(tester);
+    await openTile(tester, 'Activity');
     expect(fake.lastRead, isNotNull);
     expect(find.text('Connect Health Connect steps'), findsNothing);
   });
@@ -60,6 +62,7 @@ void main() {
   testWidgets('a Health Connect error just hides nothing', (tester) async {
     stepsSource = FakeStepsSource()..failWith = StateError('gone');
     await pumpBody(tester);
+    await openTile(tester, 'Activity');
     expect(find.text('Connect Health Connect steps'), findsOneWidget);
   });
 }

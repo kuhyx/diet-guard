@@ -10,76 +10,26 @@ library;
 
 import 'dart:async';
 
-import 'package:diet_guard_app/services/activity_kcal.dart';
+import 'package:diet_guard_app/screens/body_screen_data.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/body_calc.dart';
+import 'package:diet_guard_app/services/body_energy.dart';
+import 'package:diet_guard_app/services/body_prefs.dart';
 import 'package:diet_guard_app/services/body_service.dart';
-import 'package:diet_guard_app/services/body_steps.dart';
 import 'package:diet_guard_app/services/health_steps.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/activity_card.dart';
 import 'package:diet_guard_app/widgets/body/body_section.dart';
 import 'package:diet_guard_app/widgets/body/body_stats_cards.dart';
+import 'package:diet_guard_app/widgets/body/body_tile_grid.dart';
 import 'package:diet_guard_app/widgets/body/goal_card.dart';
 import 'package:diet_guard_app/widgets/body/profile_card.dart';
 import 'package:diet_guard_app/widgets/body/week_plan_card.dart';
 import 'package:diet_guard_app/widgets/body/weight_card.dart';
 import 'package:flutter/material.dart';
 
-/// Builds the person from the stored profile and newest weight, or null
-/// when anything the formulas need is missing.
-Biometrics? currentBiometrics(BodyService body, DateTime today) {
-  final birth = DateTime.tryParse(body.birth ?? '');
-  final height = body.heightCm;
-  final sex = body.sex;
-  final weight = body.latestWeight;
-  if (birth == null || height == null || sex == null || weight == null) {
-    return null;
-  }
-  return Biometrics(
-    weightKg: weight.$2,
-    heightCm: height,
-    ageYears: ageOn(birth, today).toDouble(),
-    isMale: sex == 'm',
-  );
-}
-
-/// Steps outside workouts by day, as stored.
-Map<String, int> stepsByDay(BodyService body) =>
-    body.document.steps.map((day, entry) => MapEntry(day, entry.n));
-
-/// Mean daily exercise per formula (steps included), the steps' own share,
-/// and the number of full days averaged -- like the PC's `_body_view`: the
-/// two means are null without a person, or without any published workout
-/// or step count.
-(Map<String, double>?, double?, int) bodyExercise(
-  BodyService body,
-  Biometrics? bio,
-  DateTime today,
-) {
-  final sessions = body.sessions;
-  final steps = stepsByDay(body);
-  if (bio == null || (sessions == null && steps.isEmpty)) {
-    return (null, null, 0);
-  }
-  final byDay = steps.map((day, n) => MapEntry(day, stepKcal(n, bio)));
-  final weight = bio.weightKg;
-  final all = sessions ?? const <Session>[];
-  return (
-    dailyExercise(all, weight, today, byDay),
-    extraShare(all, today, byDay),
-    windowDays(all, today, byDay),
-  );
-}
-
-/// Sums each day's non-deleted kcal.
-Map<String, double> kcalByDay(DayLog log) => {
-  for (final entry in log.entries)
-    entry.key: entry.value
-        .where((food) => !food.deleted)
-        .fold<double>(0, (sum, food) => sum + food.kcal),
-};
+export 'package:diet_guard_app/screens/body_screen_data.dart';
 
 /// The Body screen.
 class BodyScreen extends StatefulWidget {
@@ -100,7 +50,17 @@ class _BodyScreenState extends State<BodyScreen> {
   late final bool _profileAtTop = !BodyService.instance.profileComplete;
 
   /// Whether the Health Connect button shows: supported and not yet granted.
-  bool _canConnectSteps = false;
+  ///
+  /// A notifier, not a bool: the Activity sheet stays open while the
+  /// permission is granted, and its button must disappear and its numbers
+  /// refresh without reopening the sheet.
+  final ValueNotifier<bool> _canConnectSteps = ValueNotifier(false);
+
+  @override
+  void dispose() {
+    _canConnectSteps.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -117,7 +77,8 @@ class _BodyScreenState extends State<BodyScreen> {
     final granted = await source.hasPermission().catchError((_) => false);
     if (granted) await refreshSteps();
     if (!mounted) return;
-    setState(() => _canConnectSteps = !granted);
+    _canConnectSteps.value = !granted;
+    setState(() {});
   }
 
   Future<void> _connectSteps() async {
@@ -126,7 +87,8 @@ class _BodyScreenState extends State<BodyScreen> {
     );
     if (granted) await refreshSteps();
     if (!mounted) return;
-    setState(() => _canConnectSteps = !granted);
+    _canConnectSteps.value = !granted;
+    setState(() {});
   }
 
   Future<void> _loadLog() async {
@@ -144,14 +106,11 @@ class _BodyScreenState extends State<BodyScreen> {
     final body = BodyService.instance;
     final today = DateTime.now();
     final bio = currentBiometrics(body, today);
-    final sessions = body.sessions;
-    final weight = body.latestWeight?.$2;
-    final (exercise, stepsKcal, window) = bodyExercise(body, bio, today);
-    final bodyFat = body.latestBodyFat?.$2;
-    final profile = ProfileCard(onSaved: _onChanged);
+    final (exercise, _, _) = bodyExercise(body, bio, today);
+    final tiles = _tiles(body, bio, exercise);
     return Scaffold(
       appBar: AppBar(title: const Text('Body')),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Center(
           child: ConstrainedBox(
@@ -159,36 +118,11 @@ class _BodyScreenState extends State<BodyScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (_profileAtTop) profile,
-                if (bio == null)
-                  BodySection(
-                    title: 'Daily calorie target',
-                    children: [BodyNote(_missing(body))],
-                  )
-                else
-                  GoalCard(bio: bio, exercise: exercise, bodyFatPct: bodyFat),
-                WeightCard(onChanged: _onChanged),
-                if (bio != null) ...[
-                  BmiCard(bio: bio),
-                  IdealWeightCard(bio: bio),
-                  BmrCard(bio: bio, bodyFatPct: bodyFat),
-                ],
-                ActivityCard(
-                  sessions: sessions,
-                  weightKg: weight,
-                  exercise: exercise,
-                  steps: stepsByDay(body),
-                  stepsKcal: stepsKcal,
-                  window: window,
-                  onConnectSteps: _canConnectSteps ? _connectSteps : null,
+                BodyTileGrid(tiles: tiles),
+                const SizedBox(height: AppSpacing.sm),
+                BodyNote(
+                  'Age ${bodyAgeText(body, today)} · synced with the PC.',
                 ),
-                WeekPlanCard(
-                  defaultTarget: AppSettingsService.dailyKcalGoal,
-                  logged: _logged,
-                ),
-                if (!_profileAtTop) profile,
-                BodyFatCard(onChanged: _onChanged),
-                BodyNote('Age ${_age(body, today)} · synced with the PC.'),
               ],
             ),
           ),
@@ -196,18 +130,100 @@ class _BodyScreenState extends State<BodyScreen> {
       ),
     );
   }
-}
 
-String _missing(BodyService body) {
-  if (body.latestWeight == null && body.birth == null) {
-    return 'Set your profile and enter your weight to see BMI, ideal '
-        'weight and calorie targets.';
+  /// The Activity card from the live service state.
+  Widget _activityCard({required bool canConnect}) {
+    final body = BodyService.instance;
+    final (exercise, stepsKcal, window) = bodyExercise(
+      body,
+      currentBiometrics(body, DateTime.now()),
+      DateTime.now(),
+    );
+    return ActivityCard(
+      sessions: body.sessions,
+      weightKg: body.latestWeight?.$2,
+      exercise: exercise,
+      steps: stepsByDay(body),
+      stepsKcal: stepsKcal,
+      window: window,
+      onConnectSteps: canConnect ? _connectSteps : null,
+    );
   }
-  if (body.latestWeight == null) return 'Enter your weight to see the numbers.';
-  return 'Set your profile (birth date, height, sex) to see the numbers.';
-}
 
-String _age(BodyService body, DateTime today) {
-  final birth = DateTime.tryParse(body.birth ?? '');
-  return birth == null ? 'unknown' : '${ageOn(birth, today)}';
+  /// Every section as a tile: the profile first while it is incomplete, last
+  /// otherwise (decided once, see [_profileAtTop]).
+  List<BodyTileSpec> _tiles(
+    BodyService body,
+    Biometrics? bio,
+    Map<String, double>? exercise,
+  ) {
+    final weight = body.latestWeight?.$2;
+    final bodyFat = body.latestBodyFat?.$2;
+    final profile = BodyTileSpec(
+      title: 'Profile',
+      builder: (_) => ProfileCard(onSaved: _onChanged),
+    );
+    final goal = bio == null
+        ? null
+        : goalTarget(
+            savedGoal(body),
+            tableBmr(bio, bodyFat).value!,
+            tableBmr(bio, bodyFat).name,
+            exercise,
+          ).kcal;
+    return [
+      if (_profileAtTop) profile,
+      BodyTileSpec(
+        title: 'Daily calorie target',
+        value: goal == null ? null : '$goal kcal',
+        builder: (_) => bio == null
+            ? BodySection(
+                title: 'Daily calorie target',
+                children: [BodyNote(bodyMissingNote(body))],
+              )
+            : GoalCard(bio: bio, exercise: exercise, bodyFatPct: bodyFat),
+      ),
+      BodyTileSpec(
+        title: 'Weight',
+        value: weight == null ? null : formatKg(weight),
+        builder: (_) => WeightCard(onChanged: _onChanged),
+      ),
+      if (bio != null) ...[
+        BodyTileSpec(
+          title: 'BMI',
+          value: oneDecimal(bmiReport(bio).bmi),
+          builder: (_) => BmiCard(bio: bio),
+        ),
+        BodyTileSpec(
+          title: 'Ideal weight',
+          builder: (_) => IdealWeightCard(bio: bio),
+        ),
+        BodyTileSpec(
+          title: 'Resting metabolism (BMR)',
+          value: '${whole(tableBmr(bio, bodyFat).value!)} kcal',
+          builder: (_) => BmrCard(bio: bio, bodyFatPct: bodyFat),
+        ),
+      ],
+      BodyTileSpec(
+        title: 'Activity',
+        builder: (_) => ValueListenableBuilder<bool>(
+          valueListenable: _canConnectSteps,
+          builder: (_, canConnect, _) => _activityCard(canConnect: canConnect),
+        ),
+      ),
+      BodyTileSpec(
+        title: 'Week planner (info only)',
+        builder: (_) => WeekPlanCard(
+          defaultTarget: AppSettingsService.dailyKcalGoal,
+          logged: _logged,
+        ),
+      ),
+      if (!_profileAtTop) profile,
+      BodyTileSpec(
+        title: 'Body fat',
+        value: bodyFat == null ? null : '${oneDecimal(bodyFat)} %',
+        builder: (_) => BodyFatCard(onChanged: _onChanged),
+      ),
+    ];
+  }
 }

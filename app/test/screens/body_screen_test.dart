@@ -1,7 +1,6 @@
 import 'package:diet_guard_app/models/local_time.dart';
 import 'package:diet_guard_app/screens/body_screen.dart';
 import 'package:diet_guard_app/services/body_service.dart';
-import 'package:diet_guard_app/widgets/body/profile_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -16,18 +15,23 @@ void main() {
   });
   tearDown(tearDownBodyServices);
 
-  testWidgets('with nothing set the profile is on top and asks for data', (
+  testWidgets('with nothing set the profile is first and asks for data', (
     tester,
   ) async {
     await pumpBody(tester);
-    expect(find.textContaining('Set your profile and enter'), findsOneWidget);
-    expect(find.textContaining('No activity data yet'), findsOneWidget);
-    expect(find.text('Need two readings for a graph.'), findsNWidgets(2));
+    expect(tileTitles(tester).first, 'Profile');
     expect(find.textContaining('Age unknown'), findsOneWidget);
-    expect(
-      topOf(tester, find.byType(ProfileCard)),
-      lessThan(topOf(tester, find.text('Daily calorie target'))),
-    );
+    await openTile(tester, 'Daily calorie target');
+    expect(find.textContaining('Set your profile and enter'), findsOneWidget);
+    await closeSheet(tester);
+    await openTile(tester, 'Activity');
+    expect(find.textContaining('No activity data yet'), findsOneWidget);
+    await closeSheet(tester);
+    await openTile(tester, 'Weight');
+    expect(find.text('Need two readings for a graph.'), findsOneWidget);
+    await closeSheet(tester);
+    await openTile(tester, 'Body fat');
+    expect(find.text('Need two readings for a graph.'), findsOneWidget);
   });
 
   testWidgets('a weight without a profile asks for the profile', (
@@ -35,6 +39,7 @@ void main() {
   ) async {
     await BodyService.instance.setWeight('2026-09-20', 80);
     await pumpBody(tester);
+    await openTile(tester, 'Daily calorie target');
     expect(find.textContaining('Set your profile (birth'), findsOneWidget);
   });
 
@@ -45,6 +50,7 @@ void main() {
       sex: 'f',
     );
     await pumpBody(tester);
+    await openTile(tester, 'Daily calorie target');
     expect(find.text('Enter your weight to see the numbers.'), findsOneWidget);
   });
 
@@ -53,29 +59,44 @@ void main() {
   ) async {
     await seedPerson(store);
     await pumpBody(tester);
-    final goalTop = topOf(tester, find.text('Daily calorie target'));
-    expect(goalTop, lessThan(topOf(tester, find.text('Weight'))));
-    final profileTop = topOf(tester, find.byType(ProfileCard));
+    final titles = tileTitles(tester);
+    expect(titles.first, 'Daily calorie target');
+    expect(titles.indexOf('Weight'), 1);
     expect(
-      profileTop,
-      greaterThan(topOf(tester, find.text('Week planner (info only)'))),
+      titles.indexOf('Profile'),
+      greaterThan(titles.indexOf('Week planner (info only)')),
     );
-    expect(topOf(tester, find.text('Body fat')), greaterThan(profileTop));
+    expect(titles.last, 'Body fat');
+    // Headline numbers on the tiles themselves.
+    expect(find.text('2209 kcal'), findsOneWidget);
+    expect(find.text('80.0 kg'), findsOneWidget);
+    expect(find.text('24.7'), findsOneWidget);
+    expect(find.textContaining('Age 30'), findsOneWidget);
+
     // 80 kg, 180 cm, 30 y, male, lose 0.5 kg/week on Moderate:
     // 1780 x 1.55 - 550 = 2209.
+    await openTile(tester, 'Daily calorie target');
     expect(find.text('2209'), findsOneWidget);
     expect(
       find.textContaining('Maintenance 2759 kcal (Mifflin-St Jeor'),
       findsOneWidget,
     );
-    expect(find.text('24.7'), findsOneWidget);
+    await closeSheet(tester);
+    await openTile(tester, 'BMI');
+    expect(inSheet(find.text('24.7')), findsOneWidget);
     expect(find.text('59.9-80.7 kg'), findsOneWidget);
+    await closeSheet(tester);
+    await openTile(tester, 'Ideal weight');
     expect(find.text('Average of all'), findsOneWidget);
     expect(find.textContaining('Broca'), findsNothing);
-    expect(find.text('1780 kcal'), findsOneWidget);
+    await closeSheet(tester);
+    await openTile(tester, 'Resting metabolism (BMR)');
+    expect(inSheet(find.text('1780 kcal')), findsOneWidget);
     expect(find.text('n/a -- log a body-fat %'), findsNWidgets(2));
+    await closeSheet(tester);
     // 5000 steps over baseline x 0.747 m x 0.5 x 80 kg = 149.4 kcal, and
     // all the data is from yesterday, so the window is that one day.
+    await openTile(tester, 'Activity');
     expect(
       find.textContaining('Steps outside workouts: 9000 on ${yesterdayKey()}'),
       findsOneWidget,
@@ -84,7 +105,6 @@ void main() {
     expect(find.text('Mean daily exercise, last 1 full days:'), findsOneWidget);
     expect(find.textContaining('Evening run'), findsOneWidget);
     expect(find.textContaining('StrongLifts A'), findsOneWidget);
-    expect(find.textContaining('Age 30'), findsOneWidget);
     expect(find.text('Connect Health Connect steps'), findsNothing);
   });
 
@@ -93,19 +113,25 @@ void main() {
   ) async {
     await seedPerson(store);
     await pumpBody(tester);
+    await openTile(tester, 'Body fat');
     final field = find.widgetWithText(TextField, 'Body fat (%)');
     await tester.enterText(field, '99');
-    await tester.tap(find.text('Save').at(1));
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('Body fat must be 3-70 %.'), findsOneWidget);
 
     await tester.enterText(field, '18,5');
-    await tester.tap(find.text('Save').at(1));
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(BodyService.instance.latestBodyFat?.$2, 18.5);
+    await closeSheet(tester);
+    expect(find.text('18.5 %'), findsOneWidget);
+    await openTile(tester, 'Daily calorie target');
     expect(find.textContaining('(Katch-McArdle resting'), findsOneWidget);
-    expect(find.text('1778 kcal'), findsOneWidget);
     expect(find.text('2206'), findsOneWidget);
+    await closeSheet(tester);
+    await openTile(tester, 'Resting metabolism (BMR)');
+    expect(inSheet(find.text('1778 kcal')), findsOneWidget);
   });
 
   testWidgets('saving and deleting a weight updates the numbers', (
@@ -113,19 +139,22 @@ void main() {
   ) async {
     await seedPerson(store);
     await pumpBody(tester);
+    await openTile(tester, 'Weight');
     final field = find.widgetWithText(TextField, 'Weight (kg)');
     await tester.enterText(field, '5');
-    await tester.tap(find.text('Save').first);
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('Weight must be 20-400 kg.'), findsOneWidget);
 
     await tester.enterText(field, '90,5');
-    await tester.tap(find.text('Save').first);
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     final today = localDateKey(DateTime.now());
     expect(BodyService.instance.latestWeight, (today, 90.5));
-    expect(find.text('27.9'), findsOneWidget); // 90.5 / 1.8^2
+    await closeSheet(tester);
+    expect(find.text('27.9'), findsOneWidget); // 90.5 / 1.8^2 on the BMI tile
 
+    await openTile(tester, 'Weight');
     await tester.tap(find.byTooltip('Delete this day').first);
     await tester.pumpAndSettle();
     expect(BodyService.instance.latestWeight?.$1, yesterdayKey());
@@ -133,6 +162,7 @@ void main() {
 
   testWidgets('the profile form validates height and saves', (tester) async {
     await pumpBody(tester);
+    await openTile(tester, 'Profile');
     final field = find.widgetWithText(TextField, 'Height (cm)');
     await tester.enterText(field, '9');
     await tester.tap(find.text('Save profile'));
