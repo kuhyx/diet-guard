@@ -104,3 +104,4 @@ Future<void> clearAccount() async {
 /// the desktop wrapper re-provisioning after the next sign-in.
 Future<void> forgetAccountMarker() =>
     _secure.delete(key: kFirebaseAccountKey);
+// coverage:ignore-end

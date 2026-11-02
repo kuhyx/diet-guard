@@ -181,8 +181,6 @@ Future<FirebaseRestClient?> openFirebaseWithGoogle({
   return FirebaseRestClient(databaseUrl: kProject.databaseUrl, auth: auth);
 }
 
-// coverage:ignore-end
-
 /// Wraps [github] so Firebase is primary and GitHub is kept as a mirror.
 ///
 /// Returns [github] unchanged when this device has not been set up for

@@ -1,7 +1,22 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'dart:io';
+
 import 'package:diet_guard_app/services/google_sign_in_backend.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:google_account_token/google_account_token.dart'
+    show kGoogleAccountTokenChannel;
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+
+  tearDown(() {
+    debugDefaultTargetPlatformOverride = null;
+    messenger.setMockMethodCallHandler(kGoogleAccountTokenChannel, null);
+  });
+
   group('googleIdToken', () {
     test('returns the token the sign-in function yields', () async {
       // The injected path: proves the closure is what feeds crdt_sync, and
@@ -29,5 +44,32 @@ void main() {
       // be accepted here and then denied every read and write.
       expect(kSyncUid, 'OvA2REQyLIhAHOEjzwS1o877rgG3');
     });
+
+    test('goes through the shared plugin channel by default', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      MethodCall? seen;
+      messenger.setMockMethodCallHandler(kGoogleAccountTokenChannel, (call) {
+        seen = call;
+        return Future.value('jwt');
+      });
+      expect(await googleIdToken(), 'jwt');
+      expect(seen?.method, 'idToken');
+      expect(seen?.arguments, {'serverClientId': kServerClientId});
+    });
+
+    test('a cancelled chooser is null, not an error', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      messenger.setMockMethodCallHandler(
+        kGoogleAccountTokenChannel,
+        (_) => Future.value(),
+      );
+      expect(await googleIdToken(), isNull);
+    });
+  });
+
+  test('depends on the shared plugin, not google_sign_in', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    expect(pubspec, contains('google_account_token-v0.1.0'));
+    expect(pubspec, isNot(contains('google_sign_in:')));
   });
 }

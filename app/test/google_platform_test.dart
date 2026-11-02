@@ -1,14 +1,17 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:diet_guard_app/services/google_sign_in_backend.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('reports whether the programmatic Google flow exists here', () {
-    // Android is the only platform shipping it. Asked as a platform question
-    // rather than of the plugin, because GoogleSignIn.supportsAuthenticate()
-    // itself throws UnimplementedError where no implementation is registered
-    // -- an Error, not an Exception, so it would escape an ordinary catch and
-    // take down the settings screen's build(). The test host is Linux, so
-    // this is false here and the password path stays visible.
+  tearDown(() => debugDefaultTargetPlatformOverride = null);
+
+  test('the programmatic Google flow is Android only', () {
+    // The plugin's own gate (AccountManager exists only on Android), so
+    // desktop keeps the password path visible and never shows a button that
+    // cannot succeed.
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     expect(googleSignInSupported, isFalse);
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    expect(googleSignInSupported, isTrue);
   });
 }
