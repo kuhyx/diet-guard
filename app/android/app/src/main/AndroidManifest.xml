@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Sync (github_client.dart) needs raw socket access. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- HapticFeedback on a successful meal log (log_meal_screen.dart). -->
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <!-- Android 13+ requires runtime opt-in to post notifications; requested
          at launch via NotificationService.requestPermission(). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>

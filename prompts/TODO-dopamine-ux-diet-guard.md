@@ -36,6 +36,22 @@ from the true state. Partial completion must never be recorded as DONE.
 
 ---
 
+## status 2026-11-02 (audit session)
+
+DONE and committed: the haptic (`HapticFeedback.mediumImpact()` fired on the
+tap, before the write, only for a log that passed validation; test
+`app/test/screens/log_meal_haptic_test.dart`) and the VIBRATE permission.
+
+REMAINING (everything below this block that is not the haptic/VIBRATE):
+- needs kuhy: approved text for the explicit confirmation (the old
+  `Logged "<meal>".` line was removed on purpose 2026-08-16, so the wording
+  and whether to bring it back is his call), and the sound toggle label.
+- animated progress card / count-up numbers using motion tokens
+  (`~/src/utils/unified-design-system/DOCS-motion.md`), honouring
+  `disableAnimations`.
+- step 2 sound: audio dependency, asset, opt-out `SwitchListTile`.
+- on-phone check (haptic feel, remove-animations toggle): needs kuhy.
+
 Make logging a meal feel satisfying in diet_guard_app
 
 ## findings (4, ranked by value over effort)
