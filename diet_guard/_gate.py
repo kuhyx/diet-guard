@@ -15,11 +15,13 @@ prompts one slot at a time, with no separate weekday code path.
 
 from __future__ import annotations
 
+from datetime import datetime, time, timedelta
 from typing import TYPE_CHECKING
 
 import freedays
 import sickdays
 
+from diet_guard._hold import hold_covers
 from diet_guard._meal_schedule_store import current_schedule
 from diet_guard._slots import missing_slots, slot_label
 from diet_guard._state import (
@@ -30,7 +32,7 @@ from diet_guard._state_today import (
 )
 
 if TYPE_CHECKING:
-    from datetime import datetime
+    from datetime import date
 
 
 def due_slots(now: datetime | None = None) -> tuple[int, ...]:
@@ -50,16 +52,29 @@ def due_slots(now: datetime | None = None) -> tuple[int, ...]:
     read from a single local file and never the network, so this cannot hang
     the systemd-fired gate, and an unreadable pool reads as "not free" / "not
     sick" -- the normal rules apply rather than the gate switching itself off.
+
+    A declared hold (:mod:`diet_guard._hold`) is the same stand-down for a
+    window: nothing is due while one is active, and a slot whose time falls
+    inside a hold is *excused* -- never owed once the hold ends.
     """
     reference = now if now is not None else now_local()
     day = reference.date()
+    # A declared hold (``holds``): the PC stays usable, so nothing is due now.
+    if hold_covers(reference):
+        return ()
     if freedays.is_free_day(day) or sickdays.stands_down(sickdays.LOCKER_DIET, day):
         return ()
     # One schedule for both halves: snapping the log onto a different schedule
     # than the one deriving the due slots would leave a logged meal covering a
     # checkpoint that is not on the list -- and the real one nagging.
     schedule = current_schedule()
-    return missing_slots(reference, logged_slots_today(schedule), schedule)
+    missing = missing_slots(reference, logged_slots_today(schedule), schedule)
+    return tuple(slot for slot in missing if not hold_covers(_slot_time(day, slot)))
+
+
+def _slot_time(day: date, slot: int) -> datetime:
+    """Return the naive wall-clock instant of ``slot`` minutes after midnight."""
+    return datetime.combine(day, time()) + timedelta(minutes=slot)
 
 
 def gate_is_due(now: datetime | None = None) -> bool:

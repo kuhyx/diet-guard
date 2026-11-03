@@ -170,6 +170,15 @@ class TestLockDelegation:
             gate.run()
         mock_run.assert_called_once_with()
 
+    def test_run_arms_the_hold_watch(self, gate: MealGate) -> None:
+        """run() starts the poll that lifts the lock when a hold begins."""
+        with (
+            patch.object(gate._lock, "run"),
+            patch("diet_guard._gatelock.watch_hold") as watch,
+        ):
+            gate.run()
+        watch.assert_called_once_with(gate.root, gate.close)
+
     def test_close_delegates_to_lock(self, gate: MealGate) -> None:
         """close() hands off to the owned LockWindow."""
         with patch.object(gate._lock, "close") as mock_close:

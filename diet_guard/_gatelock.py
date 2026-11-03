@@ -63,6 +63,7 @@ from diet_guard._gatelock_ui import (
     GateCallbacks,
     make_vars,
 )
+from diet_guard._hold import watch_hold
 from diet_guard._meal_schedule_store import current_schedule
 from diet_guard._slots import current_slot, day_slots
 from diet_guard._state import now_local
@@ -104,10 +105,8 @@ def _pending_slots(*, demo_mode: bool) -> list[int]:
         return pending
     if demo_mode:
         schedule = current_schedule()
-        # Spelled `is None` rather than `or` because slot 0 (midnight) is
-        # falsy. The two happen to be equivalent -- if 0 is a slot it is
-        # necessarily the *first* slot, so both arms return 0, verified
-        # exhaustively -- but the intent should not depend on that coincidence.
+        # `is None`, not `or`: slot 0 (midnight) is falsy. Both arms happen to
+        # agree (0 is necessarily the first slot), but intent shouldn't hinge on it.
         elapsed = current_slot(now_local(), schedule)
         return [elapsed if elapsed is not None else day_slots(schedule)[0]]
     return []
@@ -220,7 +219,8 @@ class MealGate(_GateCalendar):
         self._lock.close()
 
     def run(self) -> None:
-        """Run the Tk loop, restoring VT switching on every exit path."""
+        """Run the Tk loop (a hold starting mid-lock closes it), VT-safe."""
+        watch_hold(self.root, self.close)
         self._lock.run()
 
     def _wire_events(self) -> None:

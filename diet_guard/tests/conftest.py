@@ -21,7 +21,9 @@ are functional in-memory stand-ins, shared by ``test_gatelock.py`` and
 from __future__ import annotations
 
 from contextlib import ExitStack
+import os
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 
@@ -106,6 +108,11 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
     with ExitStack() as stack:
         for redirect in redirects:
             stack.enter_context(redirect)
+        # The shared ``holds`` file lives under ~/.local/share: a real hold on
+        # this machine must not stand the whole suite's gate down.
+        stack.enter_context(
+            patch.dict(os.environ, {"HOLDS_DATA": str(tmp_path / "holds.json")})
+        )
         yield
 
 
