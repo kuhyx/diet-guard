@@ -6,6 +6,7 @@ import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/body_section.dart';
+import 'package:diet_guard_app/widgets/body/formula_figure.dart';
 import 'package:flutter/material.dart';
 
 /// How many of the newest sessions to list.
@@ -145,7 +146,7 @@ class ActivityCard extends StatelessWidget {
   }
 }
 
-/// A formula's proper name on the left, its kcal figure on the right.
+/// A formula's glyph on the left, its kcal figure on the right.
 class _FormulaRow extends StatelessWidget {
   const _FormulaRow(this.name, this.value);
 
@@ -157,7 +158,12 @@ class _FormulaRow extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs / 2),
     child: Row(
       children: [
-        Expanded(child: Text(name)),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FormulaGlyph(name),
+          ),
+        ),
         MacroFigure(kind: MacroKind.kcal, value: value, size: 16),
       ],
     ),
@@ -174,10 +180,6 @@ class _SessionTile extends StatelessWidget {
     final session = result.session;
     final km = session.km;
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
-    final kcal = [
-      for (final name in activityFormulas)
-        _formulaKcal(name, result.kcal[name]!, result.fallback.contains(name)),
-    ].join(' · ');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Column(
@@ -205,7 +207,20 @@ class _SessionTile extends StatelessWidget {
                 color: MacroKind.kcal.color,
                 semanticLabel: 'kcal',
               ),
-              Expanded(child: Text(' $kcal')),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Wrap(
+                  spacing: AppSpacing.sm,
+                  children: [
+                    for (final name in activityFormulas)
+                      FormulaFigure(
+                        name,
+                        whole(result.kcal[name]!),
+                        fallback: result.fallback.contains(name),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -213,6 +228,3 @@ class _SessionTile extends StatelessWidget {
     );
   }
 }
-
-String _formulaKcal(String name, double kcal, bool fallback) =>
-    '$name ${whole(kcal)}${fallback ? '~' : ''}';

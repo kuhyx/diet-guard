@@ -109,20 +109,35 @@ class _Tile extends StatelessWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const Spacer(),
-                if (valueIcon != null)
-                  Icon(valueIcon, size: 18, color: theme.colorScheme.primary),
-                if (value != null)
-                  Flexible(
-                    child: Text(
-                      value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.primary,
+                // The whole space beside the glyph goes to the value; it
+                // scales down instead of ellipsizing ("70.0 kg" must show).
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (valueIcon != null)
+                            Icon(
+                              valueIcon,
+                              size: 18,
+                              color: theme.colorScheme.primary,
+                            ),
+                          if (value != null)
+                            Text(
+                              value,
+                              maxLines: 1,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
+                ),
               ],
             ),
           ),

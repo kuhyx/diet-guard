@@ -15,7 +15,8 @@ class LocalNotificationsBackend implements NotificationBackend {
   final FlutterLocalNotificationsPlugin plugin;
 
   static const _channelId = 'diet_guard_due_slot';
-  static const _channelName = 'Meal reminders';
+  // The app's proper name, same as the launcher label (no descriptive text).
+  static const _channelName = 'DietGuard';
 
   @override
   Future<void> initialize() async {
