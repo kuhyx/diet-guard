@@ -4,6 +4,8 @@
 library;
 
 import 'package:diet_guard_app/models/food_bank_record.dart';
+import 'package:diet_guard_app/ui/cues.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:flutter/material.dart';
 
 /// Prompts for a new manually-curated food bank entry.
@@ -53,49 +55,50 @@ class AddEntryDialogState extends State<AddEntryDialog> {
     );
   }
 
-  Widget _field(String label, TextEditingController ctrl) => Padding(
+  Widget _field(MacroKind kind, TextEditingController ctrl) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: TextField(
+    child: IconField(
+      icon: kind.icon,
+      iconColor: kind.color,
+      semanticLabel: kind.semanticLabel(compact: false),
       controller: ctrl,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(labelText: label, isDense: true),
+      dense: true,
     ),
   );
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Add to food bank'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: TextField(
+              child: IconField(
+                icon: Icons.restaurant,
+                semanticLabel: 'Name',
                 controller: _name,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  isDense: true,
-                ),
+                dense: true,
               ),
             ),
-            _field('Reference grams', _grams),
-            _field('Kcal', _kcal),
-            _field('Protein (g)', _protein),
-            _field('Carbs (g)', _carbs),
-            _field('Fat (g)', _fat),
+            _field(MacroKind.perGrams, _grams),
+            _field(MacroKind.kcal, _kcal),
+            _field(MacroKind.protein, _protein),
+            _field(MacroKind.carbs, _carbs),
+            _field(MacroKind.fat, _fat),
           ],
         ),
       ),
       actions: [
-        TextButton(
+        IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          icon: const Icon(Icons.close, semanticLabel: 'Cancel'),
         ),
         ElevatedButton(
           onPressed: _save,
-          child: const Text('Save to bank'),
+          child: const Icon(Icons.check, semanticLabel: 'Save to bank'),
         ),
       ],
     );

@@ -1,9 +1,11 @@
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/widgets/history/history_filter_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../label_finders.dart';
 import 'history_test_support.dart';
 
 void main() {
@@ -36,16 +38,16 @@ void main() {
 
       // Tap 'manual' to set a source filter, then 'All' to reset it.
       // Tapping 'All' when source is not null covers lines 798-800.
-      await tester.tap(find.widgetWithText(FilterChip, 'manual'));
+      await tester.tap(chipByLabel('manual'));
       await settle(tester);
 
-      await tester.tap(find.widgetWithText(FilterChip, 'All'));
+      await tester.tap(chipByLabel('All'));
       await settle(tester);
 
-      await tester.tap(find.text('Apply'));
+      await tester.tap(byIconLabel('Apply'));
       await settle(tester);
 
-      expect(find.text('Filter & Sort'), findsNothing);
+      expect(find.byType(FilterSheet), findsNothing);
       expect(find.textContaining('all source entry'), findsOneWidget);
     });
   });
@@ -97,9 +99,7 @@ void main() {
       await settle(tester);
 
       // Protein slider.
-      await tester.ensureVisible(
-        find.byKey(const Key('protein-range-slider')),
-      );
+      await tester.ensureVisible(find.byKey(const Key('protein-range-slider')));
       await settle(tester);
       await tester.dragFrom(
         tester.getRect(find.byKey(const Key('protein-range-slider'))).center,
@@ -125,10 +125,10 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(find.text('Apply'));
+      await tester.tap(byIconLabel('Apply'));
       await settle(tester);
 
-      expect(find.text('Filter & Sort'), findsNothing);
+      expect(find.byType(FilterSheet), findsNothing);
     });
   });
 
@@ -160,7 +160,7 @@ void main() {
         await settle(tester);
 
         // Open date range picker.
-        await tester.tap(find.widgetWithText(OutlinedButton, 'Any date'));
+        await tester.tap(controlByLabel('Date range'));
         await settle(tester);
 
         // The picker opens on the current month (no `currentDate` override
@@ -171,9 +171,9 @@ void main() {
         // runs.
         final now = DateTime.now();
         final expectedStart = DateTime(now.year, now.month);
-        await tester.tap(find.text('1'));
+        await tester.tap(find.text('1').last);
         await settle(tester);
-        await tester.tap(find.text('2'));
+        await tester.tap(find.text('2').last);
         await settle(tester);
         await tester.tap(find.text('Save'));
         await settle(tester);
@@ -187,9 +187,9 @@ void main() {
         );
 
         // "Clear date range" is now visible — tap it to exercise lines 639-642.
-        await tester.tap(find.text('Clear date range'));
+        await tester.tap(byIconLabel('Clear date range'));
         await settle(tester);
-        expect(find.text('Any date'), findsOneWidget);
+        expect(byIconLabel('Clear date range'), findsNothing);
       });
     },
   );

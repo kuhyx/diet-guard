@@ -22,6 +22,7 @@ import 'package:diet_guard_app/widgets/day_status_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'label_finders.dart';
 
 /// Landscape and *short* — the supported floor. Phone-portrait sizes, which is
 /// all the existing suite pinned, exercise neither constraint.
@@ -176,7 +177,7 @@ void main() {
       // Delete used to be bound only to onLongPress, which has no keyboard
       // equivalent whatsoever.
       expect(
-        find.byTooltip('Delete entry'),
+        byIconLabel('Delete entry'),
         findsOneWidget,
         reason: 'delete needs a tab-reachable control, not long-press only',
       );
@@ -207,7 +208,7 @@ void main() {
 
       // Delete stays id-only to avoid ambiguous time+desc matches, so the
       // control must be absent rather than present-and-failing.
-      expect(find.byTooltip('Delete entry'), findsNothing);
+      expect(byIconLabel('Delete entry'), findsNothing);
     });
   });
 }

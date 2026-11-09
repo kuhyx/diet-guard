@@ -2,6 +2,7 @@
 library;
 
 import 'package:diet_guard_app/models/food_suggestion.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:flutter/material.dart';
 
 /// A tappable list of [FoodSuggestion]s, each filling the form on tap.
@@ -57,8 +58,12 @@ class AutocompleteSuggestionList extends StatelessWidget {
           return ListTile(
             dense: true,
             title: Text(suggestion.name),
-            subtitle: Text(
-              '${suggestion.nutrition.kcal.toStringAsFixed(0)} kcal',
+            subtitle: Align(
+              alignment: Alignment.centerLeft,
+              child: MacroFigure(
+                kind: MacroKind.kcal,
+                value: suggestion.nutrition.kcal.toStringAsFixed(0),
+              ),
             ),
             onTap: () => onSelected(suggestion),
           );
@@ -76,17 +81,34 @@ class AutocompleteSuggestionList extends StatelessWidget {
             onTap: () => onSelected(suggestion),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text(
-                '${suggestion.name} · '
-                '${suggestion.nutrition.kcal.toStringAsFixed(0)} kcal',
-                overflow: TextOverflow.ellipsis,
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      suggestion.name,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  MacroFigure(
+                    kind: MacroKind.kcal,
+                    value: suggestion.nutrition.kcal.toStringAsFixed(0),
+                  ),
+                ],
               ),
             ),
           ),
         if (remaining > 0)
           TextButton(
             onPressed: () => _showMore(context),
-            child: Text('$remaining more'),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.more_horiz, semanticLabel: 'More'),
+                const SizedBox(width: 4),
+                Text('+$remaining'),
+              ],
+            ),
           ),
       ],
     );

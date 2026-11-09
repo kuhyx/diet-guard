@@ -9,6 +9,7 @@ import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../label_finders.dart';
 
 const _entry = FoodEntry(
   id: 'test-uuid',
@@ -23,7 +24,6 @@ const _entry = FoodEntry(
 );
 
 void main() {
-
   late Directory tempDir;
 
   setUp(() async {
@@ -119,7 +119,7 @@ void main() {
           '999',
         );
         await settle(tester);
-        await tester.tap(find.text('Save'));
+        await tester.tap(byIconLabel('Save'));
         await settle(tester);
 
         final log = await LogStorageService.instance.readLog();
@@ -141,7 +141,7 @@ void main() {
       await tester.tap(find.text('pizza obok pracy'));
       await settle(tester);
 
-      expect(find.text('Edit meal'), findsOneWidget);
+      expect(find.byType(EditEntryScreen), findsOneWidget);
       expect(find.text('pizza obok pracy'), findsOneWidget);
       // Macros are pre-filled.
       expect(find.text('1200'), findsOneWidget);
@@ -180,15 +180,16 @@ void main() {
       await tester.tap(find.text('pizza obok pracy').last);
       await settle(tester);
 
-      await tester.tap(find.text('Save'));
+      await tester.tap(byIconLabel('Save'));
       await settle(tester);
 
-      final saved = (await LogStorageService.instance.readLog())['2026-06-22']!
-          .first;
+      final saved =
+          (await LogStorageService.instance.readLog())['2026-06-22']!.first;
       expect(
         saved.kcal,
         1200,
-        reason: 'the banked portion must save as itself, not rescaled by '
+        reason:
+            'the banked portion must save as itself, not rescaled by '
             'its own reference weight.',
       );
       expect(saved.grams, 400);

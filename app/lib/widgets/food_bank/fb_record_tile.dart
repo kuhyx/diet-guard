@@ -2,9 +2,13 @@
 library;
 
 import 'package:diet_guard_app/models/food_bank_record.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:flutter/material.dart';
 
 /// One banked food: its name, macros, and how often it has been logged.
+///
+/// Macros are glyph + number pairs; the reference weight carries the scale
+/// glyph, the use count keeps its `×N` numeral.
 class RecordTile extends StatelessWidget {
   /// Creates a [RecordTile] for [record].
   const RecordTile(this.record, {super.key});
@@ -14,19 +18,23 @@ class RecordTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final macros =
-        'P ${record.proteinG.toStringAsFixed(0)} g  '
-        'C ${record.carbsG.toStringAsFixed(0)} g  '
-        'F ${record.fatG.toStringAsFixed(0)} g';
-    final per = record.grams > 0
-        ? ' per ${record.grams.toStringAsFixed(0)} g'
-        : '';
+    String n(double v) => v.toStringAsFixed(0);
     return ListTile(
       title: Text(record.desc),
-      subtitle: Text('${record.kcal.toStringAsFixed(0)} kcal$per  ·  $macros'),
+      subtitle: Wrap(
+        spacing: 12,
+        children: [
+          MacroFigure(kind: MacroKind.kcal, value: n(record.kcal)),
+          if (record.grams > 0)
+            MacroFigure(kind: MacroKind.perGrams, value: '${n(record.grams)}g'),
+          MacroFigure(kind: MacroKind.protein, value: '${n(record.proteinG)}g'),
+          MacroFigure(kind: MacroKind.carbs, value: '${n(record.carbsG)}g'),
+          MacroFigure(kind: MacroKind.fat, value: '${n(record.fatG)}g'),
+        ],
+      ),
       trailing: record.count > 0
           ? Text(
-              '×${record.count.toStringAsFixed(0)}',
+              '×${n(record.count)}',
               style: Theme.of(context).textTheme.bodySmall,
             )
           : null,

@@ -8,6 +8,7 @@ import 'package:diet_guard_app/models/food_suggestion.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/widgets/autocomplete_suggestion_list.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
 import 'package:flutter/material.dart';
@@ -35,6 +36,7 @@ class _EditEntryScreenState extends State<EditEntryScreen> {
   List<FoodSuggestion> _suggestions = const [];
   String _source = 'manual';
   String? _status;
+  int _rejections = 0;
 
   @override
   void initState() {
@@ -80,9 +82,7 @@ class _EditEntryScreenState extends State<EditEntryScreen> {
   }
 
   Future<void> _onDescChanged() async {
-    final matches = await FoodBankService.instance.search(
-      _descController.text,
-    );
+    final matches = await FoodBankService.instance.search(_descController.text);
     if (!mounted) return;
     setState(() => _suggestions = matches);
   }
@@ -104,7 +104,10 @@ class _EditEntryScreenState extends State<EditEntryScreen> {
   Future<void> _onSave() async {
     final desc = _descController.text.trim();
     if (desc.isEmpty) {
-      setState(() => _status = 'Description cannot be empty.');
+      setState(() {
+        _status = 'Description cannot be empty.';
+        _rejections++;
+      });
       return;
     }
     final nutrition = nutritionForPortion(
@@ -142,17 +145,16 @@ class _EditEntryScreenState extends State<EditEntryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit meal')),
+      appBar: AppBar(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
+            IconField(
+              icon: Icons.restaurant,
+              semanticLabel: 'What did you eat?',
               controller: _descController,
-              decoration: const InputDecoration(
-                labelText: 'What did you eat?',
-              ),
             ),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 240),
@@ -168,12 +170,20 @@ class _EditEntryScreenState extends State<EditEntryScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _onSave,
-                child: const Text('Save'),
+                child: const Icon(Icons.check, semanticLabel: 'Save'),
               ),
             ),
             if (_status != null) ...[
               const SizedBox(height: 12),
-              Text(_status!),
+              // New key per rejection so a repeat error shakes again.
+              Align(
+                alignment: Alignment.centerLeft,
+                child: StatusCue(
+                  key: ValueKey(_rejections),
+                  kind: CueKind.error,
+                  semanticLabel: _status!,
+                ),
+              ),
             ],
           ],
         ),

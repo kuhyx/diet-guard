@@ -4,6 +4,7 @@
 library;
 
 import 'package:diet_guard_app/models/food_bank_record.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -59,11 +60,13 @@ class FbTile extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      '${record.kcal.toStringAsFixed(0)} kcal',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: MacroFigure(
+                        kind: MacroKind.kcal,
+                        value: record.kcal.toStringAsFixed(0),
+                        size: 14,
+                      ),
                     ),
                   ),
                   if (record.count > 0)

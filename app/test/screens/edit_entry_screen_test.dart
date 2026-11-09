@@ -9,6 +9,7 @@ import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../label_finders.dart';
 
 const _entry = FoodEntry(
   id: 'test-uuid',
@@ -23,7 +24,6 @@ const _entry = FoodEntry(
 );
 
 void main() {
-
   late Directory tempDir;
 
   setUp(() async {
@@ -72,8 +72,8 @@ void main() {
         MaterialApp(home: EditEntryScreen(entry: _entry)),
       );
       await settle(tester);
-      expect(find.text('Edit meal'), findsOneWidget);
-      expect(find.text('Save'), findsOneWidget);
+      expect(find.byType(EditEntryScreen), findsOneWidget);
+      expect(byIconLabel('Save'), findsOneWidget);
     });
   });
   testWidgets('shows error when description is cleared', (tester) async {
@@ -92,10 +92,10 @@ void main() {
         matching: find.byType(TextField),
       );
       await tester.enterText(descField, '');
-      await tester.tap(find.text('Save'));
+      await tester.tap(byIconLabel('Save'));
       await settle(tester);
 
-      expect(find.text('Description cannot be empty.'), findsOneWidget);
+      expect(cueLabelled('Description cannot be empty.'), findsOneWidget);
     });
   });
   testWidgets('Save persists updated kcal to the log', (tester) async {
@@ -110,13 +110,10 @@ void main() {
 
       // Change kcal.
       await tester.enterText(
-        find.ancestor(
-          of: find.text('1200'),
-          matching: find.byType(TextField),
-        ),
+        find.ancestor(of: find.text('1200'), matching: find.byType(TextField)),
         '999',
       );
-      await tester.tap(find.text('Save'));
+      await tester.tap(byIconLabel('Save'));
       await settle(tester);
 
       final log = await LogStorageService.instance.readLog();
@@ -146,7 +143,7 @@ void main() {
         MaterialApp(home: EditEntryScreen(entry: legacy)),
       );
       await settle(tester);
-      await tester.tap(find.text('Save'));
+      await tester.tap(byIconLabel('Save'));
       await settle(tester);
 
       final log = await LogStorageService.instance.readLog();

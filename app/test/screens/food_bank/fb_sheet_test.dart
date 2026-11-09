@@ -2,9 +2,11 @@ import 'package:diet_guard_app/models/food_bank_record.dart';
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/screens/food_bank_screen.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
+import 'package:diet_guard_app/widgets/food_bank/fb_filter_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../label_finders.dart';
 import 'fb_test_support.dart';
 
 void main() {
@@ -68,21 +70,16 @@ void main() {
       await tester.tap(find.byIcon(Icons.filter_list));
       await settle(tester);
 
-      expect(find.text('Filter & Sort'), findsOneWidget);
+      expect(find.byType(FbFilterSheet), findsOneWidget);
 
-      // With no sliders rendered, 'Sort by' and its dropdown are immediately
-      // visible — open the sort-field dropdown (shows 'Usage count' by default).
-      await tester.tap(find.text('Usage count'));
+      // Usage count is the default sort chip; pick the name chip instead.
+      await tester.tap(chipByLabel('Name'));
       await settle(tester);
 
-      // Tap 'Name' in the dropdown overlay.
-      await tester.tap(find.text('Name').last);
+      await tester.tap(byIconLabel('Apply'));
       await settle(tester);
 
-      await tester.tap(find.text('Apply'));
-      await settle(tester);
-
-      expect(find.text('Filter & Sort'), findsNothing);
+      expect(find.byType(FbFilterSheet), findsNothing);
       expect(find.text('ZeroItem'), findsOneWidget);
     });
   });
@@ -140,10 +137,10 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(find.text('Apply'));
+      await tester.tap(byIconLabel('Apply'));
       await settle(tester);
 
-      expect(find.text('Filter & Sort'), findsNothing);
+      expect(find.byType(FbFilterSheet), findsNothing);
     });
   });
 
@@ -169,13 +166,13 @@ void main() {
       await tester.tap(find.byIcon(Icons.filter_list));
       await settle(tester);
 
-      expect(find.text('Filter & Sort'), findsOneWidget);
+      expect(find.byType(FbFilterSheet), findsOneWidget);
 
       // Default sort is count-descending; the direction icon is arrow_downward.
       await tester.tap(find.byIcon(Icons.arrow_downward));
       await settle(tester);
 
-      await tester.tap(find.text('Apply'));
+      await tester.tap(byIconLabel('Apply'));
       await settle(tester);
 
       expect(find.text('ZeroItem2'), findsOneWidget);

@@ -1,21 +1,22 @@
 import 'package:diet_guard_app/models/food_bank_record.dart';
 import 'package:diet_guard_app/screens/food_bank_screen.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
+import 'package:diet_guard_app/widgets/food_bank/fb_add_entry_dialog.dart';
+import 'package:diet_guard_app/widgets/food_bank/fb_filter_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../label_finders.dart';
 import 'fb_test_support.dart';
 
 void main() {
   useTempFoodBankStores();
-  testWidgets('shows empty-bank message when no entries exist', (
-    tester,
-  ) async {
+  testWidgets('shows empty-bank message when no entries exist', (tester) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(const MaterialApp(home: FoodBankScreen()));
       await settle(tester);
 
-      expect(find.textContaining('Food bank is empty'), findsOneWidget);
+      expect(byIconLabel('Food bank is empty.'), findsOneWidget);
     });
   });
 
@@ -50,18 +51,12 @@ void main() {
       await tester.tap(find.byType(FloatingActionButton));
       await settle(tester);
 
-      expect(find.text('Add to food bank'), findsOneWidget);
+      expect(find.byType(AddEntryDialog), findsOneWidget);
 
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Name'),
-        'Test food',
-      );
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Kcal'),
-        '200',
-      );
+      await tester.enterText(fieldByLabel('Name'), 'Test food');
+      await tester.enterText(fieldByLabel('kcal'), '200');
 
-      await tester.tap(find.text('Save to bank'));
+      await tester.tap(byIconLabel('Save to bank'));
       await settle(tester);
 
       // After saving, the screen reloads and shows the new entry.
@@ -77,10 +72,10 @@ void main() {
       await tester.tap(find.byType(FloatingActionButton));
       await settle(tester);
 
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(byIconLabel('Cancel'));
       await settle(tester);
 
-      expect(find.textContaining('Food bank is empty'), findsOneWidget);
+      expect(byIconLabel('Food bank is empty.'), findsOneWidget);
     });
   });
 
@@ -93,11 +88,11 @@ void main() {
       await settle(tester);
 
       // Tap save without entering a name.
-      await tester.tap(find.text('Save to bank'));
+      await tester.tap(byIconLabel('Save to bank'));
       await settle(tester);
 
       // Dialog stays open; no entry saved.
-      expect(find.text('Add to food bank'), findsOneWidget);
+      expect(find.byType(AddEntryDialog), findsOneWidget);
     });
   });
 
@@ -156,17 +151,17 @@ void main() {
       await tester.tap(find.byIcon(Icons.filter_list));
       await settle(tester);
 
-      expect(find.text('Filter & Sort'), findsOneWidget);
+      expect(find.byType(FbFilterSheet), findsOneWidget);
 
       // Type in the only TextField in the sheet (the name search field).
       await tester.enterText(find.byType(TextField).first, 'Oat');
       await settle(tester);
 
-      await tester.tap(find.text('Apply'));
+      await tester.tap(byIconLabel('Apply'));
       await settle(tester);
 
       // Sheet is closed; only the matching entry is visible.
-      expect(find.text('Filter & Sort'), findsNothing);
+      expect(find.byType(FbFilterSheet), findsNothing);
       expect(find.text('Oat'), findsOneWidget);
       expect(find.text('Egg'), findsNothing);
     });
@@ -194,10 +189,10 @@ void main() {
       await tester.tap(find.byIcon(Icons.filter_list));
       await settle(tester);
 
-      await tester.tap(find.text('Clear all'));
+      await tester.tap(byIconLabel('Clear all'));
       await settle(tester);
 
-      await tester.tap(find.text('Apply'));
+      await tester.tap(byIconLabel('Apply'));
       await settle(tester);
 
       expect(find.text('Walnut'), findsOneWidget);

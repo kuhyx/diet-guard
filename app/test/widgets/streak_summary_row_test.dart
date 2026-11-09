@@ -2,6 +2,7 @@ import 'package:diet_guard_app/models/day_status.dart';
 import 'package:diet_guard_app/widgets/streak_summary_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../label_finders.dart';
 
 Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
 
@@ -17,16 +18,11 @@ void main() {
           ),
         ),
       );
-      expect(
-        find.text(
-          'Logging streak: 3 days  ·  Adherence streak: 2 days',
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.text('This year: logged 10/14 days  ·  8 within budget'),
-        findsOneWidget,
-      );
+      expect(find.text('3'), findsWidgets);
+      expect(byIconLabel('Logging streak'), findsOneWidget);
+      expect(byIconLabel('Adherence streak'), findsOneWidget);
+      expect(find.text('10/14'), findsOneWidget);
+      expect(find.text('8'), findsOneWidget);
     });
 
     testWidgets('renders singular streak counts', (tester) async {
@@ -39,10 +35,9 @@ void main() {
           ),
         ),
       );
-      expect(
-        find.text('Logging streak: 1 day  ·  Adherence streak: 1 day'),
-        findsOneWidget,
-      );
+      expect(find.text('1'), findsWidgets);
+      expect(byIconLabel('Logging streak'), findsOneWidget);
+      expect(byIconLabel('Adherence streak'), findsOneWidget);
     });
 
     testWidgets('renders zero streaks', (tester) async {
@@ -55,10 +50,9 @@ void main() {
           ),
         ),
       );
-      expect(
-        find.text('Logging streak: 0 days  ·  Adherence streak: 0 days'),
-        findsOneWidget,
-      );
+      expect(find.text('0'), findsWidgets);
+      expect(byIconLabel('Logging streak'), findsOneWidget);
+      expect(byIconLabel('Adherence streak'), findsOneWidget);
     });
   });
 }

@@ -8,23 +8,10 @@ import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../label_finders.dart';
 
-const _monthNames = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-String _label(DateTime d) => '${_monthNames[d.month - 1]} ${d.year}';
+String _label(DateTime d) =>
+    '${d.month.toString().padLeft(2, '0')} · ${d.year}';
 
 void main() {
   late Directory tempDir;
@@ -33,9 +20,7 @@ void main() {
     tempDir = await Directory.systemTemp.createTemp('diet_guard_calendar_');
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
-    BudgetHistoryService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BudgetHistoryService.resetForTesting(store: FileDocumentStore(tempDir));
   });
 
   tearDown(() async {
@@ -70,7 +55,7 @@ void main() {
       'button', (tester) async {
     await pumpScreen(tester);
     expect(find.widgetWithText(TextField, '2200'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'Edit'), findsOneWidget);
+    expect(controlByLabel('Edit'), findsOneWidget);
     final field = tester.widget<TextField>(find.byType(TextField));
     expect(field.enabled, isFalse);
   });
@@ -79,10 +64,10 @@ void main() {
     tester,
   ) async {
     await pumpScreen(tester);
-    await tester.tap(find.widgetWithText(FilledButton, 'Edit'));
+    await tester.tap(controlByLabel('Edit'));
     await tester.pump();
 
-    expect(find.widgetWithText(FilledButton, 'Save'), findsOneWidget);
+    expect(controlByLabel('Save'), findsOneWidget);
     final field = tester.widget<TextField>(find.byType(TextField));
     expect(field.enabled, isTrue);
   });
@@ -91,27 +76,27 @@ void main() {
     tester,
   ) async {
     await pumpScreen(tester);
-    await tester.tap(find.widgetWithText(FilledButton, 'Edit'));
+    await tester.tap(controlByLabel('Edit'));
     await tester.pump();
     await tester.enterText(find.byType(TextField), '');
-    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.tap(controlByLabel('Save'));
     await tester.pump();
 
-    expect(find.text('Enter a whole number of kcal.'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'Save'), findsOneWidget);
+    expect(cueLabelled('Enter a whole number of kcal.'), findsOneWidget);
+    expect(controlByLabel('Save'), findsOneWidget);
   });
 
   testWidgets('a zero value is rejected and editing stays open', (
     tester,
   ) async {
     await pumpScreen(tester);
-    await tester.tap(find.widgetWithText(FilledButton, 'Edit'));
+    await tester.tap(controlByLabel('Edit'));
     await tester.pump();
     await tester.enterText(find.byType(TextField), '0');
-    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.tap(controlByLabel('Save'));
     await tester.pump();
 
-    expect(find.text('Budget must be a positive number.'), findsOneWidget);
+    expect(cueLabelled('Budget must be a positive number.'), findsOneWidget);
   });
 
   testWidgets('saving a valid value persists it and reverts to read-only', (
@@ -123,14 +108,17 @@ void main() {
     // frame pumps, mirroring settings_screen_test.dart's device-flow tests.
     await tester.runAsync(() async {
       await pumpScreen(tester);
-      await tester.tap(find.widgetWithText(FilledButton, 'Edit'));
+      await tester.tap(controlByLabel('Edit'));
       await tester.pump();
       await tester.enterText(find.byType(TextField), '1800');
-      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
-      await pumpUntil(tester, () => find.text('Saved.').evaluate().isNotEmpty);
+      await tester.tap(controlByLabel('Save'));
+      await pumpUntil(
+        tester,
+        () => cueLabelled('Saved.').evaluate().isNotEmpty,
+      );
 
-      expect(find.text('Saved.'), findsOneWidget);
-      expect(find.widgetWithText(FilledButton, 'Edit'), findsOneWidget);
+      expect(cueLabelled('Saved.'), findsOneWidget);
+      expect(controlByLabel('Edit'), findsOneWidget);
       expect(AppSettingsService.dailyKcalGoal, 1800);
       final field = tester.widget<TextField>(find.byType(TextField));
       expect(field.enabled, isFalse);
@@ -139,8 +127,8 @@ void main() {
 
   testWidgets('shows streak and year-to-date summary text', (tester) async {
     await pumpScreen(tester);
-    expect(find.textContaining('Logging streak:'), findsOneWidget);
-    expect(find.textContaining('This year:'), findsOneWidget);
+    expect(byIconLabel('Logging streak'), findsOneWidget);
+    expect(byIconLabel('Days logged this year'), findsOneWidget);
   });
 
   testWidgets('month navigation steps the displayed month back and forward', (

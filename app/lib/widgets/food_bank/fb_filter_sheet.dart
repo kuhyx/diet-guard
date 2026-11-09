@@ -4,6 +4,9 @@
 /// range rows come from `widgets/filters/`, shared with the history sheet.
 library;
 
+import 'package:diet_guard_app/ui/cues.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
+import 'package:diet_guard_app/widgets/filters/filter_chrome.dart';
 import 'package:diet_guard_app/widgets/filters/filter_fields.dart';
 import 'package:diet_guard_app/widgets/food_bank/fb_filter.dart';
 import 'package:flutter/material.dart';
@@ -63,6 +66,35 @@ class FbFilterSheet extends StatelessWidget {
   /// Called when the user clears every criterion.
   final VoidCallback onClear;
 
+  static final List<SortOption<FbSortField>> _sortOptions = [
+    const SortOption(FbSortField.count, Icons.repeat, 'Usage count'),
+    const SortOption(FbSortField.name, Icons.sort_by_alpha, 'Name'),
+    SortOption(
+      FbSortField.kcal,
+      MacroKind.kcal.icon,
+      'Kcal',
+      color: MacroKind.kcal.color,
+    ),
+    SortOption(
+      FbSortField.protein,
+      MacroKind.protein.icon,
+      'Protein',
+      color: MacroKind.protein.color,
+    ),
+    SortOption(
+      FbSortField.carbs,
+      MacroKind.carbs.icon,
+      'Carbs',
+      color: MacroKind.carbs.color,
+    ),
+    SortOption(
+      FbSortField.fat,
+      MacroKind.fat.icon,
+      'Fat',
+      color: MacroKind.fat.color,
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -71,35 +103,17 @@ class FbFilterSheet extends StatelessWidget {
       maxChildSize: 0.95,
       builder: (context, scroll) => Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Filter & Sort',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                TextButton(
-                  onPressed: onClear,
-                  child: const Text('Clear all'),
-                ),
-              ],
-            ),
-          ),
+          FilterSheetHeader(onClear: onClear),
           const Divider(),
           Expanded(
             child: ListView(
               controller: scroll,
               padding: const EdgeInsets.all(16),
               children: [
-                TextField(
-                  decoration: const InputDecoration(
-                    labelText: 'Search by name',
-                    prefixIcon: Icon(Icons.search),
-                    isDense: true,
-                  ),
+                IconField(
+                  icon: Icons.search,
+                  semanticLabel: 'Search by name',
+                  dense: true,
                   controller: TextEditingController(text: filter.nameQuery)
                     ..selection = TextSelection.collapsed(
                       offset: filter.nameQuery.length,
@@ -111,7 +125,7 @@ class FbFilterSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 FilterRangeRow(
-                  label: 'Kcal range',
+                  kind: MacroKind.kcal,
                   sliderKey: const Key('fb-kcal-range-slider'),
                   maxValue: maxKcal,
                   min: filter.minKcal,
@@ -124,7 +138,7 @@ class FbFilterSheet extends StatelessWidget {
                   },
                 ),
                 FilterRangeRow(
-                  label: 'Protein range (g)',
+                  kind: MacroKind.protein,
                   sliderKey: const Key('fb-protein-range-slider'),
                   maxValue: maxProtein,
                   min: filter.minProtein,
@@ -138,7 +152,7 @@ class FbFilterSheet extends StatelessWidget {
                   },
                 ),
                 FilterRangeRow(
-                  label: 'Carbs range (g)',
+                  kind: MacroKind.carbs,
                   sliderKey: const Key('fb-carbs-range-slider'),
                   maxValue: maxCarbs,
                   min: filter.minCarbs,
@@ -152,7 +166,7 @@ class FbFilterSheet extends StatelessWidget {
                   },
                 ),
                 FilterRangeRow(
-                  label: 'Fat range (g)',
+                  kind: MacroKind.fat,
                   sliderKey: const Key('fb-fat-range-slider'),
                   maxValue: maxFat,
                   min: filter.minFat,
@@ -165,74 +179,16 @@ class FbFilterSheet extends StatelessWidget {
                     onFilterChanged(filter);
                   },
                 ),
-                Text(
-                  'Sort by',
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButton<FbSortField>(
-                        isExpanded: true,
-                        value: sortField,
-                        items: const [
-                          DropdownMenuItem(
-                            value: FbSortField.count,
-                            child: Text('Usage count'),
-                          ),
-                          DropdownMenuItem(
-                            value: FbSortField.name,
-                            child: Text('Name'),
-                          ),
-                          DropdownMenuItem(
-                            value: FbSortField.kcal,
-                            child: Text('Kcal'),
-                          ),
-                          DropdownMenuItem(
-                            value: FbSortField.protein,
-                            child: Text('Protein'),
-                          ),
-                          DropdownMenuItem(
-                            value: FbSortField.carbs,
-                            child: Text('Carbs'),
-                          ),
-                          DropdownMenuItem(
-                            value: FbSortField.fat,
-                            child: Text('Fat'),
-                          ),
-                        ],
-                        onChanged: (v) {
-                          if (v != null) {
-                            onSortChanged(field: v, asc: ascending);
-                          }
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: Icon(
-                        ascending ? Icons.arrow_upward : Icons.arrow_downward,
-                      ),
-                      tooltip: ascending ? 'Ascending' : 'Descending',
-                      onPressed: () =>
-                          onSortChanged(field: sortField, asc: !ascending),
-                    ),
-                  ],
+                SortChoiceRow<FbSortField>(
+                  options: _sortOptions,
+                  selected: sortField,
+                  ascending: ascending,
+                  onChanged: onSortChanged,
                 ),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: onApply,
-                child: const Text('Apply'),
-              ),
-            ),
-          ),
+          FilterApplyBar(onApply: onApply),
         ],
       ),
     );

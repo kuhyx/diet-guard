@@ -170,29 +170,17 @@ String dateRangeLabel(DateTimeRange r) =>
     '${r.start.toString().substring(0, 10)}'
     ' – ${r.end.toString().substring(0, 10)}';
 
-/// Render a `YYYY-MM-DD` key as a short `Wed 12 Aug`-style label.
+/// Render a `YYYY-MM-DD` key as numeric `DD.MM.YYYY` (no weekday or month
+/// names: those were written words, and a date is a number).
 ///
 /// Falls back to the raw key when it cannot be parsed, so a malformed date
 /// shows something rather than throwing inside a list build.
 String formatDay(String dateKey) {
   try {
     final d = DateTime.parse(dateKey);
-    const wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const mo = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${wd[d.weekday - 1]} ${d.day} ${mo[d.month - 1]} ${d.year}';
+    final day = d.day.toString().padLeft(2, '0');
+    final month = d.month.toString().padLeft(2, '0');
+    return '$day.$month.${d.year}';
   } on Exception {
     return dateKey;
   }

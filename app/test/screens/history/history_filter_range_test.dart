@@ -37,7 +37,8 @@ void main() {
         await settle(tester);
 
         // The raw key is shown as the day header when formatting fails.
-        expect(find.text('NOT-A-DATE'), findsOneWidget);
+        // Header falls back to the raw key; the entry row prints its time too.
+        expect(find.text('NOT-A-DATE'), findsNWidgets(2));
       });
     },
   );

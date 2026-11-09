@@ -22,10 +22,12 @@ void main() {
           ),
         ),
       );
-      expect(find.text('June 2026'), findsOneWidget);
+      expect(find.text('06 · 2026'), findsOneWidget);
     });
 
-    testWidgets('shows day-of-week headers', (tester) async {
+    testWidgets('marks the weekend columns with two accent dots', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         wrapInApp(
           DayStatusCalendar(
@@ -37,8 +39,10 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Mo'), findsOneWidget);
-      expect(find.text('Su'), findsOneWidget);
+      final dots = tester
+          .widgetList<Icon>(find.byIcon(Icons.circle))
+          .where((i) => i.size == 8);
+      expect(dots, hasLength(2));
     });
 
     testWidgets('calls onPrevMonth when left arrow tapped', (tester) async {
@@ -177,9 +181,7 @@ void main() {
       expect(colorOfDay(tester, '20'), appTheme.colorScheme.error);
     });
 
-    testWidgets('renders a month starting on Sunday correctly', (
-      tester,
-    ) async {
+    testWidgets('renders a month starting on Sunday correctly', (tester) async {
       final sep2026 = DateTime(2026, 9);
       await tester.pumpWidget(
         wrapInApp(
@@ -192,7 +194,7 @@ void main() {
           ),
         ),
       );
-      expect(find.text('September 2026'), findsOneWidget);
+      expect(find.text('09 · 2026'), findsOneWidget);
     });
 
     testWidgets('tapping a day calls onDaySelected with that date', (

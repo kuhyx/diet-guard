@@ -1,9 +1,11 @@
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/widgets/history/history_filter_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../label_finders.dart';
 import 'history_test_support.dart';
 
 void main() {
@@ -34,10 +36,10 @@ void main() {
       await tester.tap(find.byIcon(Icons.filter_list));
       await settle(tester);
 
-      await tester.tap(find.text('Clear all'));
+      await tester.tap(byIconLabel('Clear all'));
       await settle(tester);
 
-      await tester.tap(find.text('Apply'));
+      await tester.tap(byIconLabel('Apply'));
       await settle(tester);
 
       expect(find.text('toast'), findsOneWidget);
@@ -72,21 +74,16 @@ void main() {
       await tester.tap(find.byIcon(Icons.filter_list));
       await settle(tester);
 
-      expect(find.text('Filter & Sort'), findsOneWidget);
-
-      // The sort section is ~8px below the fold even with zero macros — scroll
-      // it into view before tapping the direction button.
-      await tester.drag(find.byType(ListView).last, const Offset(0, -120));
-      await settle(tester);
+      expect(find.byType(FilterSheet), findsOneWidget);
 
       // Default sort is date-descending; direction icon is arrow_downward.
       await tester.tap(find.byIcon(Icons.arrow_downward));
       await settle(tester);
 
-      await tester.tap(find.text('Apply'));
+      await tester.tap(byIconLabel('Apply'));
       await settle(tester);
 
-      expect(find.text('Filter & Sort'), findsNothing);
+      expect(find.byType(FilterSheet), findsNothing);
       expect(find.textContaining('porridge'), findsOneWidget);
     });
   });
@@ -119,22 +116,14 @@ void main() {
       await tester.tap(find.byIcon(Icons.filter_list));
       await settle(tester);
 
-      // Scroll just enough to make the sort section visible.
-      await tester.drag(find.byType(ListView).last, const Offset(0, -120));
+      // Pick the kcal sort chip (date is selected by default).
+      await tester.tap(chipByLabel('Kcal'));
       await settle(tester);
 
-      // Open the sort dropdown (shows 'Date' by default).
-      await tester.tap(find.text('Date'));
+      await tester.tap(byIconLabel('Apply'));
       await settle(tester);
 
-      // Select 'Kcal' from the dropdown overlay.
-      await tester.tap(find.text('Kcal').last);
-      await settle(tester);
-
-      await tester.tap(find.text('Apply'));
-      await settle(tester);
-
-      expect(find.text('Filter & Sort'), findsNothing);
+      expect(find.byType(FilterSheet), findsNothing);
       expect(find.textContaining('chicken'), findsOneWidget);
     });
   });
@@ -175,15 +164,15 @@ void main() {
       await tester.tap(find.byIcon(Icons.filter_list));
       await settle(tester);
 
-      expect(find.text('Filter & Sort'), findsOneWidget);
+      expect(find.byType(FilterSheet), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(FilterChip, 'manual'));
+      await tester.tap(chipByLabel('manual'));
       await settle(tester);
 
-      await tester.tap(find.text('Apply'));
+      await tester.tap(byIconLabel('Apply'));
       await settle(tester);
 
-      expect(find.text('Filter & Sort'), findsNothing);
+      expect(find.byType(FilterSheet), findsNothing);
       expect(find.textContaining('manual meal'), findsOneWidget);
       expect(find.textContaining('bank meal'), findsNothing);
     });

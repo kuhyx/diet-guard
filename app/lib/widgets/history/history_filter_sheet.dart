@@ -3,6 +3,8 @@
 /// Split out of `history_screen.dart` to hold the repo's 250-line cap.
 library;
 
+import 'package:diet_guard_app/ui/macro_kind.dart';
+import 'package:diet_guard_app/widgets/filters/filter_chrome.dart';
 import 'package:diet_guard_app/widgets/filters/filter_fields.dart';
 import 'package:diet_guard_app/widgets/history/history_filter.dart';
 import 'package:diet_guard_app/widgets/history/history_filter_sort.dart';
@@ -73,20 +75,7 @@ class FilterSheet extends StatelessWidget {
       maxChildSize: 0.95,
       builder: (context, scroll) => Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Filter & Sort',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                TextButton(onPressed: onClear, child: const Text('Clear all')),
-              ],
-            ),
-          ),
+          FilterSheetHeader(onClear: onClear),
           const Divider(),
           Expanded(
             child: SingleChildScrollView(
@@ -105,18 +94,21 @@ class FilterSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Date range
-                  Text(
-                    'Date range',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 4),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.date_range),
-                    label: Text(
-                      filter.dateRange == null
-                          ? 'Any date'
-                          : dateRangeLabel(filter.dateRange!),
+                  // Date range: the glyph alone means "any date"; once a range
+                  // is set its dates (data, not chrome) appear beside it.
+                  OutlinedButton(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.date_range,
+                          semanticLabel: 'Date range',
+                        ),
+                        if (filter.dateRange != null) ...[
+                          const SizedBox(width: 8),
+                          Text(dateRangeLabel(filter.dateRange!)),
+                        ],
+                      ],
                     ),
                     onPressed: () async {
                       final picked = await showDateRangePicker(
@@ -132,17 +124,20 @@ class FilterSheet extends StatelessWidget {
                     },
                   ),
                   if (filter.dateRange != null)
-                    TextButton(
+                    IconButton(
                       onPressed: () {
                         filter.dateRange = null;
                         onFilterChanged(filter);
                       },
-                      child: const Text('Clear date range'),
+                      icon: const Icon(
+                        Icons.event_busy,
+                        semanticLabel: 'Clear date range',
+                      ),
                     ),
                   const SizedBox(height: 16),
 
                   FilterRangeRow(
-                    label: 'Kcal range',
+                    kind: MacroKind.kcal,
                     sliderKey: const Key('kcal-range-slider'),
                     maxValue: maxKcal,
                     min: filter.minKcal,
@@ -154,7 +149,7 @@ class FilterSheet extends StatelessWidget {
                     },
                   ),
                   FilterRangeRow(
-                    label: 'Protein range (g)',
+                    kind: MacroKind.protein,
                     sliderKey: const Key('protein-range-slider'),
                     maxValue: maxProtein,
                     min: filter.minProtein,
@@ -167,7 +162,7 @@ class FilterSheet extends StatelessWidget {
                     },
                   ),
                   FilterRangeRow(
-                    label: 'Carbs range (g)',
+                    kind: MacroKind.carbs,
                     sliderKey: const Key('carbs-range-slider'),
                     maxValue: maxCarbs,
                     min: filter.minCarbs,
@@ -180,7 +175,7 @@ class FilterSheet extends StatelessWidget {
                     },
                   ),
                   FilterRangeRow(
-                    label: 'Fat range (g)',
+                    kind: MacroKind.fat,
                     sliderKey: const Key('fat-range-slider'),
                     maxValue: maxFat,
                     min: filter.minFat,
@@ -210,16 +205,7 @@ class FilterSheet extends StatelessWidget {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: onApply,
-                child: const Text('Apply'),
-              ),
-            ),
-          ),
+          FilterApplyBar(onApply: onApply),
         ],
       ),
     );

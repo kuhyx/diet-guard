@@ -17,6 +17,8 @@ import 'package:diet_guard_app/services/average_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/day_status_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/ui/cues.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/widgets/average_summary_row.dart';
 import 'package:diet_guard_app/widgets/day_status_calendar.dart';
 import 'package:diet_guard_app/widgets/streak_summary_row.dart';
@@ -153,9 +155,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Calendar')),
+      appBar: AppBar(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -168,11 +169,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
             if (_budgetStatus != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  _budgetStatus!,
-                  style: TextStyle(
-                    color: _budgetError ? theme.colorScheme.error : null,
-                  ),
+                child: StatusCue(
+                  key: ValueKey(_budgetStatus),
+                  kind: _budgetError ? CueKind.error : CueKind.ok,
+                  semanticLabel: _budgetStatus!,
                 ),
               ),
             const SizedBox(height: 12),
@@ -215,7 +215,11 @@ class _BudgetRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text('Daily budget (kcal):'),
+        Icon(
+          MacroKind.kcal.icon,
+          color: MacroKind.kcal.color,
+          semanticLabel: 'Daily budget (kcal)',
+        ),
         const SizedBox(width: 8),
         SizedBox(
           width: 90,
@@ -230,7 +234,10 @@ class _BudgetRow extends StatelessWidget {
         const SizedBox(width: 8),
         FilledButton(
           onPressed: onEditOrSave,
-          child: Text(editing ? 'Save' : 'Edit'),
+          child: Icon(
+            editing ? Icons.check : Icons.edit,
+            semanticLabel: editing ? 'Save' : 'Edit',
+          ),
         ),
       ],
     );

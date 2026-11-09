@@ -1,9 +1,11 @@
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/widgets/history/history_filter_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../label_finders.dart';
 import 'history_test_support.dart';
 
 void main() {
@@ -41,7 +43,7 @@ void main() {
       await settle(tester);
 
       // Day header shows 800 kcal total (300 + 500) vs the 2200 goal.
-      expect(find.textContaining('800 / 2200 kcal'), findsOneWidget);
+      expect(find.textContaining('800 / 2200'), findsOneWidget);
       // Both entries appear as list tiles.
       expect(find.text('breakfast'), findsOneWidget);
       expect(find.text('lunch'), findsOneWidget);
@@ -146,7 +148,7 @@ void main() {
       await tester.tap(find.byIcon(Icons.filter_list));
       await settle(tester);
 
-      expect(find.text('Filter & Sort'), findsOneWidget);
+      expect(find.byType(FilterSheet), findsOneWidget);
     });
   });
 
@@ -191,11 +193,11 @@ void main() {
       await tester.enterText(find.byType(TextField).first, 'oat');
       await settle(tester);
 
-      await tester.tap(find.text('Apply'));
+      await tester.tap(byIconLabel('Apply'));
       await settle(tester);
 
       // Sheet is closed; only the matching entry is visible.
-      expect(find.text('Filter & Sort'), findsNothing);
+      expect(find.byType(FilterSheet), findsNothing);
       expect(find.text('oat porridge'), findsOneWidget);
       expect(find.text('chicken breast'), findsNothing);
     });

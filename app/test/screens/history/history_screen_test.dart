@@ -6,6 +6,7 @@ import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../label_finders.dart';
 import 'history_test_support.dart';
 
 void main() {
@@ -61,8 +62,8 @@ void main() {
 
       // Same 2100 kcal on both days, judged against different budgets --
       // lowering the budget must not repaint the earlier day.
-      expect(find.text('2100 / 2200 kcal'), findsOneWidget);
-      expect(find.text('2100 / 2000 kcal'), findsOneWidget);
+      expect(find.text('2100 / 2200'), findsOneWidget);
+      expect(find.text('2100 / 2000'), findsOneWidget);
     });
   });
 
@@ -71,7 +72,7 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: HistoryScreen()));
       await settle(tester);
 
-      expect(find.text('Nothing logged yet.'), findsOneWidget);
+      expect(byIconLabel('Nothing logged yet.'), findsOneWidget);
     });
   });
 

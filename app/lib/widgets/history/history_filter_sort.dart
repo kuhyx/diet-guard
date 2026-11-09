@@ -3,8 +3,12 @@
 /// Split from `history_filter_sheet.dart` for the repo's 250-line cap. Both are
 /// stateless and report upward: the live filter and sort order belong to the
 /// screen, so nothing here holds state that could disagree with what is shown.
+/// Every control is a glyph; its old caption lives only in the semantic label.
 library;
 
+import 'package:diet_guard_app/ui/macro_kind.dart';
+import 'package:diet_guard_app/ui/source_icon.dart';
+import 'package:diet_guard_app/widgets/filters/filter_chrome.dart';
 import 'package:diet_guard_app/widgets/history/history_filter.dart';
 import 'package:flutter/material.dart';
 
@@ -15,7 +19,7 @@ import 'package:flutter/material.dart';
 /// a constraint on what `source` may contain.
 const _sources = ['manual', 'food bank'];
 
-/// Single-select chips filtering by entry source, with an "All" reset.
+/// Single-select chips filtering by entry source, with an "all" reset.
 class FilterSourceChips extends StatelessWidget {
   /// Creates source chips with [selected] currently active.
   const FilterSourceChips({
@@ -24,41 +28,38 @@ class FilterSourceChips extends StatelessWidget {
     super.key,
   });
 
-  /// The active source, or null for "All".
+  /// The active source, or null for "all".
   final String? selected;
 
-  /// Called with the chosen source, or null when "All" is tapped.
+  /// Called with the chosen source, or null when the reset chip is tapped.
   final ValueChanged<String?> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Wrap(
+      spacing: 8,
       children: [
-        Text('Source', style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 4),
-        Wrap(
-          spacing: 8,
-          children: [
-            FilterChip(
-              label: const Text('All'),
-              selected: selected == null,
-              onSelected: (_) => onSelected(null),
-            ),
-            for (final src in _sources)
-              FilterChip(
-                label: Text(src),
-                selected: selected == src,
-                onSelected: (_) => onSelected(src),
-              ),
-          ],
+        FilterChip(
+          label: const Icon(
+            Icons.all_inclusive,
+            size: 18,
+            semanticLabel: 'All',
+          ),
+          selected: selected == null,
+          onSelected: (_) => onSelected(null),
         ),
+        for (final src in _sources)
+          FilterChip(
+            label: SourceMark(src, size: 18),
+            selected: selected == src,
+            onSelected: (_) => onSelected(src),
+          ),
       ],
     );
   }
 }
 
-/// The sort-field dropdown plus its ascending/descending toggle.
+/// The sort-field chips plus their ascending/descending toggle.
 class FilterSortControls extends StatelessWidget {
   /// Creates sort controls reflecting [sortField] and [ascending].
   const FilterSortControls({
@@ -78,63 +79,44 @@ class FilterSortControls extends StatelessWidget {
   final void Function({required HistorySortField field, required bool asc})
   onSortChanged;
 
+  static final List<SortOption<HistorySortField>> _options = [
+    const SortOption(HistorySortField.date, Icons.calendar_today, 'Date'),
+    SortOption(
+      HistorySortField.kcal,
+      MacroKind.kcal.icon,
+      'Kcal',
+      color: MacroKind.kcal.color,
+    ),
+    SortOption(
+      HistorySortField.protein,
+      MacroKind.protein.icon,
+      'Protein',
+      color: MacroKind.protein.color,
+    ),
+    SortOption(
+      HistorySortField.carbs,
+      MacroKind.carbs.icon,
+      'Carbs',
+      color: MacroKind.carbs.color,
+    ),
+    SortOption(
+      HistorySortField.fat,
+      MacroKind.fat.icon,
+      'Fat',
+      color: MacroKind.fat.color,
+    ),
+    const SortOption(
+      HistorySortField.description,
+      Icons.sort_by_alpha,
+      'Description',
+    ),
+  ];
+
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('Sort by', style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButton<HistorySortField>(
-                isExpanded: true,
-                value: sortField,
-                items: const [
-                  DropdownMenuItem(
-                    value: HistorySortField.date,
-                    child: Text('Date'),
-                  ),
-                  DropdownMenuItem(
-                    value: HistorySortField.kcal,
-                    child: Text('Kcal'),
-                  ),
-                  DropdownMenuItem(
-                    value: HistorySortField.protein,
-                    child: Text('Protein'),
-                  ),
-                  DropdownMenuItem(
-                    value: HistorySortField.carbs,
-                    child: Text('Carbs'),
-                  ),
-                  DropdownMenuItem(
-                    value: HistorySortField.fat,
-                    child: Text('Fat'),
-                  ),
-                  DropdownMenuItem(
-                    value: HistorySortField.description,
-                    child: Text('Description'),
-                  ),
-                ],
-                onChanged: (v) {
-                  if (v != null) {
-                    onSortChanged(field: v, asc: ascending);
-                  }
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: Icon(
-                ascending ? Icons.arrow_upward : Icons.arrow_downward,
-              ),
-              tooltip: ascending ? 'Ascending' : 'Descending',
-              onPressed: () => onSortChanged(field: sortField, asc: !ascending),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => SortChoiceRow<HistorySortField>(
+    options: _options,
+    selected: sortField,
+    ascending: ascending,
+    onChanged: onSortChanged,
+  );
 }

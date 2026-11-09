@@ -153,15 +153,16 @@ class _FoodBankScreenState extends State<FoodBankScreen> {
     final all = _allEntries;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Food Bank'),
         actions: [
           if (all != null)
             Stack(
               alignment: Alignment.center,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.filter_list),
-                  tooltip: 'Filter & sort',
+                  icon: const Icon(
+                    Icons.filter_list,
+                    semanticLabel: 'Filter & sort',
+                  ),
                   onPressed: _openFilterSheet,
                 ),
                 if (_filter.isActive)
@@ -185,19 +186,19 @@ class _FoodBankScreenState extends State<FoodBankScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _displayed.isEmpty
           ? Center(
-              child: Text(
-                all.isEmpty
-                    ? 'Food bank is empty.\n'
-                          'Log meals to populate it, or add entries manually.'
+              child: Icon(
+                all.isEmpty ? Icons.restaurant_menu : Icons.filter_list_off,
+                size: 64,
+                color: Theme.of(context).colorScheme.outline,
+                semanticLabel: all.isEmpty
+                    ? 'Food bank is empty.'
                     : 'No entries match the current filter.',
-                textAlign: TextAlign.center,
               ),
             )
           : FbTileGrid(records: _displayed, onOpen: _openDetail),
       floatingActionButton: FloatingActionButton(
         onPressed: _openAddDialog,
-        tooltip: 'Add manual entry',
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, semanticLabel: 'Add manual entry'),
       ),
     );
   }

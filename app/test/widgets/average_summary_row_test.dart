@@ -2,6 +2,7 @@ import 'package:diet_guard_app/models/period_average.dart';
 import 'package:diet_guard_app/widgets/average_summary_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../label_finders.dart';
 
 PeriodAverage period({double? avgKcal, AverageBand? band}) => PeriodAverage(
   start: '2026-01-05',
@@ -25,13 +26,10 @@ void main() {
         month: period(avgKcal: 1900, band: AverageBand.under),
       ),
     );
-    expect(
-      find.text(
-        'Avg/day (to yesterday): week 2100 kcal (slightly over)  ·  '
-        'month 1900 kcal (under)',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('2100'), findsOneWidget);
+    expect(find.text('1900'), findsOneWidget);
+    expect(byIconLabel('slightly over'), findsOneWidget);
+    expect(byIconLabel('under'), findsOneWidget);
   });
 
   testWidgets('rounds the average to whole kcal', (tester) async {
@@ -42,16 +40,15 @@ void main() {
         month: period(avgKcal: 1900, band: AverageBand.under),
       ),
     );
-    expect(find.textContaining('week 2101 kcal'), findsOneWidget);
+    expect(find.text('2101'), findsOneWidget);
   });
 
-  testWidgets('an empty period reads "no data", never 0 kcal', (tester) async {
-    await pump(
-      tester,
-      AverageSummaryRow(week: period(), month: period()),
-    );
-    expect(find.textContaining('0 kcal'), findsNothing);
-    expect(find.textContaining('week no data'), findsOneWidget);
+  testWidgets('an empty period shows the no-data glyph, never 0', (
+    tester,
+  ) async {
+    await pump(tester, AverageSummaryRow(week: period(), month: period()));
+    expect(find.text('0'), findsNothing);
+    expect(byIconLabel('no data'), findsNWidgets(2));
   });
 
   testWidgets('the placeholder empty period renders safely', (tester) async {
@@ -62,6 +59,6 @@ void main() {
         month: PeriodAverage.empty,
       ),
     );
-    expect(find.textContaining('no data'), findsOneWidget);
+    expect(byIconLabel('no data'), findsNWidgets(2));
   });
 }

@@ -6,9 +6,11 @@
 /// screen owns the other's controls.
 library;
 
+import 'package:diet_guard_app/ui/cues.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:flutter/material.dart';
 
-/// The free-text "search by name" field in the filter sheet.
+/// The free-text search-by-name field in the filter sheet.
 ///
 /// Stateful only to own its [TextEditingController]; the query itself lives in
 /// the screen's [HistoryFilter].
@@ -44,13 +46,11 @@ class NameSearchFieldState extends State<NameSearchField> {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return IconField(
+      icon: Icons.search,
+      semanticLabel: 'Search by name',
       controller: _controller,
-      decoration: const InputDecoration(
-        labelText: 'Search by name',
-        prefixIcon: Icon(Icons.search),
-        isDense: true,
-      ),
+      dense: true,
       onChanged: widget.onChanged,
     );
   }
@@ -112,7 +112,7 @@ class SliderSelectedLabel extends StatelessWidget {
 class FilterRangeRow extends StatelessWidget {
   /// Creates a range row bounded by [maxValue].
   const FilterRangeRow({
-    required this.label,
+    required this.kind,
     required this.sliderKey,
     required this.maxValue,
     required this.min,
@@ -123,8 +123,8 @@ class FilterRangeRow extends StatelessWidget {
     super.key,
   });
 
-  /// Section heading, e.g. `Protein range (g)`.
-  final String label;
+  /// Which nutrient this range filters; its glyph heads the row.
+  final MacroKind kind;
 
   /// Widget key on the slider itself, so tests can drive one row.
   final Key sliderKey;
@@ -158,7 +158,14 @@ class FilterRangeRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(label, style: Theme.of(context).textTheme.labelLarge),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Icon(
+            kind.icon,
+            color: kind.color,
+            semanticLabel: kind.semanticLabel(compact: false),
+          ),
+        ),
         if (showEndpointLabels)
           SliderEndpointLabels(lo: '0', hi: '${maxValue.round()}$unit'),
         RangeSlider(

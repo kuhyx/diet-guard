@@ -46,23 +46,6 @@ class DayStatusCalendar extends StatelessWidget {
   /// outside the displayed month is never tappable regardless.
   final void Function(DateTime day)? onDaySelected;
 
-  static const _weekHeaders = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-
-  static const _monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
   String _dateKey(int year, int m, int day) =>
       '$year-${m.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
 
@@ -129,13 +112,18 @@ class DayStatusCalendar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: Icon(Icons.chevron_left, color: scheme.onSurfaceVariant),
+                icon: Icon(
+                  Icons.chevron_left,
+                  color: scheme.onSurfaceVariant,
+                  semanticLabel: 'Previous month',
+                ),
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
                 onPressed: onPrevMonth,
               ),
+              // Numeric month/year: a month name would be written chrome.
               Text(
-                '${_monthNames[m - 1]} $year',
+                '${m.toString().padLeft(2, '0')} · $year',
                 style: TextStyle(
                   color: scheme.onSurface,
                   fontWeight: FontWeight.bold,
@@ -143,7 +131,11 @@ class DayStatusCalendar extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                icon: Icon(
+                  Icons.chevron_right,
+                  color: scheme.onSurfaceVariant,
+                  semanticLabel: 'Next month',
+                ),
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
                 onPressed: onNextMonth,
@@ -153,25 +145,23 @@ class DayStatusCalendar extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs + 2),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: _weekHeaders
-                .map(
-                  (h) => SizedBox(
-                    width: 30,
-                    child: Text(
-                      h,
-                      textAlign: TextAlign.center,
-                      // Two-letter day abbreviations are UI chrome (like a
-                      // badge/tag), deliberately kept below the 16px body
-                      // floor rather than forced to grow past their slot.
-                      style: TextStyle(
-                        color: scheme.onSurfaceVariant,
-                        fontSize: AppTextSize.label - 2,
-                        fontWeight: FontWeight.bold,
-                      ),
+            // Weekday names are gone: seven dots mark the Monday-first
+            // columns, the two weekend ones in the accent colour.
+            children: [
+              for (var col = 0; col < 7; col++)
+                SizedBox(
+                  width: 30,
+                  child: Center(
+                    child: Icon(
+                      Icons.circle,
+                      size: col >= 5 ? 8 : 5,
+                      color: col >= 5
+                          ? scheme.primary
+                          : scheme.onSurfaceVariant,
                     ),
                   ),
-                )
-                .toList(),
+                ),
+            ],
           ),
           const SizedBox(height: AppSpacing.xs),
           ...List.generate(rows, (row) {
@@ -218,9 +208,10 @@ class DayStatusCalendar extends StatelessWidget {
                 // and no semantics for a screen reader. InkWell is a focus
                 // stop and is activated by Enter/Space.
                 final date = DateTime(year, m, day);
+                final semanticLabel = 'View $day/$m/$year';
                 return Semantics(
                   button: true,
-                  label: 'View $day/$m/$year',
+                  label: semanticLabel,
                   child: InkWell(
                     onTap: () => onDaySelected!(date),
                     customBorder: const CircleBorder(),

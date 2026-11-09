@@ -3,9 +3,14 @@
 /// Split out of `history_screen.dart` to hold the repo's 250-line cap.
 library;
 
+import 'dart:async';
+
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/ui/cues.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
+import 'package:diet_guard_app/ui/source_icon.dart';
 import 'package:diet_guard_app/widgets/history/history_grouping.dart';
 import 'package:flutter/material.dart';
 
@@ -84,28 +89,44 @@ class DayHeaderTile extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
-                '${header.entryCount}'
-                ' ${header.entryCount == 1 ? 'entry' : 'entries'}',
-                style: textTheme.bodySmall,
+              Icon(
+                Icons.restaurant,
+                size: 14,
+                color: colorScheme.onSurfaceVariant,
+                semanticLabel: 'entries',
               ),
+              const SizedBox(width: 3),
+              Text('${header.entryCount}', style: textTheme.bodySmall),
             ],
           ),
           const SizedBox(height: 2),
           Row(
             children: [
+              Icon(
+                MacroKind.kcal.icon,
+                size: 14,
+                color: kcalColor,
+                semanticLabel: 'kcal',
+              ),
+              const SizedBox(width: 3),
               Text(
-                '${header.totalKcal.round()} / $goal kcal',
+                '${header.totalKcal.round()} / $goal',
                 style: textTheme.bodySmall?.copyWith(color: kcalColor),
               ),
+              const SizedBox(width: 12),
+              MacroFigure(
+                kind: MacroKind.protein,
+                value: '${header.totalProtein.round()}g',
+              ),
               const SizedBox(width: 8),
-              Text(
-                'P ${header.totalProtein.round()}g · '
-                'C ${header.totalCarbs.round()}g · '
-                'F ${header.totalFat.round()}g',
-                style: textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+              MacroFigure(
+                kind: MacroKind.carbs,
+                value: '${header.totalCarbs.round()}g',
+              ),
+              const SizedBox(width: 8),
+              MacroFigure(
+                kind: MacroKind.fat,
+                value: '${header.totalFat.round()}g',
               ),
             ],
           ),
@@ -135,7 +156,13 @@ class EntryTile extends StatelessWidget {
     return ListTile(
       leading: const Icon(Icons.restaurant),
       title: Text(entry.desc),
-      subtitle: Text('${entry.time}  •  ${entry.source}'),
+      subtitle: Row(
+        children: [
+          Flexible(child: Text(entry.time, overflow: TextOverflow.ellipsis)),
+          const SizedBox(width: 8),
+          SourceMark(entry.source),
+        ],
+      ),
       // Delete needs a focusable control, not just a long-press. Long-press has
       // no keyboard equivalent at all, so on the desktop build (a Chrome --app
       // window) deleting an entry was pointer-only: unreachable by keyboard and
@@ -144,12 +171,18 @@ class EntryTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('${entry.kcal.toStringAsFixed(0)} kcal'),
+          MacroFigure(
+            kind: MacroKind.kcal,
+            value: entry.kcal.toStringAsFixed(0),
+            size: 14,
+          ),
           if (canDelete)
             IconButton(
-              icon: const Icon(Icons.delete_outline),
-              tooltip: 'Delete entry',
-              onPressed: () => _confirmDelete(context),
+              icon: const Icon(
+                Icons.delete_outline,
+                semanticLabel: 'Delete entry',
+              ),
+              onPressed: () => unawaited(_delete(context)),
             ),
         ],
       ),
@@ -157,35 +190,33 @@ class EntryTile extends StatelessWidget {
       // Delete remains id-only to avoid ambiguous time+desc matches.
       onTap: () => onEdit?.call(),
       // Retained as a redundant pointer shortcut, never the only route.
-      onLongPress: canDelete ? () => _confirmDelete(context) : null,
+      onLongPress: canDelete ? () => unawaited(_delete(context)) : null,
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete entry?'),
-        content: Text('Remove "${entry.desc}" from history?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+  /// Deletes at once and offers an icon-only undo instead of asking first.
+  ///
+  /// The snackbar is raised before the awaits because the reload that
+  /// follows rebuilds the list and may dispose this tile's context. Undo
+  /// writes the live copy back over the tombstone (same id), then reloads.
+  Future<void> _delete(BuildContext context) async {
+    showCueSnack(
+      context,
+      kind: CueKind.ok,
+      icon: Icons.delete_outline,
+      semanticLabel: 'Entry deleted',
+      onUndo: () => unawaited(_restore()),
     );
-    if (confirmed == true) {
-      await LogStorageService.instance.deleteEntry(entry.id!);
-      await onDelete?.call();
-    }
+    await LogStorageService.instance.deleteEntry(entry.id!);
+    await onDelete?.call();
+  }
+
+  Future<void> _restore() async {
+    await LogStorageService.instance.updateEntry(
+      entry.copyWithDeleted(),
+      entry,
+    );
+    await onDelete?.call();
   }
 }
 

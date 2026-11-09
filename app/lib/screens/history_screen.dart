@@ -159,15 +159,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final allEntries = _allEntries;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('History'),
         actions: [
           if (allEntries != null)
             Stack(
               alignment: Alignment.center,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.filter_list),
-                  tooltip: 'Filter & sort',
+                  icon: const Icon(
+                    Icons.filter_list,
+                    semanticLabel: 'Filter & sort',
+                  ),
                   onPressed: _openFilterSheet,
                 ),
                 if (_filter.isActive)
@@ -191,8 +192,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _displayed.isEmpty
           ? Center(
-              child: Text(
-                allEntries.isEmpty
+              child: Icon(
+                allEntries.isEmpty ? Icons.restaurant : Icons.filter_list_off,
+                size: 64,
+                color: Theme.of(context).colorScheme.outline,
+                semanticLabel: allEntries.isEmpty
                     ? 'Nothing logged yet.'
                     : 'No entries match the current filter.',
               ),
