@@ -1,52 +1,74 @@
-/// A titled card, the building block of every Body screen section.
+/// A card, the building block of every Body screen section, plus the
+/// icon-led stat rows the cards are made of. No headings: the overview tile
+/// that opened the sheet already says what it is.
 library;
 
 import 'package:diet_guard_app/services/body_calc.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 
-/// A card with a title row and [children] stacked below it.
+/// A card with [children] stacked in it; [semanticLabel] names it for screen
+/// readers and tests and is never painted.
 class BodySection extends StatelessWidget {
   /// Creates a section.
   const BodySection({
-    required this.title,
+    required this.semanticLabel,
     required this.children,
     super.key,
   });
 
-  /// Section heading.
-  final String title;
+  /// Spoken name of the section.
+  final String semanticLabel;
 
   /// Section content.
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: theme.textTheme.titleMedium),
-            const SizedBox(height: AppSpacing.sm),
-            ...children,
-          ],
+    return Semantics(
+      container: true,
+      label: semanticLabel,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: AppSpacing.md),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
         ),
       ),
     );
   }
 }
 
-/// A label on the left, a value on the right; one line of a stats card.
+/// One line of a stats card: a leading mark on the left, a value on the right.
+///
+/// The mark is either a formula name ([BodyStatRow.named]: a proper noun such
+/// as Devine or ACSM, shown as is) or an icon ([BodyStatRow.icon]).
 class BodyStatRow extends StatelessWidget {
-  /// Creates a row.
-  const BodyStatRow(this.label, this.value, {this.color, super.key});
+  /// A row led by a formula's proper name.
+  const BodyStatRow.named(this.name, this.value, {this.color, super.key})
+    : icon = null,
+      semanticLabel = null;
 
-  /// What the value is.
-  final String label;
+  /// A row led by [icon], spoken as [semanticLabel].
+  const BodyStatRow.icon(
+    IconData this.icon,
+    String this.semanticLabel,
+    this.value, {
+    this.color,
+    super.key,
+  }) : name = null;
+
+  /// Proper-noun lead, or null when an icon leads.
+  final String? name;
+
+  /// Icon lead, or null when a name leads.
+  final IconData? icon;
+
+  /// Spoken description of [icon].
+  final String? semanticLabel;
 
   /// The formatted value.
   final String value;
@@ -56,11 +78,19 @@ class BodyStatRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lead = icon;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs / 2),
       child: Row(
         children: [
-          Expanded(child: Text(label)),
+          Expanded(
+            child: lead == null
+                ? Text(name!)
+                : Align(
+                    alignment: Alignment.centerLeft,
+                    child: Icon(lead, size: 20, semanticLabel: semanticLabel),
+                  ),
+          ),
           Text(
             value,
             style: TextStyle(
@@ -74,28 +104,8 @@ class BodyStatRow extends StatelessWidget {
   }
 }
 
-/// A muted one-line explanation (missing data, notes).
-class BodyNote extends StatelessWidget {
-  /// Creates a note.
-  const BodyNote(this.text, {super.key});
-
-  /// The note.
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Text(
-      text,
-      style: theme.textTheme.bodySmall?.copyWith(
-        color: theme.colorScheme.onSurfaceVariant,
-      ),
-    );
-  }
-}
-
-/// `74.99` -> `"75.0 kg"`, null -> `"n/a"`. Half-up, like the PC.
-String formatKg(double? kg) => kg == null ? 'n/a' : '${oneDecimal(kg)} kg';
+/// `74.99` -> `"75.0 kg"`, null -> a dash. Half-up, like the PC.
+String formatKg(double? kg) => kg == null ? '—' : '${oneDecimal(kg)} kg';
 
 /// [value] to one decimal, rounded half-up like the PC prints it.
 String oneDecimal(double value) => halfUp(value, 1).toStringAsFixed(1);

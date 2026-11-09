@@ -3,6 +3,7 @@ library;
 
 import 'package:diet_guard_app/models/local_time.dart';
 import 'package:diet_guard_app/services/body_service.dart';
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/body_section.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +25,7 @@ class _ProfileCardState extends State<ProfileCard> {
   final _height = TextEditingController();
   String? _birth;
   String? _sex;
-  String? _status;
+  Widget? _status;
 
   @override
   void initState() {
@@ -59,7 +60,14 @@ class _ProfileCardState extends State<ProfileCard> {
   Future<void> _save() async {
     final height = double.tryParse(_height.text.replaceAll(',', '.'));
     if (height == null || height < 50 || height > 260) {
-      setState(() => _status = 'Height must be 50-260 cm.');
+      setState(
+        () => _status = StatusCue(
+          key: UniqueKey(),
+          kind: CueKind.error,
+          icon: Icons.height,
+          semanticLabel: 'Height must be 50-260 cm.',
+        ),
+      );
       return;
     }
     await BodyService.instance.setProfile(
@@ -68,28 +76,45 @@ class _ProfileCardState extends State<ProfileCard> {
       sex: _sex,
     );
     if (!mounted) return;
-    setState(() => _status = 'Saved.');
+    setState(
+      () => _status = StatusCue(
+        key: UniqueKey(),
+        kind: CueKind.ok,
+        semanticLabel: 'Saved.',
+      ),
+    );
     widget.onSaved();
   }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final birth = _birth;
+    final status = _status;
     return BodySection(
-      title: 'Profile',
+      semanticLabel: 'Profile',
       children: [
-        Row(
-          children: [
-            Expanded(child: Text('Born: ${_birth ?? 'not set'}')),
-            TextButton.icon(
-              icon: const Icon(Icons.cake),
-              label: const Text('Birth date'),
-              onPressed: _pickBirth,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: _pickBirth,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.cake,
+                  color: birth == null ? scheme.error : null,
+                  semanticLabel: 'Birth date',
+                ),
+                if (birth != null) Text(' $birth'),
+              ],
             ),
-          ],
+          ),
         ),
-        TextField(
+        IconField(
+          icon: Icons.height,
+          semanticLabel: 'Height (cm)',
           controller: _height,
-          decoration: const InputDecoration(labelText: 'Height (cm)'),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp('[0-9.,]')),
@@ -97,9 +122,16 @@ class _ProfileCardState extends State<ProfileCard> {
         ),
         const SizedBox(height: AppSpacing.sm),
         SegmentedButton<String>(
+          showSelectedIcon: false,
           segments: const [
-            ButtonSegment(value: 'm', label: Text('Male')),
-            ButtonSegment(value: 'f', label: Text('Female')),
+            ButtonSegment(
+              value: 'm',
+              icon: Icon(Icons.male, semanticLabel: 'Male'),
+            ),
+            ButtonSegment(
+              value: 'f',
+              icon: Icon(Icons.female, semanticLabel: 'Female'),
+            ),
           ],
           selected: {?_sex},
           emptySelectionAllowed: true,
@@ -109,8 +141,11 @@ class _ProfileCardState extends State<ProfileCard> {
         const SizedBox(height: AppSpacing.sm),
         Row(
           children: [
-            Expanded(child: BodyNote(_status ?? 'Syncs to the PC.')),
-            FilledButton(onPressed: _save, child: const Text('Save profile')),
+            if (status != null) Expanded(child: status) else const Spacer(),
+            IconButton.filled(
+              onPressed: _save,
+              icon: const Icon(Icons.check, semanticLabel: 'Save profile'),
+            ),
           ],
         ),
       ],

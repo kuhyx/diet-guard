@@ -31,16 +31,6 @@ const List<(double, String)> _bmiBands = [
 ];
 const String _topBand = 'obese class III';
 
-/// BMI Prime explained, shown under the numbers on both surfaces.
-const String bmiPrimeNote =
-    'BMI Prime = BMI / 25: 1.00 is the top of the healthy range, '
-    'so 1.02 means 2% above it.';
-
-/// Trefethen's BMI explained, shown under the numbers on both surfaces.
-const String trefethenNote =
-    "Trefethen's new BMI = 1.3 x kg / m^2.5: corrects classic BMI, which "
-    'over-reads tall people and under-reads short ones.';
-
 /// The lean-mass formula the calorie table switches to with a body fat %.
 const String katchMcArdle = 'Katch-McArdle';
 

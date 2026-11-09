@@ -2,9 +2,11 @@ import 'package:diet_guard_app/models/body_document.dart';
 import 'package:diet_guard_app/services/body_energy.dart';
 import 'package:diet_guard_app/services/body_prefs.dart';
 import 'package:diet_guard_app/services/body_service.dart';
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../label_finders.dart';
 import 'body_screen_support.dart';
 
 void main() {
@@ -22,10 +24,12 @@ void main() {
     await seedPerson(store);
     await pumpBody(tester);
     await openTile(tester, 'Daily calorie target');
+    // Each mark of the goal row is spoken as its value; so is its picker
+    // option, hence `.last` for the option (the row stays mounted behind).
     Future<void> choose(String word, String option) async {
-      await tester.tap(find.text(word).first);
+      await tester.tap(bySemLabel(word).first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text(option).last);
+      await tester.tap(bySemLabel(option).last);
       await tester.pumpAndSettle();
     }
 
@@ -50,24 +54,25 @@ void main() {
     );
 
     // A typed amount; junk is refused and the dialog stays open.
-    final other = find.widgetWithText(TextField, 'Other amount');
+    final other = fieldByLabel('Other amount');
     await tester.tap(find.text('1'));
     await tester.pumpAndSettle();
     await tester.enterText(other, '');
-    await tester.tap(find.text('OK'));
+    await tester.tap(byIconLabel('OK'));
     await tester.pumpAndSettle();
-    expect(find.text('OK'), findsOneWidget);
+    expect(byIconLabel('OK'), findsOneWidget);
+    expect(cueOfKind(CueKind.error), findsOneWidget);
     await tester.enterText(other, '2,5');
-    await tester.tap(find.text('OK'));
+    await tester.tap(byIconLabel('OK'));
     await tester.pumpAndSettle();
     expect(savedGoal(BodyService.instance).amount, 2.5);
 
     // Cancel changes nothing; neither does dismissing a sheet.
     await tester.tap(find.text('2.5'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(byIconLabel('Cancel'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('gain'));
+    await tester.tap(bySemLabel('gain').first);
     await tester.pumpAndSettle();
     await tester.tapAt(const Offset(5, 5));
     await tester.pumpAndSettle();
@@ -86,16 +91,19 @@ void main() {
     await setGoal(body, const Goal('lose', 1, 'kg', 'week', 'measured:MET'));
     await pumpBody(tester);
     await openTile(tester, 'Daily calorie target');
-    expect(find.textContaining('no workouts published yet'), findsOneWidget);
-    await tester.tap(find.text('Measured (MET)'));
+    expect(
+      cueLabelled('no workouts published yet (the PC publishes them).'),
+      findsOneWidget,
+    );
+    await tester.tap(bySemLabel('Measured (MET)').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Sedentary').last);
+    await tester.tap(bySemLabel('Sedentary').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('1'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'Other amount'), '3');
-    await tester.tap(find.text('OK'));
+    await tester.enterText(fieldByLabel('Other amount'), '3');
+    await tester.tap(byIconLabel('OK'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('below the 1200 kcal floor'), findsOneWidget);
+    expect(cueLabelled('That is below the 1200 kcal floor.'), findsOneWidget);
   });
 }

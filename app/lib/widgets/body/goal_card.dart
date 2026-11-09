@@ -1,6 +1,7 @@
-/// The Body screen's top line: "To [lose] [0.5] [kg] / [week] on
-/// [Moderate] eat 2019 kcal". Every bracket is tappable and opens a picker;
-/// the choice is saved (and synced) immediately. Informational only.
+/// The Body screen's top line as marks instead of a sentence: direction
+/// arrow, amount, unit, per-period calendar, activity glyph, then a bolt and
+/// the daily kcal answer. Every mark is tappable and opens a picker; the
+/// choice is saved (and synced) immediately. Informational only.
 library;
 
 import 'dart:async';
@@ -9,12 +10,15 @@ import 'package:diet_guard_app/services/body_calc.dart';
 import 'package:diet_guard_app/services/body_energy.dart';
 import 'package:diet_guard_app/services/body_prefs.dart';
 import 'package:diet_guard_app/services/body_service.dart';
+import 'package:diet_guard_app/ui/cues.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/body_section.dart';
+import 'package:diet_guard_app/widgets/body/goal_icons.dart';
 import 'package:diet_guard_app/widgets/body/goal_pickers.dart';
 import 'package:flutter/material.dart';
 
-/// The goal sentence and its answer.
+/// The goal row and its answer.
 class GoalCard extends StatefulWidget {
   /// Creates the card.
   const GoalCard({
@@ -47,25 +51,58 @@ class _GoalCardState extends State<GoalCard> {
     await setGoal(BodyService.instance, picked);
   }
 
-  Widget _choice(String text, Future<Goal?> Function(BuildContext, Goal) p) {
+  /// A bordered, tappable mark spoken as [spoken]; [child] is its look.
+  Widget _choice(
+    String spoken,
+    Widget child,
+    Future<Goal?> Function(BuildContext, Goal) picker,
+  ) {
     final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: () => unawaited(_pick(p)),
-      borderRadius: BorderRadius.circular(AppRadius.sm),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: scheme.primary,
-            fontWeight: FontWeight.w600,
-            decoration: TextDecoration.underline,
-            decorationColor: scheme.primary,
+    return Semantics(
+      button: true,
+      label: spoken,
+      child: InkWell(
+        onTap: () => unawaited(_pick(picker)),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: scheme.outline),
+          ),
+          child: ExcludeSemantics(
+            child: DefaultTextStyle.merge(
+              style: TextStyle(
+                color: scheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+              child: IconTheme.merge(
+                data: IconThemeData(color: scheme.primary),
+                child: child,
+              ),
+            ),
           ),
         ),
       ),
     );
   }
+
+  Widget _iconChoice(
+    String spoken,
+    IconData icon,
+    Future<Goal?> Function(BuildContext, Goal) picker, {
+    String? caption,
+  }) => _choice(
+    spoken,
+    Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [Icon(icon), if (caption != null) Text(caption)],
+    ),
+    picker,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -76,51 +113,81 @@ class _GoalCardState extends State<GoalCard> {
     final tdee = target.tdee;
     final maintain = _goal.direction == 'maintain';
     return BodySection(
-      title: 'Daily calorie target',
+      semanticLabel: 'Daily calorie target',
       children: [
         Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
-          runSpacing: AppSpacing.xs,
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
           children: [
-            const Text('To'),
-            _choice(_goal.direction, pickDirection),
+            _iconChoice(
+              _goal.direction,
+              directionIcon(_goal.direction),
+              pickDirection,
+            ),
             if (!maintain) ...[
-              _choice(formatG(_goal.amount), pickAmount),
-              _choice(_goal.weightUnit, pickWeightUnit),
-              const Text('/'),
-              _choice(_goal.timeUnit, pickTimeUnit),
-            ],
-            const Text('on'),
-            _choice(activityLabel(_goal.activity), pickActivity),
-            if (kcal != null) ...[
-              const Text('eat '),
-              Text(
-                '$kcal',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                ),
+              _choice(
+                formatG(_goal.amount),
+                Text(formatG(_goal.amount)),
+                pickAmount,
               ),
-              const Text(' kcal'),
+              _choice(_goal.weightUnit, Text(_goal.weightUnit), pickWeightUnit),
+              _iconChoice(
+                _goal.timeUnit,
+                timeUnitIcon(_goal.timeUnit),
+                pickTimeUnit,
+              ),
             ],
+            _iconChoice(
+              activityLabel(_goal.activity),
+              activityIcon(_goal.activity),
+              pickActivity,
+              caption: activityCaption(_goal.activity),
+            ),
+            if (kcal != null)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(MacroKind.kcal.icon, color: theme.colorScheme.primary),
+                  Text(
+                    '$kcal',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
         if (kcal == null)
-          const BodyNote('no workouts published yet (the PC publishes them).'),
+          const StatusCue(
+            kind: CueKind.warn,
+            icon: Icons.directions_run,
+            semanticLabel: 'no workouts published yet (the PC publishes them).',
+          ),
         if (target.belowFloor)
-          Text(
-            'That is below the $minTargetKcal kcal floor.',
-            style: TextStyle(color: theme.colorScheme.error),
+          const StatusCue(
+            kind: CueKind.error,
+            icon: Icons.vertical_align_bottom,
+            semanticLabel: 'That is below the $minTargetKcal kcal floor.',
           ),
         if (tdee != null)
-          BodyNote(
-            'Maintenance ${whole(tdee)} kcal (${target.bmrName} resting '
-            'burn x activity); 1 kg of fat = ${formatG(kcalPerKg)} kcal.',
+          Row(
+            children: [
+              Icon(
+                Icons.balance,
+                size: 18,
+                color: theme.colorScheme.onSurfaceVariant,
+                semanticLabel: 'Maintenance',
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              MacroFigure(kind: MacroKind.kcal, value: whole(tdee), size: 16),
+              const SizedBox(width: AppSpacing.sm),
+              Text(target.bmrName),
+            ],
           ),
-        const BodyNote(
-          'Informational only — the budget is never changed from here.',
-        ),
       ],
     );
   }

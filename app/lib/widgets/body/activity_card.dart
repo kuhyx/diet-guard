@@ -2,7 +2,9 @@
 library;
 
 import 'package:diet_guard_app/services/activity_kcal.dart';
-import 'package:diet_guard_app/services/body_steps.dart';
+import 'package:diet_guard_app/ui/cues.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
+import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/body_section.dart';
 import 'package:flutter/material.dart';
 
@@ -55,46 +57,111 @@ class ActivityCard extends StatelessWidget {
     final lastDay = steps.isEmpty
         ? null
         : steps.keys.reduce((a, b) => a.compareTo(b) > 0 ? a : b);
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     return BodySection(
-      title: 'Activity',
+      semanticLabel: 'Activity',
       children: [
         if (sessions == null && steps.isEmpty)
-          const BodyNote('No activity data yet -- published by the PC.'),
+          const StatusCue(
+            kind: CueKind.info,
+            icon: Icons.directions_run,
+            semanticLabel: 'No activity data yet -- published by the PC.',
+          ),
         if (means != null) ...[
-          BodyNote('Mean daily exercise, last $window full days:'),
+          Row(
+            children: [
+              Icon(
+                Icons.date_range,
+                size: 18,
+                color: muted,
+                semanticLabel: 'Mean daily exercise, last $window full days:',
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Text('$window'),
+            ],
+          ),
           for (final name in activityFormulas)
-            BodyStatRow(name, '${whole(means[name] ?? 0)} kcal/day'),
+            _FormulaRow(name, whole(means[name] ?? 0)),
         ],
         if (lastDay != null && stepKcal != null)
-          BodyNote(
-            'Steps outside workouts: ${steps[lastDay]} on $lastDay; above '
-            '$stepBaseline/day they add ${whole(stepKcal)} kcal/day '
-            '(included above).',
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.directions_walk,
+                  size: 18,
+                  color: muted,
+                  semanticLabel: 'Steps outside workouts',
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Text('${steps[lastDay]}  $lastDay'),
+                const Spacer(),
+                Icon(Icons.add, size: 16, color: muted),
+                MacroFigure(
+                  kind: MacroKind.kcal,
+                  value: whole(stepKcal),
+                  size: 16,
+                ),
+              ],
+            ),
           ),
         if (onConnectSteps != null)
           Align(
             alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.directions_walk),
-              label: const Text('Connect Health Connect steps'),
+            child: OutlinedButton(
               onPressed: onConnectSteps,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.directions_walk,
+                    semanticLabel: 'Connect Health Connect steps',
+                  ),
+                  Icon(Icons.link),
+                ],
+              ),
             ),
           ),
         if (sessions != null && kg == null)
-          const BodyNote('Enter your weight to estimate exercise kcal.'),
+          const StatusCue(
+            kind: CueKind.warn,
+            icon: Icons.monitor_weight,
+            semanticLabel: 'Enter your weight to estimate exercise kcal.',
+          ),
         if (sessions != null && kg != null) ...[
           const Divider(),
           if (newest.isEmpty)
-            const BodyNote('No workouts in the last 28 days.'),
+            const StatusCue(
+              kind: CueKind.info,
+              icon: Icons.event_busy,
+              semanticLabel: 'No workouts in the last 28 days.',
+            ),
           for (final session in newest.take(activityListLimit))
             _SessionTile(result: sessionKcal(session, kg)),
-          if (newest.isNotEmpty)
-            const BodyNote('~ = no distance, MET estimate used instead.'),
-          const BodyNote(methodsNote),
         ],
       ],
     );
   }
+}
+
+/// A formula's proper name on the left, its kcal figure on the right.
+class _FormulaRow extends StatelessWidget {
+  const _FormulaRow(this.name, this.value);
+
+  final String name;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs / 2),
+    child: Row(
+      children: [
+        Expanded(child: Text(name)),
+        MacroFigure(kind: MacroKind.kcal, value: value, size: 16),
+      ],
+    ),
+  );
 }
 
 class _SessionTile extends StatelessWidget {
@@ -106,19 +173,43 @@ class _SessionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final session = result.session;
     final km = session.km;
-    final distance = km == null ? '' : ', ${oneDecimal(km)} km';
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     final kcal = [
       for (final name in activityFormulas)
         _formulaKcal(name, result.kcal[name]!, result.fallback.contains(name)),
     ].join(' · ');
-    return ListTile(
-      dense: true,
-      contentPadding: EdgeInsets.zero,
-      title: Text('${session.day}  ${session.label}'),
-      subtitle: Text(
-        '${whole(session.minutes)} min$distance\n$kcal kcal',
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${session.day}  ${session.label}'),
+          Row(
+            children: [
+              Icon(
+                Icons.timer_outlined,
+                size: 16,
+                color: muted,
+                semanticLabel: 'minutes',
+              ),
+              Text(' ${whole(session.minutes)}'),
+              if (km != null) ...[
+                const SizedBox(width: AppSpacing.md),
+                Icon(Icons.route, size: 16, color: muted, semanticLabel: 'km'),
+                Text(' ${oneDecimal(km)}'),
+              ],
+              const SizedBox(width: AppSpacing.md),
+              Icon(
+                MacroKind.kcal.icon,
+                size: 16,
+                color: MacroKind.kcal.color,
+                semanticLabel: 'kcal',
+              ),
+              Expanded(child: Text(' $kcal')),
+            ],
+          ),
+        ],
       ),
-      isThreeLine: true,
     );
   }
 }

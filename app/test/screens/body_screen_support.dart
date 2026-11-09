@@ -11,6 +11,7 @@ import 'package:diet_guard_app/widgets/body/body_tile_grid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../label_finders.dart';
 import '../services/body_test_support.dart';
 
 export '../services/body_test_support.dart';
@@ -89,11 +90,11 @@ Future<void> seedPerson(MemoryDocStore store, {Object? goal}) async {
 double topOf(WidgetTester tester, Finder finder) =>
     tester.getTopLeft(finder.first).dy;
 
-/// The overview tile titled [title].
+/// The overview tile spoken as [title].
 Finder tile(String title) =>
-    find.descendant(of: find.byType(BodyTileGrid), matching: find.text(title));
+    find.descendant(of: find.byType(BodyTileGrid), matching: bySemLabel(title));
 
-/// Opens the sheet behind the tile titled [title].
+/// Opens the sheet behind the tile spoken as [title].
 Future<void> openTile(WidgetTester tester, String title) async {
   await tester.tap(tile(title));
   await tester.pumpAndSettle();
@@ -109,9 +110,9 @@ Future<void> closeSheet(WidgetTester tester) async {
 Finder inSheet(Finder finder) =>
     find.descendant(of: find.byType(BottomSheet), matching: finder);
 
-/// Titles of the overview tiles, in display order.
+/// Spoken names of the overview tiles, in display order.
 List<String> tileTitles(WidgetTester tester) => tester
     .widget<BodyTileGrid>(find.byType(BodyTileGrid))
     .tiles
-    .map((t) => t.title)
+    .map((t) => t.semanticLabel)
     .toList();

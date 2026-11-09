@@ -1,11 +1,11 @@
 import 'package:diet_guard_app/models/local_time.dart';
 import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/services/health_steps.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'body_screen_support.dart';
+import '../label_finders.dart';
 import '../services/health_steps_test.dart' show FakeStepsSource;
+import 'body_screen_support.dart';
 
 void main() {
   final original = stepsSource;
@@ -36,14 +36,14 @@ void main() {
     expect(fake.lastRead, isNull, reason: 'never reads before permission');
     await openTile(tester, 'Activity');
 
-    await tester.tap(find.text('Connect Health Connect steps'));
+    await tester.tap(byIconLabel('Connect Health Connect steps'));
     await tester.pumpAndSettle();
-    expect(find.text('Connect Health Connect steps'), findsOneWidget);
+    expect(byIconLabel('Connect Health Connect steps'), findsOneWidget);
 
     fake.grantOnRequest = true;
-    await tester.tap(find.text('Connect Health Connect steps'));
+    await tester.tap(byIconLabel('Connect Health Connect steps'));
     await tester.pumpAndSettle();
-    expect(find.text('Connect Health Connect steps'), findsNothing);
+    expect(byIconLabel('Connect Health Connect steps'), findsNothing);
     expect(
       BodyService.instance.document.steps[localDateKey(yesterday)]!.n,
       6500,
@@ -56,13 +56,13 @@ void main() {
     await pumpBody(tester);
     await openTile(tester, 'Activity');
     expect(fake.lastRead, isNotNull);
-    expect(find.text('Connect Health Connect steps'), findsNothing);
+    expect(byIconLabel('Connect Health Connect steps'), findsNothing);
   });
 
   testWidgets('a Health Connect error just hides nothing', (tester) async {
     stepsSource = FakeStepsSource()..failWith = StateError('gone');
     await pumpBody(tester);
     await openTile(tester, 'Activity');
-    expect(find.text('Connect Health Connect steps'), findsOneWidget);
+    expect(byIconLabel('Connect Health Connect steps'), findsOneWidget);
   });
 }

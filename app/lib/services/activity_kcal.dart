@@ -22,13 +22,6 @@ export 'package:diet_guard_app/models/workout_session.dart';
 /// Formula names, in display order.
 const List<String> activityFormulas = ['MET', 'ACSM', 'Per-km'];
 
-/// The methods explained, shown under the Activity card.
-const String methodsNote =
-    'MET = standard activity values x your weight x time. '
-    'ACSM = American College of Sports Medicine running/walking equation '
-    'from your speed. Per-km = ~0.9 kcal per kg per km running, ~0.5 '
-    'walking. All are energy above resting.';
-
 /// Measured activity averages at most the last two full weeks.
 const int maxWindowDays = 14;
 

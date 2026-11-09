@@ -1,21 +1,33 @@
-/// The Body screen's overview: two-column metric tiles that fit one phone
+/// The Body screen's overview: two-column icon tiles that fit one phone
 /// screen. Tapping a tile opens the section's full card in a bottom sheet.
 library;
 
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 
-/// One tile: a section [title], an optional headline [value], and the
-/// [builder] of the full card shown in the sheet.
+/// One tile: a big [icon] (spoken as [semanticLabel]), an optional headline
+/// [value] and the [builder] of the full card shown in the sheet.
 class BodyTileSpec {
   /// Creates a tile spec.
-  const BodyTileSpec({required this.title, required this.builder, this.value});
+  const BodyTileSpec({
+    required this.semanticLabel,
+    required this.icon,
+    required this.builder,
+    this.value,
+    this.valueIcon,
+  });
 
-  /// Section name, the same text the full card carries.
-  final String title;
+  /// Spoken name of the section; never painted.
+  final String semanticLabel;
+
+  /// The section's glyph.
+  final IconData icon;
 
   /// Headline number for the tile (null when the section has none).
   final String? value;
+
+  /// Small glyph in front of [value] (e.g. a bolt for kcal).
+  final IconData? valueIcon;
 
   /// Builds the full card for the sheet.
   final WidgetBuilder builder;
@@ -76,33 +88,43 @@ class _Tile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final value = spec.value;
+    final valueIcon = spec.valueIcon;
     return Card(
       margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: () => _open(context),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                spec.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium,
-              ),
-              if (spec.value != null)
-                Text(
-                  spec.value!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.primary,
+      child: Semantics(
+        button: true,
+        label: spec.semanticLabel,
+        child: InkWell(
+          onTap: () => _open(context),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: Row(
+              children: [
+                ExcludeSemantics(
+                  child: Icon(
+                    spec.icon,
+                    size: 36,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-            ],
+                const Spacer(),
+                if (valueIcon != null)
+                  Icon(valueIcon, size: 18, color: theme.colorScheme.primary),
+                if (value != null)
+                  Flexible(
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

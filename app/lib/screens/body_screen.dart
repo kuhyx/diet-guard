@@ -18,6 +18,8 @@ import 'package:diet_guard_app/services/body_prefs.dart';
 import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/services/health_steps.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/ui/cues.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/activity_card.dart';
 import 'package:diet_guard_app/widgets/body/body_section.dart';
@@ -109,22 +111,13 @@ class _BodyScreenState extends State<BodyScreen> {
     final (exercise, _, _) = bodyExercise(body, bio, today);
     final tiles = _tiles(body, bio, exercise);
     return Scaffold(
-      appBar: AppBar(title: const Text('Body')),
+      appBar: AppBar(),
       body: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: AppWidth.prose),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                BodyTileGrid(tiles: tiles),
-                const SizedBox(height: AppSpacing.sm),
-                BodyNote(
-                  'Age ${bodyAgeText(body, today)} · synced with the PC.',
-                ),
-              ],
-            ),
+            child: BodyTileGrid(tiles: tiles),
           ),
         ),
       ),
@@ -159,8 +152,12 @@ class _BodyScreenState extends State<BodyScreen> {
   ) {
     final weight = body.latestWeight?.$2;
     final bodyFat = body.latestBodyFat?.$2;
+    final age = bodyAgeText(body, DateTime.now());
     final profile = BodyTileSpec(
-      title: 'Profile',
+      semanticLabel: 'Profile',
+      icon: Icons.person,
+      value: age,
+      valueIcon: age == null ? null : Icons.cake,
       builder: (_) => ProfileCard(onSaved: _onChanged),
     );
     final goal = bio == null
@@ -174,45 +171,65 @@ class _BodyScreenState extends State<BodyScreen> {
     return [
       if (_profileAtTop) profile,
       BodyTileSpec(
-        title: 'Daily calorie target',
-        value: goal == null ? null : '$goal kcal',
+        semanticLabel: 'Daily calorie target',
+        icon: Icons.flag,
+        value: goal == null ? null : '$goal',
+        valueIcon: goal == null ? null : MacroKind.kcal.icon,
         builder: (_) => bio == null
             ? BodySection(
-                title: 'Daily calorie target',
-                children: [BodyNote(bodyMissingNote(body))],
+                semanticLabel: 'Daily calorie target',
+                children: [
+                  Row(
+                    children: [
+                      for (final icon in bodyMissingIcons(body))
+                        StatusCue(
+                          kind: CueKind.warn,
+                          icon: icon,
+                          semanticLabel: bodyMissingNote(body),
+                        ),
+                    ],
+                  ),
+                ],
               )
             : GoalCard(bio: bio, exercise: exercise, bodyFatPct: bodyFat),
       ),
       BodyTileSpec(
-        title: 'Weight',
+        semanticLabel: 'Weight',
+        icon: Icons.monitor_weight,
         value: weight == null ? null : formatKg(weight),
         builder: (_) => WeightCard(onChanged: _onChanged),
       ),
       if (bio != null) ...[
         BodyTileSpec(
-          title: 'BMI',
+          semanticLabel: 'BMI',
+          icon: Icons.accessibility_new,
           value: oneDecimal(bmiReport(bio).bmi),
           builder: (_) => BmiCard(bio: bio),
         ),
         BodyTileSpec(
-          title: 'Ideal weight',
+          semanticLabel: 'Ideal weight',
+          icon: Icons.balance,
           builder: (_) => IdealWeightCard(bio: bio),
         ),
         BodyTileSpec(
-          title: 'Resting metabolism (BMR)',
-          value: '${whole(tableBmr(bio, bodyFat).value!)} kcal',
+          semanticLabel: 'Resting metabolism (BMR)',
+          icon: Icons.bedtime,
+          value: whole(tableBmr(bio, bodyFat).value!),
+          valueIcon: MacroKind.kcal.icon,
           builder: (_) => BmrCard(bio: bio, bodyFatPct: bodyFat),
         ),
       ],
       BodyTileSpec(
-        title: 'Activity',
+        semanticLabel: 'Activity',
+        icon: Icons.directions_run,
         builder: (_) => ValueListenableBuilder<bool>(
           valueListenable: _canConnectSteps,
           builder: (_, canConnect, _) => _activityCard(canConnect: canConnect),
         ),
       ),
       BodyTileSpec(
-        title: 'Week planner (info only)',
+        semanticLabel: 'Week planner',
+        icon: Icons.calendar_view_week,
         builder: (_) => WeekPlanCard(
           defaultTarget: AppSettingsService.dailyKcalGoal,
           logged: _logged,
@@ -220,7 +237,8 @@ class _BodyScreenState extends State<BodyScreen> {
       ),
       if (!_profileAtTop) profile,
       BodyTileSpec(
-        title: 'Body fat',
+        semanticLabel: 'Body fat',
+        icon: Icons.percent,
         value: bodyFat == null ? null : '${oneDecimal(bodyFat)} %',
         builder: (_) => BodyFatCard(onChanged: _onChanged),
       ),

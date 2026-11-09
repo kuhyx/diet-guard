@@ -9,6 +9,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../label_finders.dart';
 
 Future<void> _pump(WidgetTester tester, Widget child) async {
   tester.view.physicalSize = const Size(1200, 4000);
@@ -27,6 +28,12 @@ const _short = Biometrics(
   heightCm: 150,
   ageYears: 17,
   isMale: false,
+);
+
+/// [text] inside the planner's summary row (the one led by the fork glyph).
+Finder inSummary(String text) => find.descendant(
+  of: find.ancestor(of: byIconLabel('Eat'), matching: find.byType(Row)).first,
+  matching: find.text(text),
 );
 
 void main() {
@@ -68,18 +75,21 @@ void main() {
     });
   });
 
-  testWidgets('a short teenager sees n/a formulas and the age note', (
-    tester,
-  ) async {
+  testWidgets('a short teenager sees dashes and the age band', (tester) async {
     await _pump(
       tester,
       const Column(
-        children: [BmiCard(bio: _short), IdealWeightCard(bio: _short)],
+        children: [
+          BmiCard(bio: _short),
+          IdealWeightCard(bio: _short),
+        ],
       ),
     );
-    expect(find.text('n/a'), findsNWidgets(3));
-    expect(find.textContaining('undefined below 152.4 cm'), findsOneWidget);
-    expect(find.text('adult categories do not apply under 20'), findsOneWidget);
+    expect(find.text('—'), findsNWidgets(3));
+    expect(
+      byIconLabel('adult categories do not apply under 20'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('activity card states', (tester) async {
@@ -87,7 +97,10 @@ void main() {
       tester,
       const ActivityCard(sessions: [], weightKg: null, exercise: null),
     );
-    expect(find.textContaining('Enter your weight'), findsOneWidget);
+    expect(
+      cueLabelled('Enter your weight to estimate exercise kcal.'),
+      findsOneWidget,
+    );
     await _pump(
       tester,
       const ActivityCard(
@@ -96,8 +109,8 @@ void main() {
         exercise: {'MET': 0, 'ACSM': 0, 'Per-km': 0},
       ),
     );
-    expect(find.textContaining('No workouts in the last 28 days'), findsOne);
-    expect(find.text('0 kcal/day'), findsNWidgets(3));
+    expect(cueLabelled('No workouts in the last 28 days.'), findsOneWidget);
+    expect(find.text('0'), findsNWidgets(3));
     var tapped = false;
     await _pump(
       tester,
@@ -110,12 +123,13 @@ void main() {
         onConnectSteps: () => tapped = true,
       ),
     );
-    expect(find.textContaining('No activity data yet'), findsNothing);
     expect(
-      find.textContaining('12000 on 2026-09-27; above 4000/day they add 20'),
-      findsOneWidget,
+      cueLabelled('No activity data yet -- published by the PC.'),
+      findsNothing,
     );
-    await tester.tap(find.text('Connect Health Connect steps'));
+    expect(find.text('12000  2026-09-27'), findsOneWidget);
+    expect(find.text('20'), findsOneWidget);
+    await tester.tap(byIconLabel('Connect Health Connect steps'));
     expect(tapped, isTrue);
   });
 
@@ -129,8 +143,8 @@ void main() {
         today: DateTime(2026, 9, 27),
       ),
     );
-    expect(find.text('Need two readings for a graph.'), findsOneWidget);
-    await tester.tap(find.text('All'));
+    expect(byIconLabel('Need two readings for a graph.'), findsOneWidget);
+    await tester.tap(bySemLabel('All'));
     await tester.pumpAndSettle();
     expect(find.byType(LineChart), findsOneWidget);
   });
@@ -147,27 +161,35 @@ void main() {
       ),
     );
     // Mon logged, Tue unlogged: (14000 - 2500) / 6 = 1917.
-    expect(find.textContaining('2500 kcal  (logged)'), findsOneWidget);
-    expect(find.textContaining('(not logged -- type it)'), findsOneWidget);
-    expect(find.textContaining('Eat 1917 kcal'), findsOneWidget);
+    expect(byIconLabel('(logged)'), findsOneWidget);
+    expect(find.text('2500'), findsOneWidget);
+    expect(byIconLabel('(not logged -- type it)'), findsOneWidget);
+    expect(inSummary('1917'), findsOneWidget);
 
-    final dayFields = find.widgetWithText(TextField, 'ate…');
+    final dayFields = fieldByLabel('ate…');
     await tester.enterText(dayFields.at(1), '1800');
     await tester.pumpAndSettle();
-    expect(find.textContaining('1800 kcal  (typed)'), findsOneWidget);
-    expect(find.textContaining('Eat 1940 kcal'), findsOneWidget);
+    expect(byIconLabel('(typed)'), findsOneWidget);
+    expect(
+      find
+          .byType(Text)
+          .evaluate()
+          .where((e) => (e.widget as Text).data == '1800'),
+      hasLength(1),
+    );
+    expect(inSummary('1940'), findsOneWidget);
 
     await tester.enterText(
-      find.widgetWithText(TextField, 'Weekly average target (kcal/day)'),
+      fieldByLabel('Weekly average target (kcal/day)'),
       '900',
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('below the 1200 kcal floor'), findsOneWidget);
+    expect(cueLabelled('below the 1200 kcal floor'), findsOneWidget);
 
     for (var i = 0; i < 7; i++) {
       await tester.enterText(dayFields.at(i), '2000');
     }
     await tester.pumpAndSettle();
-    expect(find.textContaining('Every day is known'), findsOneWidget);
+    expect(byIconLabel('Every day is known: week average'), findsOneWidget);
   });
 }

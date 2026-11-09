@@ -6,6 +6,7 @@ import 'package:diet_guard_app/services/body_calc.dart';
 import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/services/body_steps.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:flutter/material.dart' show IconData, Icons;
 
 /// Builds the person from the stored profile and newest weight, or null
 /// when anything the formulas need is missing.
@@ -61,7 +62,16 @@ Map<String, double> kcalByDay(DayLog log) => {
         .fold<double>(0, (sum, food) => sum + food.kcal),
 };
 
-/// Why the numbers are missing.
+/// Glyphs of the inputs still missing (profile, weight), in the order the
+/// user should supply them; the visible counterpart of [bodyMissingNote].
+List<IconData> bodyMissingIcons(BodyService body) => [
+  if (body.birth == null || body.heightCm == null || body.sex == null)
+    Icons.person,
+  if (body.latestWeight == null) Icons.monitor_weight,
+];
+
+/// Spoken reason the numbers are missing (screen readers, tests; never
+/// painted).
 String bodyMissingNote(BodyService body) {
   if (body.latestWeight == null && body.birth == null) {
     return 'Set your profile and enter your weight to see BMI, ideal '
@@ -71,8 +81,8 @@ String bodyMissingNote(BodyService body) {
   return 'Set your profile (birth date, height, sex) to see the numbers.';
 }
 
-/// The age line value.
-String bodyAgeText(BodyService body, DateTime today) {
+/// The age in whole years, or null while no birth date is stored.
+String? bodyAgeText(BodyService body, DateTime today) {
   final birth = DateTime.tryParse(body.birth ?? '');
-  return birth == null ? 'unknown' : '${ageOn(birth, today)}';
+  return birth == null ? null : '${ageOn(birth, today)}';
 }

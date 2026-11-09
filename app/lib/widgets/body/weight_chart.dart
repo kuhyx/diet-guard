@@ -4,11 +4,12 @@
 /// drawn to scale rather than evenly spaced.
 library;
 
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
-/// Selectable chart ranges, `(label, days)`; null days = everything.
+/// Selectable chart ranges, `(spoken name, days)`; null days = everything.
 const List<(String, int?)> weightChartRanges = [
   ('30d', 30),
   ('90d', 90),
@@ -61,11 +62,19 @@ class _WeightChartState extends State<WeightChart> {
         Wrap(
           spacing: AppSpacing.sm,
           children: [
-            for (final (label, days) in weightChartRanges)
-              ChoiceChip(
-                label: Text(label),
-                selected: _days == days,
-                onSelected: (_) => setState(() => _days = days),
+            for (final (spoken, days) in weightChartRanges)
+              SpokenLabel(
+                semanticLabel: spoken,
+                child: ChoiceChip(
+                  // Days as a bare numeral; "everything" as the infinity glyph.
+                  label: ExcludeSemantics(
+                    child: days == null
+                        ? const Icon(Icons.all_inclusive, size: 18)
+                        : Text('$days'),
+                  ),
+                  selected: _days == days,
+                  onSelected: (_) => setState(() => _days = days),
+                ),
               ),
           ],
         ),
@@ -73,7 +82,14 @@ class _WeightChartState extends State<WeightChart> {
         SizedBox(
           height: 200,
           child: points.length < 2
-              ? const Center(child: Text('Need two readings for a graph.'))
+              ? Center(
+                  child: Icon(
+                    Icons.show_chart,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.outline,
+                    semanticLabel: 'Need two readings for a graph.',
+                  ),
+                )
               : _chart(context, points),
         ),
       ],
