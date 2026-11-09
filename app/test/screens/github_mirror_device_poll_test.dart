@@ -18,6 +18,7 @@ import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 import '../fake_secure_storage.dart';
+import '../label_finders.dart';
 
 /// Stub launcher that records the URL instead of opening it, so the device
 /// dialog's "Open GitHub & copy code" can be exercised without a real
@@ -40,8 +41,6 @@ class _FakeUrlLauncher extends UrlLauncherPlatform
 }
 
 void main() {
-
-
   late Directory tempDir;
 
   setUp(() async {
@@ -49,9 +48,7 @@ void main() {
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
     AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
-    BudgetHistoryService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BudgetHistoryService.resetForTesting(store: FileDocumentStore(tempDir));
     SharedPreferences.setMockInitialValues({});
     installFakeSecureStorage();
   });
@@ -91,13 +88,9 @@ void main() {
     }
   }
 
-
   /// Types [clientId] into the client-id field.
   Future<void> enterClientId(WidgetTester tester, String clientId) async {
-    await tester.enterText(
-      find.widgetWithText(TextField, 'OAuth App client id'),
-      clientId,
-    );
+    await tester.enterText(fieldByLabel('OAuth App client id'), clientId);
   }
 
   testWidgets('device dialog: failed poll shows the error and Open launches', (
@@ -144,7 +137,7 @@ void main() {
       await settle(tester);
       await enterClientId(tester, 'cid');
 
-      await tester.tap(find.text('Connect GitHub'));
+      await tester.tap(byIconLabel('Connect GitHub'));
       await pumpUntil(
         tester,
         () => find.text('WXYZ-1234').evaluate().isNotEmpty,

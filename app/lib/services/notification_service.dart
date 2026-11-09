@@ -86,11 +86,9 @@ class NotificationService {
       await _backend.cancel(id);
     }
     for (final slot in due) {
-      await _backend.show(
-        slot,
-        'Meal not logged',
-        "You haven't logged your ${slotLabel(slot)} meal yet.",
-      );
+      // The title is only the overdue slot's clock time (a number from the
+      // user's own schedule); the launcher icon is the second channel.
+      await _backend.show(slot, slotLabel(slot));
     }
   }
 }

@@ -7,11 +7,18 @@
 part of 'settings_screen.dart';
 
 mixin _SettingsKcalGoal on State<SettingsScreen> {
-  String? _status;
+  /// The latest outcome as an icon cue; null until something happened.
+  Widget? _status;
 
-  void _showMessage(String message) {
+  void _showCue(CueKind kind, String semanticLabel) {
     if (!mounted) return;
-    setState(() => _status = message);
+    setState(
+      () => _status = StatusCue(
+        key: UniqueKey(),
+        kind: kind,
+        semanticLabel: semanticLabel,
+      ),
+    );
   }
 
   Timer? _kcalGoalDebounce;
@@ -50,13 +57,13 @@ mixin _SettingsKcalGoal on State<SettingsScreen> {
         () => Permission.ignoreBatteryOptimizations.request();
     try {
       final status = await request();
-      _showMessage(
-        status.isGranted
-            ? 'Battery optimization exemption granted.'
-            : 'Exemption not granted -- notifications may be delayed.',
-      );
+      if (status.isGranted) {
+        _showCue(CueKind.ok, 'Battery optimization exemption granted.');
+      } else {
+        _showCue(CueKind.warn, 'Exemption not granted.');
+      }
     } on Exception catch (e) {
-      _showMessage('Could not request exemption: $e');
+      _showCue(CueKind.error, 'Could not request exemption: $e');
     }
   }
 }

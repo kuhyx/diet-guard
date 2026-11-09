@@ -163,8 +163,7 @@ class _FakeBackend implements NotificationBackend {
   Future<bool?> requestPermission() async => null;
 
   @override
-  Future<void> show(int slot, String title, String body) async =>
-      shown.add(slot);
+  Future<void> show(int slot, String title) async => shown.add(slot);
 
   @override
   Future<void> cancel(int slot) async => cancelled.add(slot);

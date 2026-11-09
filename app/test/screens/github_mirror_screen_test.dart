@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/screens/github_mirror_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
@@ -17,6 +18,7 @@ import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 import '../fake_secure_storage.dart';
+import '../label_finders.dart';
 
 /// Stub launcher that records the URL instead of opening it, so the device
 /// dialog's "Open GitHub & copy code" can be exercised without a real
@@ -39,7 +41,6 @@ class _FakeUrlLauncher extends UrlLauncherPlatform
 }
 
 void main() {
-
   late Directory tempDir;
 
   setUp(() async {
@@ -47,9 +48,7 @@ void main() {
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
     AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
-    BudgetHistoryService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BudgetHistoryService.resetForTesting(store: FileDocumentStore(tempDir));
     SharedPreferences.setMockInitialValues({});
     installFakeSecureStorage();
   });
@@ -89,13 +88,9 @@ void main() {
     }
   }
 
-
   /// Types [clientId] into the client-id field.
   Future<void> enterClientId(WidgetTester tester, String clientId) async {
-    await tester.enterText(
-      find.widgetWithText(TextField, 'OAuth App client id'),
-      clientId,
-    );
+    await tester.enterText(fieldByLabel('OAuth App client id'), clientId);
   }
 
   testWidgets('shows the kuhyx/syncs defaults on a fresh install', (
@@ -115,31 +110,27 @@ void main() {
       await settle(tester);
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Personal access token (fallback)'),
+        fieldByLabel('Personal access token (fallback)'),
         'my-pat',
       );
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Save'));
+      await tester.tap(controlByLabel('Save'));
       await settle(tester);
 
-      expect(find.text('Saved.'), findsOneWidget);
+      expect(cueLabelled('Saved.'), findsOneWidget);
     });
   });
   testWidgets('Test connection reports success', (tester) async {
-    final mock = MockClient(
-      (_) async => http.Response('{}', 200),
-    );
+    final mock = MockClient((_) async => http.Response('{}', 200));
     await tester.runAsync(() async {
       await tester.pumpWidget(
         MaterialApp(home: GitHubMirrorScreen(httpClient: mock)),
       );
       await settle(tester);
 
-      await tester.tap(
-        find.widgetWithText(OutlinedButton, 'Test GitHub connection'),
-      );
+      await tester.tap(controlByLabel('Test GitHub connection'));
       await settle(tester);
 
-      expect(find.text('GitHub connection OK.'), findsOneWidget);
+      expect(cueLabelled('GitHub connection OK.'), findsOneWidget);
     });
   });
   testWidgets('Test connection reports failure', (tester) async {
@@ -150,17 +141,13 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(
-        find.widgetWithText(OutlinedButton, 'Test GitHub connection'),
-      );
+      await tester.tap(controlByLabel('Test GitHub connection'));
       await settle(tester);
 
-      expect(find.text('GitHub connection failed.'), findsOneWidget);
+      expect(cueLabelled('GitHub connection failed.'), findsOneWidget);
     });
   });
-  testWidgets('Sync now runs a sync tick and reports success', (
-    tester,
-  ) async {
+  testWidgets('Sync now runs a sync tick and reports success', (tester) async {
     final mock = MockClient((req) async {
       if (req.method == 'PUT') return http.Response('{}', 200);
       // A bare `/repos/<owner>/<repo>` GET is crdt_sync's GitHubClient
@@ -178,10 +165,10 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Sync now'));
+      await tester.tap(controlByLabel('Sync now'));
       await settle(tester);
 
-      expect(find.text('Synced.'), findsOneWidget);
+      expect(cueLabelled('Synced.'), findsOneWidget);
     });
   });
   testWidgets('Sync now clears a stored failure so the banner lifts', (
@@ -208,10 +195,10 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Sync now'));
+      await tester.tap(controlByLabel('Sync now'));
       await settle(tester);
 
-      expect(find.text('Synced.'), findsOneWidget);
+      expect(cueLabelled('Synced.'), findsOneWidget);
       final status = await SyncHealth.read();
       expect(status.failureKind, isNull);
       expect(status.isStalled, isFalse);
@@ -225,12 +212,10 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(
-        find.widgetWithText(OutlinedButton, 'Test GitHub connection'),
-      );
+      await tester.tap(controlByLabel('Test GitHub connection'));
       await settle(tester);
 
-      expect(find.textContaining('GitHub connection failed:'), findsOneWidget);
+      expect(cueOfKind(CueKind.error), findsOneWidget);
     });
   });
   testWidgets('Sync now reports a GitHub error', (tester) async {
@@ -241,10 +226,10 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Sync now'));
+      await tester.tap(controlByLabel('Sync now'));
       await settle(tester);
 
-      expect(find.textContaining('Sync failed:'), findsOneWidget);
+      expect(cueOfKind(CueKind.error), findsOneWidget);
     });
   });
 }

@@ -26,7 +26,8 @@ import 'package:flutter/material.dart';
 class MealTimeDropdown extends StatelessWidget {
   /// Creates a [MealTimeDropdown].
   const MealTimeDropdown({
-    required this.label,
+    required this.icon,
+    required this.semanticLabel,
     required this.value,
     required this.minMinute,
     required this.maxMinute,
@@ -35,8 +36,11 @@ class MealTimeDropdown extends StatelessWidget {
     super.key,
   });
 
-  /// The field label, e.g. "First meal".
-  final String label;
+  /// The painted caption glyph, e.g. a sun for the first meal.
+  final IconData icon;
+
+  /// The spoken caption, e.g. "First meal"; never painted.
+  final String semanticLabel;
 
   /// The current minute of day.
   final int value;
@@ -81,7 +85,8 @@ class MealTimeDropdown extends StatelessWidget {
     final picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(hour: value ~/ 60, minute: value % 60),
-      helpText: label,
+      // Empty so the picker does not print its own heading over the clock.
+      helpText: '',
       // The rest of the app writes times as HH:MM; an AM/PM dial here would
       // be the one place that reads differently.
       builder: (context, child) => MediaQuery(
@@ -103,29 +108,37 @@ class MealTimeDropdown extends StatelessWidget {
       spacing: AppSpacing.xs,
       children: [
         Expanded(
-          child: InputDecorator(
-            decoration: InputDecoration(labelText: label),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                value: value,
-                isDense: true,
-                isExpanded: true,
-                items: [
-                  for (final minute in options)
-                    DropdownMenuItem(
-                      value: minute,
-                      child: Text(slotLabel(minute)),
-                    ),
-                ],
-                onChanged: (minute) =>
-                    minute == null ? null : onChanged(minute),
+          child: Semantics(
+            label: semanticLabel,
+            container: true,
+            child: InputDecorator(
+              decoration: InputDecoration(
+                prefixIcon: ExcludeSemantics(child: Icon(icon)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  value: value,
+                  isDense: true,
+                  isExpanded: true,
+                  items: [
+                    for (final minute in options)
+                      DropdownMenuItem(
+                        value: minute,
+                        child: Text(slotLabel(minute)),
+                      ),
+                  ],
+                  onChanged: (minute) =>
+                      minute == null ? null : onChanged(minute),
+                ),
               ),
             ),
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.schedule),
-          tooltip: 'Type or pick an exact time',
+          icon: const Icon(
+            Icons.schedule,
+            semanticLabel: 'Type or pick an exact time',
+          ),
           onPressed: () => unawaited(_pickExact(context)),
         ),
       ],

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/screens/github_mirror_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
@@ -16,6 +17,7 @@ import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 import '../fake_secure_storage.dart';
+import '../label_finders.dart';
 
 /// Stub launcher that records the URL instead of opening it, so the device
 /// dialog's "Open GitHub & copy code" can be exercised without a real
@@ -38,7 +40,6 @@ class _FakeUrlLauncher extends UrlLauncherPlatform
 }
 
 void main() {
-
   late Directory tempDir;
 
   setUp(() async {
@@ -46,9 +47,7 @@ void main() {
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
     AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
-    BudgetHistoryService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BudgetHistoryService.resetForTesting(store: FileDocumentStore(tempDir));
     SharedPreferences.setMockInitialValues({});
     installFakeSecureStorage();
   });
@@ -88,13 +87,9 @@ void main() {
     }
   }
 
-
   /// Types [clientId] into the client-id field.
   Future<void> enterClientId(WidgetTester tester, String clientId) async {
-    await tester.enterText(
-      find.widgetWithText(TextField, 'OAuth App client id'),
-      clientId,
-    );
+    await tester.enterText(fieldByLabel('OAuth App client id'), clientId);
   }
 
   testWidgets('Connect GitHub without a client id opens setup guidance', (
@@ -105,11 +100,11 @@ void main() {
       await settle(tester);
       await enterClientId(tester, '');
 
-      await tester.tap(find.text('Connect GitHub'));
+      await tester.tap(byIconLabel('Connect GitHub'));
       await settle(tester);
 
-      expect(find.text('One-time GitHub setup needed'), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'Client ID'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(fieldByLabel('Client ID'), findsOneWidget);
     });
   });
   testWidgets('cancelling the client id setup dialog aborts the connect', (
@@ -120,12 +115,12 @@ void main() {
       await settle(tester);
       await enterClientId(tester, '');
 
-      await tester.tap(find.text('Connect GitHub'));
+      await tester.tap(byIconLabel('Connect GitHub'));
       await settle(tester);
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(byIconLabel('Cancel'));
       await settle(tester);
 
-      expect(find.text('One-time GitHub setup needed'), findsNothing);
+      expect(find.byType(AlertDialog), findsNothing);
     });
   });
   testWidgets(
@@ -139,28 +134,16 @@ void main() {
         await settle(tester);
         await enterClientId(tester, '');
 
-        await tester.tap(find.text('Connect GitHub'));
+        await tester.tap(byIconLabel('Connect GitHub'));
         await settle(tester);
-        await tester.enterText(
-          find.widgetWithText(TextField, 'Client ID'),
-          'cid',
-        );
-        await tester.tap(find.text('Continue'));
+        await tester.enterText(fieldByLabel('Client ID'), 'cid');
+        await tester.tap(byIconLabel('Continue'));
         await settle(tester);
 
+        expect(cueOfKind(CueKind.error), findsOneWidget);
+        expect(fieldByLabel('OAuth App client id'), findsOneWidget);
         expect(
-          find.textContaining('Could not start device flow'),
-          findsOneWidget,
-        );
-        expect(
-          find.widgetWithText(TextField, 'OAuth App client id'),
-          findsOneWidget,
-        );
-        expect(
-          (tester.widget(
-                    find.widgetWithText(TextField, 'OAuth App client id'),
-                  )
-                  as TextField)
+          (tester.widget(fieldByLabel('OAuth App client id')) as TextField)
               .controller!
               .text,
           'cid',
@@ -177,13 +160,10 @@ void main() {
       await settle(tester);
       await enterClientId(tester, 'cid');
 
-      await tester.tap(find.text('Connect GitHub'));
+      await tester.tap(byIconLabel('Connect GitHub'));
       await settle(tester);
 
-      expect(
-        find.textContaining('Could not start device flow'),
-        findsOneWidget,
-      );
+      expect(cueOfKind(CueKind.error), findsOneWidget);
     });
   });
 }

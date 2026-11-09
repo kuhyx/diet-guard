@@ -13,6 +13,7 @@ import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:github_device_auth/github_device_auth.dart';
@@ -94,12 +95,7 @@ class _GitHubMirrorScreenState extends State<GitHubMirrorScreen>
   /// The token as loaded, so a platform that cannot display it (web) still
   /// round-trips it instead of blanking it on the next save.
 
-
-
-
-
   /// Runs the OAuth device flow and, on success, fills in the token field.
-
 
   @override
   Widget build(BuildContext context) {
@@ -107,94 +103,78 @@ class _GitHubMirrorScreenState extends State<GitHubMirrorScreen>
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Advanced sync (GitHub)')),
-      // Centred and capped at the prose width -- see settings_screen.dart's
-      // note on why: on the desktop surface an uncapped ListView spanned the
-      // full window, so explanatory paragraphs ran far past the readable
-      // line-length limit.
+      // No title and no explanatory paragraph: the code glyph that opened this
+      // screen names it, and the connect button is self-evident.
+      appBar: AppBar(),
+      // Centred and capped at the prose width so fields do not span the
+      // whole window on the desktop surface.
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: AppWidth.prose),
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(
-                'Syncs still mirror to GitHub until every device has moved '
-                'to Firebase. Authorize in your browser — no token to '
-                'paste.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerLeft,
-                child: FilledButton.icon(
+                child: IconButton.filled(
                   onPressed: _connectGitHub,
-                  icon: const Icon(Icons.login),
-                  label: const Text('Connect GitHub'),
+                  icon: const Icon(
+                    Icons.login,
+                    semanticLabel: 'Connect GitHub',
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-              TextField(
+              IconField(
+                icon: Icons.person_outline,
+                semanticLabel: 'GitHub owner',
                 controller: _ownerController,
-                decoration: const InputDecoration(labelText: 'GitHub owner'),
               ),
               const SizedBox(height: 8),
-              TextField(
+              IconField(
+                icon: Icons.folder_outlined,
+                semanticLabel: 'Repo',
                 controller: _repoController,
-                decoration: const InputDecoration(labelText: 'Repo'),
               ),
               const SizedBox(height: 8),
-              TextField(
+              IconField(
+                icon: Icons.apps,
+                semanticLabel: 'OAuth App client id',
                 controller: _clientIdController,
-                decoration: const InputDecoration(
-                  labelText: 'OAuth App client id',
-                  helperText: 'Needed for the Connect GitHub button',
-                ),
               ),
               const SizedBox(height: 8),
-              TextField(
+              IconField(
+                icon: Icons.key,
+                semanticLabel: 'Personal access token (fallback)',
                 controller: _tokenController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Personal access token (fallback)',
-                  // Both wrapper hints are web-only; a VM test always takes
-                  // the null branch.
-                  // coverage:ignore-start
-                  helperText: SyncSettings.exposesTokenValue
-                      ? null
-                      : _storedToken.isEmpty
-                      ? 'Stored by the desktop wrapper, never by the browser'
-                      : 'A token is stored by the desktop wrapper; type '
-                            'here only to replace it',
-                  // coverage:ignore-end
-                  helperMaxLines: 2,
-                ),
+                obscure: true,
               ),
               const SizedBox(height: 16),
               Wrap(
                 spacing: 8,
                 children: [
-                  ElevatedButton(
+                  IconButton.filled(
                     onPressed: _busy ? null : _save,
-                    child: const Text('Save'),
+                    icon: const Icon(Icons.check, semanticLabel: 'Save'),
                   ),
-                  OutlinedButton(
+                  // Tests the GitHub connection only (a canAccessRepo call);
+                  // it says nothing about Firebase.
+                  IconButton.outlined(
                     onPressed: _busy ? null : _testConnection,
-                    // Named for what it actually does: _testConnection builds
-                    // a GitHub client and calls canAccessRepo(). It says
-                    // nothing about Firebase, and the bare label implied
-                    // otherwise.
-                    child: const Text('Test GitHub connection'),
+                    icon: const Icon(
+                      Icons.network_check,
+                      semanticLabel: 'Test GitHub connection',
+                    ),
                   ),
-                  ElevatedButton(
+                  IconButton.filled(
                     onPressed: _busy ? null : _syncNow,
-                    child: const Text('Sync now'),
+                    icon: const Icon(Icons.sync, semanticLabel: 'Sync now'),
                   ),
                 ],
               ),
               if (_status != null) ...[
                 const SizedBox(height: 16),
-                Text(_status!, style: Theme.of(context).textTheme.bodyMedium),
+                Align(alignment: Alignment.centerLeft, child: _status),
               ],
             ],
           ),

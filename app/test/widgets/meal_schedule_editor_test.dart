@@ -4,6 +4,8 @@ import 'package:diet_guard_app/widgets/meal_time_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../label_finders.dart';
+
 /// Holds the schedule the way `_SettingsMealSchedule` does: every edit is
 /// normalised and fed back, so the preview reflects what would be saved.
 class _Harness extends StatefulWidget {
@@ -24,6 +26,10 @@ class _HarnessState extends State<_Harness> {
     home: Scaffold(
       body: ListView(
         children: [
+          // The editor lost its heading, so its first dropdown now sits at the
+          // very top; an open menu would clip the items above the selected
+          // one. Push it down to where it sits on the real screen.
+          const SizedBox(height: 200),
           MealScheduleEditor(
             schedule: _schedule,
             onChanged: (next) {
@@ -51,7 +57,12 @@ void main() {
   }
 
   Future<void> openDropdown(WidgetTester tester, String label) async {
-    await tester.tap(find.widgetWithText(InputDecorator, label));
+    await tester.tap(
+      find.descendant(
+        of: bySemLabel(label),
+        matching: find.byType(DropdownButton<int>),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -66,9 +77,9 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byWidgetPredicate(
-          (w) => w is MealTimeDropdown && w.label == label,
+          (w) => w is MealTimeDropdown && w.semanticLabel == label,
         ),
-        matching: find.byTooltip('Type or pick an exact time'),
+        matching: byIconLabel('Type or pick an exact time'),
       ),
     );
     await tester.pumpAndSettle();
@@ -102,14 +113,20 @@ void main() {
 
   testWidgets('choosing a 15-minute value updates the preview', (tester) async {
     await pump(tester, _fiveMeals);
-    expect(find.text('08:00  ·  11:00  ·  14:00  ·  17:00  ·  20:00'), findsOne);
+    expect(
+      find.text('08:00  ·  11:00  ·  14:00  ·  17:00  ·  20:00'),
+      findsOne,
+    );
 
     await openDropdown(tester, 'First meal');
     await tester.tap(find.text('07:45').last);
     await tester.pumpAndSettle();
 
     expect(edits.last.firstMinute, 465);
-    expect(find.text('07:45  ·  10:45  ·  14:00  ·  17:00  ·  20:00'), findsOne);
+    expect(
+      find.text('07:45  ·  10:45  ·  14:00  ·  17:00  ·  20:00'),
+      findsOne,
+    );
   });
 
   testWidgets('the clock button opens the time picker and applies 07:23', (
@@ -155,7 +172,9 @@ void main() {
     await pump(tester, _fiveMeals);
 
     MealTimeDropdown field(String label) => tester.widget(
-      find.byWidgetPredicate((w) => w is MealTimeDropdown && w.label == label),
+      find.byWidgetPredicate(
+        (w) => w is MealTimeDropdown && w.semanticLabel == label,
+      ),
     );
     final last = field('Last meal').options;
     expect(last.first, 495, reason: '08:15, one grid step after 08:00');
@@ -171,13 +190,17 @@ void main() {
   ) async {
     const narrow = MealSchedule(firstMinute: 480, lastMinute: 510, count: 2);
     expect(
-      const MealScheduleEditor(schedule: narrow, onChanged: _ignore)
-          .selectableCounts,
+      const MealScheduleEditor(
+        schedule: narrow,
+        onChanged: _ignore,
+      ).selectableCounts,
       [2, 3],
     );
     expect(
-      const MealScheduleEditor(schedule: _fiveMeals, onChanged: _ignore)
-          .selectableCounts,
+      const MealScheduleEditor(
+        schedule: _fiveMeals,
+        onChanged: _ignore,
+      ).selectableCounts,
       [2, 3, 4, 5, 6],
     );
 

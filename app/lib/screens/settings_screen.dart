@@ -15,6 +15,8 @@ import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/google_sign_in_backend.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
+import 'package:diet_guard_app/ui/cues.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/data_backup_row.dart';
 import 'package:diet_guard_app/widgets/log_sound_tile.dart';
@@ -149,30 +151,26 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      // Capped at the prose width: on the ~1366px desktop window the
-      // paragraphs below ran ~180 chars/line, twice tokens.md rule 21's limit.
+      // No title: the gear that opened this screen already names it.
+      appBar: AppBar(),
+      // Capped at the prose width so fields do not span a ~1366px window.
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: AppWidth.prose),
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text('Nutrition', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
               // A four-digit number: capped so the field does not read as a
               // layout error by spanning the whole column.
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: AppWidth.field),
-                child: TextField(
+                child: IconField(
+                  icon: MacroKind.kcal.icon,
+                  iconColor: MacroKind.kcal.color,
+                  semanticLabel: 'Daily kcal goal',
                   controller: _kcalGoalController,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(
-                    labelText: 'Daily kcal goal',
-                    helperText: 'Shown in the history day summary',
-                    suffixText: 'kcal',
-                  ),
                   onChanged: _onKcalGoalChanged,
                 ),
               ),
@@ -186,15 +184,21 @@ class _SettingsScreenState extends State<SettingsScreen>
               const Divider(),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Sync settings'),
-                subtitle: const Text('Firebase sync'),
+                leading: const Icon(
+                  Icons.cloud_sync_outlined,
+                  semanticLabel: 'Sync settings',
+                ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => unawaited(_openSyncSettings()),
               ),
+              // Legacy mirror: muted tint marks it as the secondary path.
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Advanced sync (GitHub)'),
-                subtitle: const Text('Cutover mirror — not recommended'),
+                leading: Icon(
+                  Icons.code,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  semanticLabel: 'Advanced sync (GitHub)',
+                ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => unawaited(_openGitHubMirror()),
               ),
@@ -203,42 +207,27 @@ class _SettingsScreenState extends State<SettingsScreen>
                     .dailyKcalGoal
                     .toString(),
               ),
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 8),
-              Text(
-                'Notifications',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _isAndroid
-                    ? 'A background check nags you every ~15 min if a '
-                          'meal slot is overdue. Aggressive OEM battery '
-                          'optimization (MIUI, some Samsung configs) can '
-                          'delay this well past 15 min -- request an '
-                          'exemption for reliable nagging.'
-                    : 'A check runs every 5 min while this window is open and '
-                          'notifies you about an overdue meal slot. A browser '
-                          'cannot run anything once the window is closed -- on '
-                          'the PC the real backstop is the diet_guard gate, '
-                          'which locks the screen instead.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
               // Battery-optimization exemption is Android-only, and
               // `permission_handler` has no web implementation at all;
               // the row would throw rather than degrade in the browser.
               if (_isAndroid) ...[
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _requestBatteryExemption,
-                  icon: const Icon(Icons.battery_alert),
-                  label: const Text('Disable battery optimization'),
+                const SizedBox(height: 24),
+                const Divider(),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton.outlined(
+                    onPressed: _requestBatteryExemption,
+                    icon: const Icon(
+                      Icons.battery_alert,
+                      semanticLabel: 'Disable battery optimization',
+                    ),
+                  ),
                 ),
               ],
               if (_status != null) ...[
                 const SizedBox(height: 16),
-                Text(_status!, style: Theme.of(context).textTheme.bodyMedium),
+                Align(alignment: Alignment.centerLeft, child: _status),
               ],
             ],
           ),

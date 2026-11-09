@@ -28,54 +28,27 @@ class _ClientIdSetupDialogState extends State<_ClientIdSetupDialog> {
 
   @override
   Widget build(BuildContext context) {
+    // Icon-only: the setup steps (open github.com/settings/developers, make
+    // an OAuth App with Device Flow, paste its client id) live in the repo
+    // docs, not on screen.
     return AlertDialog(
-      title: const Text('One-time GitHub setup needed'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Diet Guard signs in via a GitHub OAuth App (no password '
-              'typed into this app). You only have to set this up once:',
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              '1. On any device, open '
-              'github.com/settings/developers → "New OAuth App".\n'
-              '2. Name/Homepage/Callback URL can be anything (device flow '
-              "doesn't use the callback) — e.g. "
-              '"Diet Guard" and your GitHub profile URL.\n'
-              '3. Check "Enable Device Flow", then click "Register '
-              'application".\n'
-              "4. Copy the Client ID shown on the app's page and paste it "
-              'below.',
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'When you connect below, log in with the GitHub account that '
-              'has write access to kuhyx/syncs.',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              decoration: const InputDecoration(labelText: 'Client ID'),
-            ),
-          ],
-        ),
+      content: IconField(
+        icon: Icons.apps,
+        semanticLabel: 'Client ID',
+        controller: _controller,
+        autofocus: true,
       ),
       actions: [
-        TextButton(
+        IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          icon: const Icon(Icons.close, semanticLabel: 'Cancel'),
         ),
-        FilledButton(
+        IconButton.filled(
           onPressed: () {
             final id = _controller.text.trim();
             if (id.isNotEmpty) Navigator.of(context).pop(id);
           },
-          child: const Text('Continue'),
+          icon: const Icon(Icons.arrow_forward, semanticLabel: 'Continue'),
         ),
       ],
     );

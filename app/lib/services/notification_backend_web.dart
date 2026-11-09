@@ -36,13 +36,13 @@ class WebNotificationBackend implements NotificationBackend {
   }
 
   @override
-  Future<void> show(int slot, String title, String body) async {
+  Future<void> show(int slot, String title) async {
     // Posting without permission throws; a silent no-op matches this
     // service's degrade-quietly stance everywhere else.
     if (!_granted) return;
     _shown[slot] = web.Notification(
       title,
-      web.NotificationOptions(body: body, tag: 'diet_guard_slot_$slot'),
+      web.NotificationOptions(tag: 'diet_guard_slot_$slot'),
     );
   }
 

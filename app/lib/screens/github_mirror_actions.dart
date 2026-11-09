@@ -21,7 +21,7 @@ mixin _GitHubMirrorActions on State<GitHubMirrorScreen> {
   TextEditingController get _clientIdController;
 
   bool _busy = false;
-  String? _status;
+  Widget? _status;
   String _storedToken = '';
   SyncSettings _currentSettings() {
     final typed = _tokenController.text.trim();
@@ -37,9 +37,18 @@ mixin _GitHubMirrorActions on State<GitHubMirrorScreen> {
       clientId: _clientIdController.text.trim(),
     );
   }
-  void _showMessage(String message) {
+
+  /// Shows the outcome as an icon cue; [semanticLabel] is spoken, never
+  /// painted.
+  void _showCue(CueKind kind, String semanticLabel) {
     if (!mounted) return;
-    setState(() => _status = message);
+    setState(
+      () => _status = StatusCue(
+        key: UniqueKey(),
+        kind: kind,
+        semanticLabel: semanticLabel,
+      ),
+    );
   }
 
   Future<void> _connectGitHub() async {
@@ -69,12 +78,12 @@ mixin _GitHubMirrorActions on State<GitHubMirrorScreen> {
           _storedToken = token;
           if (SyncSettings.exposesTokenValue) _tokenController.text = token;
         });
-        _showMessage('Connected — syncing…');
+        _showCue(CueKind.info, 'Connected — syncing…');
         await _currentSettings().save();
         await _syncAfterConnect();
       }
     } on Exception catch (e) {
-      _showMessage('Could not start device flow: $e');
+      _showCue(CueKind.error, 'Could not start device flow: $e');
     } finally {
       auth.close();
     }
@@ -88,10 +97,10 @@ mixin _GitHubMirrorActions on State<GitHubMirrorScreen> {
     try {
       await runSync(await syncBackend(client));
       await SyncHealth.recordSuccess();
-      _showMessage('Connected and synced.');
+      _showCue(CueKind.ok, 'Connected and synced.');
     } on Exception catch (e) {
       await SyncHealth.recordFailure();
-      _showMessage('Connected, but sync failed: $e');
+      _showCue(CueKind.error, 'Connected, but sync failed: $e');
     } finally {
       client.close();
     }
@@ -102,7 +111,7 @@ mixin _GitHubMirrorActions on State<GitHubMirrorScreen> {
     await _currentSettings().save();
     if (!mounted) return;
     setState(() => _busy = false);
-    _showMessage('Saved.');
+    _showCue(CueKind.ok, 'Saved.');
   }
 
   Future<void> _testConnection() async {
@@ -111,11 +120,13 @@ mixin _GitHubMirrorActions on State<GitHubMirrorScreen> {
     final client = createGitHubClient(settings, httpClient: widget.httpClient);
     try {
       final ok = await client.canAccessRepo();
-      _showMessage(
-        ok ? 'GitHub connection OK.' : 'GitHub connection failed.',
-      );
+      if (ok) {
+        _showCue(CueKind.ok, 'GitHub connection OK.');
+      } else {
+        _showCue(CueKind.error, 'GitHub connection failed.');
+      }
     } on Exception catch (e) {
-      _showMessage('GitHub connection failed: $e');
+      _showCue(CueKind.error, 'GitHub connection failed: $e');
     } finally {
       client.close();
       if (mounted) setState(() => _busy = false);
@@ -133,10 +144,10 @@ mixin _GitHubMirrorActions on State<GitHubMirrorScreen> {
       // *because* the banner told them syncing had stopped, so a successful
       // run here must dismiss the warning it caused.
       await SyncHealth.recordSuccess();
-      _showMessage('Synced.');
+      _showCue(CueKind.ok, 'Synced.');
     } on Exception catch (e) {
       await SyncHealth.recordFailure();
-      _showMessage('Sync failed: $e');
+      _showCue(CueKind.error, 'Sync failed: $e');
     } finally {
       client.close();
       if (mounted) setState(() => _busy = false);

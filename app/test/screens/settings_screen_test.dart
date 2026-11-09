@@ -16,6 +16,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../fake_secure_storage.dart';
+import '../label_finders.dart';
 
 void main() {
   late Directory tempDir;
@@ -25,9 +26,7 @@ void main() {
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
     AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
-    BudgetHistoryService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BudgetHistoryService.resetForTesting(store: FileDocumentStore(tempDir));
     await MealScheduleService.initForTesting(FileDocumentStore(tempDir));
     SharedPreferences.setMockInitialValues({});
     installFakeSecureStorage();
@@ -76,13 +75,10 @@ void main() {
 
       // The default schedule still derives the hours that used to be
       // hardcoded, so an existing install sees no change.
-      expect(
-        find.text('08:00  ·  12:00  ·  16:00  ·  20:00'),
-        findsOneWidget,
-      );
-      expect(find.text('First meal'), findsOneWidget);
-      expect(find.text('Last meal'), findsOneWidget);
-      expect(find.text('Meals per day'), findsOneWidget);
+      expect(find.text('08:00  ·  12:00  ·  16:00  ·  20:00'), findsOneWidget);
+      expect(bySemLabel('First meal'), findsOneWidget);
+      expect(bySemLabel('Last meal'), findsOneWidget);
+      expect(bySemLabel('Meals per day'), findsOneWidget);
     });
   });
   testWidgets('an exact 07:23 first meal saves the schedule', (tester) async {
@@ -90,7 +86,7 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await settle(tester);
 
-      await tester.tap(find.byTooltip('Type or pick an exact time').first);
+      await tester.tap(byIconLabel('Type or pick an exact time').first);
       await settle(tester);
       await tester.tap(find.byIcon(Icons.keyboard_outlined));
       await settle(tester);
@@ -129,10 +125,7 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await settle(tester);
 
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Daily kcal goal'),
-        '2100',
-      );
+      await tester.enterText(fieldByLabel('Daily kcal goal'), '2100');
       // Immediately after typing, the debounce has not fired yet.
       expect(AppSettingsService.dailyKcalGoal, isNot(2100));
 
@@ -147,10 +140,7 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await settle(tester);
 
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Daily kcal goal'),
-        '0',
-      );
+      await tester.enterText(fieldByLabel('Daily kcal goal'), '0');
       await Future<void>.delayed(const Duration(milliseconds: 700));
       await tester.pump();
 
@@ -164,10 +154,7 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await settle(tester);
 
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Daily kcal goal'),
-        '1950',
-      );
+      await tester.enterText(fieldByLabel('Daily kcal goal'), '1950');
       // Leave before the 600ms debounce fires. dispose()'s flush fires the
       // persist unawaited (the framework cannot await dispose()), so the
       // in-memory value updates synchronously but the disk write is still a
@@ -195,42 +182,39 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(find.text('Sync settings'));
+      await tester.tap(byIconLabel('Sync settings'));
       await settle(tester);
 
       expect(find.text('Firebase sync'), findsOneWidget);
     });
   });
-  testWidgets(
-    'Sync settings wires storedAccount, not loadAccount, as the '
-    'default accountLoader',
-    (tester) async {
-      // Verifies the read-back fix documented on SettingsScreen.accountLoader:
-      // on a device with a stored account and a live session, the shared
-      // screen must show it as connected using the injected default, with no
-      // fake required to prove the wiring compiles and runs end-to-end.
-      await tester.runAsync(() async {
-        await saveAccount(
-          const FirebaseAccount(email: 'sync@example.com', password: 'pw'),
-        );
-        await credentialStore().save(
-          FirebaseCredentials(
-            idToken: 'id',
-            refreshToken: 'refresh',
-            expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
-          ),
-        );
-        await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
-        await settle(tester);
+  testWidgets('Sync settings wires storedAccount, not loadAccount, as the '
+      'default accountLoader', (tester) async {
+    // Verifies the read-back fix documented on SettingsScreen.accountLoader:
+    // on a device with a stored account and a live session, the shared
+    // screen must show it as connected using the injected default, with no
+    // fake required to prove the wiring compiles and runs end-to-end.
+    await tester.runAsync(() async {
+      await saveAccount(
+        const FirebaseAccount(email: 'sync@example.com', password: 'pw'),
+      );
+      await credentialStore().save(
+        FirebaseCredentials(
+          idToken: 'id',
+          refreshToken: 'refresh',
+          expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
+        ),
+      );
+      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+      await settle(tester);
 
-        await tester.tap(find.text('Sync settings'));
-        await settle(tester);
+      await tester.tap(byIconLabel('Sync settings'));
+      await settle(tester);
 
-        expect(find.text('sync@example.com'), findsOneWidget);
-        expect(find.text('Disconnect'), findsOneWidget);
-      });
-    },
-  );
+      expect(find.text('sync@example.com'), findsOneWidget);
+      expect(find.text('Disconnect'), findsOneWidget);
+    });
+  });
   testWidgets(
     'tapping Advanced sync (GitHub) opens the local GitHubMirrorScreen',
     (tester) async {
@@ -238,11 +222,10 @@ void main() {
         await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
         await settle(tester);
 
-        await tester.tap(find.text('Advanced sync (GitHub)'));
+        await tester.tap(byIconLabel('Advanced sync (GitHub)'));
         await settle(tester);
 
-        expect(find.text('Advanced sync (GitHub)'), findsWidgets);
-        expect(find.text('Connect GitHub'), findsOneWidget);
+        expect(byIconLabel('Connect GitHub'), findsOneWidget);
       });
     },
   );

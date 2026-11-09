@@ -8,15 +8,16 @@ import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../fake_secure_storage.dart';
+import '../label_finders.dart';
 
 void main() {
-
   late Directory tempDir;
 
   setUp(() async {
@@ -24,9 +25,7 @@ void main() {
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
     AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
-    BudgetHistoryService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BudgetHistoryService.resetForTesting(store: FileDocumentStore(tempDir));
     SharedPreferences.setMockInitialValues({});
     installFakeSecureStorage();
   });
@@ -68,10 +67,10 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(find.text('Disable battery optimization'));
+      await tester.tap(controlByLabel('Disable battery optimization'));
       await settle(tester);
 
-      expect(find.textContaining('exemption granted'), findsOneWidget);
+      expect(cueOfKind(CueKind.ok), findsOneWidget);
     });
   });
   testWidgets('battery exemption button reports a denied status', (
@@ -87,10 +86,10 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(find.text('Disable battery optimization'));
+      await tester.tap(controlByLabel('Disable battery optimization'));
       await settle(tester);
 
-      expect(find.textContaining('not granted'), findsOneWidget);
+      expect(cueOfKind(CueKind.warn), findsOneWidget);
     });
   });
   testWidgets('battery exemption defaults to the real permission_handler '
@@ -99,13 +98,10 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
       await settle(tester);
 
-      await tester.tap(find.text('Disable battery optimization'));
+      await tester.tap(controlByLabel('Disable battery optimization'));
       await settle(tester);
 
-      expect(
-        find.textContaining('Could not request exemption'),
-        findsOneWidget,
-      );
+      expect(cueOfKind(CueKind.error), findsOneWidget);
     });
   });
   testWidgets('battery exemption button surfaces a request failure', (
@@ -122,13 +118,10 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(find.text('Disable battery optimization'));
+      await tester.tap(controlByLabel('Disable battery optimization'));
       await settle(tester);
 
-      expect(
-        find.textContaining('Could not request exemption'),
-        findsOneWidget,
-      );
+      expect(cueOfKind(CueKind.error), findsOneWidget);
     });
   });
 }

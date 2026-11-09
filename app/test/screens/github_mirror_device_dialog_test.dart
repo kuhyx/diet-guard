@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/screens/github_mirror_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
@@ -17,6 +18,7 @@ import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 import '../fake_secure_storage.dart';
+import '../label_finders.dart';
 
 /// Stub launcher that records the URL instead of opening it, so the device
 /// dialog's "Open GitHub & copy code" can be exercised without a real
@@ -39,8 +41,6 @@ class _FakeUrlLauncher extends UrlLauncherPlatform
 }
 
 void main() {
-
-
   late Directory tempDir;
 
   setUp(() async {
@@ -48,9 +48,7 @@ void main() {
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
     AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
-    BudgetHistoryService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BudgetHistoryService.resetForTesting(store: FileDocumentStore(tempDir));
     SharedPreferences.setMockInitialValues({});
     installFakeSecureStorage();
   });
@@ -90,13 +88,9 @@ void main() {
     }
   }
 
-
   /// Types [clientId] into the client-id field.
   Future<void> enterClientId(WidgetTester tester, String clientId) async {
-    await tester.enterText(
-      find.widgetWithText(TextField, 'OAuth App client id'),
-      clientId,
-    );
+    await tester.enterText(fieldByLabel('OAuth App client id'), clientId);
   }
 
   testWidgets('device flow happy path saves the token and syncs', (
@@ -136,7 +130,7 @@ void main() {
       await settle(tester);
       await enterClientId(tester, 'cid');
 
-      await tester.tap(find.text('Connect GitHub'));
+      await tester.tap(byIconLabel('Connect GitHub'));
       await pumpUntil(
         tester,
         () => find.text('WXYZ-1234').evaluate().isNotEmpty,
@@ -147,49 +141,48 @@ void main() {
       // post-connect sync runs against the mock.
       await pumpUntil(
         tester,
-        () => find.textContaining('Connected and synced').evaluate().isNotEmpty,
+        () => cueLabelled('Connected and synced.').evaluate().isNotEmpty,
       );
 
-      expect(find.textContaining('Connected and synced'), findsOneWidget);
+      expect(cueLabelled('Connected and synced.'), findsOneWidget);
     });
   });
-  testWidgets(
-    'device flow connects but surfaces a post-connect sync failure',
-    (tester) async {
-      final mock = MockClient((req) async {
-        if (req.url.path.contains('device/code')) {
-          return http.Response(
-            jsonEncode({
-              'device_code': 'dev123',
-              'user_code': 'WXYZ-1234',
-              'verification_uri': 'https://github.com/login/device',
-              'interval': 0,
-              'expires_in': 900,
-            }),
-            200,
-          );
-        }
-        if (req.url.path.contains('login/oauth/access_token')) {
-          return http.Response(jsonEncode({'access_token': 'gho_test'}), 200);
-        }
-        return http.Response('boom', 500); // the sync's repo calls fail
-      });
-
-      await tester.runAsync(() async {
-        await tester.pumpWidget(
-          MaterialApp(home: GitHubMirrorScreen(httpClient: mock)),
+  testWidgets('device flow connects but surfaces a post-connect sync failure', (
+    tester,
+  ) async {
+    final mock = MockClient((req) async {
+      if (req.url.path.contains('device/code')) {
+        return http.Response(
+          jsonEncode({
+            'device_code': 'dev123',
+            'user_code': 'WXYZ-1234',
+            'verification_uri': 'https://github.com/login/device',
+            'interval': 0,
+            'expires_in': 900,
+          }),
+          200,
         );
-        await settle(tester);
-        await enterClientId(tester, 'cid');
+      }
+      if (req.url.path.contains('login/oauth/access_token')) {
+        return http.Response(jsonEncode({'access_token': 'gho_test'}), 200);
+      }
+      return http.Response('boom', 500); // the sync's repo calls fail
+    });
 
-        await tester.tap(find.text('Connect GitHub'));
-        await pumpUntil(
-          tester,
-          () => find.textContaining('sync failed').evaluate().isNotEmpty,
-        );
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        MaterialApp(home: GitHubMirrorScreen(httpClient: mock)),
+      );
+      await settle(tester);
+      await enterClientId(tester, 'cid');
 
-        expect(find.textContaining('sync failed'), findsOneWidget);
-      });
-    },
-  );
+      await tester.tap(byIconLabel('Connect GitHub'));
+      await pumpUntil(
+        tester,
+        () => cueOfKind(CueKind.error).evaluate().isNotEmpty,
+      );
+
+      expect(cueOfKind(CueKind.error), findsOneWidget);
+    });
+  });
 }

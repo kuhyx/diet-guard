@@ -47,7 +47,7 @@ class LocalNotificationsBackend implements NotificationBackend {
       Future.value();
 
   @override
-  Future<void> show(int slot, String title, String body) async {
+  Future<void> show(int slot, String title) async {
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
         _channelId,
@@ -56,12 +56,7 @@ class LocalNotificationsBackend implements NotificationBackend {
         priority: Priority.high,
       ),
     );
-    await plugin.show(
-      id: slot,
-      title: title,
-      body: body,
-      notificationDetails: details,
-    );
+    await plugin.show(id: slot, title: title, notificationDetails: details);
   }
 
   @override

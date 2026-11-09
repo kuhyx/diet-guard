@@ -6,6 +6,9 @@
 /// likely to be typed, and it syncs from there to the phone), while the
 /// **fetch button** is Android-only, because the panel sends no CORS headers
 /// and a browser cannot call it at all.
+///
+/// The section paints no text: controls are found by the spoken label their
+/// icon carries, outcomes by the [StatusCue] kind they show.
 library;
 
 import 'dart:async';
@@ -13,8 +16,11 @@ import 'dart:async';
 import 'package:diet_guard_app/screens/settings_kuchnia.dart';
 import 'package:diet_guard_app/services/document_store.dart';
 import 'package:diet_guard_app/services/kuchnia_credential_service.dart';
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../label_finders.dart';
 
 /// In-memory store, so these tests need no plugin channel.
 class _MemoryStore implements DocumentStore {
@@ -29,14 +35,29 @@ class _MemoryStore implements DocumentStore {
   }
 }
 
-Widget _host({required bool canFetch, Future<String> Function()? onFetch}) =>
-    MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: KuchniaSettingsSection(canFetch: canFetch, onFetch: onFetch),
-        ),
-      ),
-    );
+Widget _host({
+  required bool canFetch,
+  Future<FetchOutcome> Function()? onFetch,
+}) => MaterialApp(
+  home: Scaffold(
+    body: SingleChildScrollView(
+      child: KuchniaSettingsSection(canFetch: canFetch, onFetch: onFetch),
+    ),
+  ),
+);
+
+const _fetchLabel = "Fetch today's delivery";
+
+/// The fetch button: the [IconButton] holding the delivery icon (or, while a
+/// fetch runs, the spinner that replaces it).
+Finder _fetchButton() => find.ancestor(
+  of: find.byWidgetPredicate(
+    (w) =>
+        w is CircularProgressIndicator ||
+        (w is Icon && w.semanticLabel == _fetchLabel),
+  ),
+  matching: find.byType(IconButton),
+);
 
 void main() {
   setUp(() => KuchniaCredentialService.resetForTesting(store: _MemoryStore()));
@@ -44,28 +65,22 @@ void main() {
 
   testWidgets('shows both credential fields on every platform', (tester) async {
     await tester.pumpWidget(_host(canFetch: false));
-    expect(find.text('Panel e-mail'), findsOneWidget);
-    expect(find.text('Panel password'), findsOneWidget);
+    expect(fieldByLabel('Panel e-mail'), findsOneWidget);
+    expect(fieldByLabel('Panel password'), findsOneWidget);
   });
 
-  testWidgets('offers the fetch button only where it can work', (tester) async {
+  testWidgets('the fetch button works only where it can', (tester) async {
     await tester.pumpWidget(_host(canFetch: true));
-    expect(find.text("Fetch today's delivery"), findsOneWidget);
+    expect(tester.widget<IconButton>(_fetchButton()).onPressed, isNotNull);
 
     await tester.pumpWidget(_host(canFetch: false));
     await tester.pumpAndSettle();
-    expect(find.text("Fetch today's delivery"), findsNothing);
-  });
-
-  testWidgets('explains the missing button rather than hiding it silently', (
-    tester,
-  ) async {
-    await tester.pumpWidget(_host(canFetch: false));
     expect(
-      find.textContaining('Android only'),
-      findsOneWidget,
-      reason: 'a browser user needs to know why there is no fetch button, and '
-          'that entering the login here still helps their phone',
+      tester.widget<IconButton>(_fetchButton()).onPressed,
+      isNull,
+      reason:
+          'a browser user sees the button greyed out instead of vanishing; '
+          'entering the login here still helps their phone',
     );
   });
 
@@ -73,12 +88,12 @@ void main() {
     await tester.pumpWidget(_host(canFetch: true));
     await tester.enterText(find.byType(TextField).first, 'me@example.com');
     await tester.enterText(find.byType(TextField).last, 'hunter2');
-    await tester.tap(find.text('Save login'));
+    await tester.tap(controlByLabel('Save login'));
     await tester.pumpAndSettle();
 
     expect(KuchniaCredentialService.username, 'me@example.com');
     expect(KuchniaCredentialService.password, 'hunter2');
-    expect(find.textContaining('Saved'), findsOneWidget);
+    expect(cueOfKind(CueKind.ok), findsOneWidget);
   });
 
   testWidgets('the password is obscured until revealed', (tester) async {
@@ -87,27 +102,37 @@ void main() {
         tester.widget<TextField>(find.byType(TextField).last);
     expect(passwordField().obscureText, isTrue);
 
-    await tester.tap(find.byTooltip('Show password'));
+    await tester.tap(controlByLabel('Show password'));
     await tester.pumpAndSettle();
     expect(passwordField().obscureText, isFalse);
   });
 
-  testWidgets('a fetch shows its result', (tester) async {
+  testWidgets('a fetch shows its result as a cue and a count', (tester) async {
     await tester.pumpWidget(
-      _host(canFetch: true, onFetch: () async => '3 dishes added'),
+      _host(
+        canFetch: true,
+        onFetch: () async =>
+            const FetchOutcome(CueKind.ok, '3 dishes added', count: 3),
+      ),
     );
-    await tester.tap(find.text("Fetch today's delivery"));
+    await tester.tap(controlByLabel(_fetchLabel));
     await tester.pumpAndSettle();
-    expect(find.text('3 dishes added'), findsOneWidget);
+    expect(cueOfKind(CueKind.ok), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
   });
 
-  testWidgets('a failed fetch shows the reason, not a crash', (tester) async {
+  testWidgets('a failed fetch shows an error cue, not a crash', (tester) async {
     await tester.pumpWidget(
-      _host(canFetch: true, onFetch: () async => 'catering login rejected'),
+      _host(
+        canFetch: true,
+        onFetch: () async =>
+            const FetchOutcome(CueKind.error, 'catering login rejected'),
+      ),
     );
-    await tester.tap(find.text("Fetch today's delivery"));
+    await tester.tap(controlByLabel(_fetchLabel));
     await tester.pumpAndSettle();
-    expect(find.text('catering login rejected'), findsOneWidget);
+    expect(cueLabelled('catering login rejected'), findsOneWidget);
+    expect(cueOfKind(CueKind.error), findsOneWidget);
   });
 
   testWidgets('the fetch button is disabled while a fetch is in flight', (
@@ -115,16 +140,15 @@ void main() {
   ) async {
     // Otherwise an impatient double-tap pays a second login plus three
     // requests against a third party.
-    final gate = Completer<String>();
+    final gate = Completer<FetchOutcome>();
     await tester.pumpWidget(_host(canFetch: true, onFetch: () => gate.future));
 
-    await tester.tap(find.text("Fetch today's delivery"));
+    await tester.tap(controlByLabel(_fetchLabel));
     await tester.pump();
-    expect(find.text('Fetching…'), findsOneWidget);
-    final button = tester.widget<OutlinedButton>(find.byType(OutlinedButton));
-    expect(button.onPressed, isNull);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(tester.widget<IconButton>(_fetchButton()).onPressed, isNull);
 
-    gate.complete('done');
+    gate.complete(const FetchOutcome(CueKind.ok, 'done'));
     await tester.pumpAndSettle();
   });
 }

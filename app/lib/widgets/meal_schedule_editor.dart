@@ -4,6 +4,7 @@ library;
 
 import 'package:diet_guard_app/models/meal_schedule.dart';
 import 'package:diet_guard_app/models/slot.dart';
+import 'package:diet_guard_app/ui/icon_field.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/meal_time_dropdown.dart';
 import 'package:flutter/material.dart';
@@ -61,15 +62,9 @@ class MealScheduleEditor extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Meal times', style: theme.textTheme.titleMedium),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          'Checkpoints are spread evenly between your first and last meal.',
-          style: theme.textTheme.bodySmall,
-        ),
-        const SizedBox(height: 12),
         MealTimeDropdown(
-          label: 'First meal',
+          icon: Icons.light_mode_outlined,
+          semanticLabel: 'First meal',
           value: schedule.firstMinute,
           minMinute: 0,
           maxMinute: _firstMax,
@@ -78,7 +73,8 @@ class MealScheduleEditor extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         MealTimeDropdown(
-          label: 'Last meal',
+          icon: Icons.dark_mode_outlined,
+          semanticLabel: 'Last meal',
           value: schedule.lastMinute,
           // At least one grid step after the first meal: the shortest window
           // that still holds two distinct checkpoints.
@@ -89,21 +85,26 @@ class MealScheduleEditor extends StatelessWidget {
         const SizedBox(height: 12),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: AppWidth.field),
-          child: InputDecorator(
-            decoration: const InputDecoration(labelText: 'Meals per day'),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                value: counts.contains(schedule.count)
-                    ? schedule.count
-                    : counts.last,
-                isDense: true,
-                isExpanded: true,
-                items: [
-                  for (final count in counts)
-                    DropdownMenuItem(value: count, child: Text('$count')),
-                ],
-                onChanged: (count) =>
-                    count == null ? null : onChanged(_with(count: count)),
+          child: SpokenLabel(
+            semanticLabel: 'Meals per day',
+            child: InputDecorator(
+              decoration: const InputDecoration(
+                prefixIcon: ExcludeSemantics(child: Icon(Icons.restaurant)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  value: counts.contains(schedule.count)
+                      ? schedule.count
+                      : counts.last,
+                  isDense: true,
+                  isExpanded: true,
+                  items: [
+                    for (final count in counts)
+                      DropdownMenuItem(value: count, child: Text('$count')),
+                  ],
+                  onChanged: (count) =>
+                      count == null ? null : onChanged(_with(count: count)),
+                ),
               ),
             ),
           ),

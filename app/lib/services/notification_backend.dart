@@ -20,8 +20,9 @@ abstract class NotificationBackend {
   /// of the app.
   Future<bool?> requestPermission();
 
-  /// Posts (or replaces) the notification for [slot].
-  Future<void> show(int slot, String title, String body);
+  /// Posts (or replaces) the notification for [slot], titled with the slot's
+  /// clock time and carrying no body text.
+  Future<void> show(int slot, String title);
 
   /// Removes the notification for [slot], if one is showing.
   Future<void> cancel(int slot);
