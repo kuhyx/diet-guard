@@ -18,6 +18,7 @@ import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_feedback.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/autocomplete_suggestion_list.dart';
 import 'package:diet_guard_app/widgets/fill_all_row.dart';
@@ -59,8 +60,13 @@ class _LogMealScreenState extends State<LogMealScreen>
   @override
   int? selectedSlot;
   String _source = 'manual';
-  String? _status;
+  CueState? _cue; // painted as a tinted icon, never as text
   TodayProgress? _progress;
+
+  void _setCue(CueKind kind, String? label) {
+    _cue = label == null ? null : CueState.next(_cue, kind, label);
+    _progress = null;
+  }
 
   @override
   void initState() {
@@ -117,10 +123,8 @@ class _LogMealScreenState extends State<LogMealScreen>
   @override
   void onDishPrefilled() => setState(() => _source = 'catering');
   @override
-  void showFillStatus(String message) => setState(() {
-    _status = message;
-    _progress = null;
-  });
+  void showFillStatus(String message, {CueKind kind = CueKind.info}) =>
+      setState(() => _setCue(kind, message));
 
   void _onSuggestionSelected(FoodSuggestion suggestion) {
     fillControllersFromSuggestion(suggestion, _descController, _macros);
@@ -133,18 +137,12 @@ class _LogMealScreenState extends State<LogMealScreen>
   Future<void> _onLogMeal() async {
     final desc = _descController.text.trim();
     if (desc.isEmpty) {
-      setState(() {
-        _status = 'Type what you ate first.';
-        _progress = null;
-      });
+      setState(() => _setCue(CueKind.error, 'Type what you ate first.'));
       return;
     }
     final target = resolveLogTarget(selectedSlot);
     if (target.error != null) {
-      setState(() {
-        _status = target.error;
-        _progress = null;
-      });
+      setState(() => _setCue(CueKind.error, target.error));
       return;
     }
     // On the tap, before the write/sync: waiting for them is just latency.
@@ -171,7 +169,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     // becomes a dead letter -- the exact regression the PC gate once shipped.
     advanceQueueAfterLog(desc);
     setState(() {
-      _status = queueStatusLine;
+      _setCue(CueKind.info, queueStatusLine);
       _progress = buildTodayProgress(log, logged: entry);
     });
   }
@@ -180,7 +178,8 @@ class _LogMealScreenState extends State<LogMealScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Diet Guard'),
+        // No title: the app's identity is the launcher icon, and the five
+        // destination glyphs fill the bar.
         actions: [
           ...logMealAppBarActions(
             onFoodBank: onOpenFoodBank,
@@ -206,9 +205,10 @@ class _LogMealScreenState extends State<LogMealScreen>
                   setState(() => selectedSlot = slot),
             ),
             const SizedBox(height: 8),
-            TextField(
+            IconField(
               controller: _descController,
-              decoration: const InputDecoration(labelText: 'What did you eat?'),
+              icon: Icons.fastfood,
+              semanticLabel: 'What did you eat?',
             ),
             AutocompleteSuggestionList(
               suggestions: _suggestions,
@@ -231,12 +231,12 @@ class _LogMealScreenState extends State<LogMealScreen>
               busy: fillFlow.busy || deliveryBusy,
               armedCount: fillFlow.armedCount,
             ),
-            // Mutually exclusive: _status carries a validation complaint,
-            // _progress the post-log summary. A successful log clears one
-            // and sets the other, so the two never stack.
-            if (_status != null) ...[
+            // Mutually exclusive: _cue carries a validation complaint or
+            // queue note, _progress the post-log summary; the two may stack
+            // only after a log that leaves dishes queued.
+            if (_cue != null) ...[
               const SizedBox(height: AppSpacing.sm),
-              Text(_status!),
+              _cue!.widget,
             ],
             if (_progress != null) ...[
               const SizedBox(height: AppSpacing.sm),

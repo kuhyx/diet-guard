@@ -91,21 +91,32 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
     final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Icon(Icons.event, size: 18, color: scheme.onSurfaceVariant),
+        Icon(
+          Icons.event,
+          size: 18,
+          color: scheme.onSurfaceVariant,
+          semanticLabel: 'Log date',
+        ),
         const SizedBox(width: AppSpacing.xs),
-        Expanded(child: Text(date == null ? 'Today' : localDateKey(date))),
-        TextButton.icon(
+        // Today is the default and needs no word; only a picked date (data)
+        // is shown.
+        Expanded(
+          child: date == null ? const SizedBox() : Text(localDateKey(date)),
+        ),
+        IconButton(
           // Not Icons.calendar_month: the app bar's own "Calendar" nav button
           // already uses that, and a second one on screen makes
           // `find.byIcon` ambiguous for widget tests (and taps) alike.
-          icon: const Icon(Icons.date_range, size: 18),
-          label: Text(date == null ? 'Log for later' : 'Change date'),
+          icon: Icon(
+            Icons.date_range,
+            size: 18,
+            semanticLabel: date == null ? 'Log for later' : 'Change date',
+          ),
           onPressed: _pickFutureDate,
         ),
         if (date != null)
           IconButton(
-            icon: const Icon(Icons.close),
-            tooltip: 'Back to today',
+            icon: const Icon(Icons.close, semanticLabel: 'Back to today'),
             onPressed: resetFutureLog,
           ),
       ],

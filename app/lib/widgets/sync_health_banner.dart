@@ -40,16 +40,22 @@ class SyncHealthBanner extends StatelessWidget {
         border: Border.all(color: warning.withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(8),
       ),
+      // A glyph and, once an hour or more has passed, the elapsed time as a
+      // numeral (`2d`). The sentence survives only as the spoken label.
       child: Row(
         children: [
-          Icon(Icons.cloud_off, size: 18, color: warning),
+          Icon(
+            Icons.cloud_off,
+            size: 18,
+            color: warning,
+            semanticLabel: message,
+          ),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
+          if (status?.agoShort case final ago?)
+            Text(
+              ago,
               style: theme.textTheme.bodySmall?.copyWith(color: warning),
             ),
-          ),
         ],
       ),
     );

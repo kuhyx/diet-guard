@@ -45,28 +45,23 @@ List<Widget> logMealAppBarActions({
   required VoidCallback onBody,
 }) => [
   IconButton(
-    icon: const Icon(Icons.monitor_weight),
-    tooltip: 'Body',
+    icon: const Icon(Icons.monitor_weight, semanticLabel: 'Body'),
     onPressed: onBody,
   ),
   IconButton(
-    icon: const Icon(Icons.restaurant_menu),
-    tooltip: 'Food bank',
+    icon: const Icon(Icons.restaurant_menu, semanticLabel: 'Food bank'),
     onPressed: onFoodBank,
   ),
   IconButton(
-    icon: const Icon(Icons.history),
-    tooltip: 'History',
+    icon: const Icon(Icons.history, semanticLabel: 'History'),
     onPressed: onHistory,
   ),
   IconButton(
-    icon: const Icon(Icons.calendar_month),
-    tooltip: 'Calendar',
+    icon: const Icon(Icons.calendar_month, semanticLabel: 'Calendar'),
     onPressed: onCalendar,
   ),
   IconButton(
-    icon: const Icon(Icons.settings),
-    tooltip: 'Sync settings',
+    icon: const Icon(Icons.settings, semanticLabel: 'Sync settings'),
     onPressed: onSettings,
   ),
 ];

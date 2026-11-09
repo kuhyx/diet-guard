@@ -19,9 +19,12 @@ import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
+import 'package:diet_guard_app/widgets/food_bank/fb_record_tile.dart';
 import 'package:diet_guard_app/widgets/today_progress_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../label_finders.dart';
 
 import '../body_screen_support.dart';
 import 'fit_support.dart';
@@ -74,7 +77,7 @@ void main() {
     await _pump(tester, const LogMealScreen());
     await tester.enterText(find.byType(TextField).first, 'Oats');
     await tester.runAsync(() async {
-      await tester.tap(find.byTooltip('Log meal'));
+      await tester.tap(controlByLabel('Log meal'));
       await Future<void>.delayed(const Duration(milliseconds: 500));
     });
     await tester.pump(const Duration(milliseconds: 300));
@@ -113,7 +116,7 @@ void main() {
     // A tile is hit-testable, and long-press/tap opens its detail sheet.
     await tester.tap(first);
     await tester.pumpAndSettle();
-    expect(find.textContaining('P 1 g'), findsOneWidget);
+    expect(find.byType(RecordTile), findsOneWidget);
     await tester.tapAt(const Offset(200, 50)); // scrim closes the sheet
     await tester.pumpAndSettle();
     // Swiping to the next page reveals foods not on the first page.

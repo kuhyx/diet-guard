@@ -25,6 +25,7 @@ import 'package:diet_guard_app/services/kuchnia_queue.dart';
 import 'package:diet_guard_app/services/kuchnia_spread.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
 import 'package:flutter/material.dart';
 
@@ -186,9 +187,14 @@ mixin LogMealKuchniaMixin<T extends StatefulWidget> on State<T> {
       if (mounted) setState(() => deliveryBusy = false);
     }
     if (!mounted || message == null) return;
-    ScaffoldMessenger.of(
+    // The outcome sentence stays as the spoken label; the snackbar paints
+    // only a warning glyph (no delivery / not ready / fetch failed).
+    showCueSnack(
       context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+      kind: CueKind.warn,
+      semanticLabel: message,
+      icon: Icons.restaurant,
+    );
   }
 
   /// Prefills the form with the next queued dish, if there is one.

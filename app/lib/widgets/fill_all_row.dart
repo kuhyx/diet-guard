@@ -9,8 +9,8 @@ import 'package:diet_guard_app/services/kuchnia_client.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:flutter/material.dart';
 
-/// Resting label, mirroring the PC gate's "🍱 Fill all".
-const fillAllLabel = '🍱 Fill all with catering';
+/// Spoken name of the resting button (never painted).
+const fillAllLabel = 'Fill all with catering';
 
 /// Fill-all button; relabels to "✓ Confirm (N)" once a proposal is armed.
 class FillAllRow extends StatelessWidget {
@@ -52,26 +52,42 @@ class FillAllRow extends StatelessWidget {
         Expanded(
           child: OutlinedButton(
             onPressed: busy ? null : onFill,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(_label(armed), maxLines: 1),
-            ),
+            child: _face(context, armed),
           ),
         ),
         if (armed) ...[
           const SizedBox(width: AppSpacing.sm),
-          TextButton(
+          IconButton(
             onPressed: busy ? null : onCancel,
-            child: const Text('Cancel'),
+            icon: const Icon(Icons.close, semanticLabel: 'Cancel'),
           ),
         ],
       ],
     );
   }
 
-  String _label(bool armed) {
-    if (busy) return 'Working…';
-    if (armed) return '✓ Confirm ($armedCount)';
-    return fillAllLabel;
+  /// Resting glyph; spinner while busy; double check + count once armed.
+  Widget _face(BuildContext context, bool armed) {
+    if (busy) {
+      return const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    if (!armed) {
+      return const Icon(Icons.playlist_add_check, semanticLabel: fillAllLabel);
+    }
+    final success =
+        (Theme.of(context).extension<AppStatusColors>() ?? AppStatusColors.dark)
+            .success;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.done_all, color: success, semanticLabel: 'Confirm'),
+        const SizedBox(width: AppSpacing.xs),
+        Text('$armedCount'),
+      ],
+    );
   }
 }

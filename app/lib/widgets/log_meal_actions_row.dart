@@ -52,44 +52,44 @@ class LogMealActionsRow extends StatelessWidget {
     final canFetch = canFetchDelivery ?? kuchniaFetchSupported;
     return Row(
       children: [
-        // Flexible, not Spacer-and-hope: `OutlinedButton.icon` lays its label
-        // out unbounded, so on a narrow phone the queue suffix renders wider
-        // than the row and is clipped without ever throwing an overflow. The
-        // Flexible caps the width and the FittedBox scales the text into it.
+        // Expanded so the delivery button takes the slack and pushes the log
+        // button right; the queue is a numeral next to the icon, so there is
+        // no wide label to clip. While fetching the icon becomes a spinner.
         if (canFetch)
           Expanded(
-            child: Tooltip(
-              message: "Load today's catering delivery",
-              child: OutlinedButton.icon(
-                onPressed: deliveryBusy ? null : onLoadDelivery,
-                icon: const Icon(Icons.restaurant),
-                label: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(_label, maxLines: 1),
-                ),
+            child: OutlinedButton(
+              onPressed: deliveryBusy ? null : onLoadDelivery,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (deliveryBusy)
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    const Icon(
+                      Icons.restaurant,
+                      semanticLabel: "Load today's catering delivery",
+                    ),
+                  if (dishesQueued > 0) ...[
+                    const SizedBox(width: AppSpacing.xs),
+                    Text('$dishesQueued'),
+                  ],
+                ],
               ),
             ),
           ),
-        // No Spacer: it is a flex child too, so it would split the free space
-        // with the Flexible above and re-create the clipping this guards
-        // against. The Flexible takes the slack and pushes the log button
-        // right on its own.
+        // No Spacer when the delivery button is present: it is a flex child
+        // too and would split the free space with the Expanded above.
         if (!canFetch) const Spacer(),
         const SizedBox(width: AppSpacing.sm),
-        Tooltip(
-          message: 'Log meal',
-          child: FilledButton(
-            onPressed: onLog,
-            child: const Icon(Icons.check_circle),
-          ),
+        FilledButton(
+          onPressed: onLog,
+          child: const Icon(Icons.check_circle, semanticLabel: 'Log meal'),
         ),
       ],
     );
-  }
-
-  String get _label {
-    if (deliveryBusy) return 'Loading…';
-    if (dishesQueued > 0) return "Today's delivery ($dishesQueued more to go)";
-    return "Today's delivery";
   }
 }

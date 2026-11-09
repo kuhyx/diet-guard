@@ -15,6 +15,8 @@ import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../label_finders.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
@@ -65,7 +67,7 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  final logMealButton = find.byTooltip('Log meal');
+  final logMealButton = controlByLabel('Log meal');
 
   // The screen's button handlers and description-field listener trigger
   // real `dart:io` file I/O as fire-and-forget Futures that Flutter's frame
@@ -107,7 +109,7 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
       await settle(tester);
 
-      await tester.tap(find.byTooltip('Body'));
+      await tester.tap(controlByLabel('Body'));
       await settle(tester);
 
       expect(find.byType(BodyScreen), findsOneWidget);

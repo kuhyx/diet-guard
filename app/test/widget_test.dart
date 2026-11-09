@@ -4,7 +4,10 @@ import 'package:diet_guard_app/services/document_store_io.dart';
 import 'package:diet_guard_app/main.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'label_finders.dart';
 
 void main() {
   late Directory tempDir;
@@ -31,7 +34,7 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    expect(find.text('Diet Guard'), findsOneWidget);
-    expect(find.text('What did you eat?'), findsOneWidget);
+    expect(find.byType(LogMealScreen), findsOneWidget);
+    expect(fieldByLabel('What did you eat?'), findsOneWidget);
   });
 }

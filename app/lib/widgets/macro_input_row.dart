@@ -4,6 +4,8 @@
 library;
 
 import 'package:diet_guard_app/models/nutrition.dart';
+import 'package:diet_guard_app/ui/cues.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:flutter/material.dart';
 
 /// Text controllers for one macro-entry row, owned by the calling screen so
@@ -91,7 +93,8 @@ class MacroControllers {
   }
 }
 
-/// A labeled row of number-entry fields for calories, macros, and the
+/// A row of number-entry fields, each captioned by an icon: calories,
+/// macros, and the
 /// optional reference-weight-vs-eaten-weight split.
 ///
 /// Layout mirrors the Python gate's macro section: the reference weight
@@ -116,76 +119,59 @@ class MacroInputRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fields = [
+      _macroField(MacroKind.perGrams, controllers.perGrams),
+      _macroField(MacroKind.kcal, controllers.kcal),
+      _macroField(MacroKind.protein, controllers.protein),
+      _macroField(MacroKind.carbs, controllers.carbs),
+      _macroField(MacroKind.fat, controllers.fat),
+      _macroField(MacroKind.eaten, controllers.grams),
+    ];
     if (compact) {
       return Row(
         children: [
-          Expanded(child: _macroField('per', controllers.perGrams)),
-          const SizedBox(width: 4),
-          Expanded(child: _macroField('kcal', controllers.kcal)),
-          const SizedBox(width: 4),
-          Expanded(child: _macroField('P', controllers.protein)),
-          const SizedBox(width: 4),
-          Expanded(child: _macroField('C', controllers.carbs)),
-          const SizedBox(width: 4),
-          Expanded(child: _macroField('F', controllers.fat)),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Tooltip(
-              message: "blank = same as 'per (g)'",
-              child: _macroField('eaten', controllers.grams),
-            ),
-          ),
+          for (final (i, field) in fields.indexed) ...[
+            if (i > 0) const SizedBox(width: 4),
+            Expanded(child: field),
+          ],
         ],
       );
     }
+    // Reference weight and kcal share a line, then the three macros, then the
+    // eaten weight: the same order the Python gate shows them in.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // per-gram reference weight and kcal on the same line.
         Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            SizedBox(
-              width: 72,
-              child: _macroField('per (g)', controllers.perGrams),
-            ),
+            SizedBox(width: 96, child: fields[0]),
             const SizedBox(width: 8),
-            Expanded(child: _macroField('kcal', controllers.kcal)),
+            Expanded(child: fields[1]),
           ],
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            Expanded(child: _macroField('protein g', controllers.protein)),
-            const SizedBox(width: 8),
-            Expanded(child: _macroField('carbs g', controllers.carbs)),
-            const SizedBox(width: 8),
-            Expanded(child: _macroField('fat g', controllers.fat)),
+            for (final (i, field) in fields.sublist(2, 5).indexed) ...[
+              if (i > 0) const SizedBox(width: 8),
+              Expanded(child: field),
+            ],
           ],
         ),
         const SizedBox(height: 8),
-        _macroField(
-          'eaten (g)',
-          controllers.grams,
-          helperText: "blank = same as 'per (g)'",
-        ),
+        fields[5],
       ],
     );
   }
 
-  Widget _macroField(
-    String label,
-    TextEditingController controller, {
-    String? helperText,
-  }) {
-    return TextField(
+  Widget _macroField(MacroKind kind, TextEditingController controller) {
+    return IconField(
+      icon: kind.icon,
+      iconColor: kind.color,
+      semanticLabel: kind.semanticLabel(compact: compact),
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(
-        labelText: label,
-        helperText: helperText,
-        isDense: true,
-      ),
+      dense: true,
     );
   }
 }

@@ -12,6 +12,7 @@ import 'package:diet_guard_app/screens/log_meal_sync_mixin.dart';
 import 'package:diet_guard_app/services/kuchnia_fill_flow.dart';
 import 'package:diet_guard_app/services/kuchnia_queue.dart';
 import 'package:diet_guard_app/services/kuchnia_spread.dart';
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:flutter/material.dart';
 
 /// Drives the screen's [FillAllFlow] and tidies the screen after a fill.
@@ -21,8 +22,9 @@ mixin LogMealFillMixin<T extends StatefulWidget>
   /// armed proposal along with it.
   FillAllFlow fillFlow = FillAllFlow();
 
-  /// Shows [message] in the form's status line. Supplied by the screen.
-  void showFillStatus(String message);
+  /// Shows [message] as a status cue of [kind] (its words are only spoken).
+  /// Supplied by the screen.
+  void showFillStatus(String message, {CueKind kind = CueKind.info});
 
   /// A proposal belongs to the date it was fetched for; picking another (or
   /// going back to today) must not leave "Confirm (N)" offering it.
@@ -49,7 +51,9 @@ mixin LogMealFillMixin<T extends StatefulWidget>
       // for the next tick, and the user is told the batch did not finish.
       await publishAfterLog();
       await refreshSlots();
-      if (mounted) showFillStatus('Fill all failed: $error');
+      if (mounted) {
+        showFillStatus('Fill all failed: $error', kind: CueKind.error);
+      }
       return;
     }
     if (!mounted) return;
@@ -59,7 +63,10 @@ mixin LogMealFillMixin<T extends StatefulWidget>
       await _afterFill(outcome.written, later: day != null);
     }
     if (!mounted) return;
-    showFillStatus(outcome.message);
+    showFillStatus(
+      outcome.message,
+      kind: outcome.written.isNotEmpty ? CueKind.ok : CueKind.warn,
+    );
   }
 
   /// Disarms a proposal without writing anything.

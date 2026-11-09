@@ -12,6 +12,8 @@ import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../label_finders.dart';
+
 /// Covers logging a meal against a future date/slot through [LogMealScreen]'s
 /// "When" row -- its own file, split out the same way
 /// `log_meal_screen_nav_test.dart` and `log_meal_screen_sync_test.dart` are.
@@ -36,7 +38,7 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  final logMealButton = find.byTooltip('Log meal');
+  final logMealButton = controlByLabel('Log meal');
 
   // See log_meal_screen_test.dart's `settle` for why: fire-and-forget I/O
   // that pumpAndSettle() alone does not wait for.
@@ -58,7 +60,7 @@ void main() {
         await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
         await settle(tester);
 
-        await tester.tap(find.text('Log for later'));
+        await tester.tap(controlByLabel('Log for later'));
         await settle(tester);
         // The date picker's initialDate is already tomorrow, so confirming
         // immediately picks it without touching a specific calendar cell.
@@ -89,8 +91,8 @@ void main() {
         expect(future.time.startsWith(tomorrowKey), isTrue);
 
         // Back to logging for today.
-        expect(find.text('Today'), findsOneWidget);
-        expect(find.text('Log for later'), findsOneWidget);
+        expect(find.text(tomorrowKey), findsNothing);
+        expect(controlByLabel('Log for later'), findsOneWidget);
       });
     },
   );
@@ -102,7 +104,7 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
       await settle(tester);
 
-      await tester.tap(find.text('Log for later'));
+      await tester.tap(controlByLabel('Log for later'));
       await settle(tester);
       await tester.tap(find.text('OK'));
       await settle(tester);
@@ -114,7 +116,7 @@ void main() {
       await tester.tap(logMealButton);
       await settle(tester);
 
-      expect(find.text('Pick a slot for that date first.'), findsOneWidget);
+      expect(cueLabelled('Pick a slot for that date first.'), findsOneWidget);
       final log = await LogStorageService.instance.readLog();
       expect(log.values.expand((e) => e), isEmpty);
     });
@@ -127,17 +129,17 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
       await settle(tester);
 
-      await tester.tap(find.text('Log for later'));
+      await tester.tap(controlByLabel('Log for later'));
       await settle(tester);
       await tester.tap(find.text('OK'));
       await settle(tester);
-      expect(find.text('Today'), findsNothing);
+      expect(find.text(localDateKey(tomorrow())), findsOneWidget);
 
-      await tester.tap(find.byTooltip('Back to today'));
+      await tester.tap(controlByLabel('Back to today'));
       await settle(tester);
 
-      expect(find.text('Today'), findsOneWidget);
-      expect(find.text('Log for later'), findsOneWidget);
+      expect(find.text(localDateKey(tomorrow())), findsNothing);
+      expect(controlByLabel('Log for later'), findsOneWidget);
     });
   });
 }

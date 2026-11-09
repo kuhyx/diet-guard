@@ -3,6 +3,7 @@
 library;
 
 import 'package:diet_guard_app/models/slot.dart';
+import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/progress_motion.dart';
 import 'package:flutter/material.dart';
@@ -87,8 +88,6 @@ class TodayProgressCard extends StatelessWidget {
   /// The values to display.
   final TodayProgress progress;
 
-  static String _plural(int count) => count == 1 ? 'day' : 'days';
-
   static String _grams(double value) => '${value.round()}g';
 
   /// Whole numbers without decimals; fractions exactly, never rounded.
@@ -98,6 +97,7 @@ class TodayProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final status = theme.extension<AppStatusColors>() ?? AppStatusColors.dark;
     final slot = progress.loggedSlotMinute;
     final logged = progress.loggedKcal;
     final from = progress.previousKcal ?? progress.consumedKcal;
@@ -118,31 +118,55 @@ class TodayProgressCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (slot != null && logged != null) ...[
-              Text(
-                '✓ ${slotLabel(slot)} · ${_kcal(logged)} kcal',
-                style: theme.textTheme.labelMedium,
+              Row(
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    size: 16,
+                    color: status.success,
+                    semanticLabel: 'logged',
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(slotLabel(slot), style: theme.textTheme.labelMedium),
+                  const SizedBox(width: AppSpacing.sm),
+                  MacroFigure(kind: MacroKind.kcal, value: _kcal(logged)),
+                ],
               ),
               const SizedBox(height: AppSpacing.xs),
             ],
             CountUp(from: from, to: progress.consumedKcal, builder: _kcalRow),
             const SizedBox(height: AppSpacing.xs),
-            Text(
-              'P ${_grams(progress.proteinG)}  ·  '
-              'C ${_grams(progress.carbsG)}  ·  '
-              'F ${_grams(progress.fatG)}',
-              style: theme.textTheme.labelSmall,
+            Row(
+              children: [
+                MacroFigure(
+                  kind: MacroKind.protein,
+                  value: _grams(progress.proteinG),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                MacroFigure(
+                  kind: MacroKind.carbs,
+                  value: _grams(progress.carbsG),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                MacroFigure(kind: MacroKind.fat, value: _grams(progress.fatG)),
+              ],
             ),
             const SizedBox(height: AppSpacing.xs),
             CountUp(
               from: streakFrom.toDouble(),
               to: progress.adherenceStreak.toDouble(),
-              builder: (context, value) {
-                final days = value.round();
-                return Text(
-                  'Adherence streak: $days ${_plural(days)}',
-                  style: theme.textTheme.labelSmall,
-                );
-              },
+              builder: (context, value) => Row(
+                children: [
+                  Icon(
+                    Icons.local_fire_department,
+                    size: 16,
+                    color: status.warning,
+                    semanticLabel: 'adherence streak',
+                  ),
+                  const SizedBox(width: 3),
+                  Text('${value.round()}', style: theme.textTheme.labelMedium),
+                ],
+              ),
             ),
           ],
         ),
@@ -156,24 +180,49 @@ class TodayProgressCard extends StatelessWidget {
     final colors = theme.colorScheme;
     final remaining = progress.budgetKcal - consumed;
     final over = remaining < 0;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
+    final tint = over ? colors.error : colors.onSurface;
+    // Bar fill = share of the budget used; it turns red AND the right-hand
+    // glyph flips from a flag (room left) to a warning (over) past the budget.
+    final used = progress.budgetKcal > 0
+        ? (consumed / progress.budgetKcal).clamp(0.0, 1.0)
+        : 1.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '${consumed.round()} / ${progress.budgetKcal}',
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: over ? colors.error : colors.onSurface,
-          ),
+        Row(
+          children: [
+            Icon(
+              MacroKind.kcal.icon,
+              size: 18,
+              color: MacroKind.kcal.color,
+              semanticLabel: 'kcal',
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              '${consumed.round()} / ${progress.budgetKcal}',
+              style: theme.textTheme.titleMedium?.copyWith(color: tint),
+            ),
+            const Spacer(),
+            Icon(
+              over ? Icons.warning_amber_rounded : Icons.flag_outlined,
+              size: 16,
+              color: over ? colors.error : colors.onSurfaceVariant,
+              semanticLabel: over ? 'over budget' : 'left',
+            ),
+            const SizedBox(width: 3),
+            Text(
+              '${remaining.abs().round()}',
+              style: theme.textTheme.labelMedium?.copyWith(color: tint),
+            ),
+          ],
         ),
-        const SizedBox(width: AppSpacing.xs),
-        Text('kcal', style: theme.textTheme.labelSmall),
-        const Spacer(),
-        Text(
-          '${remaining.abs().round()} ${over ? 'over' : 'left'}',
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: over ? colors.error : colors.onSurfaceVariant,
-          ),
+        const SizedBox(height: AppSpacing.xs),
+        LinearProgressIndicator(
+          value: used,
+          minHeight: 6,
+          borderRadius: BorderRadius.circular(3),
+          color: over ? colors.error : colors.primary,
+          backgroundColor: colors.surfaceContainerHighest,
         ),
       ],
     );

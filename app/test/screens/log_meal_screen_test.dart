@@ -13,6 +13,8 @@ import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/widgets/today_progress_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../label_finders.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
@@ -50,9 +52,7 @@ void main() {
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
     AppSettingsService.resetForTesting(store: FileDocumentStore(tempDir));
-    BudgetHistoryService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BudgetHistoryService.resetForTesting(store: FileDocumentStore(tempDir));
     await MealScheduleService.initForTesting(FileDocumentStore(tempDir));
   });
 
@@ -65,7 +65,7 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  final logMealButton = find.byTooltip('Log meal');
+  final logMealButton = controlByLabel('Log meal');
 
   // The screen's button handlers and description-field listener trigger
   // real `dart:io` file I/O as fire-and-forget Futures that Flutter's frame
@@ -107,9 +107,7 @@ void main() {
       expect(entries.single.kcal, 150);
     });
   });
-  testWidgets('the progress card summarises today after a log', (
-    tester,
-  ) async {
+  testWidgets('the progress card summarises today after a log', (tester) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
       await settle(tester);
@@ -127,7 +125,7 @@ void main() {
       expect(find.byType(TodayProgressCard), findsOneWidget);
       // Default budget is 2200 with the settings singleton uninitialised.
       expect(find.text('150 / 2200'), findsOneWidget);
-      expect(find.text('2050 left'), findsOneWidget);
+      expect(find.text('2050'), findsOneWidget);
     });
   });
   testWidgets('typing a new description dismisses the progress card', (
@@ -163,7 +161,7 @@ void main() {
       await tester.tap(logMealButton);
       await settle(tester);
 
-      expect(find.text('Type what you ate first.'), findsOneWidget);
+      expect(cueLabelled('Type what you ate first.'), findsOneWidget);
       expect(await LogStorageService.instance.todayEntries(), isEmpty);
     });
   });
@@ -197,54 +195,51 @@ void main() {
       });
     },
   );
-  testWidgets(
-    'selecting a food-bank suggestion stamps source food bank, but '
-    'editing a macro afterward reverts it to manual',
-    (tester) async {
-      await tester.runAsync(() async {
-        const seed = FoodEntry(
-          id: 'seed-1',
-          time: '2026-06-01T08:00:00+02:00',
-          desc: 'seeded food',
-          grams: 100,
-          kcal: 250,
-          proteinG: 10,
-          carbsG: 30,
-          fatG: 8,
-          source: 'manual',
-        );
-        await FoodBankService.instance.rebuildAndPersist({
-          '2026-06-01': [seed],
-        });
-
-        await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
-        await settle(tester);
-
-        // The empty-query suggestion list shows the only banked food.
-        await tester.tap(find.text('seeded food · 250 kcal'));
-        await settle(tester);
-        await tester.ensureVisible(logMealButton);
-        await tester.tap(logMealButton);
-        await settle(tester);
-
-        final firstEntry =
-            (await LogStorageService.instance.todayEntries()).single;
-        expect(firstEntry.source, 'food bank');
-        expect(firstEntry.kcal, 250);
-
-        await tester.tap(find.text('seeded food · 250 kcal'));
-        await settle(tester);
-        await tester.enterText(find.byType(TextField).at(2), '999');
-        await settle(tester);
-        await tester.ensureVisible(logMealButton);
-        await tester.tap(logMealButton);
-        await settle(tester);
-
-        final secondEntry =
-            (await LogStorageService.instance.todayEntries()).last;
-        expect(secondEntry.source, 'manual');
-        expect(secondEntry.kcal, 999);
+  testWidgets('selecting a food-bank suggestion stamps source food bank, but '
+      'editing a macro afterward reverts it to manual', (tester) async {
+    await tester.runAsync(() async {
+      const seed = FoodEntry(
+        id: 'seed-1',
+        time: '2026-06-01T08:00:00+02:00',
+        desc: 'seeded food',
+        grams: 100,
+        kcal: 250,
+        proteinG: 10,
+        carbsG: 30,
+        fatG: 8,
+        source: 'manual',
+      );
+      await FoodBankService.instance.rebuildAndPersist({
+        '2026-06-01': [seed],
       });
-    },
-  );
+
+      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
+      await settle(tester);
+
+      // The empty-query suggestion list shows the only banked food.
+      await tester.tap(find.text('seeded food'));
+      await settle(tester);
+      await tester.ensureVisible(logMealButton);
+      await tester.tap(logMealButton);
+      await settle(tester);
+
+      final firstEntry =
+          (await LogStorageService.instance.todayEntries()).single;
+      expect(firstEntry.source, 'food bank');
+      expect(firstEntry.kcal, 250);
+
+      await tester.tap(find.text('seeded food'));
+      await settle(tester);
+      await tester.enterText(find.byType(TextField).at(2), '999');
+      await settle(tester);
+      await tester.ensureVisible(logMealButton);
+      await tester.tap(logMealButton);
+      await settle(tester);
+
+      final secondEntry =
+          (await LogStorageService.instance.todayEntries()).last;
+      expect(secondEntry.source, 'manual');
+      expect(secondEntry.kcal, 999);
+    });
+  });
 }

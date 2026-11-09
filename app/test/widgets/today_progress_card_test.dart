@@ -2,6 +2,8 @@ import 'package:diet_guard_app/widgets/today_progress_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../label_finders.dart';
+
 TodayProgress _progress({
   double consumedKcal = 1450,
   int budgetKcal = 2200,
@@ -55,8 +57,8 @@ void main() {
       // what the user had just typed. Pinned so it does not creep back.
       expect(find.textContaining('Logged'), findsNothing);
       expect(find.text('1450 / 2200'), findsOneWidget);
-      expect(find.text('750 left'), findsOneWidget);
-      expect(find.text('P 90g  ·  C 120g  ·  F 40g'), findsOneWidget);
+      expect(find.text('750'), findsOneWidget);
+      expect(find.text('90g'), findsOneWidget);
     });
 
     testWidgets('reports the overshoot in the error color when over', (
@@ -64,7 +66,7 @@ void main() {
     ) async {
       await _pump(tester, _progress(consumedKcal: 2500));
 
-      expect(find.text('300 over'), findsOneWidget);
+      expect(find.text('300'), findsOneWidget);
       final total = tester.widget<Text>(find.text('2500 / 2200'));
       final context = tester.element(find.text('2500 / 2200'));
       expect(total.style?.color, Theme.of(context).colorScheme.error);
@@ -72,10 +74,10 @@ void main() {
 
     testWidgets('pluralises the adherence streak', (tester) async {
       await _pump(tester, _progress(adherenceStreak: 1));
-      expect(find.text('Adherence streak: 1 day'), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
 
       await _pump(tester, _progress(adherenceStreak: 12));
-      expect(find.text('Adherence streak: 12 days'), findsOneWidget);
+      expect(find.text('12'), findsOneWidget);
     });
 
     testWidgets('rounds fractional kcal and macros for display', (
@@ -87,7 +89,7 @@ void main() {
       );
 
       expect(find.text('1451 / 2200'), findsOneWidget);
-      expect(find.text('P 90g  ·  C 0g  ·  F 0g'), findsOneWidget);
+      expect(find.text('90g'), findsOneWidget);
     });
   });
 }

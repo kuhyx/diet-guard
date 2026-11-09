@@ -13,6 +13,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../label_finders.dart';
+
 void main() {
   late Directory dir;
   final haptics = <String>[];
@@ -60,7 +62,7 @@ void main() {
       await settle(tester);
       await tester.enterText(find.byType(TextField).at(0), 'toast');
       await settle(tester);
-      await tester.tap(find.byTooltip('Log meal'));
+      await tester.tap(controlByLabel('Log meal'));
       // One frame, no I/O wait: the haptic must not wait for the write.
       await tester.pump();
       expect(haptics, ['HapticFeedbackType.lightImpact']);
@@ -80,23 +82,24 @@ void main() {
       await settle(tester);
       await tester.enterText(find.byType(TextField).at(0), 'toast');
       await settle(tester);
-      await tester.tap(find.byTooltip('Log meal'));
+      await tester.tap(controlByLabel('Log meal'));
       await settle(tester);
       expect(haptics, ['HapticFeedbackType.lightImpact']);
       expect(cues, 0);
     });
   });
 
-  testWidgets('a rejected log (empty description) does not buzz', (
+  testWidgets('a rejected log (empty description) gives only the error tick', (
     tester,
   ) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
       await settle(tester);
-      await tester.tap(find.byTooltip('Log meal'));
+      await tester.tap(controlByLabel('Log meal'));
       await settle(tester);
-      expect(find.text('Type what you ate first.'), findsOneWidget);
-      expect(haptics, isEmpty);
+      expect(cueLabelled('Type what you ate first.'), findsOneWidget);
+      // Only the error cue's own heavy tick: no success buzz.
+      expect(haptics, ['HapticFeedbackType.heavyImpact']);
       expect(cues, 0);
     });
   });

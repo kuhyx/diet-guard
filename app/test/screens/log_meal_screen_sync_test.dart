@@ -10,6 +10,8 @@ import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../label_finders.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -168,7 +170,7 @@ void main() {
 
       await tester.enterText(find.byType(TextField).at(0), 'push-on-log');
       await tester.pump();
-      await tester.tap(find.byTooltip('Log meal'));
+      await tester.tap(controlByLabel('Log meal'));
       // Wait for the push itself rather than a fixed 200 ms: under the
       // CPU-capped pre-commit gate the real async hop can take longer, and
       // a wall-clock guess made this flaky there (passes 5/5 standalone).

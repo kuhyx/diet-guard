@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 Future<void> pump(WidgetTester tester, SyncHealthStatus? status) =>
     tester.pumpWidget(
-      MaterialApp(home: Scaffold(body: SyncHealthBanner(status: status))),
+      MaterialApp(
+        home: Scaffold(body: SyncHealthBanner(status: status)),
+      ),
     );
 
 void main() {
@@ -39,8 +41,13 @@ void main() {
     );
 
     expect(find.byIcon(Icons.cloud_off), findsOneWidget);
+    expect(find.text('2d'), findsOneWidget);
     expect(
-      find.textContaining('Meals stay on this device'),
+      find.byWidgetPredicate(
+        (w) =>
+            w is Icon &&
+            (w.semanticLabel?.contains('Meals stay on this device') ?? false),
+      ),
       findsOneWidget,
     );
   });

@@ -22,6 +22,7 @@ import 'package:diet_guard_app/services/kuchnia_fill_flow.dart';
 import 'package:diet_guard_app/services/kuchnia_import.dart';
 import 'package:diet_guard_app/services/kuchnia_queue.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,6 +51,7 @@ class _HostState extends State<_Host>
   final MacroControllers macros = MacroControllers();
   int publishes = 0;
   String status = '';
+  CueKind statusKind = CueKind.info;
 
   @override
   int? selectedSlot;
@@ -74,7 +76,11 @@ class _HostState extends State<_Host>
   }
 
   @override
-  void showFillStatus(String message) => setState(() => status = message);
+  void showFillStatus(String message, {CueKind kind = CueKind.info}) =>
+      setState(() {
+        status = message;
+        statusKind = kind;
+      });
 
   /// Counted instead of run: the real one starts a network sync.
   @override
@@ -134,6 +140,7 @@ void main() {
     });
 
     expect(host.status, 'Logged 4 catering dishes.');
+    expect(host.statusKind, CueKind.ok);
     expect(await t.runAsync(() => loggedToday(storage)), hasLength(4));
     expect(host.publishes, 1, reason: 'one publish per batch, not per dish');
     expect(KuchniaQueueService.remaining, 0);
@@ -186,6 +193,7 @@ void main() {
     await t.runAsync(host.onFillAll);
 
     expect(host.status, startsWith('Fill all failed'));
+    expect(host.statusKind, CueKind.error);
     expect(host.publishes, 1, reason: 'a partial batch must still sync');
     expect(host.fillFlow.busy, isFalse);
   });

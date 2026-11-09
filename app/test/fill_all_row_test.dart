@@ -1,9 +1,11 @@
-/// The "Fill all with catering" row: label per state, Cancel only when armed.
+/// The "Fill all with catering" row: glyph per state, Cancel only when armed.
 library;
 
 import 'package:diet_guard_app/widgets/fill_all_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'label_finders.dart';
 
 Future<void> _pump(
   WidgetTester tester, {
@@ -31,26 +33,30 @@ void main() {
     await _pump(t, canFetch: false, armed: 3);
 
     expect(find.byType(OutlinedButton), findsNothing);
-    expect(find.text(fillAllLabel), findsNothing);
-    expect(find.text('Cancel'), findsNothing);
+    expect(byIconLabel(fillAllLabel), findsNothing);
+    expect(byIconLabel('Cancel'), findsNothing);
   });
 
-  testWidgets('resting: the fill label and no Cancel', (t) async {
+  testWidgets('resting: the fill glyph and no Cancel', (t) async {
     await _pump(t);
 
-    expect(find.text('🍱 Fill all with catering'), findsOneWidget);
-    expect(find.text('Cancel'), findsNothing);
+    expect(byIconLabel(fillAllLabel), findsOneWidget);
+    expect(find.byIcon(Icons.playlist_add_check), findsOneWidget);
+    expect(byIconLabel('Cancel'), findsNothing);
   });
 
-  testWidgets('armed: Confirm (N) and a Cancel button', (t) async {
+  testWidgets('armed: double check with the count, and a Cancel button', (
+    t,
+  ) async {
     await _pump(t, armed: 3);
 
-    expect(find.text('✓ Confirm (3)'), findsOneWidget);
-    expect(find.text(fillAllLabel), findsNothing);
-    expect(find.text('Cancel'), findsOneWidget);
+    expect(byIconLabel('Confirm'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
+    expect(byIconLabel(fillAllLabel), findsNothing);
+    expect(byIconLabel('Cancel'), findsOneWidget);
   });
 
-  testWidgets('busy: Working… and both controls disabled', (t) async {
+  testWidgets('busy: spinner and both controls disabled', (t) async {
     var fills = 0;
     var cancels = 0;
     await _pump(
@@ -61,15 +67,15 @@ void main() {
       onCancel: () => cancels++,
     );
 
-    expect(find.text('Working…'), findsOneWidget);
-    expect(find.text('✓ Confirm (3)'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(byIconLabel('Confirm'), findsNothing);
     expect(
       t.widget<OutlinedButton>(find.byType(OutlinedButton)).onPressed,
       isNull,
     );
-    expect(t.widget<TextButton>(find.byType(TextButton)).onPressed, isNull);
+    expect(t.widget<IconButton>(find.byType(IconButton)).onPressed, isNull);
     await t.tap(find.byType(OutlinedButton), warnIfMissed: false);
-    await t.tap(find.byType(TextButton), warnIfMissed: false);
+    await t.tap(find.byType(IconButton), warnIfMissed: false);
     expect(fills + cancels, 0);
   });
 
@@ -83,8 +89,8 @@ void main() {
       onCancel: () => cancels++,
     );
 
-    await t.tap(find.text('✓ Confirm (2)'));
-    await t.tap(find.text('Cancel'));
+    await t.tap(byIconLabel('Confirm'));
+    await t.tap(byIconLabel('Cancel'));
 
     expect([fills, cancels], [1, 1]);
   });

@@ -53,8 +53,7 @@ abstract final class SyncHealth {
       _recordFailure(SyncFailureKind.unconfigured);
 
   /// Marks a tick that had a backend but failed to publish.
-  static Future<void> recordFailure() =>
-      _recordFailure(SyncFailureKind.failed);
+  static Future<void> recordFailure() => _recordFailure(SyncFailureKind.failed);
 
   static Future<void> _recordFailure(SyncFailureKind kind) =>
       _withPrefs((prefs) => prefs.setString(_kFailureKind, kind.name));
@@ -153,6 +152,16 @@ class SyncHealthStatus {
       return 'Not syncing. Meals stay on this device.';
     }
     return 'Not syncing since ${_ago(since)}. Meals stay on this device.';
+  }
+
+  /// Compact elapsed time (`5h`, `2d`) for a numeral beside the banner's
+  /// glyph; null when it has not been at least an hour or never succeeded.
+  String? get agoShort {
+    final last = lastSuccess;
+    if (last == null) return null;
+    final since = now.difference(last);
+    if (since < const Duration(hours: 1)) return null;
+    return since.inDays >= 1 ? '${since.inDays}d' : '${since.inHours}h';
   }
 
   static String _ago(Duration since) {
