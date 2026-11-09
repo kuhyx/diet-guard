@@ -75,12 +75,14 @@ class _HostState extends State<_Host>
     );
   }
 
+  int? statusCount;
+
   @override
-  void showFillStatus(String message, {CueKind kind = CueKind.info}) =>
-      setState(() {
-        status = message;
-        statusKind = kind;
-      });
+  void showFillStatus(FillCue cue) => setState(() {
+    status = cue.label;
+    statusKind = cue.kind;
+    statusCount = cue.count;
+  });
 
   /// Counted instead of run: the real one starts a network sync.
   @override
@@ -123,6 +125,8 @@ void main() {
     await t.runAsync(host.onFillAll);
 
     expect(host.status, startsWith('Will log 4'));
+    // Painted: a glyph + the number of dishes the confirm would log.
+    expect(host.statusCount, 4);
     expect(await t.runAsync(storage.todayEntries), isEmpty);
     expect(host.publishes, 0);
     expect(KuchniaQueueService.remaining, 4);
@@ -141,6 +145,7 @@ void main() {
 
     expect(host.status, 'Logged 4 catering dishes.');
     expect(host.statusKind, CueKind.ok);
+    expect(host.statusCount, 4);
     expect(await t.runAsync(() => loggedToday(storage)), hasLength(4));
     expect(host.publishes, 1, reason: 'one publish per batch, not per dish');
     expect(KuchniaQueueService.remaining, 0);
@@ -162,6 +167,7 @@ void main() {
 
     // D1's slot was taken, so only D2..D4 landed and D1 is still on offer.
     expect(host.status, 'Logged 3 catering dishes.');
+    expect(host.statusCount, 3);
     expect(KuchniaQueueService.remaining, 1);
     expect(host.desc.text, 'D1');
   });

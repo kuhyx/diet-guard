@@ -29,6 +29,8 @@ import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
 import 'package:flutter/material.dart';
 
+CountCue _cue(String l, CueKind k, [int? n]) => (label: l, kind: k, count: n);
+
 /// Writes [dish]'s name and macros into the log form's controllers.
 ///
 /// Free function rather than a mixin method so the numeric formatting is
@@ -139,16 +141,20 @@ mixin LogMealKuchniaMixin<T extends StatefulWidget> on State<T> {
   /// not be re-offered) and still records the fetch, so a successful tap
   /// also spares the automatic path a second walk.
   ///
-  /// Returns a line to show the user, or null when a dish was prefilled and
-  /// the form speaks for itself.
-  Future<String?> loadDeliveryOnTap() async {
-    if (!KuchniaQueueService.isInitialized) return 'Catering is not ready yet.';
+  /// Returns the cue to show (a spoken line, a glyph kind and a dish count),
+  /// or null when a dish was prefilled and the form speaks for itself.
+  Future<CountCue?> loadDeliveryOnTap() async {
+    if (!KuchniaQueueService.isInitialized) {
+      return _cue('Catering is not ready yet.', CueKind.warn);
+    }
     final logged = await LogStorageService.instance.todayEntries();
     if (!mounted) return null;
     final result = await refreshDelivery(DateTime.now());
     if (!mounted) return null;
-    if (!result.ok) return result.reason;
-    if (result.dishes.isEmpty) return 'No delivery today.';
+    if (!result.ok) return _cue(result.reason!, CueKind.error);
+    if (result.dishes.isEmpty) {
+      return _cue('No delivery today.', CueKind.warn, 0);
+    }
     await KuchniaQueueService.instance.recordFetched(DateTime.now());
     if (!mounted) return null;
     final ordered = dishesInSlotOrder(
@@ -162,7 +168,7 @@ mixin LogMealKuchniaMixin<T extends StatefulWidget> on State<T> {
       },
     );
     if (KuchniaQueueService.next == null) {
-      return 'All delivered dishes are already logged.';
+      return _cue('All delivered dishes are already logged.', CueKind.ok, 0);
     }
     prefillNextDish();
     return null;
@@ -180,20 +186,21 @@ mixin LogMealKuchniaMixin<T extends StatefulWidget> on State<T> {
   /// the 250-line cap, and this is the mixin's own behaviour anyway.
   Future<void> loadDeliveryAndReport() async {
     setState(() => deliveryBusy = true);
-    String? message;
+    CountCue? cue;
     try {
-      message = await loadDeliveryOnTap();
+      cue = await loadDeliveryOnTap();
     } finally {
       if (mounted) setState(() => deliveryBusy = false);
     }
-    if (!mounted || message == null) return;
+    if (!mounted || cue == null) return;
     // The outcome sentence stays as the spoken label; the snackbar paints
-    // only a warning glyph (no delivery / not ready / fetch failed).
+    // the dish glyph in the kind's tint plus the count (0 = none to log).
     showCueSnack(
       context,
-      kind: CueKind.warn,
-      semanticLabel: message,
+      kind: cue.kind,
+      semanticLabel: cue.label,
       icon: Icons.restaurant,
+      count: cue.count,
     );
   }
 

@@ -57,6 +57,7 @@ class StatusCue extends StatefulWidget {
     required this.kind,
     required this.semanticLabel,
     this.icon,
+    this.count,
     super.key,
   });
 
@@ -68,6 +69,9 @@ class StatusCue extends StatefulWidget {
 
   /// Optional glyph replacing [CueKind.icon].
   final IconData? icon;
+
+  /// Optional numeral painted beside the glyph (e.g. dishes logged).
+  final int? count;
 
   @override
   State<StatusCue> createState() => _StatusCueState();
@@ -127,7 +131,11 @@ class _StatusCueState extends State<StatusCue>
             ),
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.sm),
-              child: Icon(widget.icon ?? widget.kind.icon, color: tint),
+              child: _GlyphCount(
+                widget.icon ?? widget.kind.icon,
+                tint,
+                widget.count,
+              ),
             ),
           ),
         ),
@@ -144,6 +152,7 @@ void showCueSnack(
   required CueKind kind,
   required String semanticLabel,
   IconData? icon,
+  int? count,
   VoidCallback? onUndo,
 }) {
   final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
@@ -155,7 +164,9 @@ void showCueSnack(
         label: semanticLabel,
         child: Row(
           children: [
-            Icon(icon ?? kind.icon, color: tint),
+            ExcludeSemantics(
+              child: _GlyphCount(icon ?? kind.icon, tint, count),
+            ),
             const Spacer(),
             if (onUndo != null)
               IconButton(
@@ -172,12 +183,16 @@ void showCueSnack(
   );
 }
 
+/// A status to show: `label` is only spoken; the `kind` glyph and the
+/// `count` numeral (null = glyph only) are what is painted.
+typedef CountCue = ({String label, CueKind kind, int? count});
+
 /// One screen's current status cue; [seq] re-keys the widget so an identical
 /// consecutive status still shakes/pulses again.
 @immutable
 class CueState {
   /// Creates the successor of [previous] carrying [kind] and [label].
-  CueState.next(CueState? previous, this.kind, this.label)
+  CueState.next(CueState? previous, this.kind, this.label, [this.count])
     : seq = (previous?.seq ?? 0) + 1;
 
   /// Meaning.
@@ -186,12 +201,46 @@ class CueState {
   /// Spoken description; never painted.
   final String label;
 
+  /// Optional numeral painted beside the glyph.
+  final int? count;
+
   /// Monotonic counter used as the widget key.
   final int seq;
 
   /// The left-aligned cue widget for this state.
   Widget get widget => Align(
     alignment: Alignment.centerLeft,
-    child: StatusCue(key: ValueKey(seq), kind: kind, semanticLabel: label),
+    child: StatusCue(
+      key: ValueKey(seq),
+      kind: kind,
+      semanticLabel: label,
+      count: count,
+    ),
   );
+}
+
+/// A tinted glyph, followed by [count] when there is one.
+class _GlyphCount extends StatelessWidget {
+  const _GlyphCount(this.icon, this.tint, this.count);
+
+  final IconData icon;
+  final Color tint;
+  final int? count;
+
+  @override
+  Widget build(BuildContext context) {
+    final n = count;
+    if (n == null) return Icon(icon, color: tint);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: tint),
+        const SizedBox(width: AppSpacing.xs),
+        Text(
+          '$n',
+          style: TextStyle(color: tint, fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
+  }
 }

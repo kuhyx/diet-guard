@@ -63,8 +63,8 @@ class _LogMealScreenState extends State<LogMealScreen>
   CueState? _cue; // painted as a tinted icon, never as text
   TodayProgress? _progress;
 
-  void _setCue(CueKind kind, String? label) {
-    _cue = label == null ? null : CueState.next(_cue, kind, label);
+  void _setCue(CueKind kind, String? label, [int? count]) {
+    _cue = label == null ? null : CueState.next(_cue, kind, label, count);
     _progress = null;
   }
 
@@ -123,8 +123,8 @@ class _LogMealScreenState extends State<LogMealScreen>
   @override
   void onDishPrefilled() => setState(() => _source = 'catering');
   @override
-  void showFillStatus(String message, {CueKind kind = CueKind.info}) =>
-      setState(() => _setCue(kind, message));
+  void showFillStatus(FillCue cue) =>
+      setState(() => _setCue(cue.kind, cue.label, cue.count));
 
   void _onSuggestionSelected(FoodSuggestion suggestion) {
     fillControllersFromSuggestion(suggestion, _descController, _macros);

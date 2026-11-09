@@ -15,6 +15,20 @@ import 'package:diet_guard_app/services/kuchnia_spread.dart';
 import 'package:diet_guard_app/ui/cues.dart';
 import 'package:flutter/material.dart';
 
+/// One fill tap's status (see [CountCue]).
+typedef FillCue = CountCue;
+
+/// The cue for a tap's [outcome]: dishes logged (ok + N), a proposal of
+/// [armed] dishes (info + N), or nothing done (warn + 0: no delivery, every
+/// slot taken, or the fetch failed).
+FillCue fillCue(FillOutcome outcome, {required int armed}) {
+  final written = outcome.written.length;
+  final label = outcome.message;
+  if (written > 0) return (label: label, kind: CueKind.ok, count: written);
+  if (armed > 0) return (label: label, kind: CueKind.info, count: armed);
+  return (label: label, kind: CueKind.warn, count: 0);
+}
+
 /// Drives the screen's [FillAllFlow] and tidies the screen after a fill.
 mixin LogMealFillMixin<T extends StatefulWidget>
     on LogMealSyncMixin<T>, LogMealKuchniaMixin<T>, LogMealFutureMixin<T> {
@@ -22,9 +36,9 @@ mixin LogMealFillMixin<T extends StatefulWidget>
   /// armed proposal along with it.
   FillAllFlow fillFlow = FillAllFlow();
 
-  /// Shows [message] as a status cue of [kind] (its words are only spoken).
-  /// Supplied by the screen.
-  void showFillStatus(String message, {CueKind kind = CueKind.info});
+  /// Shows [cue] as a status cue (its label is only spoken). Supplied by the
+  /// screen.
+  void showFillStatus(FillCue cue);
 
   /// A proposal belongs to the date it was fetched for; picking another (or
   /// going back to today) must not leave "Confirm (N)" offering it.
@@ -52,7 +66,11 @@ mixin LogMealFillMixin<T extends StatefulWidget>
       await publishAfterLog();
       await refreshSlots();
       if (mounted) {
-        showFillStatus('Fill all failed: $error', kind: CueKind.error);
+        showFillStatus((
+          label: 'Fill all failed: $error',
+          kind: CueKind.error,
+          count: null,
+        ));
       }
       return;
     }
@@ -63,16 +81,17 @@ mixin LogMealFillMixin<T extends StatefulWidget>
       await _afterFill(outcome.written, later: day != null);
     }
     if (!mounted) return;
-    showFillStatus(
-      outcome.message,
-      kind: outcome.written.isNotEmpty ? CueKind.ok : CueKind.warn,
-    );
+    showFillStatus(fillCue(outcome, armed: fillFlow.armedCount));
   }
 
   /// Disarms a proposal without writing anything.
   void onFillCancel() {
     fillFlow.cancel();
-    showFillStatus('Fill all cancelled — nothing logged.');
+    showFillStatus((
+      label: 'Fill all cancelled — nothing logged.',
+      kind: CueKind.info,
+      count: null,
+    ));
   }
 
   /// Publishes the batch once and drops the filled dishes from the delivery
