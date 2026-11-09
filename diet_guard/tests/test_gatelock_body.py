@@ -12,6 +12,7 @@ from unittest.mock import patch
 import pytest
 
 from diet_guard import _gatelock_body
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._body_fat_store import body_fats
 from diet_guard._body_prefs import saved_goal
 from diet_guard._body_store import profile, set_profile, set_weight, weights
@@ -60,20 +61,20 @@ class TestProfile:
     def test_rejects_then_saves(self, tab: BodyTab) -> None:
         tab.vars.profile.height.set("9")
         tab.save_profile()
-        assert tab.vars.status.get().startswith("Profile needs")
+        assert tab.vars.status.get().startswith(g.ERROR)
         tab.vars.profile.birth.set("2000-05-22")
         tab.vars.profile.height.set("169")
         tab.vars.profile.sex.set("m")
         tab.save_profile()
         assert profile().complete
-        assert tab.vars.status.get().startswith("Profile saved")
+        assert tab.vars.status.get() == g.OK
 
     def test_complete_profile_loads_into_the_inputs(self) -> None:
         _person()
         with fake_tk():
             body = BodyTab(FakeNotebook())
         assert body.vars.profile.height.get() == "169"
-        assert body.vars.goal.answer.get().startswith("eat ")
+        assert body.vars.goal.answer.get().startswith("→ ")
 
 
 class TestWeights:
@@ -81,7 +82,7 @@ class TestWeights:
         write_budget(2000, weight_kg=90.0)
         tab.vars.logs.weight.set("5")
         tab.save_weight()
-        assert tab.vars.status.get().startswith("Weight needs")
+        assert tab.vars.status.get().startswith(g.ERROR)
         tab.vars.logs.weight.set("80")
         tab.vars.logs.weight_day.set("2026-09-10")
         tab.save_weight()
@@ -89,7 +90,7 @@ class TestWeights:
         assert (read_raw_record() or {})["w"] == 80.0
         tab.vars.logs.weight_day.set("nope")
         tab.delete_weight()
-        assert tab.vars.status.get().startswith("Type the")
+        assert tab.vars.status.get() == g.ERROR + " " + g.DELETE + " 0000-00-00"
         tab.vars.logs.weight_day.set("2026-09-10")
         tab.delete_weight()
         assert weights() == {}
@@ -97,13 +98,13 @@ class TestWeights:
     def test_body_fat_save_reject_delete(self, tab: BodyTab) -> None:
         tab.vars.logs.body_fat.set("90")
         tab.save_body_fat()
-        assert tab.vars.status.get().startswith("Body fat needs")
+        assert tab.vars.status.get().startswith(g.ERROR)
         tab.vars.logs.body_fat.set("17")
         tab.save_body_fat()
         assert body_fats() == {tab.vars.logs.fat_day.get(): 17.0}
         tab.vars.logs.fat_day.set("x")
         tab.delete_body_fat()
-        assert tab.vars.status.get().startswith("Type the")
+        assert tab.vars.status.get() == g.ERROR + " " + g.DELETE + " 0000-00-00"
         tab.vars.logs.fat_day.set(next(iter(body_fats())))
         tab.delete_body_fat()
         assert body_fats() == {}
@@ -118,7 +119,7 @@ class TestGoalAndGraph:
         assert saved_goal().weight_unit == "lb"
         assert saved_goal().amount == 0.5  # unreadable amount kept
         assert tab.vars.goal.amount.get() == "0.5"
-        assert tab.vars.goal.answer.get().startswith("eat ")
+        assert tab.vars.goal.answer.get().startswith("→ ")
 
     def test_range_and_body_fat_graph(self, tab: BodyTab) -> None:
         _person()
@@ -127,7 +128,7 @@ class TestGoalAndGraph:
         tab.set_range(None)
         tab.vars.logs.graph.set("fat")
         tab.refresh()
-        assert "Mon" in tab.vars.blocks["plan"].get()
+        assert f"2500  {g.EDIT}" in tab.vars.blocks["plan"].get()
 
 
 class TestGraph:
@@ -150,6 +151,7 @@ class TestGraph:
         box = GraphBox(700, 300)
         draw_weight_graph(canvas, {}, box, None)
         assert canvas.drawn[0][0] == "text"
+        assert canvas.drawn[0][2]["text"] == g.EMPTY
         log = {"2026-09-20": 74.0, "2026-09-27": 72.0}
         draw_weight_graph(canvas, log, box, (52.8, 71.1))
         kinds = [kind for kind, _, _ in canvas.drawn]

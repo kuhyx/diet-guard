@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import tkinter as tk
 
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._budget import BudgetError, daily_budget
 from diet_guard._estimator import Nutrition, scale_nutrition
 from diet_guard._gatelock_core import _GateCore
@@ -32,10 +33,13 @@ from diet_guard._state_today import (
 def _format_preview(nutrition: Nutrition) -> str:
     """Render the one-line "this is what will be logged" preview."""
     portion = f" · {nutrition.grams:g}g" if nutrition.grams else ""
+    # "staple: apple" -> the staple glyph plus the food name (content).
+    named = nutrition.source.partition(":")[2].strip()
+    source = f"{g.source_glyph(nutrition.source)} {named}".rstrip()
     return (
-        f"→ {nutrition.kcal:g} kcal · "
-        f"P{nutrition.protein_g:g} C{nutrition.carbs_g:g} F{nutrition.fat_g:g}"
-        f"{portion} · {nutrition.source}"
+        f"→ {nutrition.kcal:g} kcal · {g.PROTEIN} {nutrition.protein_g:g}  "
+        f"{g.CARBS} {nutrition.carbs_g:g}  {g.FAT} {nutrition.fat_g:g}"
+        f"{portion} · {source}"
     )
 
 
@@ -98,14 +102,14 @@ class _GateNutrition(_GateCore):
         try:
             budget = daily_budget()
         except BudgetError, OSError:
-            tail = f" · this item {this_kcal:g} kcal" if this_kcal else ""
-            self._vars.projection.set(f"Consumed {consumed:g} kcal today{tail}")
+            tail = f"  + {this_kcal:g}" if this_kcal else ""
+            self._vars.projection.set(f"{consumed:g} kcal{tail}")
             return
         left = round(budget - consumed, 1)
-        base = f"Consumed {consumed:g} / {budget:g} kcal · {left:g} left"
+        base = f"{consumed:g} / {budget:g} kcal  {g.BUDGET} {left:g}"
         if this_kcal:
             after = round(budget - consumed - this_kcal, 1)
-            self._vars.projection.set(f"{base}   →   after this item: {after:g} left")
+            self._vars.projection.set(f"{base}   →   {g.BUDGET} {after:g}")
         else:
             self._vars.projection.set(base)
 

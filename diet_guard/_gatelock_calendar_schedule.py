@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 from gatelock import make_button
 
 from diet_guard._gatelock_calendar_types import _COLORS, _FIELD_BG
+from diet_guard._gatelock_glyphs import CLOCK, DASH, EDIT, TIMES
 from diet_guard._gatelock_spacing import SM, XS
 from diet_guard._gatelock_typography import BODY, LABEL
 from diet_guard._gatelock_ui import BG, FG
@@ -168,13 +169,13 @@ def build_schedule_row(
     """
     row = tk.Frame(parent, bg=BG)
     row.pack(pady=(SM, XS))
-    _caption(row, "Meals:")
+    _caption(row, CLOCK)
     first_spin = _time_spin(row, vars_.schedule.first, FIRST_RANGE)
-    _caption(row, "to")
+    _caption(row, DASH)
     last_spin = _time_spin(row, vars_.schedule.last, LAST_RANGE)
-    _caption(row, "x")
+    _caption(row, TIMES)
     count_entry = _spin_entry(row, vars_.schedule.count)
-    edit_button = make_button(row, _COLORS, "Edit", on_edit_or_save_schedule)
+    edit_button = make_button(row, _COLORS, EDIT, on_edit_or_save_schedule)
     edit_button.pack(side="left")
 
     # The derived checkpoint times, so the effect of a change is visible

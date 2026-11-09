@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 from gatelock import LockConfig
 
-from diet_guard._averages import PeriodAverage, band_label
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._averages_report import monthly_average, weekly_average
 from diet_guard._daystatus import (
     DayStatus,
@@ -28,6 +28,7 @@ from diet_guard._gatelock_ui import BG, FG
 from diet_guard._state import now_local
 
 if TYPE_CHECKING:
+    from diet_guard._averages import PeriodAverage
     from diet_guard._budget_history import BudgetSchedule
     from diet_guard._state import DayLog
 
@@ -128,11 +129,6 @@ def cell_style(status: DayStatus | None) -> tuple[str, str, str]:
     return color, _STATUS_TEXT_COLOR, color
 
 
-def _plural(count: int) -> str:
-    """Return "day" or "days" for ``count``."""
-    return "day" if count == 1 else "days"
-
-
 def streaks_text(
     status_map_: dict[str, DayStatus],
     *,
@@ -145,10 +141,8 @@ def streaks_text(
     """
     logging = logging_streak(status_map_, today=today)
     adherence = adherence_streak(status_map_, today=today)
-    return (
-        f"Logging streak: {logging} {_plural(logging)}  ·  "
-        f"Adherence streak: {adherence} {_plural(adherence)}"
-    )
+    # Logged-days streak under the pencil, within-budget streak under the check.
+    return f"{g.FOOD} {logging}   {g.OK} {adherence}"
 
 
 def ytd_text(status_map_: dict[str, DayStatus], *, today: date | None = None) -> str:
@@ -159,16 +153,16 @@ def ytd_text(status_map_: dict[str, DayStatus], *, today: date | None = None) ->
     """
     tally = year_to_date_tally(status_map_, today=today)
     return (
-        f"This year: logged {tally.logged_days}/{tally.elapsed_days} days  ·  "
-        f"{tally.adherent_days} within budget"
+        f"{g.YEAR_TOTAL} {g.FOOD} {tally.logged_days}/{tally.elapsed_days}   "
+        f"{g.OK} {tally.adherent_days}"
     )
 
 
 def _average_part(period: PeriodAverage) -> str:
-    """Render one period as ``"NNNN kcal (band)"``, or ``"no data"``."""
-    if period.avg_kcal is None:
-        return band_label(period.band)
-    return f"{period.avg_kcal:.0f} kcal ({band_label(period.band)})"
+    """Render one period as ``"NNNN kcal <band glyph>"``, or a dash."""
+    if period.avg_kcal is None or period.band is None:
+        return g.NO_VALUE
+    return f"{period.avg_kcal:.0f} kcal {g.BAND[period.band.value]}"
 
 
 def averages_text(
@@ -190,6 +184,6 @@ def averages_text(
     week = weekly_average(log, schedule=schedule, today=today)
     month = monthly_average(log, schedule=schedule, today=today)
     return (
-        f"Avg/day (to yesterday): week {_average_part(week)}  \u00b7  "
-        f"month {_average_part(month)}"
+        f"{g.AVERAGE} {g.SPAN['week']} {_average_part(week)}   "
+        f"{g.AVERAGE} {g.SPAN['month']} {_average_part(month)}"
     )

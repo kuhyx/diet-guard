@@ -23,6 +23,7 @@ from importlib import import_module
 import queue
 from typing import TYPE_CHECKING, NamedTuple
 
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._gatelock_fetch import FETCH_POLL_MS
 from diet_guard._gatelock_kuchnia import start_delivery_fetch
 from diet_guard._kuchnia_log import fill_plan, log_dishes
@@ -41,14 +42,18 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from diet_guard._kuchnia_spread import SlottedDish
 
 #: The button's resting label; also what it returns to after each attempt.
-FILL_LABEL = "🍱 Fill all"
+FILL_LABEL = f"{g.FILL_ALL} {g.DELIVERY}"
 
 #: ``(unlock reason, nothing-new status)`` for the gate's post-write reconcile:
-#: a fill that covered only later slots must not report "found in sync".
+#: a fill that covered only later slots must not report "found in sync" --
+#: catering logged, and the food field is what the current slot still needs.
 RECONCILE_LABELS = (
-    "Filled from catering",
-    "Catering logged; this slot still needs a meal.",
+    f"{g.OK} {g.DELIVERY}",
+    f"{g.OK} {g.DELIVERY}  {g.FOOD}",
 )
+
+#: "Every slot already has a meal": nothing left for the fill to take.
+_NOTHING_TO_FILL = f"{g.OK} {g.CLOCK}"
 
 
 def _refresh_delivery(day: date) -> tuple[Sequence[Dish], str | None]:
@@ -103,7 +108,7 @@ class FillAllFlow:
     def click(self) -> None:
         """First click fetches and proposes; a second click confirms."""
         if self._demo_mode:
-            self._set_status("Fill all is only available on the real lock.")
+            self._set_status(f"{g.DEMO_ONLY} {g.FILL_ALL}")
             return
         if self._result is not None:
             return  # a fetch is in flight; a double-click must not start two
@@ -116,7 +121,7 @@ class FillAllFlow:
         # at midnight can never confirm yesterday's menu into today.
         self._reset()
         self._plan_day = today
-        self._set_status("Loading today's delivery…")
+        self._set_status(f"{g.BUSY} {g.DELIVERY}")
         self._result = start_delivery_fetch(_refresh_delivery, today)
         self._root.after(FETCH_POLL_MS, self._poll)
 
@@ -132,24 +137,23 @@ class FillAllFlow:
             return
         self._result = None
         if outcome.reason is not None:
-            self._set_status(f"{outcome.reason} — still locked.", error=True)
+            self._set_status(f"{g.ERROR} {g.DELIVERY}", error=True)
             return
         if not outcome.dishes:
-            self._set_status("No catering delivery today.")
+            self._set_status(f"{g.EMPTY} {g.DELIVERY}")
             return
         plan = fill_plan(assign_slots(outcome.dishes, day_slots(current_schedule())))
         if not plan:
-            self._set_status("Every slot already has a meal — nothing to fill.")
+            self._set_status(_NOTHING_TO_FILL)
             return
         self._plan = plan
-        self._label.set(f"✓ Confirm ({len(plan)})")
+        self._label.set(f"{g.OK} {len(plan)}")
         total = sum(item.dish.kcal for item in plan)
-        listing = ", ".join(
+        # The proposal: slot time and dish name (catering content) per row.
+        listing = "   ".join(
             f"{slot_label(item.slot)} {item.dish.name}" for item in plan
         )
-        self._set_status(
-            f"Will log {len(plan)} ({total:g} kcal): {listing} — click Confirm."
-        )
+        self._set_status(f"{g.DELIVERY} {len(plan)}  {total:g} kcal   {listing}")
 
     def _confirm(self) -> None:
         """Write the proposed dishes into the slots still empty right now."""
@@ -158,10 +162,10 @@ class FillAllFlow:
         plan = fill_plan(self._plan)
         self._reset()
         if not plan:
-            self._set_status("Every slot already has a meal — nothing to fill.")
+            self._set_status(_NOTHING_TO_FILL)
             return
         written = log_dishes(plan)
-        self._set_status(f"Logged {len(written)} catering dish(es).")
+        self._set_status(f"{g.OK} {g.DELIVERY} {len(written)}")
         self._on_logged()
 
     def _reset(self) -> None:

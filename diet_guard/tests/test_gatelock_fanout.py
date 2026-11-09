@@ -14,6 +14,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._gatelock import MealGate
 from diet_guard.tests._gate_fixtures import fake_tk
 from diet_guard.tests.conftest import TWO_OUTPUTS
@@ -100,7 +101,7 @@ class TestGateFansOut:
 
         for surface in dual_gate._cal_surfaces:
             assert surface.budget_entry.configured.get("state") == "normal"
-            assert surface.budget_edit_button.configured.get("text") == "Save"
+            assert surface.budget_edit_button.configured.get("text") == g.SAVE
 
     def test_frame_group_covers_every_monitor(self, dual_gate: MealGate) -> None:
         """The outer frame is exposed per surface, for tab selection."""

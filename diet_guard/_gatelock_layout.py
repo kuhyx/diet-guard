@@ -18,6 +18,7 @@ import tkinter as tk
 
 from gatelock import ButtonStyle, ScrollableSurface, make_button
 
+from diet_guard import _gatelock_glyphs as glyphs
 from diet_guard._gatelock_fields import (
     build_amount_row,
     build_desc,
@@ -66,14 +67,7 @@ def _build_dashboard(parent: tk.Frame, vars_: GateVars) -> None:
 
 
 def _build_header(body: tk.Frame, vars_: GateVars) -> None:
-    """Pack the title and the current-slot header."""
-    tk.Label(
-        body,
-        text="🍽  Diet Gate",
-        font=(_FONT, TITLE, "bold"),
-        bg=BG,
-        fg=_ACCENT,
-    ).pack(pady=(0, XS))
+    """Pack the current-slot header (no title: the tab glyph names the tab)."""
     tk.Label(
         body,
         textvariable=vars_.slot_header,
@@ -114,7 +108,7 @@ def _build_actions(
     make_button(
         body,
         _COLORS,
-        "Log & Continue",
+        glyphs.SUBMIT,
         callbacks.on_submit,
     ).pack(pady=(XS, XS))
 
@@ -129,7 +123,7 @@ def _build_actions(
     make_button(
         pulls,
         _COLORS,
-        "⟳ Fetch from sync",
+        glyphs.SYNC,
         callbacks.on_fetch_sync,
         ButtonStyle(variant="secondary", bold=False),
     ).pack(side="left", padx=(0, XS))
@@ -140,7 +134,7 @@ def _build_actions(
     make_button(
         pulls,
         _COLORS,
-        "🍱 Today's delivery",
+        glyphs.DELIVERY,
         callbacks.on_load_delivery,
         ButtonStyle(variant="secondary", bold=False),
     ).pack(side="left", padx=(0, XS))
@@ -222,10 +216,12 @@ def build_layout(
         make_button(
             root,
             _COLORS,
-            "✕ Close Demo",
+            glyphs.CLOSE,
             callbacks.on_close,
             ButtonStyle(variant="danger", bold=False),
-        ).place(x=10, y=10)
+            # Top-right: the glyph-only notebook tabs are narrow and sit top-left,
+            # where a button at the corner would cover them.
+        ).place(relx=1.0, x=-10, y=10, anchor="ne")
 
     return GateWidgets(
         frame=frame,

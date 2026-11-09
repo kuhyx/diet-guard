@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+from diet_guard import _gatelock_glyphs as g
 from diet_guard import _gatelock_mealflow
 from diet_guard.tests.conftest import _nutrition
 
@@ -116,14 +117,14 @@ class TestSubmit:
     def test_empty_description(self, gate: MealGate) -> None:
         """Submitting with no description prompts for one."""
         gate._on_submit()
-        assert "Type what you ate" in gate._vars.status.get()
+        assert gate._vars.status.get() == f"{g.ERROR} {g.FOOD}"
 
     def test_non_numeric_macros(self, gate: MealGate) -> None:
         """Non-numeric macros are rejected before logging."""
         gate._set_desc("apple")
         gate._widgets.macros.kcal.insert(0, "abc")
         gate._on_submit()
-        assert "must be numbers" in gate._vars.status.get()
+        assert gate._vars.status.get() == f"{g.ERROR} {g.PROTEIN}{g.CARBS}{g.FAT}"
 
     def test_blank_calories_triggers_lookup(self, gate: MealGate) -> None:
         """A blank calorie field looks the food up rather than logging."""
@@ -138,7 +139,7 @@ class TestSubmit:
         gate._widgets.macros.kcal.insert(0, "200")
         with patch.object(gate, "_current_nutrition", return_value=None):
             gate._on_submit()
-        assert "Enter the calories" in gate._vars.status.get()
+        assert gate._vars.status.get() == f"{g.ERROR} kcal"
 
     def test_valid_submit_records(self, gate: MealGate) -> None:
         """A described, priced meal is recorded."""
@@ -163,7 +164,7 @@ class TestLookup:
         gate._set_desc("nonsense")
         with patch.object(_gatelock_mealflow, "lookup_candidates", return_value=[]):
             gate._begin_lookup("nonsense")
-        assert "Couldn't look that up" in gate._vars.status.get()
+        assert gate._vars.status.get().startswith(g.ERROR)
 
     def test_single_candidate(self, gate: MealGate) -> None:
         """A single match fills the fields and invites review."""
@@ -173,7 +174,8 @@ class TestLookup:
             return_value=[("apple", _nutrition(95, 100))],
         ):
             gate._begin_lookup("apple")
-        assert "Review the values" in gate._vars.status.get()
+        assert gate._vars.status.get().startswith(g.OK)
+        assert g.TIMES not in gate._vars.status.get()
 
     def test_multiple_candidates(self, gate: MealGate) -> None:
         """Several matches invite picking another."""
@@ -186,7 +188,7 @@ class TestLookup:
             ],
         ):
             gate._begin_lookup("apple")
-        assert "pick another" in gate._vars.status.get()
+        assert gate._vars.status.get().endswith(f"{g.TIMES}2")
 
 
 class TestRecord:
@@ -219,9 +221,9 @@ class TestRecord:
         ):
             gate._record("apple", _nutrition(95, 100))
         assert gate._pending == [720]
-        assert "next meal" in gate._vars.status.get()
+        assert gate._vars.status.get().startswith(g.OK)
 
     def test_unlock_schedules_close(self, gate: MealGate) -> None:
         """Unlock sets the closing status and schedules teardown."""
         gate._unlock("logged X")
-        assert "unlocking" in gate._vars.status.get()
+        assert g.UNLOCKING in gate._vars.status.get()

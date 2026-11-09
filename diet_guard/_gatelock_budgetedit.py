@@ -18,6 +18,7 @@ import contextlib
 import tkinter as tk
 from typing import TYPE_CHECKING
 
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._budget import BudgetError, write_budget
 from diet_guard._budget_derived import budget_weight
 from diet_guard._gatelock_mealflow import _GateMealFlow
@@ -79,13 +80,13 @@ class _GateBudgetEdit(_GateMealFlow):
         if not self._cal_editing_budget:
             self._cal_editing_budget = True
             self._set_budget_entry_state("normal")
-            self._set_budget_button_text("Save")
+            self._set_budget_button_text(g.SAVE)
             self._set_budget_status("", error=False)
             return
         if not self._save_budget_entry():
             return
         self._cal_editing_budget = False
-        self._set_budget_button_text("Edit")
+        self._set_budget_button_text(g.EDIT)
         self._refresh_calendar()
         self._refresh_dashboard()
         self._refresh_projection()
@@ -104,15 +105,15 @@ class _GateBudgetEdit(_GateMealFlow):
         try:
             value = int(raw)
         except ValueError:
-            self._set_budget_status("Enter a whole number of kcal.", error=True)
+            self._set_budget_status(f"{g.ERROR} kcal", error=True)
             return False
         if value <= 0:
-            self._set_budget_status("Budget must be a positive number.", error=True)
+            self._set_budget_status(f"{g.ERROR} kcal > 0", error=True)
             return False
         try:
             weight = budget_weight()
         except BudgetError:
             weight = None
         write_budget(value, weight_kg=weight)
-        self._set_budget_status("Saved.", error=False)
+        self._set_budget_status(g.OK, error=False)
         return True

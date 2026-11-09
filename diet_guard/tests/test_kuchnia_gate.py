@@ -24,6 +24,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from diet_guard import _gatelock_delivery
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._gatelock_delivery import _PullFlows
 from diet_guard._gatelock_kuchnia import (
     UNEXPECTED,
@@ -131,7 +132,7 @@ class TestLoadButton:
         gate = _Gate()
         gate.demo_mode = True
         gate._on_load_delivery()
-        assert "only available on the real lock" in gate.last_status
+        assert gate.last_status == f"{g.DEMO_ONLY} {g.DELIVERY}"
         assert gate._delivery_result is None
 
     def test_a_second_click_while_in_flight_is_ignored(self) -> None:
@@ -146,15 +147,14 @@ class TestLoadButton:
         gate = _Gate()
         _deliver(gate, DeliveryResult(dishes=(), reason="panel down"))
         text, error = gate.statuses[-1]
-        assert "panel down" in text
-        assert "still locked" in text
+        assert text == f"{g.ERROR} {g.DELIVERY}"
         assert error is True
         assert gate._descs == []
 
-    def test_no_delivery_today_says_so(self) -> None:
+    def test_no_delivery_today_shows_the_empty_mark(self) -> None:
         gate = _Gate()
         _deliver(gate, DeliveryResult(dishes=(), reason=None))
-        assert "No catering delivery today" in gate.last_status
+        assert gate.last_status == f"{g.EMPTY} {g.DELIVERY}"
 
     def test_a_dish_is_offered_but_never_logged(self) -> None:
         gate = _Gate()
@@ -165,21 +165,21 @@ class TestLoadButton:
         assert gate._references == [dish_nutrition(_dish())]
         assert gate._references[0].grams == 318.0
         # ...and that is all. Submitting stays the user's explicit action.
-        assert "Log & Continue" in gate.last_status
+        assert gate.last_status == f"{g.DELIVERY} Kaszotto"
 
     def test_dishes_are_offered_one_at_a_time_in_meal_order(self) -> None:
         gate = _Gate()
         dishes = (_dish("Kolacja", priority=2), _dish("Sniadanie", priority=1))
         _deliver(gate, DeliveryResult(dishes=dishes, reason=None))
         assert gate._descs == ["Sniadanie"]
-        assert "1 more to go" in gate.last_status
+        assert gate.last_status.endswith("+1")
         gate._prefill_next_dish()
         assert gate._descs == ["Sniadanie", "Kolacja"]
 
-    def test_the_last_dish_has_no_more_to_go_suffix(self) -> None:
+    def test_the_last_dish_has_no_count_suffix(self) -> None:
         gate = _Gate()
         _deliver(gate, DeliveryResult(dishes=(_dish(),), reason=None))
-        assert "more to go" not in gate.last_status
+        assert "+" not in gate.last_status
 
     def test_prefilling_past_the_end_is_a_no_op(self) -> None:
         gate = _Gate()

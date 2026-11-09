@@ -15,6 +15,7 @@ from functools import partial
 import tkinter as tk
 from typing import TYPE_CHECKING
 
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._budget import BudgetError, daily_budget
 from diet_guard._budget_derived import protein_target_g
 from diet_guard._foodbank import remember_food
@@ -92,13 +93,13 @@ class _GateMealFlow(_PullFlows):
         """Validate, then look the food up, or log it."""
         description = self._get_desc()
         if not description:
-            self._set_status("Type what you ate first.", error=True)
+            self._set_status(f"{g.ERROR} {g.FOOD}", error=True)
             self._widgets.desc_text.focus_set()
             return
 
         values = self._macro_values()
         if values is None:
-            self._set_status("Macros must be numbers.", error=True)
+            self._set_status(f"{g.ERROR} {g.PROTEIN}{g.CARBS}{g.FAT}", error=True)
             self._widgets.macros.kcal.focus_set()
             return
 
@@ -107,7 +108,7 @@ class _GateMealFlow(_PullFlows):
             return
         nutrition = self._current_nutrition()
         if nutrition is None:
-            self._set_status("Enter the calories, then submit.", error=True)
+            self._set_status(f"{g.ERROR} kcal", error=True)
             self._widgets.macros.kcal.focus_set()
             return
         self._record(description, nutrition)
@@ -120,31 +121,28 @@ class _GateMealFlow(_PullFlows):
         up at its natural basis (per 100 g / serving); the amount eaten scales
         it, so the lookup never bakes in a portion.
         """
-        self._set_status("looking up…")
+        self._set_status(g.BUSY)
         self.root.update_idletasks()
         candidates = lookup_candidates(description)
         if not candidates:
-            self._set_status(
-                "Couldn't look that up. Enter the calories yourself, then submit.",
-                error=True,
-            )
+            # Not found: the kcal field takes focus, the cue names it.
+            self._set_status(f"{g.ERROR} {g.source_glyph('')} kcal", error=True)
             self._widgets.macros.kcal.focus_set()
             return
         self._show_candidates(candidates)
         self._apply_reference(candidates[0][1])
-        source = candidates[0][1].source
-        tail = (
-            "Review, or pick another below, then submit to log."
-            if len(candidates) > 1
-            else "Review the values, then submit to log."
-        )
-        self._set_status(f"Filled from {source}. {tail}")
+        # Filled, not logged: the source glyph, and the alternatives' count
+        # when the picker below offers more than one.
+        source = g.source_glyph(candidates[0][1].source)
+        more = f"  {g.TIMES}{len(candidates)}" if len(candidates) > 1 else ""
+        self._set_status(f"{g.OK} {source}{more}")
 
     def _record(self, description: str, nutrition: Nutrition) -> None:
         """Log and bank a single food for the current slot, then advance."""
         log_meal(description, nutrition, self._slot_for_log())
         remember_food(description, nutrition)
-        self._finish_slot(f"{nutrition.kcal:g} kcal ({nutrition.source})")
+        source = g.source_glyph(nutrition.source)
+        self._finish_slot(f"{nutrition.kcal:g} kcal {source}")
 
     def _slot_for_log(self) -> int | None:
         """Return the slot to tag a log with -- None in demo (satisfies no slot).
@@ -165,7 +163,7 @@ class _GateMealFlow(_PullFlows):
         slot = self._pending[0]
         self._pending.pop(0)
         self._refresh_dashboard()
-        logged = f"Logged {slot_label(slot)}: {summary}"
+        logged = f"{g.OK} {slot_label(slot)}  {summary}"
         if not self._pending:
             self._unlock(logged)
             return
@@ -179,7 +177,7 @@ class _GateMealFlow(_PullFlows):
         if self._delivery_pending:
             self._prefill_next_dish(logged)
             return
-        self._set_status(f"{logged} — next meal, please.")
+        self._set_status(logged)
         self._widgets.desc_text.focus_set()
 
     def _unlock(self, logged: str) -> None:
@@ -196,9 +194,8 @@ class _GateMealFlow(_PullFlows):
             d.name.strip().casefold() not in eaten for d in self._delivery_pending
         )
         if left:
-            noun = "dish" if left == 1 else "dishes"
-            logged = f"{logged} ({left} more {noun} delivered; log with 'ate')"
-        self._set_status(f"{logged} — all meals logged, unlocking…")
+            logged = f"{logged}  {g.DELIVERY} +{left}"
+        self._set_status(f"{logged}  {g.UNLOCKING}")
         self.root.after(_UNLOCK_DELAY_MS, self.close)
 
     def _refresh_dashboard(self) -> None:
@@ -212,14 +209,13 @@ class _GateMealFlow(_PullFlows):
         try:
             budget = daily_budget()
         except BudgetError, OSError:
-            return f"{consumed:g} kcal today"
-        return (
-            f"{consumed:g} / {budget:g} kcal   ·   {round(budget - consumed, 1):g} left"
-        )
+            return f"{consumed:g} kcal"
+        left = round(budget - consumed, 1)
+        return f"{consumed:g} / {budget:g} kcal   {g.BUDGET} {left:g}"
 
     def _dashboard_text(self) -> str:
         """Build the detail panel: recent meals, then macros and protein."""
-        lines = ["── Today ───────────────────────────────"]
+        lines = ["────────────────────────────────────────"]
         entries = today_entries()
         if entries:
             for entry in entries[-_DASHBOARD_ROWS:]:
@@ -230,20 +226,21 @@ class _GateMealFlow(_PullFlows):
                     f"{entry_kcal(entry):>5.0f} kcal",
                 )
         else:
-            lines.append("  (nothing logged yet today)")
+            lines.append(f"  {g.EMPTY}")
         protein, carbs, fat = today_total_macros()
-        lines.append(f"  macros so far:  P{protein:g}  C{carbs:g}  F{fat:g}  g")
+        lines.append(
+            f"  {g.PROTEIN} {protein:g}  {g.CARBS} {carbs:g}  {g.FAT} {fat:g}  g"
+        )
         target = protein_target_g()
         if target is not None:
             left = round(target - protein, 1)
-            lines.append(f"  protein {protein:g} / {target:g} g  ({left:g} g left)")
+            lines.append(
+                f"  {g.PROTEIN} {protein:g} / {target:g} g  {g.BUDGET} {left:g} g"
+            )
         return "\n".join(lines)
 
     def on_callback_error(self) -> None:
         """Surface an unexpected callback error without dropping the grab."""
-        self._set_status(
-            "Something went wrong. Enter the calories, then submit again.",
-            error=True,
-        )
+        self._set_status(f"{g.WARN} kcal", error=True)
         with contextlib.suppress(tk.TclError):
             self._widgets.macros.kcal.focus_set()

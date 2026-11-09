@@ -26,6 +26,7 @@ from gatelock import (
 )
 
 from diet_guard._gatelock_fillall import FILL_LABEL
+from diet_guard._gatelock_glyphs import TIMES
 from diet_guard._gatelock_spacing import SM, XS
 from diet_guard._gatelock_typography import (
     BODY,
@@ -60,8 +61,8 @@ DEFAULT_PER_GRAMS = 100.0
 UNIT_GRAMS = "grams"
 UNIT_ITEMS = "items"
 # Per-basis label prefixes for the two measuring modes.
-BASIS_PREFIX_GRAMS = "Nutrition as on the label — per"
-BASIS_PREFIX_ITEMS = "Nutrition per 1 item ≈"
+BASIS_PREFIX_GRAMS = "/"
+BASIS_PREFIX_ITEMS = f"{TIMES}1 ≈"
 # Wrap width for the gate's prose labels, in px. 640 is tokens.md's line-length
 # cap (rule 21, 40rem / ~65-70 characters). This was 900 at five call sites,
 # which both exceeded the cap and -- more practically -- forced a 900px-wide
@@ -137,12 +138,16 @@ def _numeric_entry(
 
 
 def _macro_cell(
-    root: tk.Misc, row: tk.Frame, label: str, variable: tk.StringVar
+    root: tk.Misc,
+    row: tk.Frame,
+    label: str,
+    variable: tk.StringVar,
+    color: str = FG,
 ) -> tk.Entry:
-    """Pack one small labelled numeric entry into the macro row."""
+    """Pack one numeric entry under its glyph (or unit) into the macro row."""
     cell = tk.Frame(row, bg=BG)
     cell.pack(side="left", padx=SM)
-    tk.Label(cell, text=label, font=(_FONT, CAPTION), bg=BG, fg=FG).pack()
+    tk.Label(cell, text=label, font=(_FONT, CAPTION), bg=BG, fg=color).pack()
     entry = _numeric_entry(root, cell, width=7, variable=variable)
     entry.pack(ipady=XS)
     return entry

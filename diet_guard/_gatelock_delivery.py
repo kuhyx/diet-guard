@@ -21,6 +21,7 @@ import queue
 import sys
 from typing import TYPE_CHECKING
 
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._gate import due_slots
 from diet_guard._gatelock_fetch import FETCH_POLL_MS, start_fetch
 from diet_guard._gatelock_kuchnia import start_delivery_fetch
@@ -43,7 +44,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 _LAZY_ATTRS = ("refresh_delivery", "refresh_delivery_once")
 
 #: ``(unlock reason, nothing-new status)`` for a sync pull; "Fill all" has its own.
-_SYNC_LABELS = ("Synced from another device", "No new meals found in sync.")
+_SYNC_LABELS = (f"{g.OK} {g.SYNC}", f"{g.EMPTY} {g.SYNC}")
 
 
 def __getattr__(name: str) -> object:
@@ -104,12 +105,12 @@ class _PullFlows(_GateNutrition):
         second click while a fetch is in flight is ignored.
         """
         if self.demo_mode:
-            self._set_status("Loading a delivery is only available on the real lock.")
+            self._set_status(f"{g.DEMO_ONLY} {g.DELIVERY}")
             return
         if self._delivery_result is not None:
             return
         self._delivery_asked = True
-        self._set_status("Loading today's delivery…")
+        self._set_status(f"{g.BUSY} {g.DELIVERY}")
         # Through the module object so the lazy hook resolves it, and so a
         # test's ``patch.object`` still wins.
         self._delivery_result = start_delivery_fetch(
@@ -131,11 +132,11 @@ class _PullFlows(_GateNutrition):
         self._delivery_result = None
         if outcome.reason is not None:
             if self._delivery_asked:
-                self._set_status(f"{outcome.reason} — still locked.", error=True)
+                self._set_status(f"{g.ERROR} {g.DELIVERY}", error=True)
             return
         if not outcome.dishes:
             if self._delivery_asked:
-                self._set_status("No catering delivery today.")
+                self._set_status(f"{g.EMPTY} {g.DELIVERY}")
             return
         self._delivery_pending = dishes_in_slot_order(outcome.dishes)
         self._prefill_next_dish()
@@ -160,11 +161,9 @@ class _PullFlows(_GateNutrition):
         # dish at 3.5x its calories while the fields still read correctly.
         self._apply_reference(dish_nutrition(dish), name=dish.name)
         remaining = len(self._delivery_pending)
-        suffix = f" ({remaining} more to go)" if remaining else ""
-        prefix = f"{logged} — " if logged else ""
-        self._set_status(
-            f"{prefix}Loaded: {dish.name}{suffix} — check, then Log & Continue."
-        )
+        suffix = f"  +{remaining}" if remaining else ""
+        prefix = f"{logged}   " if logged else ""
+        self._set_status(f"{prefix}{g.DELIVERY} {dish.name}{suffix}")
 
     def _autoload_delivery(self) -> None:
         """Start a guarded catering fetch as the lock opens.
@@ -203,13 +202,13 @@ class _PullFlows(_GateNutrition):
         write-race fix in one.
         """
         if self.demo_mode:
-            self._set_status("Fetch from sync is only available on the real lock.")
+            self._set_status(f"{g.DEMO_ONLY} {g.SYNC}")
             return
         if self._fetch_result is not None:
             # Already fetching. Without this a double-click starts a second
             # worker, orphans the first result and races two log writes.
             return
-        self._set_status("Fetching from sync…")
+        self._set_status(f"{g.BUSY} {g.SYNC}")
         self._fetch_result = start_fetch(pull_peer_logs)
         self.root.after(FETCH_POLL_MS, self._poll_fetch)
 
@@ -225,7 +224,7 @@ class _PullFlows(_GateNutrition):
             return
         self._fetch_result = None
         if reason is not None:
-            self._set_status(f"{reason} — still locked.", error=True)
+            self._set_status(f"{g.ERROR} {g.SYNC}", error=True)
             return
         self._reconcile_after_fetch()
 
@@ -244,7 +243,5 @@ class _PullFlows(_GateNutrition):
             return
         self._clear_inputs()
         self._refresh_slot_header()
-        count = len(satisfied_slots)
-        meal_word = "meal" if count == 1 else "meals"
-        self._set_status(f"Pulled {count} {meal_word} — next meal, please.")
+        self._set_status(f"{g.OK} {g.SYNC} {len(satisfied_slots)}")
         self._widgets.desc_text.focus_set()

@@ -131,7 +131,7 @@ class MealGate(_GateCalendar):
         self._state = _GateState()
         self.root = GateRoot()
         self.root.on_callback_error = self.on_callback_error
-        self.root.title("Diet Gate" + (" [DEMO]" if demo_mode else ""))
+        self.root.title("Diet Gate")  # OS-level app name: the one kept noun
         # No bg=/fg=/... overrides here: LockConfig's own defaults already
         # are the unified-design-system palette, and _gatelock_ui reads the
         # same LockConfig() rather than a separate hardcoded copy -- see

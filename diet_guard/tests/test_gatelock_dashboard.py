@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 from diet_guard import _gatelock_delivery
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._budget import write_budget
 from diet_guard._state import log_meal
 from diet_guard.tests.conftest import _nutrition
@@ -28,12 +29,12 @@ class TestDashboard:
         """A sealed budget shows consumed/target/remaining."""
         write_budget(2000)
         gate._refresh_dashboard()
-        assert "left" in gate._vars.cal_headline.get()
+        assert gate._vars.cal_headline.get() == f"0 / 2000 kcal   {g.BUDGET} 2000"
 
     def test_headline_without_budget(self, gate: MealGate) -> None:
         """With no budget, only today's total is shown."""
         gate._refresh_dashboard()
-        assert "kcal today" in gate._vars.cal_headline.get()
+        assert gate._vars.cal_headline.get() == "0 kcal"
 
     def test_dashboard_lists_entries(self, gate: MealGate) -> None:
         """Logged entries appear in the detail panel."""
@@ -42,31 +43,31 @@ class TestDashboard:
         gate._refresh_dashboard()
         text = gate._vars.dashboard.get()
         assert "apple" in text
-        assert "protein" in text
+        assert f"{g.PROTEIN} 10 /" in text
 
     def test_dashboard_empty(self, gate: MealGate) -> None:
         """With nothing logged, the panel says so."""
         gate._refresh_dashboard()
-        assert "nothing logged yet" in gate._vars.dashboard.get()
+        assert g.EMPTY in gate._vars.dashboard.get()
 
     def test_slot_header_variants(self, gate: MealGate) -> None:
         """The header covers none / one / several pending slots."""
         gate._pending = []
         gate._refresh_slot_header()
-        assert "All meals logged" in gate._vars.slot_header.get()
+        assert gate._vars.slot_header.get() == g.OK
         gate._pending = [480]
         gate._refresh_slot_header()
-        assert "Log your" in gate._vars.slot_header.get()
+        assert gate._vars.slot_header.get() == f"{g.CLOCK} 08:00"
         gate._pending = [480, 720]
         gate._refresh_slot_header()
-        assert "remaining" in gate._vars.slot_header.get()
+        assert gate._vars.slot_header.get() == f"{g.CLOCK} 08:00   1/2"
 
     def test_projection_with_budget(self, gate: MealGate) -> None:
         """The projection shows the after-this-item remaining when priced."""
         write_budget(2000)
         gate._widgets.macros.kcal.insert(0, "300")
         gate._refresh_projection()
-        assert "after this item" in gate._vars.projection.get()
+        assert gate._vars.projection.get().endswith(f"→   {g.BUDGET} 1700")
 
 
 class TestSlotWalk:
@@ -121,7 +122,7 @@ class TestFetchFromSync:
         with patch.object(_gatelock_delivery, "pull_peer_logs") as pull:
             gate._on_fetch_sync()
         pull.assert_not_called()
-        assert "only available on the real lock" in gate._vars.status.get()
+        assert gate._vars.status.get() == f"{g.DEMO_ONLY} {g.SYNC}"
 
     def test_pull_failure_keeps_lock(self, gate: MealGate) -> None:
         """A failed pull shows the reason and leaves pending slots intact."""
@@ -135,7 +136,7 @@ class TestFetchFromSync:
             gate._on_fetch_sync()
             _drive_fetch(gate)
         assert gate._pending == [480, 720]
-        assert "still locked" in gate._vars.status.get()
+        assert gate._vars.status.get() == f"{g.ERROR} {g.SYNC}"
 
     def test_no_new_meals_keeps_all_slots(self, gate: MealGate) -> None:
         """A clean pull that satisfies nothing reports so and keeps the slots."""
@@ -148,7 +149,7 @@ class TestFetchFromSync:
             gate._on_fetch_sync()
             _drive_fetch(gate)
         assert gate._pending == [480, 720]
-        assert "No new meals" in gate._vars.status.get()
+        assert gate._vars.status.get() == f"{g.EMPTY} {g.SYNC}"
 
     def test_partial_advances_to_next_slot(self, gate: MealGate) -> None:
         """One slot pulled in leaves the rest; the window advances (singular)."""
@@ -161,10 +162,10 @@ class TestFetchFromSync:
             gate._on_fetch_sync()
             _drive_fetch(gate)
         assert gate._pending == [720]
-        assert "Pulled 1 meal " in gate._vars.status.get()
+        assert gate._vars.status.get() == f"{g.OK} {g.SYNC} 1"
 
-    def test_partial_plural_wording(self, gate: MealGate) -> None:
-        """Two slots pulled in uses the plural 'meals'."""
+    def test_partial_shows_the_count(self, gate: MealGate) -> None:
+        """Two slots pulled in shows the count 2."""
         gate.demo_mode = False
         gate._pending = [480, 720, 960]
         with (
@@ -174,7 +175,7 @@ class TestFetchFromSync:
             gate._on_fetch_sync()
             _drive_fetch(gate)
         assert gate._pending == [960]
-        assert "Pulled 2 meals" in gate._vars.status.get()
+        assert gate._vars.status.get() == f"{g.OK} {g.SYNC} 2"
 
     def test_all_satisfied_unlocks(self, gate: MealGate) -> None:
         """When the pull satisfies every pending slot, the gate unlocks."""
@@ -187,7 +188,7 @@ class TestFetchFromSync:
             gate._on_fetch_sync()
             _drive_fetch(gate)
         assert gate._pending == []
-        assert "unlocking" in gate._vars.status.get()
+        assert g.UNLOCKING in gate._vars.status.get()
 
     def test_poll_without_a_fetch_is_inert(self, gate: MealGate) -> None:
         """A stray poll after completion must stop, not block on an empty queue."""

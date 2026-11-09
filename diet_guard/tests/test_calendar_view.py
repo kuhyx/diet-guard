@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._calendar_view import (
     CalendarCell,
     build_month_cells,
@@ -103,23 +104,22 @@ class TestCellStyle:
 
 
 class TestStreaksText:
-    """:func:`streaks_text` boundary cases (singular/plural, zero)."""
+    """:func:`streaks_text` boundary cases (zero, one)."""
 
-    def test_zero_streaks_render_as_zero_days(self) -> None:
+    def test_zero_streaks_render_as_zeros(self) -> None:
         text = streaks_text({}, today=date(2026, 7, 13))
-        assert "0 days" in text
+        assert text == f"{g.FOOD} 0   {g.OK} 0"
 
-    def test_a_one_day_streak_uses_the_singular(self) -> None:
+    def test_a_one_day_streak(self) -> None:
         text = streaks_text(
             {"2026-07-13": DayStatus.GREEN},
             today=date(2026, 7, 13),
         )
-        assert "Logging streak: 1 day " in text
-        assert "Adherence streak: 1 day" in text
+        assert text == f"{g.FOOD} 1   {g.OK} 1"
 
 
 class TestYtdText:
-    """:func:`ytd_text` renders the tally's three counts."""
+    """:func:`ytd_text` renders the tally's counts."""
 
     def test_reports_logged_elapsed_and_adherent_counts(self) -> None:
         status_map_ = {
@@ -127,5 +127,4 @@ class TestYtdText:
             "2026-01-02": DayStatus.RED,
         }
         text = ytd_text(status_map_, today=date(2026, 1, 10))
-        assert "logged 2/10 days" in text
-        assert "1 within budget" in text
+        assert text == f"{g.YEAR_TOTAL} {g.FOOD} 2/10   {g.OK} 1"

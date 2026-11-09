@@ -22,6 +22,7 @@ import queue
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+from diet_guard import _gatelock_glyphs as g
 from diet_guard import _gatelock_mealflow
 from diet_guard._gatelock_kuchnia import DeliveryResult
 from diet_guard._kuchnia_log import dish_nutrition
@@ -60,16 +61,17 @@ class TestTheQueueSurvivesASubmit:
                 reason=None,
             ),
         )
-        gate._prefill_next_dish("Logged 08:00: 391 kcal")
-        assert "Logged 08:00: 391 kcal" in gate.last_status
-        assert "Loaded: Second" in gate.last_status
+        logged = f"{g.OK} 08:00  391 kcal"
+        gate._prefill_next_dish(logged)
+        assert logged in gate.last_status
+        assert f"{g.DELIVERY} Second" in gate.last_status
 
     def test_prefilling_without_a_log_line_stays_unprefixed(self) -> None:
         # The button and the autoload pass no ``logged``, so the status must
         # not grow a stray leading separator.
         gate = _Gate()
         _deliver(gate, DeliveryResult(dishes=(_dish("Only"),), reason=None))
-        assert gate.last_status.startswith("Loaded: Only")
+        assert gate.last_status.startswith(f"{g.DELIVERY} Only")
 
     def test_an_exhausted_queue_prefills_nothing(self) -> None:
         # The guard that lets ``_finish_slot`` call this unconditionally.
@@ -143,8 +145,8 @@ class TestTheGateAdvancesTheQueue:
         ):
             gate._record("apple", _nutrition(95, 100))
         assert not gate._delivery_pending
-        assert "Loaded: Second course" in gate._vars.status.get()
-        assert "Logged 08:00" in gate._vars.status.get()
+        assert f"{g.DELIVERY} Second course" in gate._vars.status.get()
+        assert f"{g.OK} 08:00" in gate._vars.status.get()
 
     def test_a_prefilled_dish_logs_exactly_its_own_values(self, gate: MealGate) -> None:
         """What the submit logs is the dish, not the dish scaled by grams/100.
@@ -176,5 +178,5 @@ class TestTheGateAdvancesTheQueue:
         was never offered.
         """
         gate._delivery_pending = (_dish("Kolacja"),)
-        gate._unlock("Logged 20:00: 391 kcal")
-        assert "1 more dish delivered" in gate._vars.status.get()
+        gate._unlock(f"{g.OK} 20:00  391 kcal")
+        assert f"{g.DELIVERY} +1" in gate._vars.status.get()

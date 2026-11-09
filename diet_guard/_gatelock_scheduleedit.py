@@ -23,6 +23,7 @@ import abc
 import contextlib
 import tkinter as tk
 
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._gatelock_budgetedit import _GateBudgetEdit
 from diet_guard._gatelock_ui import ERR, FG
 from diet_guard._meal_schedule import (
@@ -57,14 +58,14 @@ def schedule_problem(schedule: MealSchedule) -> str | None:
     a checkpoint.
     """
     first, last = schedule.first_minute, schedule.last_minute
+    # Glyph cues, not sentences: the rule's numbers next to the field glyph.
     if last < first + SLOT_GRID_MINUTES:
-        return (
-            f"The last meal must be at least {SLOT_GRID_MINUTES} min after the first."
-        )
+        return f"{g.ERROR} {g.CLOCK}{g.DASH}{g.CLOCK} ≥ {SLOT_GRID_MINUTES} min"
     if not MIN_MEAL_COUNT <= schedule.count <= MAX_MEAL_COUNT:
-        return f"Meals per day must be {MIN_MEAL_COUNT}-{MAX_MEAL_COUNT}."
-    if schedule.count > (last - first) // SLOT_GRID_MINUTES + 1:
-        return "Too many meals for that window -- widen it or eat less often."
+        return f"{g.ERROR} {g.TIMES} {MIN_MEAL_COUNT}{g.DASH}{MAX_MEAL_COUNT}"
+    capacity = (last - first) // SLOT_GRID_MINUTES + 1
+    if schedule.count > capacity:
+        return f"{g.ERROR} {g.TIMES} ≤ {capacity}"
     return None
 
 
@@ -127,14 +128,14 @@ class _GateScheduleEdit(_GateBudgetEdit):
         if not self._cal_editing_schedule:
             self._cal_editing_schedule = True
             self._set_schedule_entry_state("normal")
-            self._set_schedule_button_text("Save")
+            self._set_schedule_button_text(g.SAVE)
             self._set_schedule_status("", error=False)
             return
         if not self._save_schedule_entry():
             return
         self._cal_editing_schedule = False
         self._set_schedule_entry_state("readonly")
-        self._set_schedule_button_text("Edit")
+        self._set_schedule_button_text(g.EDIT)
         self._refresh_calendar()
 
     def _read_schedule_fields(self) -> MealSchedule | None:
@@ -143,14 +144,12 @@ class _GateScheduleEdit(_GateBudgetEdit):
             first = parse_hhmm(self._cal_vars.schedule.first.get())
             last = parse_hhmm(self._cal_vars.schedule.last.get())
         except ValueError:
-            self._set_schedule_status(
-                "Enter meal times as HH:MM, e.g. 07:15.", error=True
-            )
+            self._set_schedule_status(f"{g.ERROR} {g.CLOCK}", error=True)
             return None
         try:
             count = int(self._cal_vars.schedule.count.get().strip())
         except ValueError:
-            self._set_schedule_status("Enter meals per day as a number.", error=True)
+            self._set_schedule_status(f"{g.ERROR} {g.TIMES}", error=True)
             return None
         return MealSchedule(first, last, count)
 
@@ -169,5 +168,5 @@ class _GateScheduleEdit(_GateBudgetEdit):
             return False
         record_schedule_change(schedule)
         self._show_schedule(current_schedule())
-        self._set_schedule_status("Saved.", error=False)
+        self._set_schedule_status(g.OK, error=False)
         return True

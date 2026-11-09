@@ -22,9 +22,10 @@ from __future__ import annotations
 import tkinter as tk
 from typing import TYPE_CHECKING
 
+from diet_guard import _gatelock_glyphs as glyphs
 from diet_guard import _gatelock_ui
 from diet_guard._gatelock_spacing import SM, XS
-from diet_guard._gatelock_typography import BODY, LABEL
+from diet_guard._gatelock_typography import BODY, LABEL, SUBTITLE
 from diet_guard._gatelock_ui import (
     _ACCENT,
     _COLORS,
@@ -61,13 +62,7 @@ def build_desc(parent: tk.Frame) -> tk.Text:
     wraps onto a second line and stays fully visible, instead of scrolling off
     the right edge where the end can no longer be read.
     """
-    tk.Label(
-        parent,
-        text="What did you eat?",
-        font=(_FONT, LABEL),
-        bg=BG,
-        fg=FG,
-    ).pack()
+    tk.Label(parent, text=glyphs.FOOD, font=(_FONT, SUBTITLE), bg=BG, fg=FG).pack()
     text = tk.Text(
         parent,
         font=(_FONT, BODY),
@@ -121,13 +116,7 @@ def build_amount_row(
     on_unit_change: Callable[[str], None],
 ) -> tk.Entry:
     """Build the "how much did you eat?" amount + unit row; return the entry."""
-    tk.Label(
-        parent,
-        text="How much did you eat?",
-        font=(_FONT, LABEL),
-        bg=BG,
-        fg=FG,
-    ).pack()
+    tk.Label(parent, text=glyphs.AMOUNT, font=(_FONT, SUBTITLE), bg=BG, fg=FG).pack()
     row = tk.Frame(parent, bg=BG)
     row.pack(pady=(XS, XS))
     amount_entry = _numeric_entry(root, row, width=10, variable=vars_.entries.amount)
@@ -167,7 +156,7 @@ def _build_unit_selector(
     for unit in (UNIT_GRAMS, UNIT_ITEMS):
         tk.Radiobutton(
             row,
-            text=unit,
+            text=glyphs.ITEMS if unit == UNIT_ITEMS else glyphs.GRAMS,
             value=unit,
             variable=vars_.unit,
             command=lambda u=unit: on_unit_change(u),
@@ -203,20 +192,21 @@ def build_macro_section(
     basis_prefix.pack(side="left")
     per_entry = _numeric_entry(root, basis, width=5, variable=vars_.entries.per)
     per_entry.pack(side="left", padx=XS, ipady=XS)
-    tk.Label(
-        basis,
-        text="g  (leave calories blank to look it up):",
-        font=(_FONT, LABEL),
-        bg=BG,
-        fg=FG,
-    ).pack(side="left")
+    # Blank kcal still means "look it up"; the busy cue shows it happening.
+    tk.Label(basis, text="g", font=(_FONT, LABEL), bg=BG, fg=FG).pack(side="left")
 
     row = tk.Frame(parent, bg=BG)
     row.pack(pady=(XS, XS))
+    # Shape + colour per macro, the phone's MacroKind vocabulary.
+    colors = glyphs.MACRO_COLORS
     macros = _MacroEntries(
         kcal=_macro_cell(root, row, "kcal", vars_.entries.kcal),
-        protein=_macro_cell(root, row, "P", vars_.entries.protein),
-        carbs=_macro_cell(root, row, "C", vars_.entries.carbs),
-        fat=_macro_cell(root, row, "F", vars_.entries.fat),
+        protein=_macro_cell(
+            root, row, glyphs.PROTEIN, vars_.entries.protein, colors["protein"]
+        ),
+        carbs=_macro_cell(
+            root, row, glyphs.CARBS, vars_.entries.carbs, colors["carbs"]
+        ),
+        fat=_macro_cell(root, row, glyphs.FAT, vars_.entries.fat, colors["fat"]),
     )
     return basis_prefix, per_entry, macros

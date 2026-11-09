@@ -19,6 +19,7 @@ from diet_guard import (
     _gatelock,
     _gatelock_support,
 )
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._gatelock import (
     MealGate,
     _pending_slots,
@@ -162,7 +163,7 @@ class TestLockDelegation:
     def test_callback_error_status(self, gate: MealGate) -> None:
         """An unexpected callback error surfaces a recoverable message."""
         gate.on_callback_error()
-        assert "went wrong" in gate._vars.status.get()
+        assert gate._vars.status.get() == f"{g.WARN} kcal"
 
     def test_run_delegates_to_lock(self, gate: MealGate) -> None:
         """run() hands off to the owned LockWindow."""

@@ -15,6 +15,7 @@ import logging
 import tkinter as tk
 from typing import TYPE_CHECKING
 
+from diet_guard._gatelock_glyphs import CLOCK, OK
 from diet_guard._gatelock_ui import (
     BASIS_PREFIX_GRAMS,
     BASIS_PREFIX_ITEMS,
@@ -108,11 +109,11 @@ class _GateCore:
         """Update the header to prompt for the slot now being collected."""
         total = len(self._pending)
         if total == 0:
-            self._vars.slot_header.set("All meals logged.")
+            self._vars.slot_header.set(OK)
             return
         slot = self._pending[0]
-        position = "" if total == 1 else f"  (1 of {total} remaining)"
-        self._vars.slot_header.set(f"Log your {slot_label(slot)} meal{position}")
+        position = "" if total == 1 else f"   1/{total}"
+        self._vars.slot_header.set(f"{CLOCK} {slot_label(slot)}{position}")
 
     def _reset_per_default(self) -> None:
         """Set the "per" field to the basis default for the current unit."""

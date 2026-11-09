@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from diet_guard import _gatelock_delivery, _gatelock_fillall, _gatelock_layout
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._gatelock import MealGate
 from diet_guard._gatelock_fillall import FILL_LABEL, _refresh_delivery
 from diet_guard._gatelock_layout import build_layout
@@ -82,7 +83,7 @@ class TestTheGateDrivesTheFlow:
         with patch.object(_gatelock_fillall, "start_delivery_fetch") as start:
             gate._on_fill_all()
         start.assert_not_called()
-        assert "only available on the real lock" in gate._vars.status.get()
+        assert gate._vars.status.get() == f"{g.DEMO_ONLY} {g.FILL_ALL}"
 
     def test_fill_and_confirm_unlocks_from_catering(self, gate: MealGate) -> None:
         gate.demo_mode = False  # read once, when the flow is first built
@@ -94,7 +95,7 @@ class TestTheGateDrivesTheFlow:
         with patch.object(_gatelock_delivery, "due_slots", side_effect=due):
             _fill(gate, delivered(*FOUR))
         status = gate._vars.status.get()
-        assert status == "Filled from catering — all meals logged, unlocking…"
+        assert status == f"{g.OK} {g.DELIVERY}  {g.UNLOCKING}"
         assert gate._pending == []
         gate.root.after.assert_called_with(_UNLOCK_DELAY_MS, gate.close)
         assert sorted(logged()) == [480, 720, 960, 1200]
@@ -109,8 +110,8 @@ class TestTheGateDrivesTheFlow:
         with patch.object(_gatelock_delivery, "due_slots", side_effect=due):
             _fill(gate, delivered(*two))
         assert gate._pending == [720]
-        assert "Pulled 1 meal " in gate._vars.status.get()
-        assert "unlocking" not in gate._vars.status.get()
+        assert g.UNLOCKING not in gate._vars.status.get()
+        assert gate._vars.status.get().startswith(g.OK)
 
 
 class TestLeftoverDishesAtUnlock:
@@ -120,22 +121,21 @@ class TestLeftoverDishesAtUnlock:
         # Case and padding differ from the dish name on purpose.
         log_meal("  KOLACJA ", _nutrition(), 20)
         gate._delivery_pending = (dish("Kolacja", 4), dish("Obiad", 3))
-        gate._unlock("Logged 20:00")
+        gate._unlock(f"{g.OK} 20:00")
         assert gate._vars.status.get() == (
-            "Logged 20:00 (1 more dish delivered; log with 'ate') — "
-            "all meals logged, unlocking…"
+            f"{g.OK} 20:00  {g.DELIVERY} +1  {g.UNLOCKING}"
         )
 
     def test_unlogged_dishes_are_all_counted(self, gate: MealGate) -> None:
         gate._delivery_pending = (dish("Kolacja", 4), dish("Obiad", 3))
-        gate._unlock("Logged 20:00")
-        assert "(2 more dishes delivered;" in gate._vars.status.get()
+        gate._unlock(f"{g.OK} 20:00")
+        assert f"{g.DELIVERY} +2" in gate._vars.status.get()
 
     def test_every_queued_dish_logged_means_no_suffix(self, gate: MealGate) -> None:
         log_meal("Kolacja", _nutrition(), 20)
         gate._delivery_pending = (dish("Kolacja", 4),)
-        gate._unlock("Logged 20:00")
-        assert "more dish" not in gate._vars.status.get()
+        gate._unlock(f"{g.OK} 20:00")
+        assert g.DELIVERY not in gate._vars.status.get()
 
 
 class TestTheButton:
@@ -188,8 +188,8 @@ class TestTheButton:
             widgets = build_layout(notebook, vars_, callbacks, demo_mode=False)
             button = _find_fill_button(widgets.frame, str(vars_.fill_label))
             assert button.cget("text") == FILL_LABEL
-            vars_.fill_label.set("✓ Confirm (3)")
-            assert button.cget("text") == "✓ Confirm (3)"
+            vars_.fill_label.set(f"{g.OK} 3")
+            assert button.cget("text") == f"{g.OK} 3"
             button.invoke()
             on_fill_all.assert_called_once_with()
         finally:

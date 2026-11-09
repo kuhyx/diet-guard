@@ -16,12 +16,12 @@ are unit-tested directly without a fake Tk in the loop.
 
 from __future__ import annotations
 
-import calendar
 import contextlib
 import tkinter as tk
 from tkinter import ttk
 from typing import TYPE_CHECKING
 
+from diet_guard import _gatelock_glyphs as glyphs
 from diet_guard._budget import (
     BudgetFileCorruptError,
     BudgetNotInitializedError,
@@ -84,6 +84,7 @@ class _GateCalendar(_GateScheduleEdit):
     _cal_editing_budget: bool
     _cal_editing_schedule: bool
     _notebook: ttk.Notebook
+    _body_tab: BodyTab
 
     def _build_tabs(self, parent: tk.Misc, callbacks: GateCallbacks) -> GateWidgets:
         """Build one monitor's notebook, wire both tabs, return its meal widgets.
@@ -109,7 +110,7 @@ class _GateCalendar(_GateScheduleEdit):
         widgets = build_layout(
             notebook, self._vars, callbacks, demo_mode=self.demo_mode
         )
-        notebook.add(widgets.frame, text="Log Meal")
+        notebook.add(widgets.frame, text=glyphs.TAB_LOG)
 
         cal_callbacks = CalendarCallbacks(
             on_prev_month=self._on_prev_month,
@@ -118,8 +119,9 @@ class _GateCalendar(_GateScheduleEdit):
             on_edit_or_save_schedule=self._on_edit_or_save_schedule,
         )
         cal_widgets = build_calendar_frame(notebook, self._cal_vars, cal_callbacks)
-        notebook.add(cal_widgets.frame, text="History")
-        notebook.add(BodyTab(notebook).container, text="Body")
+        notebook.add(cal_widgets.frame, text=glyphs.TAB_HISTORY)
+        self._body_tab = BodyTab(notebook)
+        notebook.add(self._body_tab.container, text=glyphs.TAB_BODY)
         # Ctrl+Tab / Ctrl+PageUp / Ctrl+PageDown and Alt+mnemonic tab switching
         # all live in toplevel bindings that ttk only installs on request. The
         # notebook is in the focus ring and Left/Right work once it holds focus,
@@ -159,7 +161,8 @@ class _GateCalendar(_GateScheduleEdit):
         schedule = current_schedule(default=budget) if budget is not None else None
         if schedule is None:
             self._render_month(None)
-            self._cal_vars.streaks.set("Budget file is corrupt -- fix it below.")
+            # Unreadable budget: warn at the budget flag, which is the fix.
+            self._cal_vars.streaks.set(f"{glyphs.WARN} {glyphs.BUDGET}")
             self._cal_vars.ytd.set("")
             self._cal_vars.averages.set("")
         else:
@@ -176,9 +179,8 @@ class _GateCalendar(_GateScheduleEdit):
     def _render_month(self, status_map_: dict[str, DayStatus] | None) -> None:
         """Redraw the day-cell grid and month label for the displayed month."""
         weeks = build_month_cells(self._cal_year, self._cal_month, status_map_)
-        self._cal_vars.month_label.set(
-            f"{calendar.month_name[self._cal_month]} {self._cal_year}",
-        )
+        # Numerals, not a month name: "11 · 2026".
+        self._cal_vars.month_label.set(f"{self._cal_month:02d} · {self._cal_year}")
         for surface in self._cal_surfaces:
             for index, cell_widget in enumerate(surface.day_cells):
                 row, col = divmod(index, 7)

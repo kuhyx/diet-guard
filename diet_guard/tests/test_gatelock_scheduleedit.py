@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._gatelock_scheduleedit import schedule_problem, schedule_summary
 from diet_guard._meal_schedule import DEFAULT_SCHEDULE, MealSchedule
 from diet_guard._meal_schedule_store import current_schedule, record_schedule_change
@@ -64,7 +65,7 @@ class TestEditToggle:
 
         assert not gate._cal_editing_schedule
         assert current_schedule() == MealSchedule(435, 1140, 5)
-        assert _status(gate) == "Saved."
+        assert _status(gate) == g.OK
         assert gate._cal_vars.schedule.times.get().startswith("07:15  10:15")
 
     def test_a_bare_hour_is_still_accepted(self, gate: MealGate) -> None:
@@ -106,22 +107,22 @@ class TestValidation:
         _type(gate, first, "20:00", "4")
 
         assert not gate._save_schedule_entry()
-        assert "HH:MM" in _status(gate)
+        assert _status(gate) == f"{g.ERROR} {g.CLOCK}"
 
     def test_rejects_a_non_numeric_count(self, gate: MealGate) -> None:
         _type(gate, "08:00", "20:00", "five")
 
         assert not gate._save_schedule_entry()
-        assert "meals per day as a number" in _status(gate)
+        assert _status(gate) == f"{g.ERROR} {g.TIMES}"
 
     @pytest.mark.parametrize(
         ("first", "last", "count", "reason"),
         [
-            ("20:00", "08:00", "4", "at least 15 min after"),
-            ("08:00", "08:14", "2", "at least 15 min after"),
-            ("08:00", "20:00", "1", "Meals per day must be 2-6."),
-            ("08:00", "20:00", "9", "Meals per day must be 2-6."),
-            ("08:00", "08:45", "5", "Too many meals"),
+            ("20:00", "08:00", "4", f"{g.ERROR} {g.CLOCK}{g.DASH}{g.CLOCK} ≥ 15 min"),
+            ("08:00", "08:14", "2", f"{g.ERROR} {g.CLOCK}{g.DASH}{g.CLOCK} ≥ 15 min"),
+            ("08:00", "20:00", "1", f"{g.ERROR} {g.TIMES} 2{g.DASH}6"),
+            ("08:00", "20:00", "9", f"{g.ERROR} {g.TIMES} 2{g.DASH}6"),
+            ("08:00", "08:45", "5", f"{g.ERROR} {g.TIMES} ≤ 4"),
         ],
     )
     def test_rejects_what_normalize_would_silently_change(
@@ -130,7 +131,7 @@ class TestValidation:
         _type(gate, first, last, count)
 
         assert not gate._save_schedule_entry()
-        assert reason in _status(gate)
+        assert reason == _status(gate)
         assert current_schedule() == DEFAULT_SCHEDULE
 
     def test_the_narrowest_legal_window_is_accepted(self, gate: MealGate) -> None:

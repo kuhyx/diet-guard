@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+from diet_guard import _gatelock_glyphs as g
 from diet_guard import (
     _gatelock_ui,
 )
@@ -107,8 +108,8 @@ class TestBasisAndAmount:
         write_budget(2000)
         gate._refresh_projection()
         text = gate._vars.projection.get()
-        assert "left" in text
-        assert "after this item" not in text
+        assert f"{g.BUDGET} 2000" in text
+        assert "→" not in text
 
     def test_keyrelease_grams_mode(self, gate: MealGate) -> None:
         """In grams mode the per-item weight is not touched on keyrelease."""

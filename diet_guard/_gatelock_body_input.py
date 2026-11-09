@@ -9,8 +9,9 @@ from __future__ import annotations
 from datetime import date
 from typing import TYPE_CHECKING
 
-from diet_guard._body_energy import ACTIVITY_CHOICES, activity_label
 from diet_guard._body_prefs import goal_from_json
+from diet_guard._gatelock_body_glyphs import ACTIVITY
+from diet_guard._gatelock_glyphs import DIRECTION, SPAN
 
 if TYPE_CHECKING:
     from diet_guard._body_energy import Goal
@@ -38,25 +39,29 @@ def parse_day(text: str) -> str | None:
         return None
 
 
+def _back(glyphs: dict[str, str], shown: str, fallback: str) -> str:
+    """The stored key whose glyph a picker shows, or ``fallback``."""
+    return next((key for key, glyph in glyphs.items() if glyph == shown), fallback)
+
+
 def load_goal(goal_vars: GoalVars, goal: Goal) -> None:
-    """Put ``goal`` into the sentence's pickers."""
-    goal_vars.direction.set(goal.direction)
+    """Put ``goal`` into the goal row's pickers, as glyphs (units stay)."""
+    goal_vars.direction.set(DIRECTION.get(goal.direction, goal.direction))
     goal_vars.amount.set(f"{goal.amount:g}")
     goal_vars.weight_unit.set(goal.weight_unit)
-    goal_vars.time_unit.set(goal.time_unit)
-    goal_vars.activity.set(activity_label(goal.activity))
+    goal_vars.time_unit.set(SPAN.get(goal.time_unit, goal.time_unit))
+    goal_vars.activity.set(ACTIVITY.get(goal.activity, goal.activity))
 
 
 def goal_choice(goal_vars: GoalVars, fallback: Goal) -> Goal:
     """The goal the pickers show; an unreadable amount keeps ``fallback``'s."""
-    labels = {activity_label(key): key for key in ACTIVITY_CHOICES}
     amount = parse_float(goal_vars.amount.get())
     return goal_from_json(
         {
-            "dir": goal_vars.direction.get(),
+            "dir": _back(DIRECTION, goal_vars.direction.get(), fallback.direction),
             "amt": fallback.amount if amount is None or amount < 0 else amount,
             "wu": goal_vars.weight_unit.get(),
-            "tu": goal_vars.time_unit.get(),
-            "act": labels.get(goal_vars.activity.get(), fallback.activity),
+            "tu": _back(SPAN, goal_vars.time_unit.get(), fallback.time_unit),
+            "act": _back(ACTIVITY, goal_vars.activity.get(), fallback.activity),
         }
     )

@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 from gatelock import ButtonStyle, make_button
 
+from diet_guard import _gatelock_glyphs as glyphs
 from diet_guard._gatelock_calendar_schedule import build_schedule_row
 from diet_guard._gatelock_calendar_types import (
     _ACCENT,
@@ -33,7 +34,7 @@ from diet_guard._gatelock_calendar_types import (
     CalendarWidgets,
 )
 from diet_guard._gatelock_spacing import SM, XS
-from diet_guard._gatelock_typography import BODY, CAPTION, LABEL, TITLE
+from diet_guard._gatelock_typography import BODY, CAPTION, LABEL
 from diet_guard._gatelock_ui import BG, FG
 
 if TYPE_CHECKING:
@@ -59,7 +60,7 @@ def _build_budget_row(
     row.pack(pady=(SM, XS))
     tk.Label(
         row,
-        text="Daily budget (kcal):",
+        text=f"{glyphs.BUDGET} kcal",
         font=(_COLORS.typography.font_family, LABEL),
         bg=BG,
         fg=FG,
@@ -80,7 +81,7 @@ def _build_budget_row(
     edit_button = make_button(
         row,
         _COLORS,
-        "Edit",
+        glyphs.EDIT,
         on_edit_or_save_budget,
     )
     edit_button.pack(side="left")
@@ -132,13 +133,15 @@ def _build_grid(parent: tk.Frame) -> list[tk.Label]:
     """Build the fixed 6x7 day-cell grid and return the flat cell list."""
     weekday_row = tk.Frame(parent, bg=BG)
     weekday_row.pack()
+    # Seven dots, no day names: the weekend pair is larger and accented.
     for col, label in enumerate(_WEEKDAY_LABELS):
+        weekend = label == glyphs.WEEKEND
         tk.Label(
             weekday_row,
             text=label,
             font=(_COLORS.typography.font_family, CAPTION, "bold"),
             bg=BG,
-            fg=_MUTED,
+            fg=_ACCENT if weekend else _MUTED,
             width=4,
         ).grid(row=0, column=col, padx=XS)
 
@@ -170,14 +173,6 @@ def build_calendar_frame(
 ) -> CalendarWidgets:
     """Lay out the History tab and return the widgets the controller drives."""
     frame = tk.Frame(root, bg=BG)
-    tk.Label(
-        frame,
-        text="📅  History",
-        font=(_COLORS.typography.font_family, TITLE, "bold"),
-        bg=BG,
-        fg=_ACCENT,
-    ).pack(pady=(SM, 0))
-
     budget_entry, budget_edit_button, budget_status_label = _build_budget_row(
         frame,
         vars_,

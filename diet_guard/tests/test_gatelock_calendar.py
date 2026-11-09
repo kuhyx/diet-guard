@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from diet_guard import _budget
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._budget import daily_budget, write_budget
 from diet_guard._budget_derived import budget_weight
 from diet_guard._state import log_meal
@@ -21,7 +22,7 @@ class TestNotebookWiring:
 
     def test_builds_a_notebook_with_all_three_tabs(self, gate: MealGate) -> None:
         labels = [text for _child, text in gate._notebook.tabs]
-        assert labels == ["Log Meal", "History", "Body"]
+        assert labels == [g.TAB_LOG, g.TAB_HISTORY, g.TAB_BODY]
 
     def test_calendar_state_starts_on_the_current_month(self, gate: MealGate) -> None:
         assert 1 <= gate._cal_month <= 12
@@ -64,8 +65,8 @@ class TestBudgetDefaultAndDegradation:
         gate: MealGate,
     ) -> None:
         gate._refresh_calendar()
-        assert "Logging streak" in gate._cal_vars.streaks.get()
-        assert "This year" in gate._cal_vars.ytd.get()
+        assert gate._cal_vars.streaks.get().startswith(g.FOOD)
+        assert gate._cal_vars.ytd.get().startswith(g.YEAR_TOTAL)
 
     def test_no_budget_set_shows_2200_in_the_entry(self, gate: MealGate) -> None:
         gate._refresh_calendar()
@@ -75,7 +76,7 @@ class TestBudgetDefaultAndDegradation:
         assert gate._cal_widgets.budget_entry.configured.get("state") == "readonly"
 
     def test_edit_button_starts_labelled_edit(self, gate: MealGate) -> None:
-        assert gate._cal_widgets.budget_edit_button.configured.get("text") == "Edit"
+        assert gate._cal_widgets.budget_edit_button.configured.get("text") == g.EDIT
 
     def test_no_budget_set_still_renders_every_grid_cell(
         self,
@@ -90,7 +91,7 @@ class TestBudgetDefaultAndDegradation:
         log_meal("oatmeal", _nutrition(kcal=300), None)
         gate._refresh_calendar()
         assert gate._cal_vars.budget.get() == "1800"
-        assert "Logging streak" in gate._cal_vars.streaks.get()
+        assert gate._cal_vars.streaks.get().startswith(g.FOOD)
 
     def test_a_corrupt_budget_file_degrades_with_an_error_message(
         self,
@@ -98,7 +99,7 @@ class TestBudgetDefaultAndDegradation:
     ) -> None:
         _budget.BUDGET_FILE.write_text("not json")
         gate._refresh_calendar()
-        assert "corrupt" in gate._cal_vars.streaks.get()
+        assert gate._cal_vars.streaks.get() == f"{g.WARN} {g.BUDGET}"
         assert gate._cal_vars.ytd.get() == ""
 
 
@@ -144,7 +145,7 @@ class TestBudgetEditToggle:
     ) -> None:
         gate._on_edit_or_save_budget()
         assert gate._cal_editing_budget is True
-        assert gate._cal_widgets.budget_edit_button.configured.get("text") == "Save"
+        assert gate._cal_widgets.budget_edit_button.configured.get("text") == g.SAVE
         assert gate._cal_widgets.budget_entry.configured.get("state") == "normal"
 
     def test_second_click_with_non_numeric_input_stays_in_edit_mode(
@@ -155,8 +156,8 @@ class TestBudgetEditToggle:
         self._type(gate, "not a number")
         gate._on_edit_or_save_budget()
         assert gate._cal_editing_budget is True
-        assert "whole number" in gate._cal_vars.budget_status.get()
-        assert gate._cal_widgets.budget_edit_button.configured.get("text") == "Save"
+        assert gate._cal_vars.budget_status.get() == f"{g.ERROR} kcal"
+        assert gate._cal_widgets.budget_edit_button.configured.get("text") == g.SAVE
 
     def test_second_click_with_zero_is_rejected_and_stays_in_edit_mode(
         self,
@@ -166,13 +167,13 @@ class TestBudgetEditToggle:
         self._type(gate, "0")
         gate._on_edit_or_save_budget()
         assert gate._cal_editing_budget is True
-        assert "positive" in gate._cal_vars.budget_status.get()
+        assert gate._cal_vars.budget_status.get() == f"{g.ERROR} kcal > 0"
 
     def test_second_click_with_negative_is_rejected(self, gate: MealGate) -> None:
         gate._on_edit_or_save_budget()
         self._type(gate, "-500")
         gate._on_edit_or_save_budget()
-        assert "positive" in gate._cal_vars.budget_status.get()
+        assert gate._cal_vars.budget_status.get() == f"{g.ERROR} kcal > 0"
 
     def test_second_click_with_a_valid_value_saves_and_exits_edit_mode(
         self,
@@ -182,8 +183,8 @@ class TestBudgetEditToggle:
         self._type(gate, "1900")
         gate._on_edit_or_save_budget()
         assert gate._cal_editing_budget is False
-        assert gate._cal_vars.budget_status.get() == "Saved."
-        assert gate._cal_widgets.budget_edit_button.configured.get("text") == "Edit"
+        assert gate._cal_vars.budget_status.get() == g.OK
+        assert gate._cal_widgets.budget_edit_button.configured.get("text") == g.EDIT
         assert gate._cal_widgets.budget_entry.configured.get("state") == "readonly"
         assert daily_budget() == 1900
 

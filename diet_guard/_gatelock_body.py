@@ -18,18 +18,9 @@ from typing import TYPE_CHECKING
 
 from gatelock import ScrollableSurface
 
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._body_fat_store import MAX_BODY_FAT, MIN_BODY_FAT, set_body_fat
 from diet_guard._body_prefs import saved_goal, set_goal
-from diet_guard._body_report import (
-    activity_lines,
-    bmi_lines,
-    bmr_lines,
-    bodyfat_lines,
-    ideal_lines,
-    plan_lines,
-    profile_lines,
-    target_lines,
-)
 from diet_guard._body_store import (
     MAX_KG,
     MIN_KG,
@@ -39,6 +30,16 @@ from diet_guard._body_store import (
 )
 from diet_guard._body_view import BodyView, budget_or_default, build_view
 from diet_guard._daystatus import day_total_kcal
+from diet_guard._gatelock_body_glyphs import (
+    activity_glyphs,
+    bmi_glyphs,
+    bmr_glyphs,
+    bodyfat_glyphs,
+    ideal_glyphs,
+    plan_glyphs,
+    profile_glyphs,
+    target_glyphs,
+)
 from diet_guard._gatelock_body_graph import GraphBox, draw_weight_graph, in_range
 from diet_guard._gatelock_body_input import (
     HEIGHT_CM,
@@ -63,7 +64,9 @@ if TYPE_CHECKING:
 
 __all__ = ["BodyTab"]
 
-_DAY_HINT = "Type the YYYY-MM-DD day to delete."
+# The day field's expected shape, shown when it does not parse.
+_DAY_SHAPE = "0000-00-00"
+_DAY_HINT = f"{g.ERROR} {g.DELETE} {_DAY_SHAPE}"
 
 
 class BodyTab:
@@ -119,17 +122,16 @@ class BodyTab:
         view = build_view(today, self._goal)
         target = None if view.numbers is None else view.numbers.target
         kcal = None if target is None else target.kcal
-        self.vars.goal.answer.set("" if kcal is None else f"eat {kcal} kcal")
-        lines = target_lines(view)
+        self.vars.goal.answer.set("" if kcal is None else f"→ {kcal} kcal")
         texts = {
-            "summary": profile_lines(view, today),
-            "table": lines[1:] if kcal is not None else lines,
-            "bodyfat": bodyfat_lines(view),
-            "bmi": bmi_lines(view),
-            "ideal": ideal_lines(view),
-            "bmr": bmr_lines(view),
-            "workouts": activity_lines(view),
-            "plan": plan_lines(self._plan(today)),
+            "summary": profile_glyphs(view, today),
+            "table": target_glyphs(view),
+            "bodyfat": bodyfat_glyphs(view),
+            "bmi": bmi_glyphs(view),
+            "ideal": ideal_glyphs(view),
+            "bmr": bmr_glyphs(view),
+            "workouts": activity_glyphs(view),
+            "plan": plan_glyphs(self._plan(today)),
         }
         for name, lines in texts.items():
             self.vars.blocks[name].set("\n".join(lines))
@@ -166,8 +168,9 @@ class BodyTab:
 
     def _saved(self, message: str) -> None:
         self.vars.status.set(message)
+        # Saved here, but the publish failed: the reason goes to the log only.
         publish_after_log_detached(
-            lambda why: self.vars.status.set(f"Saved; not yet synced ({why}).")
+            lambda _why: self.vars.status.set(f"{g.OK}   {g.ERROR} {g.SYNC}")
         )
         self.refresh()
 
@@ -176,7 +179,7 @@ class BodyTab:
         self._goal = goal_choice(self.vars.goal, self._goal)
         load_goal(self.vars.goal, self._goal)
         set_goal(self._goal)
-        self._saved("Goal saved.")
+        self._saved(g.OK)
 
     def save_profile(self) -> None:
         """Validate and store birth date, height and sex."""
@@ -189,20 +192,22 @@ class BodyTab:
             or not HEIGHT_CM[0] <= height <= HEIGHT_CM[1]
             or sex not in {"m", "f"}
         ):
-            self.vars.status.set("Profile needs a YYYY-MM-DD birth date, cm and sex.")
+            self.vars.status.set(f"{g.ERROR} {g.BIRTH}  cm  {g.MALE}{g.FEMALE}")
             return
         set_profile(birth=birth, height_cm=height, sex=sex)
-        self._saved("Profile saved -- it moves to the bottom next time.")
+        self._saved(g.OK)
 
     def save_weight(self) -> None:
         """Validate and store the typed weigh-in."""
         kg = parse_float(self.vars.logs.weight.get())
         day = parse_day(self.vars.logs.weight_day.get())
         if kg is None or day is None or not MIN_KG <= kg <= MAX_KG:
-            self.vars.status.set(f"Weight needs {MIN_KG:g}-{MAX_KG:g} kg and a day.")
+            self.vars.status.set(
+                f"{g.ERROR} {MIN_KG:g}{g.DASH}{MAX_KG:g} kg  {_DAY_SHAPE}"
+            )
             return
         self._store_weight(day, kg)
-        self._saved(f"Saved {kg:g} kg for {day}.")
+        self._saved(f"{g.OK} {kg:g} kg  {day}")
 
     def delete_weight(self) -> None:
         """Delete the weigh-in for the typed day."""
@@ -211,7 +216,7 @@ class BodyTab:
             self.vars.status.set(_DAY_HINT)
             return
         self._store_weight(day, None)
-        self._saved(f"Deleted the weigh-in for {day}.")
+        self._saved(f"{g.DELETE} {day}")
 
     @staticmethod
     def _store_weight(day: str, kg: float | None) -> None:
@@ -225,11 +230,11 @@ class BodyTab:
         pct = parse_float(self.vars.logs.body_fat.get())
         day = parse_day(self.vars.logs.fat_day.get())
         if pct is None or day is None or not MIN_BODY_FAT <= pct <= MAX_BODY_FAT:
-            limits = f"{MIN_BODY_FAT:g}-{MAX_BODY_FAT:g}%"
-            self.vars.status.set(f"Body fat needs {limits} and a day.")
+            limits = f"{MIN_BODY_FAT:g}{g.DASH}{MAX_BODY_FAT:g}%"
+            self.vars.status.set(f"{g.ERROR} {limits}  {_DAY_SHAPE}")
             return
         set_body_fat(day, pct)
-        self._saved(f"Saved {pct:g}% body fat for {day}.")
+        self._saved(f"{g.OK} {pct:g}%  {day}")
 
     def delete_body_fat(self) -> None:
         """Delete the body-fat reading for the typed day."""
@@ -238,4 +243,4 @@ class BodyTab:
             self.vars.status.set(_DAY_HINT)
             return
         set_body_fat(day, None)
-        self._saved(f"Deleted the body-fat reading for {day}.")
+        self._saved(f"{g.DELETE} {day}")

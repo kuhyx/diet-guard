@@ -17,6 +17,8 @@ from typing import TYPE_CHECKING
 
 from gatelock import LockConfig
 
+from diet_guard._gatelock_glyphs import WEEKDAY, WEEKEND
+
 if TYPE_CHECKING:
     from collections.abc import Callable
     from tkinter import ttk
@@ -32,7 +34,7 @@ _ACCENT = _COLORS.palette.accent
 
 # calendar.monthcalendar never returns more than 6 weeks for any month.
 _MONTH_ROWS = 6
-_WEEKDAY_LABELS = ("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")
+_WEEKDAY_LABELS = (WEEKDAY,) * 5 + (WEEKEND,) * 2
 _JANUARY = 1
 _DECEMBER = 12
 _MONTH_AFTER_DECEMBER = 13

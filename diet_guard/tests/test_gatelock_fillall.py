@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 from diet_guard import _gatelock_fillall
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._gatelock_fetch import FETCH_POLL_MS
 from diet_guard._gatelock_fillall import FILL_LABEL, FillAllFlow, FillHooks
 from diet_guard._gatelock_kuchnia import DeliveryResult
@@ -115,7 +116,7 @@ class TestFirstClick:
         with fetching() as start:
             h.flow.click()
         start.assert_not_called()
-        assert "only available on the real lock" in h.status
+        assert h.status == f"{g.DEMO_ONLY} {g.FILL_ALL}"
         assert h.label.get() == FILL_LABEL
 
     def test_a_click_while_fetching_is_ignored(self) -> None:
@@ -127,7 +128,7 @@ class TestFirstClick:
         start.assert_called_once_with(
             _gatelock_fillall._refresh_delivery, now_local().date()
         )
-        assert h.statuses == [("Loading today's delivery…", False)]
+        assert h.statuses == [(f"{g.BUSY} {g.DELIVERY}", False)]
         h.root.after.assert_called_once_with(FETCH_POLL_MS, h.flow._poll)
 
     def test_the_poll_rearms_while_the_worker_runs(self) -> None:
@@ -149,7 +150,7 @@ class TestFirstClick:
         h = Harness()
         with fetching(DeliveryResult(dishes=(), reason="panel down")):
             propose(h)
-        assert h.statuses[-1] == ("panel down — still locked.", True)
+        assert h.statuses[-1] == (f"{g.ERROR} {g.DELIVERY}", True)
         assert h.label.get() == FILL_LABEL
         # Fetch done: the next click may fetch again rather than being ignored.
         assert h.flow._result is None
@@ -158,7 +159,7 @@ class TestFirstClick:
         h = Harness()
         with fetching(delivered()):
             propose(h)
-        assert h.status == "No catering delivery today."
+        assert h.status == f"{g.EMPTY} {g.DELIVERY}"
         assert h.label.get() == FILL_LABEL
 
     def test_every_slot_already_logged(self) -> None:
@@ -167,7 +168,7 @@ class TestFirstClick:
         h = Harness()
         with fetching(delivered(*FOUR)):
             propose(h)
-        assert h.status == "Every slot already has a meal — nothing to fill."
+        assert h.status == f"{g.OK} {g.CLOCK}"
         assert h.label.get() == FILL_LABEL
 
     def test_the_proposal_writes_nothing(self) -> None:
@@ -175,10 +176,9 @@ class TestFirstClick:
         h = Harness()
         with fetching(delivered(*FOUR)):
             propose(h)
-        assert h.label.get() == "✓ Confirm (3)"
+        assert h.label.get() == f"{g.OK} 3"
         assert h.status == (
-            "Will log 3 (1144 kcal): 08:00 Owsianka, 16:00 Obiad, "
-            "20:00 Kolacja — click Confirm."
+            f"{g.DELIVERY} 3  1144 kcal   08:00 Owsianka   16:00 Obiad   20:00 Kolacja"
         )
         assert logged() == {720: ["my sandwich"]}
         h.on_logged.assert_not_called()
@@ -198,7 +198,7 @@ class TestConfirm:
             960: ["Obiad"],
             1200: ["Kolacja"],
         }
-        assert h.status == "Logged 3 catering dish(es)."
+        assert h.status == f"{g.OK} {g.DELIVERY} 3"
         h.on_logged.assert_called_once_with()
         assert h.label.get() == FILL_LABEL
 
@@ -210,17 +210,17 @@ class TestConfirm:
             propose(h)
             h.flow.click()
         assert logged()[480] == ["Owsianka", "Wrap"]
-        assert h.status == "Logged 5 catering dish(es)."
+        assert h.status == f"{g.OK} {g.DELIVERY} 5"
 
     def test_a_meal_typed_between_the_clicks_keeps_its_slot(self) -> None:
         h = Harness()
         with fetching(delivered(*FOUR)):
             propose(h)
-        assert h.label.get() == "✓ Confirm (4)"
+        assert h.label.get() == f"{g.OK} 4"
         log_meal("toast", _nutrition(), 480)
         h.flow.click()
         assert logged()[480] == ["toast"]
-        assert h.status == "Logged 3 catering dish(es)."
+        assert h.status == f"{g.OK} {g.DELIVERY} 3"
 
     def test_every_slot_taken_between_the_clicks(self) -> None:
         h = Harness()
@@ -229,7 +229,7 @@ class TestConfirm:
         for slot in (480, 720, 960, 1200):
             log_meal(f"mine {slot}", _nutrition(), slot)
         h.flow.click()
-        assert h.status == "Every slot already has a meal — nothing to fill."
+        assert h.status == f"{g.OK} {g.CLOCK}"
         h.on_logged.assert_not_called()
         assert h.label.get() == FILL_LABEL
         assert all(descs == [f"mine {s}"] for s, descs in logged().items())
@@ -247,4 +247,4 @@ class TestConfirm:
         assert logged() == {}
         h.on_logged.assert_not_called()
         assert h.label.get() == FILL_LABEL
-        assert h.status == "Loading today's delivery…"
+        assert h.status == f"{g.BUSY} {g.DELIVERY}"

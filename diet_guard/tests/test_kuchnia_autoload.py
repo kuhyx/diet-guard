@@ -14,6 +14,7 @@ import queue
 from unittest.mock import patch
 
 from diet_guard import _gatelock_delivery
+from diet_guard import _gatelock_glyphs as g
 from diet_guard._gatelock_kuchnia import DeliveryResult
 from diet_guard.tests.test_kuchnia_gate import _deliver, _dish, _Gate
 
@@ -65,4 +66,4 @@ class TestAutoload:
     def test_the_button_still_reports_both(self) -> None:
         gate = _Gate()
         _deliver(gate, DeliveryResult(dishes=(), reason="panel down"), asked=True)
-        assert "panel down" in gate.last_status
+        assert gate.last_status == f"{g.ERROR} {g.DELIVERY}"

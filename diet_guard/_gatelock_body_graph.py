@@ -18,6 +18,7 @@ from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 from diet_guard._gatelock_calendar_types import _ACCENT, _COLORS, _MUTED
+from diet_guard._gatelock_glyphs import EMPTY, INFINITE, OK
 from diet_guard._gatelock_typography import CAPTION
 from diet_guard._gatelock_ui import BG, FG
 
@@ -34,15 +35,17 @@ __all__ = [
 
 # (label, days back; None = everything).
 GRAPH_RANGES: tuple[tuple[str, int | None], ...] = (
-    ("30 days", 30),
-    ("90 days", 90),
-    ("1 year", 365),
-    ("All", None),
+    ("30", 30),
+    ("90", 90),
+    ("365", 365),
+    (INFINITE, None),
 )
 _HEALTHY_FILL = "#1f3a2a"
 _GRID = "#33363d"
 _DOT_R = 3
 _TICKS = 4
+# Size of the empty-range mark, in points.
+_EMPTY_SIZE = 48
 # Keep a flat line off the frame: pad the value range by this much (kg).
 _MIN_SPAN_KG = 2.0
 # Include a healthy-band edge on the axis only when it is this close (kg).
@@ -140,8 +143,9 @@ def _draw_band(
         box.x(0), top, box.x(1), bottom, fill=_HEALTHY_FILL, outline=""
     )
     font = (_COLORS.typography.font_family, CAPTION)
+    # The green band is the healthy-BMI weight range; a check marks it.
     canvas.create_text(
-        box.x(1) - 4, top + 2, text="healthy BMI", anchor="ne", fill=_MUTED, font=font
+        box.x(1) - 4, top + 2, text=OK, anchor="ne", fill=_MUTED, font=font
     )
 
 
@@ -151,16 +155,16 @@ def draw_weight_graph(
     box: GraphBox,
     healthy: tuple[float, float] | None,
 ) -> None:
-    """Redraw the whole graph; an empty log shows a hint instead."""
+    """Redraw the whole graph; an empty range shows a large empty-set mark."""
     canvas.delete("all")
     font = (_COLORS.typography.font_family, CAPTION)
     if not weights:
         canvas.create_text(
             box.width / 2,
             box.height / 2,
-            text="Nothing logged in this range yet.",
+            text=EMPTY,
             fill=_MUTED,
-            font=font,
+            font=(_COLORS.typography.font_family, _EMPTY_SIZE),
         )
         return
     span = value_span(list(weights.values()), healthy)
