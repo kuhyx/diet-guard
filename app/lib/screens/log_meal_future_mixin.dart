@@ -91,15 +91,17 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
     final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Icon(
-          Icons.event,
-          size: 18,
-          color: scheme.onSurfaceVariant,
-          semanticLabel: 'Log date',
-        ),
-        const SizedBox(width: AppSpacing.xs),
-        // Today is the default and needs no word; only a picked date (data)
-        // is shown.
+        // Today is the default and shows nothing; only a picked date (data)
+        // is shown, marked by the calendar glyph.
+        if (date != null) ...[
+          Icon(
+            Icons.event,
+            size: 18,
+            color: scheme.onSurfaceVariant,
+            semanticLabel: 'Log date',
+          ),
+          const SizedBox(width: AppSpacing.xs),
+        ],
         Expanded(
           child: date == null ? const SizedBox() : Text(localDateKey(date)),
         ),
