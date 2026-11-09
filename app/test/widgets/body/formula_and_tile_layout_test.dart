@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../label_finders.dart';
+
 Future<void> _pumpAt(WidgetTester tester, Size dp, Widget child) async {
   tester.view.physicalSize = dp;
   tester.view.devicePixelRatio = 1;
@@ -35,9 +37,7 @@ bool _paintsFormulaWord(Widget w) =>
     ].any((word) => (w.data ?? '').contains(word));
 
 void main() {
-  testWidgets('activity formulas are icons; names only in tooltips', (
-    tester,
-  ) async {
+  testWidgets('activity formulas are icons; names only spoken', (tester) async {
     await _pumpAt(
       tester,
       const Size(360, 2400),
@@ -48,34 +48,19 @@ void main() {
       ),
     );
     expect(find.byWidgetPredicate(_paintsFormulaWord), findsNothing);
+    // A tooltip paints on long-press: none may carry a formula name.
+    expect(find.byType(Tooltip), findsNothing);
     for (final name in ['MET', 'ACSM', 'Per-km']) {
       // One in the mean row, one in the session tile.
-      expect(find.byTooltip(name), findsNWidgets(2));
+      expect(byIconLabel(name), findsNWidgets(2));
     }
     expect(find.text('300'), findsOneWidget);
     expect(find.text('310'), findsOneWidget);
     expect(find.text('320'), findsOneWidget);
     // Distinct glyphs, so the three are told apart without words.
-    final icons = tester
-        .widgetList<Icon>(
-          find.descendant(
-            of: find.byTooltip('MET').first,
-            matching: find.byType(Icon),
-          ),
-        )
-        .map((i) => i.icon)
-        .toSet();
-    expect(icons, hasLength(1));
     final glyphs = {
       for (final name in ['MET', 'ACSM', 'Per-km'])
-        (tester
-            .widget<Icon>(
-              find.descendant(
-                of: find.byTooltip(name).first,
-                matching: find.byType(Icon),
-              ),
-            )
-            .icon),
+        tester.widget<Icon>(byIconLabel(name).first).icon,
     };
     expect(glyphs, hasLength(3));
   });
@@ -98,11 +83,12 @@ void main() {
     expect(find.byWidgetPredicate(_paintsFormulaWord), findsNothing);
   });
 
-  for (final width in [360.0, 411.0]) {
-    testWidgets('a weight tile value fits whole at $width dp', (tester) async {
+  // A 360 dp phone, the Pixel's 411 dp, and a 4K web window.
+  for (final size in const [Size(360, 800), Size(411, 800), Size(3840, 2160)]) {
+    testWidgets('a weight tile value fits whole at $size', (tester) async {
       await _pumpAt(
         tester,
-        Size(width, 800),
+        size,
         Padding(
           padding: const EdgeInsets.all(16),
           child: BodyTileGrid(
@@ -130,11 +116,14 @@ void main() {
         expect(paragraph.didExceedMaxLines, isFalse, reason: value);
         final card = find.ancestor(of: text, matching: find.byType(Card));
         final inside = tester.getRect(card).inflate(0.5);
-        expect(inside.contains(tester.getRect(text).topLeft), isTrue);
-        expect(inside.contains(tester.getRect(text).bottomRight), isTrue);
+        // The painted rect (after FittedBox scaling) sits inside the tile.
+        final painted = tester.getRect(text);
+        expect(inside.contains(painted.topLeft), isTrue, reason: value);
+        expect(inside.contains(painted.bottomRight), isTrue, reason: value);
+        expect(painted.width, lessThanOrEqualTo(inside.width), reason: value);
         // The full text is laid out (no ellipsis clipping): its width is
         // the natural width of "70.0 kg" at this font.
-        expect(tester.getSize(text).width, greaterThan(40));
+        expect(paragraph.size.width, greaterThan(40), reason: value);
       }
     });
   }

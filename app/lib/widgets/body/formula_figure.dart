@@ -1,5 +1,5 @@
-/// A kcal formula shown as a glyph + number; its proper name is only a
-/// long-press tooltip.
+/// A kcal formula shown as a glyph + number; its proper name is only the
+/// glyph's spoken label.
 library;
 
 import 'package:diet_guard_app/services/activity_kcal.dart';
@@ -13,7 +13,7 @@ const Map<String, IconData> formulaIcons = {
   'Per-km': Icons.straighten,
 };
 
-/// The glyph for formula [name], tooltipped with the formula's proper name.
+/// The glyph for formula [name], spoken as the formula's proper name.
 class FormulaGlyph extends StatelessWidget {
   /// Creates a glyph for [name].
   const FormulaGlyph(this.name, {this.size = 16, super.key});
@@ -24,14 +24,13 @@ class FormulaGlyph extends StatelessWidget {
   /// Glyph size.
   final double size;
 
+  // The proper name is spoken only: a tooltip paints on long-press.
   @override
-  Widget build(BuildContext context) => Tooltip(
-    message: name,
-    child: Icon(
-      formulaIcons[name],
-      size: size,
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
-    ),
+  Widget build(BuildContext context) => Icon(
+    formulaIcons[name],
+    size: size,
+    color: Theme.of(context).colorScheme.onSurfaceVariant,
+    semanticLabel: name,
   );
 }
 

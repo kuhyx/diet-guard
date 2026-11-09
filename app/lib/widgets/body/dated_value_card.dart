@@ -167,7 +167,13 @@ class _DatedValueCardState extends State<DatedValueCard> {
             if (latest == null)
               Icon(Icons.block, size: 18, color: scheme.outline)
             else
-              Text('${_fmt(latest.$2)}  ${latest.$1}'),
+              // Scales down instead of clipping on a narrow sheet.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text('${_fmt(latest.$2)}  ${latest.$1}', maxLines: 1),
+                ),
+              ),
           ],
         ),
         Row(

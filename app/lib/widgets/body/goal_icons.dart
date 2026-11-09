@@ -3,6 +3,7 @@
 library;
 
 import 'package:diet_guard_app/services/body_energy.dart';
+import 'package:diet_guard_app/widgets/body/formula_figure.dart';
 import 'package:flutter/material.dart';
 
 /// Lose = down arrow, maintain = level bar, gain = up arrow.
@@ -20,24 +21,25 @@ IconData timeUnitIcon(String unit) => switch (unit) {
   _ => Icons.event_repeat,
 };
 
-/// The five levels ramp from a chair to a barbell; measured is a gauge.
+/// The five levels ramp from a chair to a barbell; a measured choice wears
+/// its formula's glyph (the same one the Activity sheet shows next to kcal).
 IconData activityIcon(String key) => switch (key) {
   'sedentary' => Icons.chair,
   'light' => Icons.directions_walk,
   'moderate' => Icons.directions_bike,
   'very' => Icons.directions_run,
   'extra' => Icons.fitness_center,
+  _ when key.startsWith(measuredPrefix) =>
+    formulaIcons[key.substring(measuredPrefix.length)] ?? Icons.speed,
   _ => Icons.speed,
 };
 
-/// Short non-word caption under an activity icon: the TDEE multiplier of a
-/// level, or the proper name of the measured formula.
-String activityCaption(String key) {
-  if (key.startsWith(measuredPrefix)) {
-    return key.substring(measuredPrefix.length);
-  }
+/// Numeric caption under an activity icon: the TDEE multiplier of a level.
+/// Null for a measured formula (its glyph names it; the proper name is only
+/// spoken) and for an unknown key.
+String? activityCaption(String key) {
   for (final level in activityLevels) {
     if (level.key == key) return formatG(level.factor);
   }
-  return key;
+  return null;
 }
