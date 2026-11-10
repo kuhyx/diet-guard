@@ -70,4 +70,60 @@ void main() {
       expect(response.body, isEmpty, reason: 'nothing painted in the window');
     });
   }
+
+  group('proxy error responses', () {
+    late Directory tempDir;
+    late WrapperServer server;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('diet_guard_proxy_err_');
+      final webRoot = p.join(tempDir.path, 'web');
+      final dataDir = p.join(tempDir.path, 'data');
+      await Directory(webRoot).create(recursive: true);
+      File(p.join(webRoot, 'index.html')).writeAsStringSync('<html></html>');
+      await Directory(dataDir).create(recursive: true);
+      File(p.join(dataDir, 'documents')).writeAsStringSync('');
+      final tokenPath = p.join(tempDir.path, 'sync_token');
+      await File(tokenPath).writeAsString('t');
+      server = WrapperServer(
+        webRoot: webRoot,
+        dataDir: dataDir,
+        gitHubProxy: GitHubProxy(
+          tokenPath: tokenPath,
+          fallbackTokenPath: p.join(tempDir.path, 'fallback_token'),
+          httpClient: MockClient((_) async =>
+              http.Response('{"message": "Bad credentials"}', 401)),
+        ),
+      );
+      await server.start(0);
+    });
+
+    tearDown(() async {
+      await server.stop();
+      await tempDir.delete(recursive: true);
+    });
+
+    Uri url(String path) => Uri.parse('http://localhost:${server.port}$path');
+
+    test('a proxy error loaded as a page has an empty body', () async {
+      final request = http.Request('GET', url('/github/api/repos/o/r/contents/x'))
+        ..headers['sec-fetch-mode'] = 'navigate';
+      final response = await http.Response.fromStream(
+        await http.Client().send(request),
+      );
+      expect(response.statusCode, HttpStatus.unauthorized);
+      expect(response.body, isEmpty, reason: 'nothing painted in the window');
+    });
+
+    test('the app fetch still gets the proxy error body', () async {
+      final response = await http.Response.fromStream(
+        await http.Client().send(http.Request(
+          'GET',
+          url('/github/api/repos/o/r/contents/x'),
+        )),
+      );
+      expect(response.statusCode, HttpStatus.unauthorized);
+      expect(response.body, contains('Bad credentials'));
+    });
+  });
 }

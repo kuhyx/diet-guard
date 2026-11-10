@@ -177,8 +177,14 @@ class GitHubProxy {
   }
 
   void _passThrough(HttpRequest request, http.Response response) {
+    final isNavigate = request.headers.value('sec-fetch-mode') == 'navigate';
+    request.response.statusCode = response.statusCode;
+    if (isNavigate) {
+      // Top-level navigation (window load) must not paint error JSON; the app's
+      // own fetch() calls never send 'navigate', so they still get the body.
+      return;
+    }
     request.response
-      ..statusCode = response.statusCode
       ..headers.contentType = ContentType.json
       ..add(response.bodyBytes);
   }
