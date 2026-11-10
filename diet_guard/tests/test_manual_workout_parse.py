@@ -47,3 +47,7 @@ class TestManualParse:
         assert start is not None
         assert end is not None
         assert logged_window("never", 60) == (None, None)
+
+    def test_manual_session_source_is_manual(self) -> None:
+        session = manual_session("2026-09-20", {}, 45.0, "walk to work")
+        assert session.source == "manual"

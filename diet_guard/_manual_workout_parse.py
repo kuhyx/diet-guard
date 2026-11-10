@@ -100,11 +100,16 @@ def _clock_window(day: str, item: dict[str, object]) -> tuple[str | None, str | 
 def manual_session(
     day: str, item: dict[str, object], minutes: float, label: str
 ) -> Session:
-    """The :class:`Session` one manual workout stands for."""
+    """The :class:`Session` one manual workout stands for.
+
+    Source is "manual" so the phone's activity sheet can paint the human-typed
+    label (``source == "manual"`` in Dart). Verified screen-locker workouts keep
+    source "screen-locker".
+    """
     text = _text(item)
     kind = _kind(item, text)
     km = _typed_km(item)
     if km is None and kind in {"run", "walk"}:
         km = _text_km(text)
     start, end = _clock_window(day, item)
-    return Session(day, kind, minutes, km, label, "screen-locker", start, end)
+    return Session(day, kind, minutes, km, label, "manual", start, end)
