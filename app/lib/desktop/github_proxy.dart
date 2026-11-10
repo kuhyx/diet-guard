@@ -19,6 +19,7 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:diet_guard_app/desktop/error_page.dart' show isNavigation;
 import 'package:http/http.dart' as http;
 
 /// GitHub's REST API base, which [GitHubProxy] fronts.
@@ -177,9 +178,8 @@ class GitHubProxy {
   }
 
   void _passThrough(HttpRequest request, http.Response response) {
-    final isNavigate = request.headers.value('sec-fetch-mode') == 'navigate';
     request.response.statusCode = response.statusCode;
-    if (isNavigate) {
+    if (isNavigation(request)) {
       // Top-level navigation (window load) must not paint error JSON; the app's
       // own fetch() calls never send 'navigate', so they still get the body.
       return;

@@ -24,6 +24,7 @@ import 'dart:io';
 import 'package:crdt_sync/crdt_sync.dart';
 
 import 'package:diet_guard_app/desktop/content_types.dart' as content_types;
+import 'package:diet_guard_app/desktop/error_page.dart';
 import 'package:diet_guard_app/desktop/github_proxy.dart';
 import 'package:diet_guard_app/services/desktop_wrapper.dart';
 import 'package:path/path.dart' as p;
@@ -91,6 +92,7 @@ class WrapperServer {
       } on Exception {
         request.response.statusCode = HttpStatus.internalServerError;
       }
+      paintErrorIcon(request);
       await request.response.close();
     }
   }

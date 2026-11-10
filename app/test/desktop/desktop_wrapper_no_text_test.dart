@@ -13,6 +13,16 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:path/path.dart' as p;
 
+/// Removes <title> and <style> tags, strips all remaining HTML tags, and
+/// returns every [A-Za-z]{2,} match — i.e. all visible words the browser would
+/// paint for a top-level navigation.
+List<String> paintedWords(String html) {
+  var noTitle = html.replaceAll(RegExp(r'<title>.*?</title>', dotAll: true), '');
+  var noStyle = noTitle.replaceAll(RegExp(r'<style>.*?</style>', dotAll: true), '');
+  var noTags = noStyle.replaceAll(RegExp(r'<[^>]*>'), '');
+  return RegExp(r'[A-Za-z]{2,}').allMatches(noTags).map((m) => m.group(0)!).toList();
+}
+
 void main() {
   late Directory tempDir;
   late WrapperServer server;
@@ -69,6 +79,18 @@ void main() {
       expect(response.statusCode, status);
       expect(response.body, isEmpty, reason: 'nothing painted in the window');
     });
+
+    test('$method $path loaded as a page shows only an icon', () async {
+      final request = http.Request(method, url(path))
+        ..headers['sec-fetch-mode'] = 'navigate';
+      final response = await http.Response.fromStream(
+        await http.Client().send(request),
+      );
+      expect(response.statusCode, status);
+      expect(response.headers['content-type'], contains('text/html'));
+      expect(response.body, contains('<svg'));
+      expect(paintedWords(response.body), isEmpty);
+    });
   }
 
   group('proxy error responses', () {
@@ -105,14 +127,16 @@ void main() {
 
     Uri url(String path) => Uri.parse('http://localhost:${server.port}$path');
 
-    test('a proxy error loaded as a page has an empty body', () async {
+    test('a proxy error loaded as a page shows only an icon', () async {
       final request = http.Request('GET', url('/github/api/repos/o/r/contents/x'))
         ..headers['sec-fetch-mode'] = 'navigate';
       final response = await http.Response.fromStream(
         await http.Client().send(request),
       );
       expect(response.statusCode, HttpStatus.unauthorized);
-      expect(response.body, isEmpty, reason: 'nothing painted in the window');
+      expect(response.headers['content-type'], contains('text/html'));
+      expect(response.body, contains('<svg'));
+      expect(paintedWords(response.body), isEmpty);
     });
 
     test('the app fetch still gets the proxy error body', () async {
