@@ -1,5 +1,6 @@
 // Guard: the Body screen, every tile sheet and the activity-method chooser
 // paint no words (only numbers, unit symbols, MET and workout labels).
+// Workout labels are content only for manual workouts (source == 'manual').
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,10 +13,9 @@ import 'screens/body_screen_support.dart';
 /// proper names of the BMI / ideal-weight / BMR formulas that label their
 /// figures (DOUBT rows in keep.md: kept from the first pilot, outside the
 /// activity sheet). Activity formulas (ACSM, Per-km) are NOT here: that sheet
-/// and its chooser show glyphs only.
+/// and its chooser show glyphs only. Only manual workouts carry human content.
 const Set<String> _workouts = {
-  'Evening run',
-  'StrongLifts A',
+  'walk to the shop',
   'Harris-Benedict (revised 1984)',
   'Peterson (BMI 22)',
   'Mifflin-St Jeor',
@@ -41,8 +41,8 @@ void main() {
     expect(wordsIn('70.0 kg'), isEmpty);
     expect(wordsIn('265 MET'), isEmpty);
     expect(wordsIn('Measured (ACSM)'), isNotEmpty);
-    expect(wordsIn('Evening run 4 km', content: _workouts), ['km']);
-    expect(wordsIn('Evening run', content: _workouts), isEmpty);
+    expect(wordsIn('walk to the shop 4 km', content: _workouts), ['km']);
+    expect(wordsIn('walk to the shop', content: _workouts), isEmpty);
   });
 
   testWidgets('canary: a painted word fails the guard', (tester) async {

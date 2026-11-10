@@ -7,6 +7,7 @@ import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/body_section.dart';
 import 'package:diet_guard_app/widgets/body/formula_figure.dart';
+import 'package:diet_guard_app/widgets/body/workout_kind_icon.dart';
 import 'package:flutter/material.dart';
 
 /// How many of the newest sessions to list.
@@ -185,7 +186,22 @@ class _SessionTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${session.day}  ${session.label}'),
+          Row(
+            children: [
+              Text(session.day),
+              const SizedBox(width: AppSpacing.sm),
+              Icon(
+                kindIcon(session.kind),
+                size: 16,
+                color: muted,
+                semanticLabel: session.label,
+              ),
+              if (session.source == 'manual') ...[
+                const SizedBox(width: AppSpacing.sm),
+                Flexible(child: Text(session.label)),
+              ],
+            ],
+          ),
           Row(
             children: [
               Icon(

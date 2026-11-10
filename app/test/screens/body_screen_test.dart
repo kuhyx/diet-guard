@@ -133,8 +133,15 @@ void main() {
       byIconLabel('Mean daily exercise, last 1 full days:'),
       findsOneWidget,
     );
-    expect(find.textContaining('Evening run'), findsOneWidget);
-    expect(find.textContaining('StrongLifts A'), findsOneWidget);
+    expect(
+      byIconLabel('Running 10.0 km'),
+      findsOneWidget,
+    );
+    expect(
+      byIconLabel('StrongLifts workout A (80 min, all succeeded)'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('walk to the shop'), findsOneWidget);
     expect(byIconLabel('Connect Health Connect steps'), findsNothing);
   });
 
