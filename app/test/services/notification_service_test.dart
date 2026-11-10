@@ -34,6 +34,23 @@ void main() {
       expect(log.where((c) => c.method == 'initialize'), hasLength(1));
     });
 
+    test('init renames the reminder channel to the app name', () async {
+      final log = installFakeAndroidNotifications();
+      NotificationService.resetForTesting(
+        backend: LocalNotificationsBackend(FlutterLocalNotificationsPlugin()),
+      );
+
+      await NotificationService.init();
+
+      final createCall = log.firstWhere(
+        (c) => c.method == 'createNotificationChannel',
+        orElse: () => throw StateError('no createNotificationChannel call logged'),
+      );
+      final args = createCall.arguments as Map;
+      expect(args['id'], reminderChannelId);
+      expect(args['name'], 'DietGuard');
+    });
+
     test('requestPermission delegates to the Android implementation', () async {
       installFakeAndroidNotifications();
       NotificationService.resetForTesting(

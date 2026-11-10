@@ -24,6 +24,20 @@ class LocalNotificationsBackend implements NotificationBackend {
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
     );
     await plugin.initialize(settings: settings);
+
+    // Re-create the channel so Android renames it if an install still shows
+    // the old "Meal reminders" label.
+    await plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            _channelId,
+            _channelName,
+            importance: Importance.high,
+          ),
+        );
   }
 
   /// Requests Android 13+'s runtime `POST_NOTIFICATIONS` permission.
