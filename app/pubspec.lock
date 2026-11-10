@@ -157,11 +157,11 @@ packages:
     dependency: "direct main"
     description:
       path: crdt_sync_dart
-      ref: "crdt_sync_dart-v0.12.0"
-      resolved-ref: "59b33949e4a130bb76c77e7434ddf4bbf8cde3a3"
+      ref: "crdt_sync_dart-v0.12.1"
+      resolved-ref: "6641d85f0550ca60433fc8e0d13a3dafdbb664d6"
       url: "https://github.com/kuhyx/utils"
     source: git
-    version: "0.12.0"
+    version: "0.12.1"
   cross_file:
     dependency: transitive
     description:
@@ -375,10 +375,10 @@ packages:
     dependency: "direct main"
     description:
       name: fl_chart
-      sha256: "5ed69b8be550c6276c8f0bc25c09704fb061018ed1b1681867ad18fcf477e7b7"
+      sha256: "9f11b0b87a6b1843f5ca666ade4a62c08da1a6b7f9efeb91bb2c6f3fa6e31a9a"
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.0"
+    version: "1.3.1"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -544,10 +544,10 @@ packages:
     dependency: "direct main"
     description:
       name: idb_shim
-      sha256: "60965b556624f7018ec26205283e32670bc78c6fe1388d4b90bdfe6b2311b87b"
+      sha256: "507d8f3154fa4e41165941c5aa8509c6bf155bb30f76ba25a00d1e7ba1dd64c9"
       url: "https://pub.dev"
     source: hosted
-    version: "2.11.2"
+    version: "2.11.3"
   image:
     dependency: transitive
     description:
@@ -824,10 +824,10 @@ packages:
     dependency: transitive
     description:
       name: sembast
-      sha256: "35775a26edbdf0d891bab304929a712e103c9d9a6e2fb5ebbd8437bb3139615a"
+      sha256: "4f71f8c95105918fa207065429c913f38d0fb05fec9f3a745bbf4c113f5d482b"
       url: "https://pub.dev"
     source: hosted
-    version: "3.10.0"
+    version: "3.10.1"
   share_plus:
     dependency: transitive
     description:
@@ -941,11 +941,11 @@ packages:
     dependency: "direct main"
     description:
       path: sync_settings_ui
-      ref: "sync_settings_ui-v0.6.1"
-      resolved-ref: ebedbf4b27fa332f7b8e6d80117d1c409bf3a7ad
+      ref: "sync_settings_ui-v0.6.2"
+      resolved-ref: "95cd3731ede686114353d32ae6c286ad1694b488"
       url: "https://github.com/kuhyx/utils"
     source: git
-    version: "0.6.1"
+    version: "0.6.2"
   synchronized:
     dependency: transitive
     description:
