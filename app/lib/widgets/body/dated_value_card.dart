@@ -7,6 +7,7 @@ import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/body_section.dart';
 import 'package:diet_guard_app/widgets/body/weight_chart.dart';
+import 'package:diet_guard_app/widgets/pickers/pickers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -80,7 +81,7 @@ class _DatedValueCardState extends State<DatedValueCard> {
   String _fmt(double value) => '${oneDecimal(value)} ${widget.unit}';
 
   Future<void> _pickDay() async {
-    final picked = await showDatePicker(
+    final picked = await pickDate(
       context: context,
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),

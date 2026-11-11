@@ -9,6 +9,7 @@ import 'package:diet_guard_app/widgets/filters/filter_fields.dart';
 import 'package:diet_guard_app/widgets/history/history_filter.dart';
 import 'package:diet_guard_app/widgets/history/history_filter_sort.dart';
 import 'package:diet_guard_app/widgets/history/history_grouping.dart';
+import 'package:diet_guard_app/widgets/pickers/pickers.dart';
 import 'package:flutter/material.dart';
 
 /// The draggable bottom sheet that edits the history filter and sort order.
@@ -111,7 +112,7 @@ class FilterSheet extends StatelessWidget {
                       ],
                     ),
                     onPressed: () async {
-                      final picked = await showDateRangePicker(
+                      final picked = await pickDateRange(
                         context: context,
                         firstDate: DateTime(2020),
                         lastDate: DateTime.now().add(const Duration(days: 1)),

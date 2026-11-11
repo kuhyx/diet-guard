@@ -195,6 +195,9 @@ abstract final class AppWidth {
   /// value reads as a layout error rather than an affordance.
   static const double field = 420;
 
+  /// 440px — cap for a date/time picker dialog (7 day columns + year wheel).
+  static const double picker = 440;
+
   /// Viewport height below which the layout should switch to its compact form.
   ///
   /// 700px, i.e. 768 minus typical window chrome: the supported floor is a

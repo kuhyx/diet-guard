@@ -1,8 +1,8 @@
 // Guard: the log-meal, history, calendar and settings screens paint no
 // words; only the logged food name (content), numbers and unit symbols.
 //
-// Date/time pickers are framework chrome and are not opened here: they are a
-// follow-up task (custom icon pickers), listed in the rework report.
+// The date/time pickers are not opened here: pickers/no_words_pickers_test.dart
+// opens each one through its call site.
 
 import 'dart:io';
 

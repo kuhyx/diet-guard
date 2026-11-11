@@ -49,8 +49,11 @@ Chrome window answer errors with a status code and an empty body.
 - Formula proper names painted outside the activity sheet: `app/lib/widgets/body/body_stats_cards.dart`, `goal_card.dart` (BMI Prime, Trefethen, ideal-weight and resting-burn formula names). The Tk gate dropped them.
 - Workout names (`session.label`, `session.kind`) are PC-published content.
 
-## Framework pickers (not reworked; follow-up task filed)
+## Framework pickers (replaced 2026-11-10)
 
-`showDatePicker`, `showDateRangePicker`, `showTimePicker` paint Select date,
-Cancel, OK, Save: `log_meal_future_mixin.dart`, `history_filter_sheet.dart`,
-`dated_value_card.dart`, `meal_time_dropdown.dart`, `profile_card.dart`.
+`showDatePicker`, `showDateRangePicker` and `showTimePicker` painted Select
+date, Cancel, OK, Save. All five call sites now use the icon-only
+`app/lib/widgets/pickers/` (numerals, check and close icons), guarded by
+`app/test/pickers/no_words_pickers_test.dart` and a `repo_invariants_test`
+ban. Lost on purpose: the weekday header (Monday-first layout plus a weekend
+dot instead), month names (numerals 1-12) and both text-entry modes.

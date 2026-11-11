@@ -17,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../fake_secure_storage.dart';
 import '../label_finders.dart';
+import '../pickers/picker_test_support.dart';
 
 void main() {
   late Directory tempDir;
@@ -88,15 +89,8 @@ void main() {
 
       await tester.tap(byIconLabel('Type or pick an exact time').first);
       await settle(tester);
-      await tester.tap(find.byIcon(Icons.keyboard_outlined));
-      await settle(tester);
-      final fields = find.descendant(
-        of: find.byType(TimePickerDialog),
-        matching: find.byType(TextField),
-      );
-      await tester.enterText(fields.at(0), '07');
-      await tester.enterText(fields.at(1), '23');
-      await tester.tap(find.text('OK'));
+      await setWheels(tester, 7, 23);
+      await tester.tap(controlByLabel('Confirm'));
       await settle(tester);
 
       // Through the real _applySchedule: normalised, recorded, persisted.

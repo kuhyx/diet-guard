@@ -64,7 +64,7 @@ void main() {
         await settle(tester);
         // The date picker's initialDate is already tomorrow, so confirming
         // immediately picks it without touching a specific calendar cell.
-        await tester.tap(find.text('OK'));
+        await tester.tap(controlByLabel('Confirm'));
         await settle(tester);
 
         final tomorrowKey = localDateKey(tomorrow());
@@ -106,7 +106,7 @@ void main() {
 
       await tester.tap(controlByLabel('Log for later'));
       await settle(tester);
-      await tester.tap(find.text('OK'));
+      await tester.tap(controlByLabel('Confirm'));
       await settle(tester);
 
       await tester.enterText(find.byType(TextField).at(0), 'no slot meal');
@@ -131,7 +131,7 @@ void main() {
 
       await tester.tap(controlByLabel('Log for later'));
       await settle(tester);
-      await tester.tap(find.text('OK'));
+      await tester.tap(controlByLabel('Confirm'));
       await settle(tester);
       expect(find.text(localDateKey(tomorrow())), findsOneWidget);
 

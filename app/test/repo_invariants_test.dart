@@ -125,6 +125,25 @@ void main() {
     });
   });
 
+  group('pickers paint no words', () {
+    // The framework pickers paint "Select date", "Cancel", "OK", weekday and
+    // month names and tooltips; lib/widgets/pickers/ replaces all three.
+    test('no showDatePicker, showDateRangePicker or showTimePicker', () {
+      final banned = RegExp(r'show(Date|DateRange|Time)Picker\(');
+      final offenders = [
+        for (final file in _dartFilesIn('lib'))
+          if (banned.hasMatch(file.readAsStringSync()))
+            file.path.split('/app/lib/').last,
+      ];
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'A framework picker came back. Use pickDate, pickDateRange '
+            'or pickTime from widgets/pickers/pickers.dart.',
+      );
+    });
+  });
+
   group('singletons that silently no-op are initialised at startup', () {
     // Every catering entry point checks `isInitialized` first and returns
     // quietly when it is false, so a missing `init()` does not throw -- it

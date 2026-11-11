@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:diet_guard_app/models/meal_schedule.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/ui/theme.dart';
+import 'package:diet_guard_app/widgets/pickers/pickers.dart';
 import 'package:flutter/material.dart';
 
 /// Picks a minute of day, offering the 15-minute grid within
@@ -56,8 +57,8 @@ class MealTimeDropdown extends StatelessWidget {
   /// while the clock button may go to 23:44). Defaults to [maxMinute].
   final int? gridMaxMinute;
 
-  /// Called with the chosen minute, already clamped into
-  /// [minMinute]..[maxMinute]. Not called when the picker is dismissed.
+  /// Called with the chosen minute, always within [minMinute]..[maxMinute]
+  /// (the time picker cannot pick outside it). Not called when dismissed.
   final ValueChanged<int> onChanged;
 
   /// The minutes listed, ascending: the grid marks in range plus [value].
@@ -77,28 +78,15 @@ class MealTimeDropdown extends StatelessWidget {
     }.toList()..sort();
   }
 
-  int _clampToRange(int minute) => minute < minMinute
-      ? minMinute
-      : (minute > maxMinute ? maxMinute : minute);
-
   Future<void> _pickExact(BuildContext context) async {
-    final picked = await showTimePicker(
+    final picked = await pickTime(
       context: context,
       initialTime: TimeOfDay(hour: value ~/ 60, minute: value % 60),
-      // Empty so the picker does not print its own heading over the clock.
-      helpText: '',
-      // The rest of the app writes times as HH:MM; an AM/PM dial here would
-      // be the one place that reads differently.
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-        child: child!,
-      ),
+      minMinute: minMinute,
+      maxMinute: maxMinute,
     );
     if (picked == null) return;
-    // Clamped rather than rejected: the picker cannot be told the range, and
-    // the nearest legal minute is what `MealSchedule.normalized` would
-    // produce anyway -- doing it here keeps the dropdown's own contract.
-    onChanged(_clampToRange(picked.hour * 60 + picked.minute));
+    onChanged(picked.hour * 60 + picked.minute);
   }
 
   @override

@@ -16,6 +16,7 @@ import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
+import 'package:diet_guard_app/widgets/pickers/pickers.dart';
 import 'package:diet_guard_app/widgets/slot_selector_row.dart';
 import 'package:flutter/material.dart';
 
@@ -51,7 +52,7 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
   Future<void> _pickFutureDate() async {
     final today = DateTime.now();
     final tomorrow = DateTime(today.year, today.month, today.day + 1);
-    final picked = await showDatePicker(
+    final picked = await pickDate(
       context: context,
       firstDate: tomorrow,
       lastDate: tomorrow.add(const Duration(days: 365)),

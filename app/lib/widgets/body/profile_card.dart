@@ -6,6 +6,7 @@ import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/body_section.dart';
+import 'package:diet_guard_app/widgets/pickers/pickers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -46,7 +47,7 @@ class _ProfileCardState extends State<ProfileCard> {
   Future<void> _pickBirth() async {
     final now = DateTime.now();
     final initial = DateTime.tryParse(_birth ?? '') ?? DateTime(now.year - 30);
-    final picked = await showDatePicker(
+    final picked = await pickDate(
       context: context,
       firstDate: DateTime(1900),
       lastDate: now,

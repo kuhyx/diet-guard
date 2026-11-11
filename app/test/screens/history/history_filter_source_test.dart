@@ -163,19 +163,20 @@ void main() {
         await tester.tap(controlByLabel('Date range'));
         await settle(tester);
 
-        // The picker opens on the current month (no `currentDate` override
-        // and a null `initialDateRange`) and its `lastDate` is capped at
-        // tomorrow, so days "10"+ aren't always selectable this early in a
-        // month. Days "1" and "2" of the displayed month are always within
-        // [firstDate, lastDate] regardless of which day it is when the test
-        // runs.
+        // The picker opens on the current month (a null `initialDateRange`)
+        // and its `lastDate` is capped at tomorrow, so days 10+ aren't always
+        // selectable this early in a month. Days 1 and 2 of the displayed
+        // month are always within [firstDate, lastDate] regardless of which
+        // day it is when the test runs.
         final now = DateTime.now();
         final expectedStart = DateTime(now.year, now.month);
-        await tester.tap(find.text('1').last);
+        await tester.tap(find.byKey(ValueKey(expectedStart)));
         await settle(tester);
-        await tester.tap(find.text('2').last);
+        await tester.tap(
+          find.byKey(ValueKey(DateTime(now.year, now.month, 2))),
+        );
         await settle(tester);
-        await tester.tap(find.text('Save'));
+        await tester.tap(controlByLabel('Confirm'));
         await settle(tester);
 
         // After a successful selection the filter button label shows the

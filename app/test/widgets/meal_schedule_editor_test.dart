@@ -1,10 +1,12 @@
 import 'package:diet_guard_app/models/meal_schedule.dart';
 import 'package:diet_guard_app/widgets/meal_schedule_editor.dart';
 import 'package:diet_guard_app/widgets/meal_time_dropdown.dart';
+import 'package:diet_guard_app/widgets/pickers/time_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../label_finders.dart';
+import '../pickers/picker_test_support.dart';
 
 /// Holds the schedule the way `_SettingsMealSchedule` does: every edit is
 /// normalised and fed back, so the preview reflects what would be saved.
@@ -66,13 +68,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Taps [label]'s clock button and types [hh]:[mm] in the time picker's
-  /// keyboard mode.
+  /// Taps [label]'s clock button, scrolls the time picker's wheels to
+  /// [hh]:[mm] and confirms.
   Future<void> pickExact(
     WidgetTester tester,
     String label,
-    String hh,
-    String mm,
+    int hh,
+    int mm,
   ) async {
     await tester.tap(
       find.descendant(
@@ -83,17 +85,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.byType(TimePickerDialog), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.keyboard_outlined));
-    await tester.pumpAndSettle();
-    final fields = find.descendant(
-      of: find.byType(TimePickerDialog),
-      matching: find.byType(TextField),
-    );
-    await tester.enterText(fields.at(0), hh);
-    await tester.enterText(fields.at(1), mm);
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
+    expect(find.byType(TimeDialog), findsOneWidget);
+    await setWheels(tester, hh, mm);
+    await confirm(tester);
   }
 
   testWidgets('an off-grid value from another device renders', (tester) async {
@@ -134,7 +128,7 @@ void main() {
   ) async {
     await pump(tester, _fiveMeals);
 
-    await pickExact(tester, 'First meal', '07', '23');
+    await pickExact(tester, 'First meal', 7, 23);
 
     expect(edits.last.firstMinute, 443);
     expect(edits.last.lastMinute, 1200);
@@ -159,12 +153,15 @@ void main() {
     expect(find.text('Custom…'), findsNothing);
   });
 
-  testWidgets('an exact last meal before the first is clamped', (tester) async {
+  testWidgets('a last meal before the first cannot be picked', (tester) async {
     await pump(tester, _fiveMeals);
 
-    await pickExact(tester, 'Last meal', '06', '00');
+    // The last meal's range starts 08:15, one grid step after the first.
+    // 06 is dimmed, so the hour wheel springs to 08, the nearest allowed
+    // hour, and :00 to :15: the picker never offers an illegal time, so
+    // nothing is clamped after the fact.
+    await pickExact(tester, 'Last meal', 6, 0);
 
-    // One grid step after 08:00: the shortest legal window, not a rejection.
     expect(edits.last.lastMinute, 495);
   });
 
