@@ -25,7 +25,7 @@ def _client(logs: dict[str, dict[str, object]]) -> MagicMock:
     client = MagicMock()
     client.list_directory.return_value = list(logs)
     files = {
-        f"diet-guard-sync/devices/{dev}/food_log.json": json.dumps(recs)
+        f"diet-guard-sync/devices-e2e/{dev}/food_log.json": json.dumps(recs)
         for dev, recs in logs.items()
     }
     client.get_file_text.side_effect = files.get
@@ -124,7 +124,7 @@ class TestApply:
         list(_prune_peers.apply_prune(client, ["dead"]))
 
         deleted = [call.args[0] for call in client.delete_file.call_args_list]
-        assert "diet-guard-sync/revs/dead" in deleted
+        assert "diet-guard-sync/revs-e2e/dead" in deleted
 
     def test_apply_deletes_all_four_paths(self) -> None:
         client = MagicMock()

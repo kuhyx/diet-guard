@@ -5,8 +5,14 @@ import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
-/// Where every device's synced files live on the remote.
-const syncDevicesDir = 'diet-guard-sync/devices';
+/// Where every device's synced files live on the remote: the end-to-end
+/// encrypted twin of the old plaintext `diet-guard-sync/devices` (see
+/// `sync_e2e.dart`; `E2eLayout.of` derives the same names).
+const syncDevicesDir = 'diet-guard-sync/devices-e2e';
+
+/// Where peers publish their (keyed) revisions, apart from the old
+/// plaintext `diet-guard-sync/revs` the E2E copy fingerprints.
+const syncRevsDir = 'diet-guard-sync/revs-e2e';
 
 /// SharedPreferences key holding this install's device id.
 ///

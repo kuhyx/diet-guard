@@ -27,6 +27,9 @@ FOOD_LOG_FILE: Path = DATA_DIR / "food_log.json"
 # peer's records are already merged into the local log, so state that outlived
 # its log would skip peers whose data had been lost.
 SYNC_STATE_FILE: Path = DATA_DIR / "sync_state.json"
+# End-to-end encryption state kept between gate processes: the derived key
+# (0600) and which old plaintext revisions were already copied under E2E.
+E2E_STATE_DIR: Path = DATA_DIR / "e2e"
 # The user's personal "food bank": every food they have logged before, with its
 # full macros, keyed by name.  This is the ONLY corpus the gate's autocomplete
 # searches -- Open Food Facts is used to *fill* a new food's macros, never to

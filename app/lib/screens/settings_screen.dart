@@ -6,6 +6,8 @@ library;
 import 'dart:async';
 
 import 'package:crdt_sync/crdt_sync.dart';
+import 'package:crdt_sync_flutter/crdt_sync_flutter.dart'
+    show E2ePassphraseButton;
 import 'package:diet_guard_app/models/meal_schedule.dart';
 import 'package:diet_guard_app/screens/github_mirror_screen.dart';
 import 'package:diet_guard_app/screens/settings_kuchnia.dart';
@@ -15,6 +17,7 @@ import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/google_sign_in_backend.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
+import 'package:diet_guard_app/services/sync_e2e.dart';
 import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/ui/theme.dart';
@@ -190,6 +193,15 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => unawaited(_openSyncSettings()),
+              ),
+              // End-to-end encryption passphrase: closed lock while the last
+              // sync found no usable key, so nothing syncs until it is set.
+              ValueListenableBuilder<bool>(
+                valueListenable: syncLocked,
+                builder: (_, locked, _) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: E2ePassphraseButton(locked: locked),
+                ),
               ),
               // Legacy mirror: muted tint marks it as the secondary path.
               ListTile(

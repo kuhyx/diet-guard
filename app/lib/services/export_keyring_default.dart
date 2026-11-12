@@ -8,6 +8,7 @@ import 'package:diet_guard_app/services/export_keyring_sync.dart';
 import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/sync_device_id.dart';
+import 'package:diet_guard_app/services/sync_e2e.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -31,7 +32,7 @@ Future<void> pullExportKeys() async {
     final client = createGitHubClient(await SyncSettings.load());
     try {
       await syncExportKeys(
-        await syncBackend(client),
+        await openDietGuardStore(await syncBackend(client)),
         keyring: defaultKeyring(),
         devicesDir: syncDevicesDir,
       );

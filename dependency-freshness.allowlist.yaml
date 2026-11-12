@@ -1,0 +1,11 @@
+# Dependencies held below latest stable in this repo, and why. `transitive:`
+# entries are predicates: they clear themselves when the blocker moves, so
+# they carry no `expires`; everything else is discretionary and expires.
+
+exceptions:
+  - ecosystem: toolchain
+    package: flutter
+    pinned: "3.47.9"
+    reason: local toolchain /opt/flutter is 3.47.9; fleet-wide Flutter 3.50 bump is separate work
+    blocked_by: local-toolchain
+    expires: "2026-11-26"

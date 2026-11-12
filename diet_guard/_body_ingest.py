@@ -2,8 +2,9 @@
 
 The wake-alarm phone app publishes ``latest_weight_kg`` and a short
 ``morning_sessions`` list on its own ``alarm.json`` in the shared Firebase
-project. Reading it through diet_guard's *own* sync client -- paths are
-absolute there -- means no import of ``wake_alarm`` and no second sign-in.
+project, end-to-end encrypted under ``wake-alarm-sync/devices-e2e``. Reading
+it over diet_guard's *own* backend -- paths are absolute there -- means no
+import of ``wake_alarm`` and no second sign-in.
 
 Stamping rules (``docs/DOCS-body.md``): ``latest_weight_kg`` carries its
 field's Hlc time, so a re-typed weigh-in wins; ``morning_sessions`` entries
@@ -21,16 +22,21 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-from crdt_sync import Hlc, MirrorSyncClient, RemoteSyncError
+from crdt_sync import E2eLockedError, Hlc, MirrorSyncClient, RemoteSyncError
 
 from diet_guard._body_store import MAX_KG, MIN_KG, WeightCandidate, stamp_ms
+from diet_guard._sync_e2e import (
+    LEGACY_WAKE_ALARM_DIR,
+    E2eStore,
+    open_e2e,
+    read_sealed,
+)
 
 if TYPE_CHECKING:
     from crdt_sync import RemoteStore
 
 _logger = logging.getLogger(__name__)
 
-WAKE_ALARM_DEVICES_DIR = "wake-alarm-sync/devices"
 _LATEST_FIELD = "latest_weight_kg"
 _SESSIONS_FIELD = "morning_sessions"
 # A crdt_sync field on the wire is ``[value, hlc]``.
@@ -105,19 +111,25 @@ def weight_candidates(published: list[tuple[str, str]]) -> list[WeightCandidate]
 
 
 def fetch_alarm_logs(client: RemoteStore) -> list[tuple[str, str]]:
-    """Every wake-alarm device's raw ``alarm.json``; ``[]`` on any failure.
+    """Every wake-alarm device's decrypted ``alarm.json``; ``[]`` on any failure.
 
     Firebase-only (the primary of a mirror client): wake-alarm never
-    published weigh-ins to the GitHub mirror.
+    published weigh-ins to the GitHub mirror. wake-alarm's records are sealed
+    under their own header, so its store is opened over ``client``'s raw
+    backend; a locked or unreadable namespace skips the ingest, never the
+    diet sync around it.
     """
-    store = client.primary if isinstance(client, MirrorSyncClient) else client
+    raw = client.raw if isinstance(client, E2eStore) else client
+    primary = raw.primary if isinstance(raw, MirrorSyncClient) else raw
     try:
+        store = open_e2e(primary, LEGACY_WAKE_ALARM_DIR)
+        prefix = store.layout.prefix
         published = []
-        for device in store.list_directory(WAKE_ALARM_DEVICES_DIR):
-            text = store.get_file_text(f"{WAKE_ALARM_DEVICES_DIR}/{device}/alarm.json")
+        for device in store.list_directory(prefix):
+            text = read_sealed(store, f"{prefix}/{device}/alarm.json")
             if text is not None:
                 published.append((device, text))
-    except RemoteSyncError as exc:
+    except (E2eLockedError, RemoteSyncError) as exc:
         _logger.info("wake-alarm weigh-ins unreadable (%s); skipped", exc)
         return []
     return published

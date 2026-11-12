@@ -24,6 +24,7 @@ import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_body.dart';
 import 'package:diet_guard_app/services/sync_budget_local.dart';
 import 'package:diet_guard_app/services/sync_device_id.dart';
+import 'package:diet_guard_app/services/sync_e2e.dart';
 import 'package:diet_guard_app/services/sync_merge.dart';
 import 'package:diet_guard_app/services/sync_merge_kuchnia.dart';
 import 'package:diet_guard_app/services/sync_state_factory.dart';
@@ -32,10 +33,19 @@ const String _devicesDir = syncDevicesDir;
 
 /// Runs one full sync tick: pull, merge, persist, push.
 ///
+/// [backend] is the outermost raw store (the Firebase/GitHub mirror);
+/// everything goes through its end-to-end encrypted view, and a locked
+/// device throws [SyncLockedException] before a single read or write.
+///
 /// Returns the merged log as it now sits on disk locally. Propagates any
 /// [GitHubSyncError] from the client for the caller (auto-sync / the manual
 /// "Sync now" action) to decide how to report.
-Future<DayLog> runSync(RemoteStore client, {SyncStateStore? stateStore}) async {
+Future<DayLog> runSync(
+  RemoteStore backend, {
+  SyncStateStore? stateStore,
+}) async {
+  final client = await openDietGuardStore(backend);
+  final wakeAlarm = await openWakeAlarmStore(backend);
   final logService = LogStorageService.instance;
   final local = await logService.readLog();
 
@@ -44,6 +54,7 @@ Future<DayLog> runSync(RemoteStore client, {SyncStateStore? stateStore}) async {
     deviceId: currentSyncDeviceId,
     legacyDeviceId: legacySyncDeviceId,
     pathPrefix: _devicesDir,
+    revsPath: syncRevsDir,
     localLog: dayLogToLog(local),
     encode: encodeLogForPush,
     decode: parseRemoteLog,
@@ -65,7 +76,7 @@ Future<DayLog> runSync(RemoteStore client, {SyncStateStore? stateStore}) async {
   await _syncManualBank(client);
   await _syncKuchniaCredential(client);
   await _syncExportKeys(client);
-  await syncBody(client, devicesDir: _devicesDir);
+  await syncBody(client, devicesDir: _devicesDir, wakeAlarm: wakeAlarm);
   return merged;
 }
 
@@ -80,6 +91,7 @@ Future<void> _syncFoodBank(RemoteStore client) async {
     deviceId: currentSyncDeviceId,
     legacyDeviceId: legacySyncDeviceId,
     pathPrefix: _devicesDir,
+    revsPath: syncRevsDir,
     localLog: foodBankToLog(await FoodBankService.instance.readBank()),
     encode: encodeFoodBankForPush,
     decode: parseRemoteFoodBank,
@@ -102,6 +114,7 @@ Future<void> _syncManualBank(RemoteStore client) async {
     deviceId: currentSyncDeviceId,
     legacyDeviceId: legacySyncDeviceId,
     pathPrefix: _devicesDir,
+    revsPath: syncRevsDir,
     localLog: manualBankToLog(local),
     encode: encodeManualBankForPush,
     decode: parseRemoteManualBank,
@@ -118,6 +131,7 @@ Future<void> _syncBudget(RemoteStore client) async {
     deviceId: currentSyncDeviceId,
     legacyDeviceId: legacySyncDeviceId,
     pathPrefix: _devicesDir,
+    revsPath: syncRevsDir,
     localLog: localBudgetLog(),
     encode: encodeBudgetForPush,
     decode: parseRemoteBudget,
@@ -149,8 +163,7 @@ Future<void> _syncExportKeys(RemoteStore client) async {
 ///
 /// The phone runs its own catering importer, so it cannot fetch anything until
 /// the panel password reaches it -- that is the whole reason this credential
-/// syncs at all. It is plaintext on the wire, like the rest of the synced
-/// state; see `sync_merge_kuchnia.dart`.
+/// syncs at all. Sealed end-to-end like the rest of the synced state.
 ///
 /// A device that has no credential contributes an empty log, so it neither
 /// blocks nor clobbers a peer's real value -- it relays it. Mirrors
@@ -162,6 +175,7 @@ Future<void> _syncKuchniaCredential(RemoteStore client) async {
     deviceId: currentSyncDeviceId,
     legacyDeviceId: legacySyncDeviceId,
     pathPrefix: _devicesDir,
+    revsPath: syncRevsDir,
     localLog: credentialToLog(
       KuchniaCredentialService.username,
       KuchniaCredentialService.password,

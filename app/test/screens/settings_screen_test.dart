@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sync_settings_ui/sync_settings_ui.dart' show SyncSettingsScreen;
 
 import '../fake_secure_storage.dart';
 import '../label_finders.dart';
@@ -179,7 +180,7 @@ void main() {
       await tester.tap(byIconLabel('Sync settings'));
       await settle(tester);
 
-      expect(find.text('Firebase sync'), findsOneWidget);
+      expect(find.byType(SyncSettingsScreen), findsOneWidget);
     });
   });
   testWidgets('Sync settings wires storedAccount, not loadAccount, as the '
@@ -206,7 +207,7 @@ void main() {
       await settle(tester);
 
       expect(find.text('sync@example.com'), findsOneWidget);
-      expect(find.text('Disconnect'), findsOneWidget);
+      expect(byIconLabel('Disconnect'), findsOneWidget);
     });
   });
   testWidgets(

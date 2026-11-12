@@ -18,6 +18,7 @@ from diet_guard.sync_merge._body import (
     log_to_body,
     parse_remote_body,
 )
+from diet_guard.tests._sync_fakes import DictStore, _data_paths
 
 # 2026-09-27 ~21:00 UTC: after that morning's weigh-in, as a real publish is.
 _HLC = Hlc(wall_time_ms=1_790_535_000_000, counter=0, node_id="phone").to_str()
@@ -86,24 +87,29 @@ class TestWeightCandidates:
         assert [c.kg for c in cands] == [71.0]
 
 
+class _DownStore(DictStore):
+    def list_directory(self, path: str) -> list[str]:
+        raise RemoteSyncError(path)
+
+
 class TestFetchAlarmLogs:
     def test_reads_every_device_and_skips_missing_files(self) -> None:
-        store = MagicMock()
-        store.list_directory.return_value = ["a", "b"]
-        store.get_file_text.side_effect = ["{}", None]
+        store = DictStore(
+            {
+                "wake-alarm-sync/devices-e2e/a/alarm.json": "{}",
+                "wake-alarm-sync/devices-e2e/b/other.json": "{}",
+            }
+        )
         assert fetch_alarm_logs(store) == [("a", "{}")]
 
     def test_mirror_reads_the_primary_only(self) -> None:
-        mirror = MagicMock(spec=MirrorSyncClient)
-        mirror.primary = MagicMock()
-        mirror.primary.list_directory.return_value = []
-        assert fetch_alarm_logs(mirror) == []
-        mirror.primary.list_directory.assert_called_once()
+        primary = DictStore({"wake-alarm-sync/devices-e2e/a/alarm.json": "{}"})
+        mirror = DictStore({"wake-alarm-sync/devices-e2e/m/alarm.json": "{}"})
+        assert fetch_alarm_logs(MirrorSyncClient(primary, mirror)) == [("a", "{}")]
+        assert mirror.puts == []
 
     def test_a_remote_failure_reads_as_nothing(self) -> None:
-        store = MagicMock()
-        store.list_directory.side_effect = RemoteSyncError("down")
-        assert fetch_alarm_logs(store) == []
+        assert fetch_alarm_logs(_DownStore()) == []
 
 
 class TestLogAdapter:
@@ -181,17 +187,18 @@ class TestSyncBody:
             "src": "manual",
             "t": "2026-09-20T08:00:00+02:00",
         }
-        path = "diet-guard-sync/devices/peer/body.json"
+        path = "diet-guard-sync/devices-e2e/peer/body.json"
         client = self._client({path: encode_body_for_push(body_to_log(peer_doc))})
         _sync_body.sync_body(client, ["peer", device_id()])
         assert weights() == {"2026-09-20": 74.0}
         pushed = client.put_file_text.call_args.args
-        assert pushed[0] == f"diet-guard-sync/devices/{device_id()}/body.json"
+        assert pushed[0] == f"diet-guard-sync/devices-e2e/{device_id()}/body.json"
 
     def test_skips_missing_and_unparsable_peers(self) -> None:
-        client = self._client({"diet-guard-sync/devices/bad/body.json": "{oops"})
+        client = self._client({"diet-guard-sync/devices-e2e/bad/body.json": "{oops"})
         _sync_body.sync_body(client, ["bad", "absent"])
-        client.put_file_text.assert_not_called()
+        # Only wake-alarm's encryption header, created on first use; no body.
+        assert _data_paths(client.put_file_text) == []
 
     def test_ingests_phone_weigh_ins_first(self) -> None:
         client = self._client({})

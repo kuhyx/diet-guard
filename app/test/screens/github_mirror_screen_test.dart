@@ -17,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
+import '../e2e_github_header.dart';
 import '../fake_secure_storage.dart';
 import '../label_finders.dart';
 
@@ -120,7 +121,7 @@ void main() {
     });
   });
   testWidgets('Test connection reports success', (tester) async {
-    final mock = MockClient((_) async => http.Response('{}', 200));
+    final mock = e2eMock((_) async => http.Response('{}', 200));
     await tester.runAsync(() async {
       await tester.pumpWidget(
         MaterialApp(home: GitHubMirrorScreen(httpClient: mock)),
@@ -134,7 +135,7 @@ void main() {
     });
   });
   testWidgets('Test connection reports failure', (tester) async {
-    final mock = MockClient((_) async => http.Response('', 403));
+    final mock = e2eMock((_) async => http.Response('', 403));
     await tester.runAsync(() async {
       await tester.pumpWidget(
         MaterialApp(home: GitHubMirrorScreen(httpClient: mock)),
@@ -148,7 +149,7 @@ void main() {
     });
   });
   testWidgets('Sync now runs a sync tick and reports success', (tester) async {
-    final mock = MockClient((req) async {
+    final mock = e2eMock((req) async {
       if (req.method == 'PUT') return http.Response('{}', 200);
       // A bare `/repos/<owner>/<repo>` GET is crdt_sync's GitHubClient
       // probing whether the repo itself exists (vs. a content path just
@@ -182,7 +183,7 @@ void main() {
     await SyncHealth.recordFailure();
     expect((await SyncHealth.read()).failureKind, SyncFailureKind.failed);
 
-    final mock = MockClient((req) async {
+    final mock = e2eMock((req) async {
       if (req.method == 'PUT') return http.Response('{}', 200);
       if (req.method == 'GET' && req.url.pathSegments.length == 3) {
         return http.Response('{}', 200);

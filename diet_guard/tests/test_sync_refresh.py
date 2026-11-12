@@ -26,7 +26,12 @@ from diet_guard._device import device_id
 from diet_guard._state import log_meal
 from diet_guard._state_sync import read_raw_log, write_raw_log
 from diet_guard.sync_merge import daylog_to_log
-from diet_guard.tests._sync_fakes import _mock_client, _nutrition, _write_token
+from diet_guard.tests._sync_fakes import (
+    _data_paths,
+    _mock_client,
+    _nutrition,
+    _write_token,
+)
 
 
 def _state_store() -> FileSyncStateStore:
@@ -123,7 +128,7 @@ class TestRefreshPeerLogs:
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync_refresh.refresh_peer_logs()
 
-        client.get_file_text.assert_not_called()
+        assert _data_paths(client.get_file_text) == []
 
     def test_skips_this_device(self) -> None:
         """Merging our own pushed log back in is pure waste."""
@@ -133,7 +138,7 @@ class TestRefreshPeerLogs:
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync_refresh.refresh_peer_logs()
 
-        client.get_file_text.assert_not_called()
+        assert _data_paths(client.get_file_text) == []
 
     def test_a_missing_remote_file_is_skipped(self) -> None:
         _write_token()
@@ -149,7 +154,7 @@ class TestRefreshPeerLogs:
         _write_token()
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_log.json": "{not json"},
+            files={"diet-guard-sync/devices-e2e/phone/food_log.json": "{not json"},
         )
 
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
@@ -162,7 +167,7 @@ class TestRefreshPeerLogs:
         text = _peer_log_text()
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_log.json": text},
+            files={"diet-guard-sync/devices-e2e/phone/food_log.json": text},
         )
 
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
@@ -180,13 +185,14 @@ class TestRefreshPeerLogs:
         text = _peer_log_text()
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_log.json": text},
+            files={"diet-guard-sync/devices-e2e/phone/food_log.json": text},
         )
 
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync_refresh.refresh_peer_logs()
 
-        client.put_file_text.assert_not_called()
+        # The encryption header may be created on a first-ever open; no data.
+        assert _data_paths(client.put_file_text) == []
 
     def test_preserves_pushed_rev(self) -> None:
         """Overwriting it would make this device stop pushing forever."""
@@ -196,7 +202,7 @@ class TestRefreshPeerLogs:
         text = _peer_log_text()
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_log.json": text},
+            files={"diet-guard-sync/devices-e2e/phone/food_log.json": text},
         )
 
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
@@ -212,7 +218,7 @@ class TestRefreshPeerLogs:
         text = _peer_log_text()
         client = _mock_client(
             devices=("phone", "other"),
-            files={"diet-guard-sync/devices/phone/food_log.json": text},
+            files={"diet-guard-sync/devices-e2e/phone/food_log.json": text},
         )
 
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):

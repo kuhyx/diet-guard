@@ -84,7 +84,7 @@ class TestClientForRun:
             _sync_client, "firebase_client_for", lambda app: ("firebase", app)
         )
 
-        assert _sync_client._client_for_run() == ("firebase", "diet_guard")
+        assert _sync_client._raw_client_for_run() == ("firebase", "diet_guard")
 
     def test_unusable_firebase_config_becomes_a_sync_error(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

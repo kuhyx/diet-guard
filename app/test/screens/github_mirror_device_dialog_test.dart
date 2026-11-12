@@ -17,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
+import '../e2e_github_header.dart';
 import '../fake_secure_storage.dart';
 import '../label_finders.dart';
 
@@ -96,7 +97,7 @@ void main() {
   testWidgets('device flow happy path saves the token and syncs', (
     tester,
   ) async {
-    final mock = MockClient((req) async {
+    final mock = e2eMock((req) async {
       if (req.url.path.contains('device/code')) {
         return http.Response(
           jsonEncode({
@@ -150,7 +151,7 @@ void main() {
   testWidgets('device flow connects but surfaces a post-connect sync failure', (
     tester,
   ) async {
-    final mock = MockClient((req) async {
+    final mock = e2eMock((req) async {
       if (req.url.path.contains('device/code')) {
         return http.Response(
           jsonEncode({

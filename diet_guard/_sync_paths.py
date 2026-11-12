@@ -12,11 +12,16 @@ constant; see :mod:`diet_guard._device`.
 
 from __future__ import annotations
 
-_DEVICES_DIR = "diet-guard-sync/devices"
+from diet_guard._sync_e2e import DIET_LAYOUT
+
+#: The end-to-end encrypted prefix (``diet-guard-sync/devices-e2e``); the old
+#: plaintext ``diet-guard-sync/devices`` is only ever read, by the E2E copy.
+_DEVICES_DIR = DIET_LAYOUT.prefix
 
 #: Where per-device revision markers live, used to skip re-reading an
-#: unchanged remote log.
-_REVS_DIR = "diet-guard-sync/revs"
+#: unchanged remote log. Keyed (HMAC) by the encrypting store, and kept out
+#: of the old ``diet-guard-sync/revs`` the copy fingerprints.
+_REVS_DIR = DIET_LAYOUT.revs_path
 
 
 def _device_log_path(device_id: str) -> str:

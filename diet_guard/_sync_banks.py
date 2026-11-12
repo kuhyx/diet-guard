@@ -37,6 +37,7 @@ from diet_guard._meal_schedule_store import (
 from diet_guard._meal_schedule_store import (
     write_raw_history as write_raw_schedule,
 )
+from diet_guard._sync_e2e import E2eStore, read_sealed
 from diet_guard._sync_paths import (
     _device_budget_path,
     _device_food_bank_path,
@@ -91,7 +92,7 @@ def _sync_food_bank(client: GitHubSyncClient, device_ids: Sequence[str]) -> None
     for device_id in device_ids:
         if identity.is_own(device_id):
             continue
-        text = client.get_file_text(_device_food_bank_path(device_id))
+        text = read_sealed(client, _device_food_bank_path(device_id))
         if text is None:
             continue
         try:
@@ -135,10 +136,15 @@ def _primary_only_text(client: GitHubSyncClient, path: str) -> str | None:
     2 empty and **zero** non-empty. No curated food exists on the mirror alone,
     so nothing is lost. A client with no ``primary`` (the GitHub-only case) is
     read directly, which is the same backend either way.
+
+    Under E2E the client is an :class:`E2eStore`; its ``primary_only`` view
+    keeps the same narrowing with decryption in front of it.
     """
+    if isinstance(client, E2eStore):
+        return read_sealed(client.primary_only(), path)
     if isinstance(client, MirrorSyncClient):
-        return client.primary.get_file_text(path)
-    return client.get_file_text(path)
+        return read_sealed(client.primary, path)
+    return read_sealed(client, path)
 
 
 def _sync_manual_bank(client: GitHubSyncClient, device_ids: Sequence[str]) -> None:
@@ -196,7 +202,7 @@ def _sync_budget(client: GitHubSyncClient, device_ids: Sequence[str]) -> None:
     for device_id in device_ids:
         if identity.is_own(device_id):
             continue
-        text = client.get_file_text(_device_budget_path(device_id))
+        text = read_sealed(client, _device_budget_path(device_id))
         if text is None:
             continue
         try:

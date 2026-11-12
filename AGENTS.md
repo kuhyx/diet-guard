@@ -43,6 +43,18 @@ A sync tick pulls every other device's log from `kuhyx/syncs`
 `(time, desc)` dedup), **re-signs every persisted entry**, rebuilds the food
 bank, pushes back.
 
+**End-to-end encrypted** (since 2026-11-12, `_sync_e2e.py` /
+`app/lib/services/sync_e2e.dart`): everything lives on
+`diet-guard-sync/devices-e2e` (revs `revs-e2e`, header `diet-guard-sync/e2e`),
+fields sealed with a key from the shared passphrase
+(`~/.config/crdt-sync/password`; keystore + lock icon in Settings on the
+phone). Record ids, tombstones and clocks stay clear, so the food banks' ids
+(food names) are visible. The old plaintext `diet-guard-sync/devices` (and
+its `export_keys.json` keyring) is copied over and never written or deleted.
+Locked = `SyncError` / `SyncLockedException`: nothing is pulled or pushed.
+The PC keeps its derived key and copy memo in `~/.local/share/diet_guard/e2e`.
+The wake-alarm weigh-ins come from `wake-alarm-sync/devices-e2e` (own header).
+
 **On the PC, sync is event-driven — there is no periodic timer.** The old
 `diet-guard-sync.timer` (~15 min) was deleted: it paid a network round-trip on
 every idle tick to approximate the two moments state actually changes here.

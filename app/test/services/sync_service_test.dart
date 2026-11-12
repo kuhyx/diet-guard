@@ -16,20 +16,20 @@ import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../fake_secure_storage.dart';
 import 'sync_service_test_support.dart';
 
 void main() {
-
   late Directory tempDir;
 
   setUp(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    installFakeSecureStorage();
     tempDir = await Directory.systemTemp.createTemp('diet_guard_sync_test_');
     LogStorageService.resetForTesting(store: FileDocumentStore(tempDir));
     FoodBankService.resetForTesting(store: FileDocumentStore(tempDir));
     await AppSettingsService.initForTesting(FileDocumentStore(tempDir));
-    BudgetHistoryService.resetForTesting(
-      store: FileDocumentStore(tempDir),
-    );
+    BudgetHistoryService.resetForTesting(store: FileDocumentStore(tempDir));
   });
 
   tearDown(() async {
@@ -49,24 +49,32 @@ void main() {
     // syncLog always pushes, even an empty merged result: food_log.json,
     // budget.json, food_bank.json, food_bank_manual.json -- plus this
     // device's revision, published after the log so a peer can never cache
-    // "seen rev X" against a log it never received.
-    expect(fake.puts, hasLength(5));
+    // "seen rev X" against a log it never received. Then export_keys.json,
+    // and the two encryption headers (diet_guard's and wake-alarm's).
+    expect(
+      fake.putsByPath.keys.where((p) => !p.endsWith('/e2e')),
+      hasLength(6),
+    );
+    expect(fake.puts, hasLength(8));
   });
   test("skips its own device id ('phone') when listing", () async {
     final fake = FakeGitHub(
       deviceDirs: const ['pc', 'phone'],
       files: const {
-        'diet-guard-sync/devices/pc/food_log.json': '{}',
-        'diet-guard-sync/devices/pc/budget.json': '{}',
+        'diet-guard-sync/devices-e2e/pc/food_log.json': '{}',
+        'diet-guard-sync/devices-e2e/pc/budget.json': '{}',
       },
     );
     await runSync(fake.buildClient());
     // Both the food-log and budget pulls skip "phone" (this device) and
     // only ever read "pc"'s files.
-    expect(fake.fileGets, [
-      'diet-guard-sync/devices/pc/food_log.json',
-      'diet-guard-sync/devices/pc/budget.json',
-    ]);
+    expect(
+      fake.fileGets.where((p) => p.startsWith('diet-guard-sync/devices-e2e/')),
+      [
+        'diet-guard-sync/devices-e2e/pc/food_log.json',
+        'diet-guard-sync/devices-e2e/pc/budget.json',
+      ],
+    );
   });
   test('skips a device with no pushed file yet', () async {
     final fake = FakeGitHub(deviceDirs: const ['pc']);
@@ -76,7 +84,7 @@ void main() {
   test('ignores a device whose pushed file is not a JSON object', () async {
     final fake = FakeGitHub(
       deviceDirs: const ['pc'],
-      files: const {'diet-guard-sync/devices/pc/food_log.json': '[]'},
+      files: const {'diet-guard-sync/devices-e2e/pc/food_log.json': '[]'},
     );
     final merged = await runSync(fake.buildClient());
     expect(merged, isEmpty);
@@ -85,7 +93,7 @@ void main() {
     final fake = FakeGitHub(
       deviceDirs: const ['pc'],
       files: const {
-        'diet-guard-sync/devices/pc/food_log.json': '{not valid json',
+        'diet-guard-sync/devices-e2e/pc/food_log.json': '{not valid json',
       },
     );
     final merged = await runSync(fake.buildClient());
@@ -111,7 +119,7 @@ void main() {
       });
       final fake = FakeGitHub(
         deviceDirs: const ['pc'],
-        files: {'diet-guard-sync/devices/pc/food_log.json': remoteLog},
+        files: {'diet-guard-sync/devices-e2e/pc/food_log.json': remoteLog},
       );
       final merged = await runSync(fake.buildClient());
       final descs = merged.values.expand((e) => e).map((e) => e.desc).toSet();
@@ -145,7 +153,7 @@ void main() {
       });
       final fake = FakeGitHub(
         deviceDirs: const ['pc'],
-        files: {'diet-guard-sync/devices/pc/food_log.json': remoteLog},
+        files: {'diet-guard-sync/devices-e2e/pc/food_log.json': remoteLog},
       );
       final merged = await runSync(fake.buildClient());
       final descs = merged.values.expand((e) => e).map((e) => e.desc).toSet();
@@ -161,16 +169,13 @@ void main() {
     expect(bank.containsKey('oatmeal'), isTrue);
   });
   test('pushes a payload without hmac', () async {
-    await LogStorageService.instance.logMeal(
-      'oatmeal',
-      manualNutrition,
-    );
+    await LogStorageService.instance.logMeal('oatmeal', manualNutrition);
     final fake = FakeGitHub();
     await runSync(fake.buildClient());
 
-    final pushed =
-        fake.putsByPath['diet-guard-sync/devices/phone/food_log.json']!;
-    final pushedText = utf8.decode(base64.decode(pushed['content'] as String));
+    final pushedText = (await fake.opened(
+      'diet-guard-sync/devices-e2e/phone/food_log.json',
+    ))!;
     expect(pushedText, isNot(contains('hmac')));
   });
   test('pushes in the new Record-based wire format', () async {
@@ -178,9 +183,9 @@ void main() {
     final fake = FakeGitHub();
     await runSync(fake.buildClient());
 
-    final pushed =
-        fake.putsByPath['diet-guard-sync/devices/phone/food_log.json']!;
-    final pushedText = utf8.decode(base64.decode(pushed['content'] as String));
+    final pushedText = (await fake.opened(
+      'diet-guard-sync/devices-e2e/phone/food_log.json',
+    ))!;
     final decoded = jsonDecode(pushedText) as Map<String, dynamic>;
     final record = decoded.values.single as Map<String, dynamic>;
     expect(record, containsPair('id', isA<String>()));
@@ -188,11 +193,11 @@ void main() {
   });
   test("reuses this device's existing sha when it has pushed before", () async {
     final fake = FakeGitHub(
-      files: const {'diet-guard-sync/devices/phone/food_log.json': '{}'},
+      files: const {'diet-guard-sync/devices-e2e/phone/food_log.json': '{}'},
     );
     await runSync(fake.buildClient());
     expect(
-      fake.putsByPath['diet-guard-sync/devices/phone/food_log.json']!['sha'],
+      fake.putsByPath['diet-guard-sync/devices-e2e/phone/food_log.json']!['sha'],
       'f-phone',
     );
   });

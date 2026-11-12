@@ -20,6 +20,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../e2e_github_header.dart';
 import '../fake_secure_storage.dart';
 
 void main() {
@@ -55,7 +56,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     installFakeSecureStorage();
     var puts = 0;
-    final mock = MockClient((req) async {
+    final mock = e2eMock((req) async {
       if (req.method == 'PUT') puts++;
       return http.Response('', 404);
     });
@@ -73,7 +74,7 @@ void main() {
     });
     installFakeSecureStorage(initial: {'sync.token': 't'});
     var puts = 0;
-    final mock = MockClient((req) async {
+    final mock = e2eMock((req) async {
       if (req.method == 'PUT') {
         puts++;
         return http.Response('{}', 200); // Contents-API PUT succeeded
@@ -112,7 +113,7 @@ void main() {
     resetSyncDeviceIdForTest();
     installFakeSecureStorage(initial: {'sync.token': 't'});
     final pushedPaths = <String>[];
-    final mock = MockClient((req) async {
+    final mock = e2eMock((req) async {
       if (req.method == 'PUT') {
         pushedPaths.add(req.url.path);
         return http.Response('{}', 200);

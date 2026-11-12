@@ -65,6 +65,41 @@ class FakeGitHub {
   /// sync tick does both.
   final Map<String, Map<String, dynamic>> putsByPath = {};
 
+  /// A directory listing for [path], or null when it is not a directory.
+  ///
+  /// [deviceDirs] populate both the encrypted prefix and the old plaintext
+  /// one; any other directory is derived from [files].
+  List<Map<String, String>>? _list(String path) {
+    final names = <String>{
+      if (path == 'diet-guard-sync/devices-e2e' ||
+          path == 'diet-guard-sync/devices')
+        ...deviceDirs,
+      for (final key in files.keys)
+        if (key.startsWith('$path/'))
+          key.substring(path.length + 1).split('/')[0],
+    };
+    if (names.isEmpty) return null;
+    return [
+      for (final name in names)
+        {
+          'type': files.containsKey('$path/$name') ? 'file' : 'dir',
+          'name': name,
+          'path': '$path/$name',
+          'sha': 'd-$name',
+        },
+    ];
+  }
+
+  /// The opened (decrypted) text of what was pushed to [path].
+  Future<String?> opened(String path) async {
+    final state = await openEncryptedStore(
+      store: buildClient(),
+      oldPrefix: 'diet-guard-sync/devices',
+      readPassphrase: () async => 'test-passphrase',
+    );
+    return await (state as E2eReady).store.getFileText(path);
+  }
+
   GitHubClient buildClient() => GitHubClient(
     owner: 'o',
     repo: 'r',
@@ -84,22 +119,12 @@ class FakeGitHub {
       final body = jsonDecode(req.body) as Map<String, dynamic>;
       puts.add(body);
       putsByPath[path] = body;
+      // Stored, so the encryption header (and anything sealed) reads back.
+      files[path] = utf8.decode(base64.decode(body['content'] as String));
       return http.Response('{}', 200);
     }
-    if (path == 'diet-guard-sync/devices') {
-      return http.Response(
-        jsonEncode([
-          for (final d in deviceDirs)
-            {
-              'type': 'dir',
-              'name': d,
-              'path': 'diet-guard-sync/devices/$d',
-              'sha': 'd-$d',
-            },
-        ]),
-        200,
-      );
-    }
+    final listing = _list(path);
+    if (listing != null) return http.Response(jsonEncode(listing), 200);
     if (!files.containsKey(path)) return http.Response('', 404);
     fileGets.add(path);
     final content = base64.encode(utf8.encode(files[path]!));
@@ -110,12 +135,9 @@ class FakeGitHub {
     final sha =
         segments.length == 4 &&
             segments[0] == 'diet-guard-sync' &&
-            segments[1] == 'devices'
+            segments[1] == 'devices-e2e'
         ? 'f-${segments[2]}'
         : null;
-    return http.Response(
-      jsonEncode({'content': content, 'sha': ?sha}),
-      200,
-    );
+    return http.Response(jsonEncode({'content': content, 'sha': ?sha}), 200);
   }
 }

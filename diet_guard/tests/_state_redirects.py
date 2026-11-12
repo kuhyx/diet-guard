@@ -10,12 +10,26 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+from crdt_sync import Argon2Params
 import freedays
 import sickdays
 
 if TYPE_CHECKING:
     from pathlib import Path
     from unittest.mock import _patch
+
+
+#: The passphrase every test device shares, unless a test says otherwise.
+TEST_PHRASE = "test-passphrase"
+
+#: Argon2id at a cost a test suite can afford thousands of times.
+TEST_ARGON2 = Argon2Params(memory_kib=8, iterations=1, parallelism=1)
+
+
+def _passphrase_file(tmp_path: Path) -> Path:
+    path = tmp_path / "crdt-sync-password"
+    path.write_text(TEST_PHRASE)
+    return path
 
 
 def state_redirects(tmp_path: Path) -> list[_patch[object]]:
@@ -71,6 +85,13 @@ def state_redirects(tmp_path: Path) -> list[_patch[object]]:
             "diet_guard._sync.SYNC_STATE_FILE",
             tmp_path / "sync_state.json",
         ),
+        # End-to-end encryption: never the real ~/.config/crdt-sync/password,
+        # a cheap Argon2id cost, and the key/copy memo beside the other state.
+        patch("diet_guard._sync_e2e.PASSWORD_FILE", _passphrase_file(tmp_path)),
+        patch("diet_guard._sync_e2e.ARGON2_PARAMS", TEST_ARGON2),
+        patch("diet_guard._sync_e2e.E2E_STATE_DIR", tmp_path / "e2e"),
+        # The library's per-process copy memo must not leak between tests.
+        patch.dict("crdt_sync._e2e_store._copied", clear=True),
         # Without this a test that syncs mints a uuid into the REAL
         # ~/.local/share/diet_guard/.device_id, and this machine's live sync
         # identity is decided by whichever test happened to run first.

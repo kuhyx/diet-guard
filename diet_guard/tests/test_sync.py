@@ -16,7 +16,12 @@ from diet_guard import _sync, _sync_client
 from diet_guard._device import device_id
 from diet_guard._foodbank_search import lookup_food
 from diet_guard._state import load_log, log_meal
-from diet_guard.tests._sync_fakes import _mock_client, _nutrition, _write_token
+from diet_guard.tests._sync_fakes import (
+    _data_paths,
+    _mock_client,
+    _nutrition,
+    _write_token,
+)
 
 
 class TestReadToken:
@@ -51,14 +56,14 @@ class TestRunSync:
             merged = _sync.run_sync()
 
         assert sum(len(entries) for entries in merged.values()) == 1
-        pushed = [call.args[0] for call in client.put_file_text.call_args_list]
+        pushed = _data_paths(client.put_file_text)
         # The log push, the derived bank rebuilt from that same log, and this
         # device's revision -- published *after* the log, so a peer can never
         # cache "seen rev X" against a log it never received.
         assert pushed == [
-            f"diet-guard-sync/devices/{device_id()}/food_bank.json",
-            f"diet-guard-sync/devices/{device_id()}/food_log.json",
-            f"diet-guard-sync/revs/{device_id()}",
+            f"diet-guard-sync/devices-e2e/{device_id()}/food_bank.json",
+            f"diet-guard-sync/devices-e2e/{device_id()}/food_log.json",
+            f"diet-guard-sync/revs-e2e/{device_id()}",
         ]
         log_call = next(
             call
@@ -66,16 +71,18 @@ class TestRunSync:
             if call.args[0].endswith("food_log.json")
         )
         pushed_json = log_call.args[1]
+        # Sealed: one envelope record, id in clear, fields encrypted.
         pushed = json.loads(pushed_json)
-        (record,) = pushed.values()
-        assert "fields" in record
-        assert "id" in record
+        assert pushed["v"] == 1
+        ((rid, record),) = pushed["r"].items()
+        assert rid
+        assert set(record) == {"d", "dh", "h", "p"}
 
     def test_skips_its_own_device_id_when_listing(self) -> None:
         _write_token()
         client = _mock_client(
             devices=("pc", "phone"),
-            files={"diet-guard-sync/devices/phone/food_log.json": "{}"},
+            files={"diet-guard-sync/devices-e2e/phone/food_log.json": "{}"},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
@@ -83,16 +90,16 @@ class TestRunSync:
         # body -- skips "pc" (this device) and only ever reads "phone"'s files.
         # The wake-alarm weigh-ins are another app's devices, all read: the
         # mock lists the same two ids for every directory.
-        requested_paths = [call.args[0] for call in client.get_file_text.call_args_list]
+        requested_paths = _data_paths(client.get_file_text)
         assert requested_paths == [
-            "diet-guard-sync/devices/phone/food_log.json",
-            "diet-guard-sync/devices/phone/budget.json",
-            "diet-guard-sync/devices/phone/food_bank.json",
-            "diet-guard-sync/devices/phone/food_bank_manual.json",
-            "diet-guard-sync/devices/phone/kuchnia.json",
-            "wake-alarm-sync/devices/pc/alarm.json",
-            "wake-alarm-sync/devices/phone/alarm.json",
-            "diet-guard-sync/devices/phone/body.json",
+            "diet-guard-sync/devices-e2e/phone/food_log.json",
+            "diet-guard-sync/devices-e2e/phone/budget.json",
+            "diet-guard-sync/devices-e2e/phone/food_bank.json",
+            "diet-guard-sync/devices-e2e/phone/food_bank_manual.json",
+            "diet-guard-sync/devices-e2e/phone/kuchnia.json",
+            "wake-alarm-sync/devices-e2e/pc/alarm.json",
+            "wake-alarm-sync/devices-e2e/phone/alarm.json",
+            "diet-guard-sync/devices-e2e/phone/body.json",
         ]
 
     def test_skips_a_device_with_no_pushed_file_yet(self) -> None:
@@ -106,7 +113,7 @@ class TestRunSync:
         _write_token()
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_log.json": "[]"},
+            files={"diet-guard-sync/devices-e2e/phone/food_log.json": "[]"},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             merged = _sync.run_sync()
@@ -119,7 +126,9 @@ class TestRunSync:
         _write_token()
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_log.json": "{not valid json"},
+            files={
+                "diet-guard-sync/devices-e2e/phone/food_log.json": "{not valid json"
+            },
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             merged = _sync.run_sync()
@@ -146,7 +155,7 @@ class TestRunSync:
         )
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_log.json": remote_log_json},
+            files={"diet-guard-sync/devices-e2e/phone/food_log.json": remote_log_json},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             merged = _sync.run_sync()
@@ -181,7 +190,7 @@ class TestRunSync:
         )
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_log.json": remote_log_json},
+            files={"diet-guard-sync/devices-e2e/phone/food_log.json": remote_log_json},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()

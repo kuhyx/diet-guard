@@ -46,6 +46,7 @@ from diet_guard._device import device_identity
 from diet_guard._state_sync import read_raw_log, resign_entry, write_raw_log
 from diet_guard._sync import _remote_revisions
 from diet_guard._sync_client import _client_for_interactive_run
+from diet_guard._sync_e2e import read_sealed
 from diet_guard._sync_errors import SyncError
 from diet_guard._sync_paths import _DEVICES_DIR, _device_log_path
 from diet_guard.sync_merge import daylog_to_log, log_to_daylog, parse_remote_log
@@ -116,7 +117,7 @@ def _merge_peer_logs(
     """Merge each peer's pushed log into ``merged``; report whether any landed."""
     changed = False
     for device_id in peers:
-        text = client.get_file_text(_device_log_path(device_id))
+        text = read_sealed(client, _device_log_path(device_id))
         if text is None:
             continue
         try:

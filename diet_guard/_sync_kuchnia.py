@@ -29,6 +29,7 @@ from diet_guard._kuchnia_credential_store import (
     write_synced_credential,
 )
 from diet_guard._kuchnia_errors import KuchniaError
+from diet_guard._sync_e2e import read_sealed
 from diet_guard._sync_paths import _device_kuchnia_path
 from diet_guard.sync_merge import (
     credential_to_log,
@@ -116,7 +117,7 @@ def _sync_kuchnia_credential(
     for device_id in device_ids:
         if identity.is_own(device_id):
             continue
-        text = client.get_file_text(_device_kuchnia_path(device_id))
+        text = read_sealed(client, _device_kuchnia_path(device_id))
         if text is None:
             continue
         try:

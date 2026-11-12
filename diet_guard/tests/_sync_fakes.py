@@ -57,3 +57,68 @@ def _mock_client(
     # no revision map means every peer is fetched, exactly as before.
     del client.get_string_map
     return client
+
+
+#: Paths only the end-to-end encryption touches: the two headers, and the
+#: old plaintext prefixes the one-time copy reads.
+_E2E_BOOKKEEPING = ("diet-guard-sync/e2e", "wake-alarm-sync/e2e")
+_OLD_PREFIXES = ("diet-guard-sync/devices/", "wake-alarm-sync/devices/")
+
+
+def _data_paths(method: MagicMock) -> list[str]:
+    """The paths ``method`` was called with, minus E2E header/copy traffic."""
+    return [
+        call.args[0]
+        for call in method.call_args_list
+        if call.args[0] not in _E2E_BOOKKEEPING
+        and not call.args[0].startswith(_OLD_PREFIXES)
+        and call.args[0] not in {"diet-guard-sync/devices", "wake-alarm-sync/devices"}
+    ]
+
+
+class DictStore:
+    """In-memory ``RemoteStore``: paths are keys, directories are derived."""
+
+    def __init__(self, files: dict[str, str] | None = None) -> None:
+        """Start with ``files`` (path -> text)."""
+        self.files = dict(files or {})
+        self.puts: list[str] = []
+
+    def list_directory(self, path: str) -> list[str]:
+        """Immediate children of ``path``."""
+        prefix = f"{path}/"
+        return sorted(
+            {
+                k[len(prefix) :].split("/", 1)[0]
+                for k in self.files
+                if k.startswith(prefix)
+            }
+        )
+
+    def get_file_text(self, path: str) -> str | None:
+        """The stored text, or None."""
+        return self.files.get(path)
+
+    def put_file_text(self, path: str, text: str, *, message: str) -> None:
+        """Store ``text`` and record the write."""
+        del message
+        self.files[path] = text
+        self.puts.append(path)
+
+    def get_string_map(self, path: str) -> dict[str, str]:
+        """Leaf children of ``path`` with their text."""
+        prefix = f"{path}/"
+        return {
+            k[len(prefix) :]: v
+            for k, v in self.files.items()
+            if k.startswith(prefix) and "/" not in k[len(prefix) :]
+        }
+
+    def delete_file(self, path: str, *, message: str = "") -> None:
+        """Forget ``path``."""
+        del message
+        self.files.pop(path, None)
+
+    def can_access_remote(self) -> bool:
+        """Always reachable."""
+        return True

@@ -14,16 +14,24 @@ import 'package:diet_guard_app/services/wake_alarm_weights.dart';
 
 /// Runs the Body sync against [client], under [devicesDir].
 ///
+/// [wakeAlarm] is wake-alarm's own encrypted store; null (locked, or not
+/// opened) skips the weigh-in ingest and nothing else.
+///
 /// No-ops when [BodyService] is uninitialised (a widget test, or an isolate
 /// that never loaded it), so it can neither publish nor clobber anything.
-Future<void> syncBody(RemoteStore client, {required String devicesDir}) async {
+Future<void> syncBody(
+  RemoteStore client, {
+  required String devicesDir,
+  RemoteStore? wakeAlarm,
+}) async {
   if (!BodyService.isInitialized) return;
-  await ingestWakeAlarmWeights(client);
+  if (wakeAlarm != null) await ingestWakeAlarmWeights(wakeAlarm);
   final merged = await syncLog(
     client: client,
     deviceId: currentSyncDeviceId,
     legacyDeviceId: legacySyncDeviceId,
     pathPrefix: devicesDir,
+    revsPath: syncRevsDir,
     localLog: bodyToLog(BodyService.instance.document),
     encode: encodeBodyForPush,
     decode: parseRemoteBody,

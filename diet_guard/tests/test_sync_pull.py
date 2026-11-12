@@ -119,7 +119,7 @@ class TestPullSkipsUnchangedPeers:
         text = json.dumps({})
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_log.json": text},
+            files={"diet-guard-sync/devices-e2e/phone/food_log.json": text},
         )
         state = SyncState(pushed_rev=None, peer_revs={"phone": "rev-1"})
 
@@ -152,8 +152,11 @@ class TestNoOpPushSuppression:
             _sync.run_sync()
 
         pushed_second = [call.args[0] for call in client.put_file_text.call_args_list]
-        assert f"diet-guard-sync/devices/{device_id()}/food_log.json" in pushed_first
         assert (
-            f"diet-guard-sync/devices/{device_id()}/food_log.json" not in pushed_second
+            f"diet-guard-sync/devices-e2e/{device_id()}/food_log.json" in pushed_first
         )
-        assert f"diet-guard-sync/revs/{device_id()}" not in pushed_second
+        assert (
+            f"diet-guard-sync/devices-e2e/{device_id()}/food_log.json"
+            not in pushed_second
+        )
+        assert f"diet-guard-sync/revs-e2e/{device_id()}" not in pushed_second

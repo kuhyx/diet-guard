@@ -6,10 +6,10 @@
 /// is never deleted or overwritten, each id is its own record, and two
 /// devices that mint a key at the same moment both keep both.
 ///
-/// NOTE: the synced copy sits in Firebase RTDB in plaintext, so Firebase can
-/// read these keys (and therefore the sealed login in any export it could get
-/// hold of) until crdt E2E lands. `export_keys` must move under that
-/// encryption too: `~/src/utils/TODO-crdt-e2e-encryption.md`.
+/// The synced copy is end-to-end encrypted under the shared crdt-sync
+/// passphrase (`sync_e2e.dart`), on `diet-guard-sync/devices-e2e`. The old
+/// plaintext `diet-guard-sync/devices/<id>/export_keys.json` nodes are
+/// copied over once and then neither read nor written by this app.
 library;
 
 import 'dart:convert';

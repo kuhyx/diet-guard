@@ -93,7 +93,7 @@ def test_a_peer_credential_is_cached_locally() -> None:
     """Receiving a peer's credential is what makes a wiped device work again."""
     client = _client(
         {
-            "diet-guard-sync/devices/phone/kuchnia.json": _peer_push(
+            "diet-guard-sync/devices-e2e/phone/kuchnia.json": _peer_push(
                 "peer@example.com", "peer-pass", 1_800_000_000_000
             )
         }
@@ -109,7 +109,7 @@ def test_an_unchanged_credential_is_not_rewritten() -> None:
     """Re-running the tick must not rewrite the file every time."""
     client = _client(
         {
-            "diet-guard-sync/devices/phone/kuchnia.json": _peer_push(
+            "diet-guard-sync/devices-e2e/phone/kuchnia.json": _peer_push(
                 "peer@example.com", "peer-pass", 1_800_000_000_000
             )
         }
@@ -127,8 +127,8 @@ def test_an_unparsable_peer_file_is_skipped(
     """One bad peer file must not take out the tick for every other device."""
     client = _client(
         {
-            "diet-guard-sync/devices/bad/kuchnia.json": "{not json",
-            "diet-guard-sync/devices/phone/kuchnia.json": _peer_push(
+            "diet-guard-sync/devices-e2e/bad/kuchnia.json": "{not json",
+            "diet-guard-sync/devices-e2e/phone/kuchnia.json": _peer_push(
                 "peer@example.com", "peer-pass", 1_800_000_000_000
             ),
         }
@@ -146,7 +146,7 @@ def test_a_missing_peer_file_is_skipped() -> None:
     _write_handwritten("me@example.com\nhunter2\n")
     _sync_kuchnia_credential(client, ["phone"])
     client.get_file_text.assert_called_once_with(
-        "diet-guard-sync/devices/phone/kuchnia.json"
+        "diet-guard-sync/devices-e2e/phone/kuchnia.json"
     )
 
 
@@ -197,7 +197,7 @@ def test_a_touched_handwritten_file_cannot_clobber_a_peer() -> None:
     phone_ms = int((time.time() - 3600) * 1000)
     client = _client(
         {
-            "diet-guard-sync/devices/phone/kuchnia.json": _peer_push(
+            "diet-guard-sync/devices-e2e/phone/kuchnia.json": _peer_push(
                 "phone@example.com", "new-phone-pass", phone_ms
             )
         }

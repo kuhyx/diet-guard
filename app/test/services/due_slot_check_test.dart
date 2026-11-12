@@ -26,6 +26,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../fake_notifications.dart';
+import '../e2e_github_header.dart';
 import '../fake_secure_storage.dart';
 
 const _manual = Nutrition(
@@ -135,7 +136,7 @@ void main() {
     });
     installFakeSecureStorage(initial: {'sync.token': 't'});
     var requests = 0;
-    final mock = MockClient((req) async {
+    final mock = e2eMock((req) async {
       requests++;
       return http.Response('', 404);
     });
@@ -157,7 +158,7 @@ void main() {
     });
     installFakeSecureStorage(initial: {'sync.token': 't'});
     var requests = 0;
-    final mock = MockClient((req) async {
+    final mock = e2eMock((req) async {
       requests++;
       return http.Response('', 404);
     });
@@ -195,15 +196,15 @@ void main() {
         '"source":"manual","slot":12,"day":"$day"},'
         '"${day}T11:30:00.000Z-0000-pc"]},"deleted":false,'
         '"deleted_hlc":null}}';
-    final mock = MockClient((req) async {
+    final mock = e2eMock((req) async {
       if (req.method == 'PUT') return http.Response('{}', 200);
       if (req.method == 'GET' && req.url.pathSegments.length == 3) {
         return http.Response('{}', 200);
       }
-      if (req.url.path.endsWith('/devices')) {
+      if (req.url.path.endsWith('/devices-e2e')) {
         return http.Response('[{"name":"pc","type":"dir"}]', 200);
       }
-      if (req.url.path.endsWith('/devices/pc/food_log.json')) {
+      if (req.url.path.endsWith('/devices-e2e/pc/food_log.json')) {
         // The Contents API returns base64 in a `content` field, not raw JSON.
         return http.Response(
           jsonEncode({'content': base64.encode(utf8.encode(remote))}),

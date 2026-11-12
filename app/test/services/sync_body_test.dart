@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'body_test_support.dart';
 
-const _dir = 'diet-guard-sync/devices';
+const _dir = 'diet-guard-sync/devices-e2e';
 
 void main() {
   tearDown(BodyService.resetForTesting);
@@ -39,7 +39,7 @@ void main() {
     );
     final remote = MemoryRemote({
       '$_dir/pc-uuid/body.json': encodeBodyForPush(bodyToLog(peer)),
-      'wake-alarm-sync/devices/phone/alarm.json': jsonEncode({
+      'wake-alarm-sync/devices-e2e/phone/alarm.json': jsonEncode({
         'alarm': {
           'fields': {
             'morning_sessions': [
@@ -53,7 +53,7 @@ void main() {
       }),
     });
 
-    await syncBody(remote, devicesDir: _dir);
+    await syncBody(remote, devicesDir: _dir, wakeAlarm: remote);
 
     final body = BodyService.instance;
     expect(body.birth, '1995-03-01');

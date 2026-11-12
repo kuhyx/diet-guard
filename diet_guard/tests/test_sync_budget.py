@@ -36,7 +36,7 @@ class TestSyncBudget:
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed_paths = {call.args[0] for call in client.put_file_text.call_args_list}
-        assert f"diet-guard-sync/devices/{device_id()}/budget.json" in pushed_paths
+        assert f"diet-guard-sync/devices-e2e/{device_id()}/budget.json" in pushed_paths
 
     def test_refreshes_the_weight_from_the_log_after_the_merge(self) -> None:
         """The hook runs last, on every successful tick, into the sync log."""
@@ -63,7 +63,9 @@ class TestSyncBudget:
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed_paths = {call.args[0] for call in client.put_file_text.call_args_list}
-        assert f"diet-guard-sync/devices/{device_id()}/budget.json" not in pushed_paths
+        assert (
+            f"diet-guard-sync/devices-e2e/{device_id()}/budget.json" not in pushed_paths
+        )
 
     def test_remote_only_budget_is_adopted_locally(self) -> None:
         """Only the phone has ever set a budget -- the PC adopts it."""
@@ -71,7 +73,7 @@ class TestSyncBudget:
         remote_json = _remote_budget_json(kcal=1800, t="2026-01-01T09:00:00")
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/budget.json": remote_json},
+            files={"diet-guard-sync/devices-e2e/phone/budget.json": remote_json},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
@@ -84,7 +86,7 @@ class TestSyncBudget:
         remote_json = _remote_budget_json(kcal=1800, t="2020-01-01T09:00:00")
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/budget.json": remote_json},
+            files={"diet-guard-sync/devices-e2e/phone/budget.json": remote_json},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
@@ -102,7 +104,7 @@ class TestSyncBudget:
         remote_json = _remote_budget_json(kcal=1800, t="2999-01-01T09:00:00")
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/budget.json": remote_json},
+            files={"diet-guard-sync/devices-e2e/phone/budget.json": remote_json},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
@@ -120,7 +122,7 @@ class TestSyncBudget:
         remote_json = _remote_budget_json(kcal=1800, t="2999-01-01T09:00:00")
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/budget.json": remote_json},
+            files={"diet-guard-sync/devices-e2e/phone/budget.json": remote_json},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
@@ -157,7 +159,7 @@ class TestSyncBudget:
         write_budget(2000)
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/budget.json": "{not valid json"},
+            files={"diet-guard-sync/devices-e2e/phone/budget.json": "{not valid json"},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()

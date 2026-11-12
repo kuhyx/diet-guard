@@ -144,19 +144,21 @@ void main() {
       );
       expect(find.text('WXYZ-1234'), findsOneWidget);
 
-      await pumpUntil(
-        tester,
-        () => find.textContaining('access_denied').evaluate().isNotEmpty,
-      );
+      await pumpUntil(tester, () => _errorIcon().evaluate().isNotEmpty);
 
-      expect(find.textContaining('access_denied'), findsOneWidget);
+      expect(_errorIcon(), findsOneWidget);
 
-      await tester.tap(find.text('Open GitHub & copy code'));
+      await tester.tap(byIconLabel('Open GitHub & copy code'));
       await tester.pump();
       expect(launcher.launched, 'https://github.com/login/device');
 
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(byIconLabel('Cancel'));
       await settle(tester);
     });
   });
 }
+
+/// The dialog's error glyph, whose spoken label carries GitHub's error.
+Finder _errorIcon() => find.byWidgetPredicate(
+  (w) => w is Icon && (w.semanticLabel ?? '').contains('access_denied'),
+);

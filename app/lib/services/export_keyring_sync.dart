@@ -1,8 +1,9 @@
 /// The `export_keys` document: the keyring as a crdt_sync log.
 ///
 /// One record per key id, never deleted, so the merge is a plain union and
-/// concurrent mints on two devices both survive. See `export_keyring.dart`
-/// for the plaintext-at-Firebase caveat.
+/// concurrent mints on two devices both survive. [syncExportKeys] must be
+/// handed the end-to-end encrypted store (`sync_e2e.dart`): these are the
+/// keys that open every export.
 library;
 
 import 'dart:convert';
@@ -70,6 +71,7 @@ Future<void> syncExportKeys(
     deviceId: id,
     legacyDeviceId: deviceId == null ? legacySyncDeviceId : null,
     pathPrefix: devicesDir,
+    revsPath: syncRevsDir,
     localLog: _toLog(await keyring.all(), id),
     encode: (log) => jsonEncode({
       for (final entry in log.entries) entry.key: entry.value.toJson(),

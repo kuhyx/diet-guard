@@ -1,7 +1,8 @@
 /// Morning weigh-ins from the wake-alarm app, as Body weight candidates.
 ///
 /// The wake-alarm phone app publishes
-/// `wake-alarm-sync/devices/<id>/alarm.json`: a crdt_sync Log whose
+/// `wake-alarm-sync/devices-e2e/<id>/alarm.json` (end-to-end encrypted, read
+/// through wake-alarm's own `EncryptingStore`): a crdt_sync Log whose
 /// `alarm` record carries `fields[name] = [value, hlc]`. Two fields hold
 /// weights:
 ///
@@ -25,7 +26,7 @@ import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/services/sync_merge_body.dart';
 
 /// Where the wake-alarm app publishes, one directory per device.
-const wakeAlarmDevicesDir = 'wake-alarm-sync/devices';
+const wakeAlarmDevicesDir = 'wake-alarm-sync/devices-e2e';
 
 const _latestField = 'latest_weight_kg';
 const _sessionsField = 'morning_sessions';

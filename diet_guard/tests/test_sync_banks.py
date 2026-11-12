@@ -35,7 +35,7 @@ class TestSyncFoodBank:
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed = [call.args[0] for call in client.put_file_text.call_args_list]
-        assert f"diet-guard-sync/devices/{device_id()}/food_bank.json" in pushed
+        assert f"diet-guard-sync/devices-e2e/{device_id()}/food_bank.json" in pushed
 
     def test_a_food_the_phone_logged_reaches_the_gate(self) -> None:
         """The payoff: a food eaten on the phone autocompletes on the PC.
@@ -64,7 +64,7 @@ class TestSyncFoodBank:
         )
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_log.json": remote_log_json},
+            files={"diet-guard-sync/devices-e2e/phone/food_log.json": remote_log_json},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
@@ -92,7 +92,7 @@ class TestSyncFoodBank:
         )
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_bank.json": remote},
+            files={"diet-guard-sync/devices-e2e/phone/food_bank.json": remote},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
@@ -120,7 +120,7 @@ class TestSyncFoodBank:
         )
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_bank.json": remote},
+            files={"diet-guard-sync/devices-e2e/phone/food_bank.json": remote},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
@@ -131,7 +131,7 @@ class TestSyncFoodBank:
         log_meal("apple", Nutrition(95, 0.5, 25, 0.3, 180, "manual"), 8)
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_bank.json": "{not json"},
+            files={"diet-guard-sync/devices-e2e/phone/food_bank.json": "{not json"},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
@@ -143,7 +143,7 @@ class TestSyncFoodBank:
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed = [call.args[0] for call in client.put_file_text.call_args_list]
-        assert f"diet-guard-sync/devices/{device_id()}/food_bank.json" not in pushed
+        assert f"diet-guard-sync/devices-e2e/{device_id()}/food_bank.json" not in pushed
 
 
 class TestSyncManualBank:
@@ -164,7 +164,9 @@ class TestSyncManualBank:
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
         pushed = [call.args[0] for call in client.put_file_text.call_args_list]
-        assert f"diet-guard-sync/devices/{device_id()}/food_bank_manual.json" in pushed
+        assert (
+            f"diet-guard-sync/devices-e2e/{device_id()}/food_bank_manual.json" in pushed
+        )
 
     def test_a_remote_curated_entry_is_adopted_locally(self) -> None:
         """The point of the whole feature: a food added on the phone is usable
@@ -191,7 +193,7 @@ class TestSyncManualBank:
         )
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_bank_manual.json": remote},
+            files={"diet-guard-sync/devices-e2e/phone/food_bank_manual.json": remote},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
@@ -220,7 +222,7 @@ class TestSyncManualBank:
         )
         client = _mock_client(
             devices=("phone",),
-            files={"diet-guard-sync/devices/phone/food_bank_manual.json": remote},
+            files={"diet-guard-sync/devices-e2e/phone/food_bank_manual.json": remote},
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):
             _sync.run_sync()
@@ -232,7 +234,7 @@ class TestSyncManualBank:
         client = _mock_client(
             devices=("phone",),
             files={
-                "diet-guard-sync/devices/phone/food_bank_manual.json": "{not json",
+                "diet-guard-sync/devices-e2e/phone/food_bank_manual.json": "{not json",
             },
         )
         with patch.object(_sync_client, "GitHubSyncClient", return_value=client):

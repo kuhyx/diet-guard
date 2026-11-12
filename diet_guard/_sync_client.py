@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 from crdt_sync import (
     CONFIG_FILE,
     ConfigError,
+    E2eLockedError,
     FirebaseAuthError,
     GitHubSyncClient,
     RemoteSyncError,
@@ -36,6 +37,7 @@ from diet_guard._constants import (
     SYNC_TIMEOUT_SECONDS,
     SYNC_TOKEN_FILE,
 )
+from diet_guard._sync_e2e import E2eStore, open_e2e
 from diet_guard._sync_errors import SyncError
 
 if TYPE_CHECKING:
@@ -70,7 +72,26 @@ def _remote_client(github: GitHubSyncClient) -> RemoteStore:
         return github
 
 
-def _client_for_run() -> RemoteStore:
+def _encrypted(raw: RemoteStore) -> E2eStore:
+    """Wrap ``raw`` in end-to-end encryption, failing closed.
+
+    A locked store becomes a :class:`SyncError`, which every caller already
+    reports and survives -- the gate keeps its own lock decision -- and
+    nothing is ever pulled or pushed in plaintext.
+    """
+    try:
+        return open_e2e(raw)
+    except E2eLockedError as exc:
+        message = f"sync locked (end-to-end encryption): {exc}"
+        raise SyncError(message) from exc
+
+
+def _client_for_run() -> E2eStore:
+    """Return the end-to-end encrypted store for one sync run."""
+    return _encrypted(_raw_client_for_run())
+
+
+def _raw_client_for_run() -> RemoteStore:
     """Return the backend for one sync run, requiring only *one* to be set up.
 
     The PAT is no longer mandatory. Firebase is the primary backend now, and
@@ -155,13 +176,14 @@ def _apply_timeout(client: RemoteStore, seconds: float) -> None:
             vars(target)["_timeout_seconds"] = seconds
 
 
-def _client_for_interactive_run() -> RemoteStore:
+def _client_for_interactive_run() -> E2eStore:
     """Return a sync client budgeted for a path the user is waiting on.
 
     Same backends as :func:`_client_for_run`, but with
     :data:`~diet_guard._constants.INTERACTIVE_TIMEOUT_SECONDS` in place of the
     background tick's much longer budget.
     """
-    client = _client_for_run()
-    _apply_timeout(client, INTERACTIVE_TIMEOUT_SECONDS)
-    return client
+    raw = _raw_client_for_run()
+    # Tightened before the E2E open, which already makes requests.
+    _apply_timeout(raw, INTERACTIVE_TIMEOUT_SECONDS)
+    return _encrypted(raw)

@@ -46,6 +46,7 @@ from diet_guard._state_sync import (
 from diet_guard._sync_banks import _sync_budget, _sync_food_bank, _sync_manual_bank
 from diet_guard._sync_body import sync_body
 from diet_guard._sync_client import _client_for_run
+from diet_guard._sync_e2e import read_sealed
 from diet_guard._sync_errors import SyncError
 from diet_guard._sync_kuchnia import _sync_kuchnia_credential
 from diet_guard._sync_paths import _DEVICES_DIR, _REVS_DIR, _device_log_path
@@ -119,7 +120,7 @@ def _pull_remote_logs(
             # revision forward so it stays skipped next tick.
             seen_revs[device_id] = remote_rev
             continue
-        text = client.get_file_text(_device_log_path(device_id))
+        text = read_sealed(client, _device_log_path(device_id))
         if text is None:
             continue
         try:

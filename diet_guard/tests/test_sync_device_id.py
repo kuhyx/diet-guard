@@ -47,8 +47,8 @@ class TestPullSkipsOwnLegacyPath:
         )
 
         fetched = [call.args[0] for call in client.get_file_text.call_args_list]
-        assert "diet-guard-sync/devices/pc/food_log.json" not in fetched
-        assert "diet-guard-sync/devices/phone/food_log.json" in fetched
+        assert "diet-guard-sync/devices-e2e/pc/food_log.json" not in fetched
+        assert "diet-guard-sync/devices-e2e/phone/food_log.json" in fetched
 
     def test_pulls_the_legacy_path_once_it_is_disowned(self) -> None:
         """Negative control: with no legacy id, devices/pc/ IS a peer.
@@ -69,4 +69,4 @@ class TestPullSkipsOwnLegacyPath:
         )
 
         fetched = [call.args[0] for call in client.get_file_text.call_args_list]
-        assert "diet-guard-sync/devices/pc/food_log.json" in fetched
+        assert "diet-guard-sync/devices-e2e/pc/food_log.json" in fetched
