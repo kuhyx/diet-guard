@@ -4,7 +4,7 @@
 library;
 
 import 'package:diet_guard_app/ui/cues.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Finds an [Icon] with this `semanticLabel`.

@@ -5,7 +5,7 @@ library;
 
 import 'package:diet_guard_app/services/body_calc.dart';
 import 'package:diet_guard_app/ui/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A card with [children] stacked in it; [semanticLabel] names it for screen
 /// readers and tests and is never painted.

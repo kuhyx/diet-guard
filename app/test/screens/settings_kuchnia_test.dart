@@ -17,7 +17,7 @@ import 'package:diet_guard_app/screens/settings_kuchnia.dart';
 import 'package:diet_guard_app/services/document_store.dart';
 import 'package:diet_guard_app/services/kuchnia_credential_service.dart';
 import 'package:diet_guard_app/ui/cues.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../label_finders.dart';

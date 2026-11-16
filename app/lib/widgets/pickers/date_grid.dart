@@ -6,7 +6,7 @@ library;
 
 import 'package:diet_guard_app/widgets/pickers/date_selection.dart';
 import 'package:diet_guard_app/widgets/pickers/numeral_cell.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Six rows of seven: every month fits, and the dialog never changes height.
 const int kGridCells = 42;

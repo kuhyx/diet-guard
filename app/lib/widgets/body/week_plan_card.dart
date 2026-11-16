@@ -10,8 +10,8 @@ import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/body_section.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The planner.
 class WeekPlanCard extends StatefulWidget {

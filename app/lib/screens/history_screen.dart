@@ -14,7 +14,7 @@ import 'package:diet_guard_app/widgets/history/history_filter.dart';
 import 'package:diet_guard_app/widgets/history/history_filter_sheet.dart';
 import 'package:diet_guard_app/widgets/history/history_grouping.dart';
 import 'package:diet_guard_app/widgets/history/history_list.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Logged meal history: every entry, grouped by day, filterable and sortable.
 ///

@@ -1,6 +1,6 @@
 import 'package:diet_guard_app/models/day_status.dart';
 import 'package:diet_guard_app/widgets/day_status_calendar.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'day_status_calendar_test_support.dart';

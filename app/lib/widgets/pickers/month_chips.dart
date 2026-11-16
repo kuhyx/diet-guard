@@ -2,7 +2,7 @@
 library;
 
 import 'package:diet_guard_app/widgets/pickers/numeral_cell.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Twelve numeral chips in two rows of six; months wholly outside the bounds
 /// are dimmed and inert.

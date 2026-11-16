@@ -10,7 +10,7 @@ import 'package:diet_guard_app/widgets/history/history_filter.dart';
 import 'package:diet_guard_app/widgets/history/history_filter_sort.dart';
 import 'package:diet_guard_app/widgets/history/history_grouping.dart';
 import 'package:diet_guard_app/widgets/pickers/pickers.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The draggable bottom sheet that edits the history filter and sort order.
 ///

@@ -6,7 +6,7 @@ library;
 import 'package:diet_guard_app/models/food_bank_record.dart';
 import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/macro_kind.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Prompts for a new manually-curated food bank entry.
 ///

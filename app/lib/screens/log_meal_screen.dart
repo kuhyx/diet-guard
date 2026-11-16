@@ -26,8 +26,8 @@ import 'package:diet_guard_app/widgets/log_meal_actions_row.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
 import 'package:diet_guard_app/widgets/sync_health_banner.dart';
 import 'package:diet_guard_app/widgets/today_progress_card.dart';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:material_ui/material_ui.dart';
 
 /// Lets the user log one food item, with food-bank autocomplete and
 /// today's slot status.

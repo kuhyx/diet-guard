@@ -5,7 +5,7 @@
 /// colour never carries the meaning alone (shape does too).
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// One nutrition field and its non-text identity.
 enum MacroKind {

@@ -9,7 +9,7 @@ import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/widgets/filters/filter_chrome.dart';
 import 'package:diet_guard_app/widgets/filters/filter_fields.dart';
 import 'package:diet_guard_app/widgets/food_bank/fb_filter.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The draggable bottom sheet that edits the food bank's filter and sort order.
 ///

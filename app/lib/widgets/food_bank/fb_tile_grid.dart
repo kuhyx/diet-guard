@@ -6,7 +6,7 @@ library;
 import 'package:diet_guard_app/models/food_bank_record.dart';
 import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/ui/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Tiles per row.
 const int fbGridColumns = 3;

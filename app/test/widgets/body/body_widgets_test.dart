@@ -6,7 +6,7 @@ import 'package:diet_guard_app/widgets/body/body_stats_cards.dart';
 import 'package:diet_guard_app/widgets/body/week_plan_card.dart';
 import 'package:diet_guard_app/widgets/body/weight_chart.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../label_finders.dart';

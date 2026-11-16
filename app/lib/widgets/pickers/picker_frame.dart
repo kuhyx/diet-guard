@@ -3,8 +3,8 @@
 library;
 
 import 'package:diet_guard_app/ui/theme.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Picker chrome. Outside tap and Esc cancel (the dialog route's own
 /// dismiss); Enter confirms when [canConfirm].

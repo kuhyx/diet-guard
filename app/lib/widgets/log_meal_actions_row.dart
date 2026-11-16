@@ -7,7 +7,7 @@ library;
 
 import 'package:diet_guard_app/services/kuchnia_client.dart';
 import 'package:diet_guard_app/ui/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A delivery button beside the log button.
 ///

@@ -1,6 +1,6 @@
 import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:diet_guard_app/widgets/sync_health_banner.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Future<void> pump(WidgetTester tester, SyncHealthStatus? status) =>

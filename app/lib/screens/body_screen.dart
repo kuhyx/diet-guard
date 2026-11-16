@@ -29,7 +29,7 @@ import 'package:diet_guard_app/widgets/body/goal_card.dart';
 import 'package:diet_guard_app/widgets/body/profile_card.dart';
 import 'package:diet_guard_app/widgets/body/week_plan_card.dart';
 import 'package:diet_guard_app/widgets/body/weight_card.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 export 'package:diet_guard_app/screens/body_screen_data.dart';
 

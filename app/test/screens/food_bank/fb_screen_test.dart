@@ -3,7 +3,7 @@ import 'package:diet_guard_app/screens/food_bank_screen.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/widgets/food_bank/fb_add_entry_dialog.dart';
 import 'package:diet_guard_app/widgets/food_bank/fb_filter_sheet.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../label_finders.dart';

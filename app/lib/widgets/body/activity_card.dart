@@ -8,7 +8,7 @@ import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/body_section.dart';
 import 'package:diet_guard_app/widgets/body/formula_figure.dart';
 import 'package:diet_guard_app/widgets/body/workout_kind_icon.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// How many of the newest sessions to list.
 const int activityListLimit = 10;

@@ -22,8 +22,8 @@ import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/widgets/average_summary_row.dart';
 import 'package:diet_guard_app/widgets/day_status_calendar.dart';
 import 'package:diet_guard_app/widgets/streak_summary_row.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Screen showing the budget-adherence calendar, streaks, and budget entry.
 class CalendarScreen extends StatefulWidget {

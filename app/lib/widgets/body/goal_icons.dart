@@ -4,7 +4,7 @@ library;
 
 import 'package:diet_guard_app/services/body_energy.dart';
 import 'package:diet_guard_app/widgets/body/formula_figure.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Lose = down arrow, maintain = level bar, gain = up arrow.
 IconData directionIcon(String direction) => switch (direction) {

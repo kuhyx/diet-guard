@@ -1,7 +1,7 @@
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/widgets/history/history_filter.dart';
 import 'package:diet_guard_app/widgets/history/history_grouping.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'history_test_support.dart';

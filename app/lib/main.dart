@@ -17,7 +17,7 @@ import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/services/notification_service.dart';
 import 'package:diet_guard_app/services/sync_device_id.dart';
 import 'package:diet_guard_app/ui/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

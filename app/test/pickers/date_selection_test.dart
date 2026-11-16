@@ -1,7 +1,7 @@
 // The date picker's selection rules, as plain unit tests.
 
 import 'package:diet_guard_app/widgets/pickers/date_selection.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final _first = DateTime(2026, 1, 15);

@@ -15,9 +15,9 @@ import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
 import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/theme.dart';
-import 'package:flutter/material.dart';
 import 'package:github_device_auth/github_device_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:material_ui/material_ui.dart';
 
 part 'github_client_id_dialog.dart';
 part 'github_mirror_actions.dart';

@@ -8,7 +8,7 @@
 library;
 
 import 'package:diet_guard_app/widgets/log_meal_actions_row.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../label_finders.dart';

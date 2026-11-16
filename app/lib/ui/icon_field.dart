@@ -2,8 +2,8 @@
 /// spoken label (see [IconField]).
 library;
 
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A bordered text field whose caption is an icon plus a spoken label.
 ///

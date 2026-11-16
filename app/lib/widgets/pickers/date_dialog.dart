@@ -8,8 +8,8 @@ import 'package:diet_guard_app/widgets/pickers/date_selection.dart';
 import 'package:diet_guard_app/widgets/pickers/month_chips.dart';
 import 'package:diet_guard_app/widgets/pickers/picker_frame.dart';
 import 'package:diet_guard_app/widgets/pickers/year_wheel.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Width of the year wheel beside the grid.
 const double kYearWheelWidth = 64;

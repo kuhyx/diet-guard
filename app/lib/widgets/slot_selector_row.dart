@@ -7,7 +7,7 @@ import 'package:diet_guard_app/models/meal_schedule.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:diet_guard_app/ui/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// One row of [ChoiceChip]s, one per today's slot (labelled `HH:MM`). Each
 /// chip is simultaneously selectable (tap to log for that slot) and

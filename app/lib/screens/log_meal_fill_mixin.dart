@@ -13,7 +13,7 @@ import 'package:diet_guard_app/services/kuchnia_fill_flow.dart';
 import 'package:diet_guard_app/services/kuchnia_queue.dart';
 import 'package:diet_guard_app/services/kuchnia_spread.dart';
 import 'package:diet_guard_app/ui/cues.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// One fill tap's status (see [CountCue]).
 typedef FillCue = CountCue;

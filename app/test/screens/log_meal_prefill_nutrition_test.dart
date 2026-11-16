@@ -15,7 +15,7 @@ import 'package:diet_guard_app/screens/log_meal_kuchnia_mixin.dart';
 import 'package:diet_guard_app/services/document_store.dart';
 import 'package:diet_guard_app/services/kuchnia_queue.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// In-memory store, so these tests need no plugin channel.

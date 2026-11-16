@@ -1,6 +1,6 @@
 // Shared Pixel 6a geometry helpers for the one-screen (no-scroll) tests.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Pixel 6a: 1080x2400 px at 2.625 dpr, 132 px status bar, 63 px nav bar.

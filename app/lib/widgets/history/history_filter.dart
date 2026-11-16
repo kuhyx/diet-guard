@@ -5,7 +5,7 @@
 /// can each depend on it without depending on one another.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 // ---------------------------------------------------------------------------
 // Filter & sort state

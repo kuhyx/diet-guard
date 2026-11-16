@@ -3,7 +3,7 @@ library;
 
 import 'package:diet_guard_app/widgets/pickers/picker_frame.dart';
 import 'package:diet_guard_app/widgets/pickers/time_wheels.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Pops the chosen [TimeOfDay], always within [minMinute]..[maxMinute].
 class TimeDialog extends StatefulWidget {

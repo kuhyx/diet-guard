@@ -25,9 +25,9 @@ import 'package:diet_guard_app/widgets/data_backup_row.dart';
 import 'package:diet_guard_app/widgets/log_sound_tile.dart';
 import 'package:diet_guard_app/widgets/meal_schedule_editor.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:material_ui/material_ui.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sync_settings_ui/sync_settings_ui.dart';
 

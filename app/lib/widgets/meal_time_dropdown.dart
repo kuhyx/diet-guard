@@ -7,7 +7,7 @@ import 'package:diet_guard_app/models/meal_schedule.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/pickers/pickers.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Picks a minute of day, offering the 15-minute grid within
 /// [minMinute]..[maxMinute], with a clock button beside it that opens a time

@@ -2,7 +2,7 @@
 library;
 
 import 'package:diet_guard_app/widgets/pickers/numeral_wheel.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Out-of-range years listed beyond each bound, dimmed and inert, so the
 /// wheel's ends read as limits rather than as a list that just stops.

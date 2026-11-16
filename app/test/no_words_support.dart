@@ -8,7 +8,7 @@
 /// workout labels, typed values) is passed per test as [content].
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Unit symbols and method acronyms that may sit next to a number.

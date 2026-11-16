@@ -6,7 +6,7 @@ import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/body_section.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The BMI band as glyph + colour (never colour alone): a green check inside
 /// the healthy range, an amber or red arrow towards the side it is off by.

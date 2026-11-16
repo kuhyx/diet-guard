@@ -1,7 +1,7 @@
 import 'package:diet_guard_app/models/workout_session.dart';
 import 'package:diet_guard_app/widgets/body/activity_card.dart';
 import 'package:diet_guard_app/widgets/body/body_tile_grid.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -9,7 +9,7 @@ library;
 import 'package:diet_guard_app/widgets/pickers/date_dialog.dart';
 import 'package:diet_guard_app/widgets/pickers/date_selection.dart';
 import 'package:diet_guard_app/widgets/pickers/time_dialog.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Picks one day in [firstDate]..[lastDate]; null when cancelled.
 ///

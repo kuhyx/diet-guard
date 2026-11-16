@@ -6,7 +6,7 @@ import 'package:diet_guard_app/services/body_calc.dart';
 import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/services/body_steps.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
-import 'package:flutter/material.dart' show IconData, Icons;
+import 'package:material_ui/material_ui.dart' show IconData, Icons;
 
 /// Builds the person from the stored profile and newest weight, or null
 /// when anything the formulas need is missing.

@@ -5,7 +5,7 @@
 // is library-private in Dart.
 
 import 'package:diet_guard_app/ui/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // The real app theme, not a bare default MaterialApp -- the widget under

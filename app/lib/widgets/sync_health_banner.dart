@@ -3,7 +3,7 @@ library;
 
 import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:diet_guard_app/ui/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Warns, in place, that meals logged here are not reaching other devices.
 ///

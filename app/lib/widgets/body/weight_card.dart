@@ -7,7 +7,7 @@ library;
 import 'package:diet_guard_app/models/body_document.dart';
 import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/widgets/body/dated_value_card.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 export 'package:diet_guard_app/widgets/body/dated_value_card.dart';
 

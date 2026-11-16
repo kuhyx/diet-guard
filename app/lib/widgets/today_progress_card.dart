@@ -6,7 +6,7 @@ import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/progress_motion.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Everything [TodayProgressCard] renders, computed by the caller.
 ///

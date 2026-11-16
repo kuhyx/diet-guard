@@ -2,7 +2,7 @@ import 'package:diet_guard_app/models/meal_schedule.dart';
 import 'package:diet_guard_app/widgets/meal_schedule_editor.dart';
 import 'package:diet_guard_app/widgets/meal_time_dropdown.dart';
 import 'package:diet_guard_app/widgets/pickers/time_dialog.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../label_finders.dart';

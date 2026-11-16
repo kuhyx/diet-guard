@@ -2,7 +2,7 @@
 /// (`manual`, `food bank`, `catering`) that used to be printed on screen.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Icon for a stored entry `source` value; unknown values get a neutral dot.
 IconData sourceIcon(String source) => switch (source) {

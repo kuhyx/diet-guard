@@ -3,7 +3,7 @@ library;
 
 import 'package:diet_guard_app/models/food_suggestion.dart';
 import 'package:diet_guard_app/ui/macro_kind.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A tappable list of [FoodSuggestion]s, each filling the form on tap.
 ///

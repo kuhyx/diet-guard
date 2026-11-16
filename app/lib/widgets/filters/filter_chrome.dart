@@ -3,7 +3,7 @@
 /// glyph and speaks its old caption only through its semantic label.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Top row of a filter sheet: one clear-everything icon, right-aligned.
 class FilterSheetHeader extends StatelessWidget {

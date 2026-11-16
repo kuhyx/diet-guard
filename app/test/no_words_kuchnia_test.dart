@@ -4,7 +4,7 @@
 import 'package:diet_guard_app/screens/log_meal_fill_mixin.dart';
 import 'package:diet_guard_app/services/kuchnia_spread.dart';
 import 'package:diet_guard_app/ui/cues.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'label_finders.dart';

@@ -8,8 +8,8 @@ import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/body_section.dart';
 import 'package:diet_guard_app/widgets/body/weight_chart.dart';
 import 'package:diet_guard_app/widgets/pickers/pickers.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Enters/deletes a day's value and charts the history.
 class DatedValueCard extends StatefulWidget {

@@ -20,7 +20,7 @@ import 'package:diet_guard_app/services/kuchnia_credential_service.dart';
 import 'package:diet_guard_app/services/kuchnia_import.dart';
 import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// What a delivery fetch reports: a cue [kind], a spoken [label] (never
 /// painted) and, when dishes were banked, their [count] (painted as a number).

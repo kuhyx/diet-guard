@@ -1,7 +1,7 @@
 /// Returns the activity-type icon for [kind].
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Activity kind icons used by _SessionTile (in `activity_card.dart`).
 IconData kindIcon(String kind) => switch (kind) {

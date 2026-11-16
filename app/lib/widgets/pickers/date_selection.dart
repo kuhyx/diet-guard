@@ -4,7 +4,7 @@ library;
 
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart' show DateTimeRange, DateUtils;
+import 'package:material_ui/material_ui.dart' show DateTimeRange, DateUtils;
 
 /// What the date picker has chosen, and which month it is showing.
 ///

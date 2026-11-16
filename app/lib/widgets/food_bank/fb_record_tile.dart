@@ -3,7 +3,7 @@ library;
 
 import 'package:diet_guard_app/models/food_bank_record.dart';
 import 'package:diet_guard_app/ui/macro_kind.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// One banked food: its name, macros, and how often it has been logged.
 ///

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:diet_guard_app/services/app_settings_service.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Opt-out switch for the log cue, which ships on.
 class LogSoundTile extends StatefulWidget {

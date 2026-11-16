@@ -2,7 +2,7 @@
 /// equal-width row layout both grids use.
 library;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Alpha of a weekend numeral: dimmed, with a dot as the second channel.
 const double kWeekendAlpha = 0.6;

@@ -9,8 +9,8 @@ import 'package:diet_guard_app/services/body_energy.dart';
 import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/body/goal_icons.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// One choice in a picker sheet.
 typedef PickerOption = ({

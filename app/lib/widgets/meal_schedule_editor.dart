@@ -7,7 +7,7 @@ import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/ui/icon_field.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/meal_time_dropdown.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Latest minute the *grid* offers for the first meal: 23:30, leaving one
 /// grid step for a grid-aligned last meal. The clock button can go later, up

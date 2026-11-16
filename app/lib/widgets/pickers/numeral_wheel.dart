@@ -5,8 +5,8 @@ import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/pickers/loop_wheel_delegate.dart';
 import 'package:diet_guard_app/widgets/pickers/numeral_cell.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Height of one wheel item.
 const double kWheelItemExtent = 40;

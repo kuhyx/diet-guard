@@ -3,7 +3,7 @@
 library;
 
 import 'package:diet_guard_app/ui/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// One tile: a big [icon] (spoken as [semanticLabel]), an optional headline
 /// [value] and the [builder] of the full card shown in the sheet.

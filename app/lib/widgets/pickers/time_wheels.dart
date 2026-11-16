@@ -3,7 +3,7 @@ library;
 
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/pickers/numeral_wheel.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Width of one time wheel.
 const double kTimeWheelWidth = 72;

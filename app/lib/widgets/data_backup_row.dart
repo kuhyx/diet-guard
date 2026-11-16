@@ -5,8 +5,8 @@ import 'dart:async';
 
 import 'package:data_transfer_flutter/data_transfer_flutter.dart';
 import 'package:diet_guard_app/services/data_export.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Suggested file name, identical on every platform.
 const exportFileName = 'diet-guard-export.json';

@@ -2,7 +2,7 @@ import 'package:diet_guard_app/models/local_time.dart';
 import 'package:diet_guard_app/screens/body_screen.dart';
 import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/ui/cues.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../label_finders.dart';

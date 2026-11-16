@@ -10,7 +10,7 @@ import 'package:diet_guard_app/ui/macro_kind.dart';
 import 'package:diet_guard_app/ui/source_icon.dart';
 import 'package:diet_guard_app/widgets/filters/filter_chrome.dart';
 import 'package:diet_guard_app/widgets/history/history_filter.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The known `source` values an entry can carry, in display order.
 ///

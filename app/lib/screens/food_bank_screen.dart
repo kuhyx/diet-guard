@@ -15,7 +15,7 @@ import 'package:diet_guard_app/widgets/food_bank/fb_filter.dart';
 import 'package:diet_guard_app/widgets/food_bank/fb_filter_sheet.dart';
 import 'package:diet_guard_app/widgets/food_bank/fb_record_tile.dart';
 import 'package:diet_guard_app/widgets/food_bank/fb_tile_grid.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Browses every banked food -- log-derived and manually curated -- with
 /// filtering, sorting, and an add-entry dialog.

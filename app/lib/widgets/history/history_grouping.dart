@@ -7,7 +7,7 @@ library;
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/services/day_status_service.dart';
 import 'package:diet_guard_app/widgets/history/history_filter.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// One row in the flattened history list: either a [DayHeader] or an
 /// [EntryRow]. Sealed so the list's `switch` stays exhaustive.

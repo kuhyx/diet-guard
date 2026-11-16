@@ -11,7 +11,7 @@ import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/widgets/autocomplete_suggestion_list.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:uuid/uuid.dart';
 
 /// Edit screen for an existing [FoodEntry].

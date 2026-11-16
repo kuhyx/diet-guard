@@ -2,7 +2,7 @@
 library;
 
 import 'package:diet_guard_app/ui/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Fades [child] in and slides it up by [AppSpacing.md] when first built.
 ///

@@ -2,7 +2,7 @@
 // paint no words (only numbers, unit symbols, MET and workout labels).
 // Workout labels are content only for manual workouts (source == 'manual').
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'label_finders.dart';

@@ -4,7 +4,7 @@ library;
 
 import 'package:diet_guard_app/services/activity_kcal.dart';
 import 'package:diet_guard_app/ui/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// One distinct glyph per entry of [activityFormulas].
 const Map<String, IconData> formulaIcons = {
