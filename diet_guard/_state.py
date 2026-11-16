@@ -27,6 +27,8 @@ from diet_guard._constants import FOOD_LOG_FILE
 from diet_guard._slot_wire import slot_fields
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from diet_guard._estimator import Nutrition
 
 _logger = logging.getLogger(__name__)
@@ -192,6 +194,16 @@ def log_meal(
     log.setdefault(effective.date().isoformat(), []).append(entry)
     _write_log(log)
     return entry
+
+
+def food_log_path() -> Path:
+    """The food log's path, resolved through this module's global.
+
+    The one sanctioned way for a sibling to name the log (``FOOD_LOG_FILE`` may
+    only be named here): the test redirect patches this module's constant, so a
+    file watcher asking here watches the file ``log_meal`` really writes.
+    """
+    return FOOD_LOG_FILE
 
 
 def load_log() -> DayLog:

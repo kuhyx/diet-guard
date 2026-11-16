@@ -63,14 +63,21 @@ class _PullFlows(_GateNutrition):
     pylint caps the controller chain's depth and every MRO entry counts.
     """
 
-    #: Slots still to be filled. Declared on the controller this mixin is
-    #: mixed into; repeated here so mypy can type the reconcile below.
+    #: Slots still to be filled (declared on the controller; typed here).
     _pending: list[int]
 
-    #: The in-flight sync fetch's queue, or None when none is running.
-    #: Doubles as the poll's own guard: a stray poll after completion finds
-    #: None and stops rather than blocking on an empty queue forever.
+    #: The in-flight sync fetch's queue, or None when none is running. Doubles
+    #: as the poll's guard: a stray poll after completion finds None and stops.
     _fetch_result: queue.Queue[str | None] | None = None
+
+    @property
+    def fetch_result(self) -> queue.Queue[str | None] | None:
+        """The in-flight pull, shared with the background timer."""
+        return self._fetch_result
+
+    @fetch_result.setter
+    def fetch_result(self, value: queue.Queue[str | None] | None) -> None:
+        self._fetch_result = value
 
     #: The in-flight catering fetch's queue, or None when none is running.
     _delivery_result: queue.Queue[DeliveryResult] | None = None
@@ -79,15 +86,12 @@ class _PullFlows(_GateNutrition):
     #: time so each still passes through the normal submit path.
     _delivery_pending: tuple[Dish, ...] = ()
 
-    #: True when the running fetch came from the button rather than the
-    #: window opening. An automatic fetch must not talk over the gate's own
-    #: prompt to report that the caterer had nothing today.
+    #: True when the running fetch came from the button, not the window opening
+    #: (an automatic one must not talk over the gate's own prompt).
     _delivery_asked: bool = False
 
-    # Supplied by ``_GateMealFlow``, which mixes this class in. Declared so the
-    # contract is explicit and pylint can see it: the dependency runs both ways
-    # (the flows drive the meal form, the form hosts the flows) and the
-    # ancestor cap leaves no room for another chain link.
+    # Supplied by ``_GateMealFlow``, which mixes this class in (the dependency
+    # runs both ways and the ancestor cap leaves no room for another link).
     _set_status: Callable[..., None]
     _clear_inputs: Callable[[], None]
     _apply_reference: Callable[..., None]
@@ -111,8 +115,7 @@ class _PullFlows(_GateNutrition):
             return
         self._delivery_asked = True
         self._set_status(f"{g.BUSY} {g.DELIVERY}")
-        # Through the module object so the lazy hook resolves it, and so a
-        # test's ``patch.object`` still wins.
+        # Through the module object: the lazy hook, and ``patch.object``.
         self._delivery_result = start_delivery_fetch(
             sys.modules[__name__].refresh_delivery,
             now_local().date(),

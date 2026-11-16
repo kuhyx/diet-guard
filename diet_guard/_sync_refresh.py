@@ -158,11 +158,14 @@ def refresh_peer_logs() -> None:
         return
 
     seen: dict[str, str] = {}
-    merged, changed = _merge_peer_logs(
-        client, peers, remote_revs, daylog_to_log(read_raw_log()), seen
-    )
+    # Peers merge into an empty log; the local log is read only after the slow
+    # network reads. A union is commutative, so the result is identical, but a
+    # meal logged while the peers downloaded (the open gate now pulls on a
+    # timer) is read here instead of being overwritten by a seconds-old snapshot.
+    peer_log, changed = _merge_peer_logs(client, peers, remote_revs, {}, seen)
     if not changed:
         return
+    merged = merge_logs(daylog_to_log(read_raw_log()), peer_log)
 
     # Re-sign every entry, not just the newly arrived ones: a signature made on
     # another device is not valid under this device's key, and ``load_log``

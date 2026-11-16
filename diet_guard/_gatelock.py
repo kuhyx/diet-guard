@@ -57,12 +57,11 @@ from gatelock import (
 from diet_guard._gate import due_slots
 from diet_guard._gatelock_calendar import _GateCalendar, make_calendar_vars
 from diet_guard._gatelock_core import _GateState
+from diet_guard._gatelock_credit import arm_credit_watch
 from diet_guard._gatelock_groups import GateWidgetsGroup
 from diet_guard._gatelock_lockfile import acquire_gate_lock, release_gate_lock
-from diet_guard._gatelock_ui import (
-    GateCallbacks,
-    make_vars,
-)
+from diet_guard._gatelock_peerpull import arm_peer_pull
+from diet_guard._gatelock_ui import GateCallbacks, make_vars
 from diet_guard._hold import watch_hold
 from diet_guard._meal_schedule_store import current_schedule
 from diet_guard._slots import current_slot, day_slots
@@ -105,8 +104,7 @@ def _pending_slots(*, demo_mode: bool) -> list[int]:
         return pending
     if demo_mode:
         schedule = current_schedule()
-        # `is None`, not `or`: slot 0 (midnight) is falsy. Both arms happen to
-        # agree (0 is necessarily the first slot), but intent shouldn't hinge on it.
+        # `is None`, not `or`: slot 0 (midnight) is falsy.
         elapsed = current_slot(now_local(), schedule)
         return [elapsed if elapsed is not None else day_slots(schedule)[0]]
     return []
@@ -126,16 +124,13 @@ class MealGate(_GateCalendar):
         _assert_not_under_pytest()
         self.demo_mode = demo_mode
         self._pending = _pending_slots(demo_mode=demo_mode)
-        # All mutable logical state (provenance, suggestions, meal-in-progress)
-        # lives in one bundle; see _GateState for the per-field rationale.
+        # All mutable logical state lives in one bundle (see _GateState).
         self._state = _GateState()
         self.root = GateRoot()
         self.root.on_callback_error = self.on_callback_error
         self.root.title("Diet Gate")  # OS-level app name: the one kept noun
-        # No bg=/fg=/... overrides here: LockConfig's own defaults already
-        # are the unified-design-system palette, and _gatelock_ui reads the
-        # same LockConfig() rather than a separate hardcoded copy -- see
-        # DESIGN_AUDIT_TODO.md for why an override here previously drifted.
+        # No colour overrides: LockConfig's defaults are the design-system palette
+        # and _gatelock_ui reads them too (an override drifted once).
         config = LockConfig(
             mode="soft" if demo_mode else "hard",
             app_name="diet_guard",
@@ -219,8 +214,13 @@ class MealGate(_GateCalendar):
         self._lock.close()
 
     def run(self) -> None:
-        """Run the Tk loop (a hold starting mid-lock closes it), VT-safe."""
+        """Run the Tk loop (a hold or a meal logged elsewhere closes it), VT-safe."""
         watch_hold(self.root, self.close)
+        if not self.demo_mode:  # a demo owes a synthetic slot: it would self-close
+            arm_credit_watch(
+                self.root, lambda: self._pending, self._reconcile_after_fetch
+            )
+            arm_peer_pull(self)
         self._lock.run()
 
     def _wire_events(self) -> None:

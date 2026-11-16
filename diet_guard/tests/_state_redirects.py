@@ -124,6 +124,8 @@ def state_redirects(tmp_path: Path) -> list[_patch[object]]:
         # entry point (narrow peer-log pull, not the full tick). Without
         # this every test that reaches `_should_lock` hits the real remote.
         patch("diet_guard._cli_gate.pull_peer_logs", return_value=None),
+        # The open gate window's 30 s background pull: a third entry point.
+        patch("diet_guard._gatelock_peerpull.pull_peer_logs", return_value=None),
         # The catering credentials and its cached session cookie. Redirected
         # for the same reason as `sync_token`: `_test_guard` raises on any
         # write under the real ~/.config/diet_guard, and a test that logs in
