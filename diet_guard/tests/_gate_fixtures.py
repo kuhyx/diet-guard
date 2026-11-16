@@ -93,8 +93,13 @@ def _hermetic_gatelock(
     real tkinter into unbounded mock recursion, so the suite **hangs** rather
     than failing. The runtime dir is redirected too, so no test can stand a
     production locker down through the arbiter.
+
+    The queue's startup grace is zeroed too: ``wait_for_turn`` sleeps it for
+    real before its first look, which put 1.5 s on every test that builds a
+    gate and the suite far past the 60 s action cap.
     """
     monkeypatch.setenv("GATELOCK_RUNTIME_DIR", str(tmp_path / "gatelock-runtime"))
+    monkeypatch.setattr("gatelock._queue.STARTUP_GRACE_SECONDS", 0.0)
     with (
         patch("gatelock._surfaces.tk.Toplevel", side_effect=_make_toplevel),
         patch("gatelock._outputs.RandrBackend.create", return_value=None),
