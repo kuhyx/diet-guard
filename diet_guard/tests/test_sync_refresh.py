@@ -4,12 +4,10 @@ The full tick measured ~21s against the live remote, which is far too slow to
 sit in front of a fullscreen lock. ``_sync_refresh`` answers the gate's single
 question -- "has a peer already logged this slot?" -- from the peer logs alone.
 
-The three state invariants below are the traps that make this pass dangerous
-if it drifts, so each has its own regression test:
-
-* ``pushed_rev`` must survive verbatim (this pass never pushes),
-* ``peer_revs`` must be *merged*, never replaced (only changed peers visited),
-* the log must be written before the state.
+Three state invariants are the traps that make this pass dangerous if it
+drifts, each with its own regression test: ``pushed_rev`` survives verbatim
+(this pass never pushes), ``peer_revs`` is *merged*, never replaced (only
+changed peers are visited), and the log is written before the state.
 """
 
 from __future__ import annotations
@@ -44,9 +42,8 @@ def _state_store() -> FileSyncStateStore:
 def _peer_log_text() -> str:
     """Return the wire text a peer would push for one logged meal.
 
-    Built through ``log_meal`` into the (redirected) local log, serialised, then
-    the local log is emptied again -- so the merge under test is unambiguously
-    the peer's record arriving, not one that was already there.
+    Built through ``log_meal``, serialised, then the local log is emptied again,
+    so the merge under test is unambiguously the peer's record arriving.
     """
     log_meal("peer porridge", _nutrition(), 8)
     text = json.dumps(
@@ -109,9 +106,8 @@ class TestPeerIsCurrent:
         Using ``.get(...) is not None`` here would re-download those peers on
         every single tick, forever.
         """
-        # A real ``sync_state.json`` holds explicit nulls here even though the
-        # annotation says ``str`` -- that mismatch is exactly what this test
-        # pins, so the value is cast in rather than suppressed at the line.
+        # A real ``sync_state.json`` holds explicit nulls here though the
+        # annotation says ``str``; this test pins that, so the value is cast in.
         peer_revs = cast("dict[str, str]", {"pc": None})
         state = SyncState(pushed_rev=None, peer_revs=peer_revs)
 

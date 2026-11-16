@@ -1,18 +1,14 @@
 # CLAUDE.md — diet_guard
 
-A log-to-unlock gate. Every ~15 min `diet-guard-gate.timer` checks whether a
-meal slot (08:00, 12:00, 16:00, 20:00 by default — the schedule is
-user-configurable, see below) elapsed unlogged; if so it opens a
-fullscreen Tk window that blocks the desktop until the user logs what they
-ate. It also tracks a daily calorie/macro budget, seeded from biometrics at
-`init` and freely editable afterward on either device. A History tab
-(`_gatelock_calendar.py`) and the phone's Calendar screen show adherence,
-streaks, a YTD tally and weekly/monthly averages, all derived from
-`_daystatus.py` / `day_status_service.dart` and `_averages.py` /
-`average_service.dart`.
+A log-to-unlock gate. Every ~15 min `diet-guard-gate.timer` checks whether a meal slot (08:00,
+12:00, 16:00, 20:00 by default — the schedule is user-configurable, see below) elapsed unlogged; if
+so it opens a fullscreen Tk window that blocks the desktop until the user logs what they ate. It
+also tracks a daily calorie/macro budget, seeded from biometrics at `init` and freely editable
+afterward on either device. A History tab (`_gatelock_calendar.py`) and the phone's Calendar screen
+show adherence, streaks, a YTD tally and weekly/monthly averages, all derived from `_daystatus.py` /
+`day_status_service.dart` and `_averages.py` / `average_service.dart`.
 
-`docs/DOCS-design.md` holds the original spec (slot timing, the Tue/Wed/Thu
-catch-up rule).
+`docs/DOCS-design.md` holds the original spec (slot timing, the Tue/Wed/Thu catch-up rule).
 
 ## Commands
 
@@ -29,35 +25,31 @@ catch-up rule).
 
 ## Scheduling
 
-`diet-guard-gate.timer` is wall-clock (`OnCalendar=*-*-* *:00/15:00`,
-`Persistent=true`), not boot-relative — a boot-relative timer collided with
-fullscreen games grabbing input. `diet-guard-gate.service` is `Type=oneshot`
-and exits 0 at once when no lock is due (free/sick day: [docs/DOCS-sick-days.md](docs/DOCS-sick-days.md)).
-Needs `DISPLAY`/`XAUTHORITY`; see the unit file and `wait_for_display()`.
+`diet-guard-gate.timer` is wall-clock (`OnCalendar=*-*-* *:00/15:00`, `Persistent=true`), not
+boot-relative — a boot-relative timer collided with fullscreen games grabbing input.
+`diet-guard-gate.service` is `Type=oneshot` and exits 0 at once when no lock is due (free/sick day:
+[docs/DOCS-sick-days.md](docs/DOCS-sick-days.md)). Needs `DISPLAY`/`XAUTHORITY`; see the unit file
+and `wait_for_display()`.
 
 ## Cross-device sync
 
-A sync tick pulls every other device's log from `kuhyx/syncs`
-(`diet-guard-sync/`, dumb file storage via the REST Contents API), merges
-(`_sync_merge.merge_logs`: union by `id`, tombstone wins, legacy
-`(time, desc)` dedup), **re-signs every persisted entry**, rebuilds the food
-bank, pushes back.
+A sync tick pulls every other device's log from `kuhyx/syncs` (`diet-guard-sync/`, dumb file storage
+via the REST Contents API), merges (`_sync_merge.merge_logs`: union by `id`, tombstone wins, legacy
+`(time, desc)` dedup), **re-signs every persisted entry**, rebuilds the food bank, pushes back.
 
-**End-to-end encrypted** (since 2026-11-12, `_sync_e2e.py` /
-`app/lib/services/sync_e2e.dart`): everything lives on
-`diet-guard-sync/devices-e2e` (revs `revs-e2e`, header `diet-guard-sync/e2e`),
-fields sealed with a key from the shared passphrase
-(`~/.config/crdt-sync/password`; keystore + lock icon in Settings on the
-phone). Record ids, tombstones and clocks stay clear, so the food banks' ids
-(food names) are visible. The old plaintext `diet-guard-sync/devices` (and
-its `export_keys.json` keyring) is copied over and never written or deleted.
-Locked = `SyncError` / `SyncLockedException`: nothing is pulled or pushed.
-The PC keeps its derived key and copy memo in `~/.local/share/diet_guard/e2e`.
-The wake-alarm weigh-ins come from `wake-alarm-sync/devices-e2e` (own header).
+**End-to-end encrypted** (since 2026-11-12, `_sync_e2e.py` / `app/lib/services/sync_e2e.dart`):
+everything lives on `diet-guard-sync/devices-e2e` (revs `revs-e2e`, header `diet-guard-sync/e2e`),
+fields sealed with a key from the shared passphrase (`~/.config/crdt-sync/password`; keystore + lock
+icon in Settings on the phone). Record ids, tombstones and clocks stay clear, so the food banks' ids
+(food names) are visible. The old plaintext `diet-guard-sync/devices` (and its `export_keys.json`
+keyring) is copied over and never written or deleted. Locked = `SyncError` / `SyncLockedException`:
+nothing is pulled or pushed. The PC keeps its derived key and copy memo in
+`~/.local/share/diet_guard/e2e`. The wake-alarm weigh-ins come from `wake-alarm-sync/devices-e2e`
+(own header).
 
-**On the PC, sync is event-driven — there is no periodic timer.** The old
-`diet-guard-sync.timer` (~15 min) was deleted: it paid a network round-trip on
-every idle tick to approximate the two moments state actually changes here.
+**On the PC, sync is event-driven — there is no periodic timer.** The old `diet-guard-sync.timer`
+(~15 min) was deleted: it paid a network round-trip on every idle tick to approximate the two
+moments state actually changes here.
 
 - **Before a lock** — `_cli_gate._should_lock` runs the cheap local
   `gate_is_due()` first and pulls *only* when a lock is otherwise due, so a
@@ -121,19 +113,18 @@ every idle tick to approximate the two moments state actually changes here.
 
 ## Production dependency installation
 
-`diet-guard-gate.service` runs `/usr/bin/python`, **not** a venv. Any new
-non-stdlib dependency must go into system Python's user site-packages:
+`diet-guard-gate.service` runs `/usr/bin/python`, **not** a venv. Any new non-stdlib dependency must
+go into system Python's user site-packages:
 
 ```bash
 /usr/bin/python3 -m pip install --user --break-system-packages -e .
 ```
 
-Verify against `/usr/bin/python3 -c "import <dep>"`, not the dev venv.
-Installing only into `.venv` caused a 3-day production outage (2026-06-19).
+Verify against `/usr/bin/python3 -c "import <dep>"`, not the dev venv. Installing only into `.venv`
+caused a 3-day production outage (2026-06-19).
 
-Run `install.sh` from a **durable** clone (`~/src/diet-guard`), never a scratch
-dir — it does `pip install -e`, so the clone must persist for `git pull` to
-reach the running service.
+Run `install.sh` from a **durable** clone (`~/src/diet-guard`), never a scratch dir — it does `pip
+install -e`, so the clone must persist for `git pull` to reach the running service.
 
 ## Operational gotchas
 
@@ -168,16 +159,14 @@ reach the running service.
 
 ## The companion app's desktop target is a web build
 
-`app/` builds for **Android** and **web** only. There is no `app/linux/` —
-Flutter's GTK embedder manages ~20fps at 3840x2160 where the same Dart in
-Chrome sustains ~144fps (`~/src/todo/docs/DOCS-desktop-performance-findings.md`). The
-desktop app is the web build served by `bin/diet_guard_desktop.dart` in a
-Chrome `--app` window.
+`app/` builds for **Android** and **web** only. There is no `app/linux/` — Flutter's GTK embedder
+manages ~20fps at 3840x2160 where the same Dart in Chrome sustains ~144fps
+(`~/src/todo/docs/DOCS-desktop-performance-findings.md`). The desktop app is the web build served by
+`bin/diet_guard_desktop.dart` in a Chrome `--app` window.
 
-Enforced by `app/test/repo_invariants_test.dart`: no `app/linux/`, `dart:io`
-only in `*_io.dart` seams and `lib/desktop/`, port 8732 and the
-`diet-guard-desktop` Chrome profile pinned (IndexedDB is keyed by origin, so
-changing either hides the entire local food log).
+Enforced by `app/test/repo_invariants_test.dart`: no `app/linux/`, `dart:io` only in `*_io.dart`
+seams and `lib/desktop/`, port 8732 and the `diet-guard-desktop` Chrome profile pinned (IndexedDB is
+keyed by origin, so changing either hides the entire local food log).
 
 - Branch on `kIsWeb` *before* any `Platform.is…`, which itself throws on web.
   `dart:io` does not fail a web compile — it throws at runtime, so the symptom
@@ -190,19 +179,17 @@ changing either hides the entire local food log).
 
 ## The meal schedule
 
-Slots are **minutes of day**: a first meal and a last meal (any `HH:MM`) and
-how many meals fall between them; interior slots round to the 15-min grid.
-Default `(480, 1200, 4)` is the old hardcoded 08/12/16/20. The load-bearing
-rules (integer-only arithmetic, the additive `slot`+`slot_min` /
-`f`/`l`/`n`+`fm`/`lm` wire, the count clamp, the `last + 120 min` cutoff,
-nearest-slot satisfaction), the forward-only history, and the two edit
-surfaces are in [docs/DOCS-meal-schedule.md](docs/DOCS-meal-schedule.md) —
-read it before touching `_slots.py` / `_slot_wire.py` / `slot.dart`.
+Slots are **minutes of day**: a first meal and a last meal (any `HH:MM`) and how many meals fall
+between them; interior slots round to the 15-min grid. Default `(480, 1200, 4)` is the old hardcoded
+08/12/16/20. The load-bearing rules (integer-only arithmetic, the additive `slot`+`slot_min` /
+`f`/`l`/`n`+`fm`/`lm` wire, the count clamp, the `last + 120 min` cutoff, nearest-slot
+satisfaction), the forward-only history, and the two edit surfaces are in
+[docs/DOCS-meal-schedule.md](docs/DOCS-meal-schedule.md) — read it before touching `_slots.py` /
+`_slot_wire.py` / `slot.dart`.
 
 ## Averages (`_averages.py` / `average_service.dart`)
 
-Three load-bearing rules; changing any silently changes what "under budget"
-means:
+Three load-bearing rules; changing any silently changes what "under budget" means:
 
 - **Denominator is logged days, not elapsed days.** An unlogged day is not a
   zero-kcal day.
@@ -212,10 +199,9 @@ means:
   week" is empty on a Monday, and reports `no logged days yet` rather than a
   fake average.
 
-Band boundaries reuse `_daystatus.OVER_BUDGET_YELLOW_CEILING` /
-`kOverBudgetYellowCeiling` **by import, not by copy**. The MCP `get_averages`
-tool drops `avg_budget` (budget secrecy on the network only); the CLI, gate and
-phone show both.
+Band boundaries reuse `_daystatus.OVER_BUDGET_YELLOW_CEILING` / `kOverBudgetYellowCeiling` **by
+import, not by copy**. The MCP `get_averages` tool drops `avg_budget` (budget secrecy on the network
+only); the CLI, gate and phone show both.
 
 ## Do NOT
 
@@ -251,9 +237,10 @@ phone show both.
 
 ## Flutter/Dart AI rules
 
-_Vendored from [flutter/flutter docs/rules/rules.md](https://github.com/flutter/flutter/blob/main/docs/rules/rules.md)
-via `~/.claude/CLAUDE.md` Flutter AI tooling setup. Re-fetch periodically.
-Split across five files to stay under the 250-line cap._
+_Vendored from [flutter/flutter
+docs/rules/rules.md](https://github.com/flutter/flutter/blob/main/docs/rules/rules.md) via
+`~/.claude/CLAUDE.md` Flutter AI tooling setup. Re-fetch periodically. Split across five files to
+stay under the 250-line cap._
 
 - [Language, style and architecture](docs/DOCS-flutter-rules-language.md)
 - [Architecture, lint rules, state and data](docs/DOCS-flutter-rules-state-and-data.md)
