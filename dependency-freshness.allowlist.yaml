@@ -9,3 +9,8 @@ exceptions:
     reason: local toolchain /opt/flutter is 3.47.9; fleet-wide Flutter 3.50 bump is separate work
     blocked_by: local-toolchain
     expires: "2026-11-26"
+  - ecosystem: pub
+    package: material_ui
+    pinned: "1.11.0"
+    reason: sync_settings_ui 0.8.2 (git dependency from kuhyx/utils) pins material_ui 1.11.0 exactly, so 1.11.1 cannot resolve until utils releases a sync_settings_ui that takes it
+    blocked_by: transitive:sync_settings_ui@0.8.2
