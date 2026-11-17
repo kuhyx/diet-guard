@@ -115,13 +115,10 @@ void main() {
   });
 
   test('uses the real clock when now is omitted', () async {
-    // Just exercises the `now ?? DateTime.now()` branch without asserting
-    // on specific slots (which depend on the actual time the test runs).
-    await checkAndNotify();
-    expect(
-      notificationLog.where((c) => c.method == 'show' || c.method == 'cancel'),
-      isNotEmpty,
-    );
+    // Just exercises the `now ?? DateTime.now()` branch. Whether anything is
+    // shown or cancelled depends on the wall clock (nothing is due after the
+    // last slot's cutoff), so only completion is asserted.
+    await expectLater(checkAndNotify(), completes);
   });
 
   test('still syncs when nothing is due', () async {
