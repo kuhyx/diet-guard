@@ -9,6 +9,7 @@ library;
 
 import 'dart:async';
 
+import 'package:crdt_sync_flutter/crdt_sync_flutter.dart' show WaitWatch;
 import 'package:diet_guard_app/models/day_status.dart';
 import 'package:diet_guard_app/models/period_average.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
@@ -153,7 +154,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: WaitWatch.centered('calendar.load'));
     }
     return Scaffold(
       appBar: AppBar(),

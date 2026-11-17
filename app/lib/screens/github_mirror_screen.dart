@@ -8,6 +8,7 @@ library;
 
 import 'dart:async';
 
+import 'package:crdt_sync_flutter/crdt_sync_flutter.dart' show WaitWatch;
 import 'package:diet_guard_app/services/firebase_client.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/sync_health.dart';
@@ -100,7 +101,7 @@ class _GitHubMirrorScreenState extends State<GitHubMirrorScreen>
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: WaitWatch.centered('github_mirror.load'));
     }
     return Scaffold(
       // No title and no explanatory paragraph: the code glyph that opened this

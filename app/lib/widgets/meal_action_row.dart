@@ -8,6 +8,7 @@
 /// send or log.
 library;
 
+import 'package:crdt_sync_flutter/crdt_sync_flutter.dart' show WaitWatch;
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -127,10 +128,13 @@ class MealActionRow extends StatelessWidget {
   );
 
   Widget _claudeFace() => switch (claude) {
-    ClaudeButtonState.sending => const SizedBox(
-      width: 24,
-      height: 24,
-      child: CircularProgressIndicator(strokeWidth: 3),
+    ClaudeButtonState.sending => const WaitWatch(
+      operation: 'claude.estimate',
+      child: SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 3),
+      ),
     ),
     ClaudeButtonState.queued => const Icon(
       Icons.hourglass_top,

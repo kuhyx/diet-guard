@@ -15,6 +15,7 @@
 ///   encrypted either.
 library;
 
+import 'package:crdt_sync_flutter/crdt_sync_flutter.dart' show WaitWatch;
 import 'package:diet_guard_app/services/kuchnia_client.dart';
 import 'package:diet_guard_app/services/kuchnia_credential_service.dart';
 import 'package:diet_guard_app/services/kuchnia_import.dart';
@@ -188,9 +189,12 @@ class _KuchniaSettingsSectionState extends State<KuchniaSettingsSection> {
             IconButton.outlined(
               onPressed: canFetch && !_busy ? _fetch : null,
               icon: _busy
-                  ? const SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                  ? const WaitWatch(
+                      operation: 'kuchnia.sync',
+                      child: SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     )
                   : const Icon(
                       Icons.local_shipping_outlined,

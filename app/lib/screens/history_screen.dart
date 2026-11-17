@@ -7,6 +7,7 @@ library;
 
 import 'dart:async';
 
+import 'package:crdt_sync_flutter/crdt_sync_flutter.dart' show WaitWatch;
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/screens/edit_entry_screen.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
@@ -189,7 +190,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ],
       ),
       body: allEntries == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const WaitWatch.centered('history.load')
           : _displayed.isEmpty
           ? Center(
               child: Icon(

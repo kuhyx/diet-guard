@@ -8,6 +8,7 @@ library;
 
 import 'dart:async';
 
+import 'package:crdt_sync_flutter/crdt_sync_flutter.dart' show WaitWatch;
 import 'package:diet_guard_app/models/food_bank_record.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/widgets/food_bank/fb_add_entry_dialog.dart';
@@ -183,7 +184,7 @@ class _FoodBankScreenState extends State<FoodBankScreen> {
         ],
       ),
       body: all == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const WaitWatch.centered('food_bank.load')
           : _displayed.isEmpty
           ? Center(
               child: Icon(
