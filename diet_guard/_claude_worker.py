@@ -68,8 +68,11 @@ class MealHandler:
         self._estimate = estimate
         self._now = now
         self._clock = clock
-        # Two requests must not take the same due slot.
-        self._log_lock = asyncio.Lock()
+        #: The one lock of everything that reads-merges-writes the food log
+        #: (the pull, the log write, the publish): two of them at once lose an
+        #: append, and the phone has already been told "logged". Also keeps
+        #: two requests from taking the same due slot. Shared with the server.
+        self.log_lock = asyncio.Lock()
 
     async def handle(self, body: dict[str, Any]) -> dict[str, Any]:
         """Serve one request body (``rid`` and ``created`` injected by the server)."""
@@ -87,7 +90,7 @@ class MealHandler:
             estimate = await self._estimate(request.text, request.photo)
         except EstimateError as err:
             raise RequestError(err.code, str(err), retry=True) from err
-        async with self._log_lock:
+        async with self.log_lock:
             return await asyncio.to_thread(
                 log_estimate, rid, estimate, request, self._now()
             )
@@ -110,13 +113,15 @@ class MealServer(RequestServer):
         self.tree: dict[str, Any] = {}
         self._retry: asyncio.Task[None] | None = None
         self._collecting: set[str] = set()
-        self._publish_lock = asyncio.Lock()
+        self._log_lock = handler.log_lock
 
     async def answer(self, rid: str, node: dict[str, Any]) -> dict[str, Any] | None:
         """Pull, serve, then clean up and publish; None when not ours to answer."""
         if not valid_rid(rid) or "result" in node or "req" not in node:
             return None
-        if (reason := await asyncio.to_thread(_claude_sync.pull_peers)) is not None:
+        async with self._log_lock:
+            reason = await asyncio.to_thread(_claude_sync.pull_peers)
+        if reason is not None:
             _logger.warning("not serving %s, request stays pending: %s", rid, reason)
             self._retry_later()
             return None
@@ -155,7 +160,7 @@ class MealServer(RequestServer):
 
     async def _publish(self) -> None:
         """The full sync tick, after the answer; an outage is only logged."""
-        async with self._publish_lock:
+        async with self._log_lock:
             reason = await asyncio.to_thread(_claude_sync.publish)
         if reason is not None:
             _logger.warning("post-answer sync skipped: %s", reason)

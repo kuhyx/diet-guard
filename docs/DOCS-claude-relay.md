@@ -162,8 +162,13 @@ PC:  claim (ETag lease) -> validate -> age check -> already logged? ->    │
    reaches it gets `expired` and nothing is logged; its `req` is deleted
    like any other.
 6. **Blocking work** (log file, sync, Claude) never runs on the event loop.
-   One lock serialises "resolve slot + `log_meal`" so two requests do not
-   take the same due slot.
+   **One lock** covers everything that reads, merges and writes the food log:
+   the narrow pull, "resolve slot + `log_meal_as`", and the publish. Two of
+   them at once lose an append (a publish writing back a log read before a
+   second request's entry) and the phone would already have been told
+   "logged". The price: a request that arrives during a publish waits for it,
+   up to one full tick (15 to 27 s) before its own pull. The model call
+   itself runs outside the lock.
 
 ## 6. The worker
 
@@ -177,11 +182,13 @@ unit lives at the repo root with the other two, `install.sh` installs it).
   node, so requests that arrived while the PC was off are served in order.
 - Waits are only for faults: the e2e unlock and a failed pre-pull retry
   every 60 s / 30 s while something is pending. No idle timer.
-- Session: its own Firebase app name `diet_guard_claude`
-  (`~/.config/diet_guard_claude/firebase_auth.json`), never the gate's
-  `diet_guard` file (two processes refreshing one token file corrupt it).
-  Seed once, see "Deploy". The database URL and API key come from
-  `~/.config/crdt-sync/firebase.json`; the passphrase from
+- Session: the RTDB stream uses its own Firebase app name `diet_guard_claude`
+  (`~/.config/diet_guard_claude/firebase_auth.json`), so the stream never
+  shares a refresh token file with another process. Seed once, see "Deploy".
+  The pull and publish go through the ordinary sync client, so the worker
+  also refreshes the gate's `~/.config/diet_guard/firebase_auth.json`,
+  exactly as the CLI's own publish does. The database URL and API key come
+  from `~/.config/crdt-sync/firebase.json`; the passphrase from
   `~/.config/crdt-sync/password`.
 - One worker per PC. Claim leases last 300 s and renew every 60 s.
 - Dependencies (`rtdb_relay`, `httpx`, `claude_agent_sdk`) are imported only

@@ -31,9 +31,10 @@ The user message holds any of:
    oil, sauces and dressings included: they are most of the hidden kcal).
 4. Package or label visible: read the per-100 g values and use them.
 5. Sum the items. Round grams to 5, kcal to 5, macros to 0.5.
-6. Never refuse and never ask a question. A vague meal still gets the best
-   single estimate; a photo with no food in it gets a small guess from the
-   text, or `grams` 100 and `kcal` 100 only if there is no text at all.
+6. Never ask a question. A vague meal still gets the best single estimate.
+   When there is nothing to estimate (a photo with no food in it and no
+   text), answer `grams` 0: the caller treats that as a failure and logs
+   nothing. Never invent a meal.
 
 ## Output
 
