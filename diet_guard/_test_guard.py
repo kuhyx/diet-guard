@@ -50,6 +50,10 @@ def _resolved(path: pathlib.Path) -> pathlib.Path:
 _PROTECTED = (
     _resolved(pathlib.Path.home() / ".local" / "share" / "diet_guard"),
     _resolved(pathlib.Path.home() / ".config" / "diet_guard"),
+    # The relay worker's own Firebase session and the estimator's scratch
+    # Claude config dir (a copy of kuhy's login lives there).
+    _resolved(pathlib.Path.home() / ".config" / "diet_guard_claude"),
+    _resolved(pathlib.Path.home() / ".cache" / "diet_guard"),
 )
 
 

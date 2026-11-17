@@ -29,7 +29,7 @@ repos:
         args: [--pytest-test-first]
         # Shared fakes and fixtures, not test modules. Split out of conftest.py
         # and test_sync.py only because those files passed the 250-line cap.
-        exclude: ^diet_guard/tests/_(tk_fakes(_containers|_canvas)?|gate_layout_probe|gate_focus_probe|gate_measurement|gate_keyboard_probe|gate_fixtures|sync_fakes|kuchnia_fakes|state_redirects)\.py$
+        exclude: ^diet_guard/tests/_(tk_fakes(_containers|_canvas)?|gate_layout_probe|gate_focus_probe|gate_measurement|gate_keyboard_probe|gate_fixtures|sync_fakes|kuchnia_fakes|state_redirects|claude_redirects|claude_fakes)\.py$
       - id: check-ast
       - id: mixed-line-ending
         args: [--fix=lf]
@@ -114,7 +114,7 @@ repos:
           - gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.14.0#subdirectory=gatelock
           - crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.11.1#subdirectory=crdt-sync
           - freedays @ git+https://github.com/kuhyx/utils@freedays-v0.4.3#subdirectory=freedays
-          - sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.5.4#subdirectory=sickdays
+          - sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.5.5#subdirectory=sickdays
           - rtdb-relay @ git+https://github.com/kuhyx/utils@rtdb-relay-v0.1.1#subdirectory=rtdb_relay
           - claude-agent-sdk==0.2.183
           - httpx==0.28.1

@@ -14,6 +14,8 @@ from crdt_sync import Argon2Params
 import freedays
 import sickdays
 
+from diet_guard.tests._claude_redirects import claude_redirects
+
 if TYPE_CHECKING:
     from pathlib import Path
     from unittest.mock import _patch
@@ -185,4 +187,6 @@ def state_redirects(tmp_path: Path) -> list[_patch[object]]:
             "diet_guard._activity_sources.screen_locker_log_file",
             return_value=None,
         ),
+        # The "send to Claude" relay worker and estimator: fail-closed seams.
+        *claude_redirects(tmp_path),
     ]

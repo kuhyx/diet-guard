@@ -1,6 +1,7 @@
 # Diet Guard — runtime + development dependencies
 # Runtime: tkinter/json/hmac/fcntl (stdlib) plus gatelock and requests below.
 bandit==1.9.4
+claude-agent-sdk==0.2.183
 codespell==2.4.3
 coverage==7.17.3
 crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.11.1#subdirectory=crdt-sync
@@ -8,6 +9,8 @@ defusedxml==0.7.1
 freedays @ git+https://github.com/kuhyx/utils@freedays-v0.4.3#subdirectory=freedays
 gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.14.0#subdirectory=gatelock
 holds @ git+https://github.com/kuhyx/utils@holds-v0.1.0#subdirectory=holds
+httpx==0.28.1
+hypothesis==6.170.15
 mcp==2.3.0
 mypy==2.4.1
 pre-commit==4.7.0
@@ -20,5 +23,6 @@ pytest-sugar==1.1.1
 pytest-xdist==3.8.0
 pytest-xvfb==3.1.1
 requests==2.34.2
+rtdb-relay @ git+https://github.com/kuhyx/utils@rtdb-relay-v0.1.1#subdirectory=rtdb_relay
 ruff==0.17.5
-sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.5.4#subdirectory=sickdays
+sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.5.5#subdirectory=sickdays

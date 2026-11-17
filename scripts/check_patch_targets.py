@@ -59,6 +59,37 @@ def patch_targets(root: pathlib.Path) -> Iterator[tuple[pathlib.Path, int, str]]
                 yield path, node.lineno, first.value
 
 
+def _third_party_missing(exc: ImportError) -> bool:
+    """Whether ``exc`` is a missing dependency, not a missing diet_guard module."""
+    missing = getattr(exc, "name", None) or ""
+    return isinstance(exc, ModuleNotFoundError) and not missing.startswith(PACKAGE)
+
+
+def defined_statically(parts: list[str], split: int) -> bool:
+    """Whether ``parts[split]`` is a top-level name of module ``parts[:split]``.
+
+    Reads the source, never imports it. Only one attribute deep: anything
+    deeper cannot be proven statically, so it counts as unresolved.
+    """
+    source = pathlib.Path(*parts[:split]).with_suffix(".py")
+    if len(parts) != split + 1 or not source.is_file():
+        return False
+    tree = ast.parse(source.read_text(encoding="utf-8"), str(source))
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names = [node.name]
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            names = [t.id for t in targets if isinstance(t, ast.Name)]
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            names = [(a.asname or a.name).split(".")[0] for a in node.names]
+        else:
+            continue
+        if parts[split] in names:
+            return True
+    return False
+
+
 def resolves(dotted: str) -> bool:
     """Whether ``dotted`` names a real attribute reachable from a real module.
 
@@ -69,7 +100,13 @@ def resolves(dotted: str) -> bool:
     for split in range(len(parts), 0, -1):
         try:
             module = importlib.import_module(".".join(parts[:split]))
-        except ImportError:
+        except ImportError as exc:
+            # A module whose own *third-party* import is missing (the relay
+            # worker's `rtdb_relay`, absent from the system python this hook
+            # runs under) still has a source file: check the name statically
+            # rather than call a present target stale.
+            if _third_party_missing(exc) and defined_statically(parts, split):
+                return True
             continue
         obj: object = module
         for attr in parts[split:]:
