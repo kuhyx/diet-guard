@@ -1,0 +1,234 @@
+{
+ "version": 1,
+ "root": "diet-guard-sync/claude-e2e",
+ "header_path": "diet-guard-sync/e2e",
+ "key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+ "rid": "01JD5Z8K3M7Q2W9XH4TBN6VR0E",
+ "layout": {
+  "clear": [
+   "requests/*/claim"
+  ],
+  "units": {
+   "requests/*/req": [
+    "created"
+   ],
+   "requests/*/result": [
+    "at"
+   ]
+  }
+ },
+ "limits": {
+  "text_max": 2000,
+  "photo_b64_max": 600000,
+  "slot_max": 1439,
+  "expiry_hours": 24,
+  "estimate_timeout_s": 45
+ },
+ "request": {
+  "path": "requests/01JD5Z8K3M7Q2W9XH4TBN6VR0E/req",
+  "node": {
+   "_e2e": "AYkr3BaGDxFvr9QkhFAb1O/op1RoJGARMjrAnpbcvZ7rFxKVSy0kxKTbUSEqQarex+WBhoshvig8CgZ+X5Zpr6lOw+qoOLTEc+Oc31eUi3vyGipYm1zQDtowCQzTLaNXnWHaVtOqFf7cVZ8vsvSot08c0PI7zHjUbY7uCBQoF6q4sOekDm8k23UQSi9vkyd+EL1hPnjtBPCDCI6QoZq+T09YZxKeXm8oA7hWh0r5ZKMcD2n/2K4MLzyIEhi7kZtPH0Mq8adkSPHtPKkPYdKXhpXNVdChCmBXvzPhWJ6xi66p0FViGIVxhAg4IgCwxhzCyRHAYPjufAheZjbMJt+98aAHEGn2ZEImqIOu+o26GxgmxDXSu/u/IQSb5RJKdMheGFhKCpK6n8/7Qg/Z6keendoVMCwIYbhu0wNDs3qaxd+IaLYc33ABvKssu3kMnrwJ2jR6iDYgSrKe+qGxO4A=",
+   "created": 1795000000000
+  },
+  "plain": {
+   "kind": "meal",
+   "dev": "6f1f0c1e-5b0a-4a3e-9f57-2c1d6f0e9a11",
+   "sent_at": 1794999999960,
+   "body": {
+    "text": "2 jajka sadzone i kromka chleba",
+    "photo_jpeg_b64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/",
+    "client_slot_min": 720,
+    "mode": "due"
+   }
+  },
+  "clear": {
+   "created": 1795000000000
+  }
+ },
+ "claim": {
+  "path": "requests/01JD5Z8K3M7Q2W9XH4TBN6VR0E/claim",
+  "node": {
+   "by": "pc-worker",
+   "lease_until": 1795000300000,
+   "attempt": 1,
+   "phase": "claimed",
+   "at": 1795000000010
+  }
+ },
+ "results": {
+  "logged": {
+   "path": "requests/01JD5Z8K3M7Q2W9XH4TBN6VR0E/result",
+   "node": {
+    "_e2e": "AYLAiRb9+uIpXCSEC8v0bzwxY7kNzlTLgpo+Ys36nAlnFANO1/blHQ1t/hv+MdUNGqyMaPQWwOddC6QClMKcxq0LzG5xV+0DL4Q4XDNGszd+RJgp12iZaRoJMEPLzoDQcnyq0kSjlrZaVIii7fJIFZOTrsS7z22CfCYQNi37uWkmglocNwbOmZiuo7XP4xikJyADhNGJuseo8Hrvrjzm0AVfp2+vuubVpDY7xM7EGhn49yDz+iwFRpvqpmHbVD1mFqEY2l0UhGrWEt+WFW5nD5IOejPiVk9eehXJCEJadU+1t/+ADntYwoxyQjwiicgSAgUK4fU3rxNhUeGPgKLYWYXE8ALywAlf6ieoDlRX8bX+YmHTZDuxhA+vttsxkZhPtC6D2ZcyeokOuHRWTNOZBesAyFiLL+co5/8EqUhUAvRxyGU=",
+    "at": 1795000009000
+   },
+   "plain": {
+    "ok": true,
+    "kind": "meal",
+    "status": "logged",
+    "id": "01JD5Z8K3M7Q2W9XH4TBN6VR0E",
+    "entry_id": "7b0c5d52-8a43-5a63-b6f5-7d0f1c0e2a44",
+    "desc": "2 jajka sadzone i kromka chleba",
+    "grams": 190,
+    "kcal": 410,
+    "protein_g": 17.5,
+    "carbs_g": 22,
+    "fat_g": 26,
+    "slot_min": 720,
+    "time": "2026-11-17T12:03:41+01:00"
+   },
+   "clear": {
+    "at": 1795000009000
+   }
+  },
+  "error": {
+   "path": "requests/01JD5Z8K3M7Q2W9XH4TBN6VR0E/result",
+   "node": {
+    "_e2e": "AQdF1d1WVvex3sIwfSAq4df+jWFbJ0/rJAF9FUy85X2pQXa98pAHUJ3CPd9AnGmy3nG+ARBc/IjpJjUi7D07Vg8uZGOy6/FRh91uI9F1LMBPZ/pgO65M5+KC7MGEKszcWzntp8vPkLpHw8ujBtN5mmwPrUkKpL+xH6t0mY6/mdSnEuByiy1OOO0FxH5gbvQ+DAO5JKLRsjNPHHj33NlQpejVUH3OUhlcZTDMIGIV4gY8say9dP5cWL+1ppkBLNxU3dnO/oc0pDM/S4+WqdEmJ1vMQyjkhU2hCTgrGAPNPE0YbQ==",
+    "at": 1795000009000
+   },
+   "plain": {
+    "ok": false,
+    "kind": "meal",
+    "status": "error",
+    "id": "01JD5Z8K3M7Q2W9XH4TBN6VR0E",
+    "error_code": "estimate_failed",
+    "code": "estimate_failed",
+    "error": "model returned no valid JSON",
+    "retry": true
+   },
+   "clear": {
+    "at": 1795000009000
+   }
+  },
+  "expired": {
+   "path": "requests/01JD5Z8K3M7Q2W9XH4TBN6VR0E/result",
+   "node": {
+    "_e2e": "AQekXG0hCaJd2HLHF4wvRk5PZxqhrM+m+DsjWgdU8mLyay3/DX8T6za37LVF1IpM11hkJ9L6vpdJkH3Rfsfedh5NYssuAV+qF2uHCPeeJ9Iy9Anou9TQ/TkEhOBX6/3+y1AJyvSD/gxACZX32g5tzW+qA4fgbJyPgYIEo2SN5u27M2NrZQzXIpxUYaiqDt2eClAKZH/o6xfMOXVEHCV5QHdbGqxVBIMDZ0D+E8O9zVsNDpHxejaMwUf/vsvjolPhKN4pTqX0ksmW38LgSWU=",
+    "at": 1795000009000
+   },
+   "plain": {
+    "ok": false,
+    "kind": "meal",
+    "status": "error",
+    "id": "01JD5Z8K3M7Q2W9XH4TBN6VR0E",
+    "error_code": "expired",
+    "code": "expired",
+    "error": "request older than 24 h",
+    "retry": false
+   },
+   "clear": {
+    "at": 1795000009000
+   }
+  }
+ },
+ "body_cases": [
+  {
+   "name": "text only",
+   "valid": true,
+   "body": {
+    "client_slot_min": 480,
+    "mode": "normal",
+    "text": "banan"
+   }
+  },
+  {
+   "name": "photo only",
+   "valid": true,
+   "body": {
+    "client_slot_min": 0,
+    "mode": "due",
+    "photo_jpeg_b64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/"
+   }
+  },
+  {
+   "name": "both",
+   "valid": true,
+   "body": {
+    "text": "2 jajka sadzone i kromka chleba",
+    "photo_jpeg_b64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/",
+    "client_slot_min": 720,
+    "mode": "due"
+   }
+  },
+  {
+   "name": "nothing to estimate",
+   "valid": false,
+   "body": {
+    "client_slot_min": 480,
+    "mode": "due"
+   }
+  },
+  {
+   "name": "blank text",
+   "valid": false,
+   "body": {
+    "client_slot_min": 480,
+    "mode": "due",
+    "text": "   "
+   }
+  },
+  {
+   "name": "text too long",
+   "valid": false,
+   "body": {
+    "client_slot_min": 480,
+    "mode": "due",
+    "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   }
+  },
+  {
+   "name": "bad mode",
+   "valid": false,
+   "body": {
+    "client_slot_min": 480,
+    "mode": "now",
+    "text": "a"
+   }
+  },
+  {
+   "name": "slot out of range",
+   "valid": false,
+   "body": {
+    "client_slot_min": 1440,
+    "mode": "due",
+    "text": "a"
+   }
+  },
+  {
+   "name": "slot not int",
+   "valid": false,
+   "body": {
+    "client_slot_min": "480",
+    "mode": "due",
+    "text": "a"
+   }
+  },
+  {
+   "name": "missing slot",
+   "valid": false,
+   "body": {
+    "text": "a",
+    "mode": "due"
+   }
+  },
+  {
+   "name": "photo not jpeg",
+   "valid": false,
+   "body": {
+    "client_slot_min": 480,
+    "mode": "due",
+    "photo_jpeg_b64": "aGVsbG8="
+   }
+  },
+  {
+   "name": "photo not base64",
+   "valid": false,
+   "body": {
+    "client_slot_min": 480,
+    "mode": "due",
+    "photo_jpeg_b64": "@@@"
+   }
+  }
+ ]
+}
