@@ -89,17 +89,16 @@ void main() {
     });
   });
 
-  testWidgets('a rejected log (empty description) gives only the error tick', (
+  testWidgets('a greyed log button (empty description) gives no feedback', (
     tester,
   ) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
       await settle(tester);
-      await tester.tap(controlByLabel('Log meal'));
+      await tester.tap(controlByLabel('Log meal'), warnIfMissed: false);
       await settle(tester);
-      expect(cueLabelled('Type what you ate first.'), findsOneWidget);
-      // Only the error cue's own heavy tick: no success buzz.
-      expect(haptics, ['HapticFeedbackType.heavyImpact']);
+      // Nothing to log, so neither the success buzz nor the sound.
+      expect(haptics, isEmpty);
       expect(cues, 0);
     });
   });

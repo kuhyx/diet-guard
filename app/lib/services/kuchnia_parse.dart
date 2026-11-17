@@ -74,6 +74,15 @@ bool energyIsConsistent(double kcal, double protein, double carbs, double fat) {
   return (derived - kcal).abs() <= kuchniaEnergyTolerance * kcal;
 }
 
+/// The panel's meal id as a string, or '' when absent or not a string/int.
+///
+/// A bool is not an id; Dart's `is int` already excludes it, matching Python.
+String _mealId(Object? raw) {
+  if (raw is int) return raw.toString();
+  if (raw is String) return raw.trim();
+  return '';
+}
+
 /// Builds one dish, or null when the entry is unusable.
 ///
 /// [fallbackPriority] is the 1-based payload position, used when
@@ -113,6 +122,7 @@ KuchniaDish? parseMeal(Object? meal, int fallbackPriority) {
     grams: grams,
     priority: priority,
     slotLabel: rawLabel is String ? rawLabel.trim() : '',
+    dishId: _mealId(meal['deliveryMealId']),
   );
 }
 

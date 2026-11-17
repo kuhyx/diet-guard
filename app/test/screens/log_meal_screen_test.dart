@@ -39,11 +39,6 @@ class _FakeUrlLauncher extends UrlLauncherPlatform
   }
 }
 
-/// Returns a fixed [XFile] without touching any real platform channel.
-
-/// A minimal valid 1x1 transparent PNG, so the thumbnail preview can decode
-/// it as a real image instead of throwing on bogus bytes.
-
 void main() {
   late Directory tempDir;
 
@@ -152,17 +147,27 @@ void main() {
       expect(find.byType(TodayProgressCard), findsNothing);
     });
   });
-  testWidgets('refuses to log with an empty description', (tester) async {
+  testWidgets('the log button is greyed until a description is typed', (
+    tester,
+  ) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
       await settle(tester);
 
-      await tester.ensureVisible(logMealButton);
-      await tester.tap(logMealButton);
+      FilledButton log() => tester.widget<FilledButton>(
+        find.ancestor(
+          of: byIconLabel('Log meal'),
+          matching: find.byType(FilledButton),
+        ),
+      );
+      expect(log().onPressed, isNull);
+      await tester.tap(logMealButton, warnIfMissed: false);
       await settle(tester);
-
-      expect(cueLabelled('Type what you ate first.'), findsOneWidget);
       expect(await LogStorageService.instance.todayEntries(), isEmpty);
+
+      await tester.enterText(find.byType(TextField).at(0), 'toast');
+      await settle(tester);
+      expect(log().onPressed, isNotNull);
     });
   });
   testWidgets(
@@ -217,7 +222,7 @@ void main() {
       await settle(tester);
 
       // The empty-query suggestion list shows the only banked food.
-      await tester.tap(find.text('seeded food'));
+      await tester.tap(find.text('seeded food').first);
       await settle(tester);
       await tester.ensureVisible(logMealButton);
       await tester.tap(logMealButton);
@@ -228,7 +233,7 @@ void main() {
       expect(firstEntry.source, 'food bank');
       expect(firstEntry.kcal, 250);
 
-      await tester.tap(find.text('seeded food'));
+      await tester.tap(find.text('seeded food').first);
       await settle(tester);
       await tester.enterText(find.byType(TextField).at(2), '999');
       await settle(tester);

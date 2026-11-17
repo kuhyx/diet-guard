@@ -14,31 +14,38 @@ PC switched off. The files map one-to-one:
 | `_kuchnia_parse.py` | `services/kuchnia_parse.dart` |
 | `_kuchnia_spread.py` | `services/kuchnia_spread.dart` |
 | `_kuchnia_import.py` | `services/kuchnia_import.dart` |
-| `_gatelock_kuchnia.py` | `screens/log_meal_kuchnia_mixin.dart` + `services/kuchnia_queue.dart` |
+| `_gatelock_kuchnia.py` | `services/kuchnia_queue.dart` (fetched-today marker; the form prefill is gone) |
 | `_kuchnia_log.py` (`fill_plan`, `log_dishes`) | `services/kuchnia_fill.dart` |
-| `_gatelock_fillall.py` | `services/kuchnia_fill_flow.dart` + `screens/log_meal_fill_mixin.dart` + `widgets/fill_all_row.dart` |
+| `_gatelock_fillall.py` | `services/kuchnia_fill_flow.dart` (plan, no UI) + `services/kuchnia_autolog.dart` |
 
-### "🍱 Fill all with catering"
+### Auto-log (replaces "Fill all" on the phone)
 
-The PC gate's Fill all, on the log screen under "Today's delivery". Two taps,
-never one: the first fetches (unguarded, like the delivery button) and shows
-"Will log N (X kcal): HH:00 dish, …" while the button reads "✓ Confirm (N)";
-only the second writes. Cancel disarms. No modal.
+kuhy overrode "delivered is not eaten" on 2026-11-17 ("LOG EVEN WITHOUT TAP").
+When the log screen opens or resumes with a slot due, `KuchniaAutoLog.logDue`
+fetches today's delivery and logs the dishes assigned to the **due** slots, no
+tap. The Fill all button, its confirm tap and the delivery prefill are gone
+from the phone; `FillAllFlow` stays as the tested plan logic.
 
-- **Every slot today, later ones included, skipping occupied slots.** `fillPlan`
-  takes occupancy as an argument (Python reads `today_entries()` itself), read
-  once per batch so two dishes spread into one empty slot both land. Confirm
-  re-reads it: a meal logged between the taps keeps its slot.
-- **The plan is pinned to the day of the first tap.** A tap after midnight
-  refetches instead of confirming yesterday's menu into today.
-- **Entries match a submitted prefill** (`nutritionForPortion` with no "per"
-  basis, so the same 0.1 rounding) except for the source, `kuchnia wikinga`,
-  the PC's tag. The prefill still tags its entries `catering`.
-- **One publish per batch** (`publishAfterLog`, shared with the manual submit):
-  `autoSync` is single-flight, so publishing per dish would drop the later
-  pushes.
-- Filled dishes leave the delivery queue, and a prefilled form holding one of
-  them is cleared, so it cannot be submitted a second time.
+- **Plan = Fill all's plan minus the tap:** `assignSlots` by the caterer's
+  `mealPriority` against the user's schedule, `fillPlan` over occupied slots,
+  then only the due slots. Written by `logDishes`, source `kuchnia wikinga`.
+- **Deterministic ids.** UUID v5, namespace `6ba7b811-9dad-11d1-80b4-00c04fd430c8`
+  (RFC URL), over `kuchnia:<delivery date YYYY-MM-DD>:<dishKey>`; `dishKey` is
+  the panel's `deliveryMealId` as a string, else the dish's bank key. A repeat
+  open and every other device derive the same id, so the merge keeps one entry.
+  `tests/fixtures/kuchnia_autolog_ids.json` (made by Python's `uuid.uuid5`,
+  `scripts/build_kuchnia_autolog_fixture.py`) pins it for both languages.
+- **Undo is a tombstone and it sticks.** `logMeal(id:)` and `logDishes(idFor:)`
+  skip an id that exists in the full log, deleted entries included; otherwise
+  undo plus the next resume would log the dish again.
+- **The fetch is cached.** `KuchniaQueueService.refreshOnce` returns nothing
+  after the day's first clean fetch, so a slot falling due at 12:00 would never
+  see its dish. `KuchniaAutoLog` keeps the day's dishes in memory and retries a
+  failed or empty fetch at most every 10 minutes (a login per try).
+- Each logged dish shows as a row: restaurant glyph, name, kcal and macro
+  dots, a 48 dp undo. One publish per batch (`publishAfterLog`).
+- Unverified: whether `deliveryMealId` is stable across fetches on the live
+  panel (the fixtures carry scrubbed synthetic ids).
 
 **Android only.** The panel sends no CORS headers, so a browser cannot call it;
 `refreshDelivery` checks `kIsWeb` first and returns a reason. The settings

@@ -5,7 +5,9 @@ library;
 
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/ui/cues.dart';
+import 'package:diet_guard_app/ui/icon_field.dart';
 import 'package:diet_guard_app/ui/macro_kind.dart';
+import 'package:diet_guard_app/ui/theme.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Text controllers for one macro-entry row, owned by the calling screen so
@@ -128,12 +130,14 @@ class MacroInputRow extends StatelessWidget {
       _macroField(MacroKind.eaten, controllers.grams),
     ];
     if (compact) {
-      return Row(
+      // Two rows of three, never six in one: a Row of Expanded fields clips a
+      // four-digit value silently (1250 g, 2400 kcal), and the digits must stay
+      // whole at body size. A field is 1/3 of the width, not 1/6.
+      return Column(
         children: [
-          for (final (i, field) in fields.indexed) ...[
-            if (i > 0) const SizedBox(width: 4),
-            Expanded(child: field),
-          ],
+          _threeAcross(fields.sublist(0, 3)),
+          const SizedBox(height: AppSpacing.sm),
+          _threeAcross(fields.sublist(3)),
         ],
       );
     }
@@ -164,6 +168,15 @@ class MacroInputRow extends StatelessWidget {
     );
   }
 
+  Widget _threeAcross(List<Widget> three) => Row(
+    children: [
+      for (final (i, field) in three.indexed) ...[
+        if (i > 0) const SizedBox(width: AppSpacing.sm),
+        Expanded(child: field),
+      ],
+    ],
+  );
+
   Widget _macroField(MacroKind kind, TextEditingController controller) {
     return IconField(
       icon: kind.icon,
@@ -172,6 +185,7 @@ class MacroInputRow extends StatelessWidget {
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       dense: true,
+      fontSize: AppTextSize.body,
     );
   }
 }

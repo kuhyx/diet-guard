@@ -1,43 +1,53 @@
 /// Single-food meal logging screen -- the app's primary, done-criterion
 /// screen: "I can open the diet app on my phone and fill meal I ate."
+///
+/// Two modes. **Due mode** (a slot elapsed with nothing logged) shows only
+/// what logging needs: the food field, suggestions, macros and the action row,
+/// with the status bar hidden. **Normal mode** adds the app bar, the sync
+/// banner and the date row. Either way the action row is photo / Claude /
+/// log, and the field never moves between states.
 library;
 
 import 'dart:async';
 
-import 'package:crdt_sync/crdt_sync.dart';
 import 'package:diet_guard_app/models/food_suggestion.dart';
-import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/screens/log_meal_actions.dart';
-import 'package:diet_guard_app/screens/log_meal_fill_mixin.dart';
+import 'package:diet_guard_app/screens/log_meal_claude_mixin.dart';
+import 'package:diet_guard_app/screens/log_meal_due_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_future_mixin.dart';
-import 'package:diet_guard_app/screens/log_meal_kuchnia_mixin.dart';
+import 'package:diet_guard_app/screens/log_meal_logged_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_nav_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_progress.dart';
 import 'package:diet_guard_app/screens/log_meal_sync_mixin.dart';
+import 'package:diet_guard_app/services/claude_relay_client.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_feedback.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
-import 'package:diet_guard_app/services/meal_schedule_service.dart';
+import 'package:diet_guard_app/services/meal_photo_source.dart';
 import 'package:diet_guard_app/ui/cues.dart';
 import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/autocomplete_suggestion_list.dart';
-import 'package:diet_guard_app/widgets/fill_all_row.dart';
-import 'package:diet_guard_app/widgets/log_meal_actions_row.dart';
+import 'package:diet_guard_app/widgets/logged_meal_row.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
+import 'package:diet_guard_app/widgets/meal_action_row.dart';
 import 'package:diet_guard_app/widgets/sync_health_banner.dart';
 import 'package:diet_guard_app/widgets/today_progress_card.dart';
 import 'package:http/http.dart' as http;
 import 'package:material_ui/material_ui.dart';
 
-/// Lets the user log one food item, with food-bank autocomplete and
-/// today's slot status.
+/// Lets the user log one food item, with food-bank autocomplete.
 class LogMealScreen extends StatefulWidget {
   /// Creates a [LogMealScreen].
-  const LogMealScreen({super.key, this.httpClient});
+  const LogMealScreen({super.key, this.httpClient, this.relay, this.photos});
 
   /// Injectable HTTP client for auto-sync; tests pass a [MockClient].
-  /// Production leaves this null so [GitHubClient] builds a real one.
   final http.Client? httpClient;
+
+  /// Where the sparkle button sends; the app-wide [claudeRelay] when null.
+  final ClaudeRelayClient? relay;
+
+  /// Where photos come from; the camera/gallery picker when null.
+  final MealPhotoSource? photos;
 
   @override
   State<LogMealScreen> createState() => _LogMealScreenState();
@@ -47,26 +57,29 @@ class _LogMealScreenState extends State<LogMealScreen>
     with
         WidgetsBindingObserver,
         LogMealSyncMixin<LogMealScreen>,
+        LogMealDueMixin<LogMealScreen>,
+        LogMealLoggedMixin<LogMealScreen>,
         LogMealNavMixin<LogMealScreen>,
-        LogMealKuchniaMixin<LogMealScreen>,
         LogMealFutureMixin<LogMealScreen>,
-        LogMealFillMixin<LogMealScreen> {
+        LogMealClaudeMixin<LogMealScreen> {
   @override
   http.Client? get syncHttpClient => widget.httpClient;
+  @override
+  ClaudeRelayClient get relay => widget.relay ?? claudeRelay;
+  @override
+  late final MealPhotoSource photoSource =
+      widget.photos ?? ImagePickerPhotoSource();
 
   final TextEditingController _descController = TextEditingController();
   final MacroControllers _macros = MacroControllers();
-  List<FoodSuggestion> _suggestions = const [];
   @override
-  int? selectedSlot;
+  TextEditingController get claudeDesc => _descController;
+  @override
+  MacroControllers get claudeMacros => _macros;
+  List<FoodSuggestion> _suggestions = const [];
   String _source = 'manual';
   CueState? _cue; // painted as a tinted icon, never as text
   TodayProgress? _progress;
-
-  void _setCue(CueKind kind, String? label, [int? count]) {
-    _cue = label == null ? null : CueState.next(_cue, kind, label, count);
-    _progress = null;
-  }
 
   @override
   void initState() {
@@ -74,39 +87,29 @@ class _LogMealScreenState extends State<LogMealScreen>
     WidgetsBinding.instance.addObserver(this);
     _descController.addListener(_onDescChanged);
     _macros.addListenerToAll(_onMacroEdited);
-    selectedSlot = slotForLog(DateTime.now(), MealScheduleService.current);
-    unawaited(refreshSlots());
     unawaited(_onDescChanged());
-    // Read health before the first sync finishes, so a device that stalled in
-    // a previous session says so immediately rather than only after a tick.
+    // Health first, so a device that stalled earlier says so before a tick.
     unawaited(refreshSyncHealth());
-    unawaited(autoSync());
-    // After autoSync so a dish already logged on the PC is known before the
-    // queue is built, and guarded so this costs at most one walk per day.
-    unawaited(loadTodaysDelivery());
+    unawaited(onOpenedOrResumed());
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    disposeClaude();
+    restoreStatusBar();
     _descController.dispose();
     _macros.dispose();
     super.dispose();
   }
 
   void _onMacroEdited() {
-    if (_source == 'food bank') {
-      setState(() => _source = 'manual');
-    }
+    if (_source == 'food bank') setState(() => _source = 'manual');
   }
 
-  /// Re-runs the food-bank search and dismisses the previous progress card.
-  ///
-  /// The card is cleared only when the field is non-empty because
-  /// [_onLogMeal]'s own `clear()` fires this listener too: without the guard
-  /// the two async chains race and the clear can null the card right after
-  /// [_onLogMeal] set it, so it never appears on device (in-memory test
-  /// stores resolve fast enough to hide this).
+  /// Re-runs the food-bank search and dismisses the previous progress card,
+  /// only while the field is non-empty: [_onLogMeal]'s own `clear()` fires
+  /// this listener too, and would otherwise race it and null the new card.
   Future<void> _onDescChanged() async {
     final matches = await FoodBankService.instance.search(_descController.text);
     if (!mounted) return;
@@ -115,16 +118,6 @@ class _LogMealScreenState extends State<LogMealScreen>
       if (_descController.text.isNotEmpty) _progress = null;
     });
   }
-
-  @override
-  TextEditingController get descController => _descController;
-  @override
-  MacroControllers get macroControllers => _macros;
-  @override
-  void onDishPrefilled() => setState(() => _source = 'catering');
-  @override
-  void showFillStatus(FillCue cue) =>
-      setState(() => _setCue(cue.kind, cue.label, cue.count));
 
   void _onSuggestionSelected(FoodSuggestion suggestion) {
     fillControllersFromSuggestion(suggestion, _descController, _macros);
@@ -136,17 +129,13 @@ class _LogMealScreenState extends State<LogMealScreen>
 
   Future<void> _onLogMeal() async {
     final desc = _descController.text.trim();
-    if (desc.isEmpty) {
-      setState(() => _setCue(CueKind.error, 'Type what you ate first.'));
-      return;
-    }
-    final target = resolveLogTarget(selectedSlot);
+    if (desc.isEmpty) return;
+    final target = resolveLogTarget(targetSlot);
     if (target.error != null) {
-      setState(() => _setCue(CueKind.error, target.error));
+      setState(() => _cue = CueState.next(_cue, CueKind.error, target.error!));
       return;
     }
-    // On the tap, before the write/sync: waiting for them is just latency.
-    LogFeedback.mealLogged();
+    LogFeedback.mealLogged(); // on the tap, before the write
     final entry = await LogStorageService.instance.logMeal(
       desc,
       nutritionFromControllers(_macros, _source),
@@ -160,89 +149,99 @@ class _LogMealScreenState extends State<LogMealScreen>
     _macros.clear();
     setState(() {
       _source = 'manual';
-      selectedSlot = slotForLog(DateTime.now(), MealScheduleService.current);
+      photo = null; // else a stale photo keeps the sparkle lit
+      claudeState = ClaudeButtonState.idle;
     });
     await refreshSlots();
     if (!mounted) return;
-    // The second `prefillNextDish` caller. Without it every dish after the
-    // first stays queued behind another tap and the "N more to log" line
-    // becomes a dead letter -- the exact regression the PC gate once shipped.
-    advanceQueueAfterLog(desc);
+    showLogged([LoggedMeal(entry, LoggedOrigin.local)]);
     setState(() {
-      _setCue(CueKind.info, queueStatusLine);
+      _cue = null;
       _progress = buildTodayProgress(log, logged: entry);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!slotsLoaded) return const Scaffold();
+    final due = dueMode;
+    // Dimmed while Claude works, but never moved: nothing is added around it.
+    final busy = claudeState == ClaudeButtonState.sending;
+    final dim = busy || claudeState == ClaudeButtonState.queued;
     return Scaffold(
-      appBar: AppBar(
-        // No title: the app's identity is the launcher icon, and the five
-        // destination glyphs fill the bar.
-        actions: [
-          ...logMealAppBarActions(
-            onFoodBank: onOpenFoodBank,
-            onHistory: onOpenHistory,
-            onCalendar: onOpenCalendar,
-            onSettings: onOpenSettings,
-            onBody: onOpenBody,
+      appBar: due
+          ? null
+          : AppBar(
+              actions: logMealAppBarActions(
+                onFoodBank: onOpenFoodBank,
+                onHistory: onOpenHistory,
+                onCalendar: onOpenCalendar,
+                onSettings: onOpenSettings,
+                onBody: onOpenBody,
+              ),
+            ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!due) ...[
+                SyncHealthBanner(status: syncHealth),
+                buildWhenRow(context),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+              buildSlotRow(),
+              Opacity(
+                opacity: dim ? 0.5 : 1,
+                child: IgnorePointer(
+                  ignoring: busy,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      IconField(
+                        controller: _descController,
+                        icon: Icons.fastfood,
+                        semanticLabel: 'What did you eat?',
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      AutocompleteSuggestionList(
+                        suggestions: _suggestions,
+                        onSelected: _onSuggestionSelected,
+                        compact: true,
+                        compactLimit: due ? 2 : 3,
+                        reserveHeight: due,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      MacroInputRow(controllers: _macros, compact: true),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              MealActionRow(
+                claude: claudeState,
+                photoAttached: photo != null,
+                canSend: canSend,
+                canLog: _descController.text.trim().isNotEmpty,
+                onPhoto: () => unawaited(attachPhoto(PhotoOrigin.camera)),
+                onGallery: () => unawaited(attachPhoto(PhotoOrigin.gallery)),
+                onRemovePhoto: removePhoto,
+                onSend: sendToClaude,
+                onLog: _onLogMeal,
+              ),
+              for (final meal in loggedRows)
+                LoggedMealRow(meal: meal, onUndo: () => undoLogged(meal)),
+              if (_cue != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                _cue!.widget,
+              ],
+              if (_progress != null && !due) ...[
+                const SizedBox(height: AppSpacing.sm),
+                TodayProgressCard(progress: _progress!),
+              ],
+            ],
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SyncHealthBanner(status: syncHealth),
-            buildWhenRow(context),
-            const SizedBox(height: 8),
-            buildSlotRow(
-              loggedSlots: loggedSlots,
-              selectedSlot: selectedSlot,
-              onTodaySlotSelected: (slot) =>
-                  setState(() => selectedSlot = slot),
-            ),
-            const SizedBox(height: 8),
-            IconField(
-              controller: _descController,
-              icon: Icons.fastfood,
-              semanticLabel: 'What did you eat?',
-            ),
-            AutocompleteSuggestionList(
-              suggestions: _suggestions,
-              onSelected: _onSuggestionSelected,
-              compact: true,
-            ),
-            const SizedBox(height: 8),
-            MacroInputRow(controllers: _macros, compact: true),
-            const SizedBox(height: 8),
-            LogMealActionsRow(
-              onLoadDelivery: loadDeliveryAndReport,
-              onLog: _onLogMeal,
-              deliveryBusy: deliveryBusy,
-              dishesQueued: dishesStillQueued,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            FillAllRow(
-              onFill: onFillAll,
-              onCancel: onFillCancel,
-              busy: fillFlow.busy || deliveryBusy,
-              armedCount: fillFlow.armedCount,
-            ),
-            // Mutually exclusive: _cue carries a validation complaint or
-            // queue note, _progress the post-log summary; the two may stack
-            // only after a log that leaves dishes queued.
-            if (_cue != null) ...[
-              const SizedBox(height: AppSpacing.sm),
-              _cue!.widget,
-            ],
-            if (_progress != null) ...[
-              const SizedBox(height: AppSpacing.sm),
-              TodayProgressCard(progress: _progress!),
-            ],
-          ],
         ),
       ),
     );

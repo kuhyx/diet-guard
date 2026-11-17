@@ -1,8 +1,6 @@
-// Guard: a catering fetch / fill reports with a glyph and a dish count; its
+// Guard: a catering fetch reports with a glyph and a dish count; its
 // sentence is only the spoken label.
 
-import 'package:diet_guard_app/screens/log_meal_fill_mixin.dart';
-import 'package:diet_guard_app/services/kuchnia_spread.dart';
 import 'package:diet_guard_app/ui/cues.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,26 +9,6 @@ import 'label_finders.dart';
 import 'no_words_support.dart';
 
 void main() {
-  group('fillCue', () {
-    test('nothing to fill paints a warning and 0', () {
-      final cue = fillCue((
-        message: 'No catering delivery today.',
-        written: const <SlottedDish>[],
-      ), armed: 0);
-      expect(cue.kind, CueKind.warn);
-      expect(cue.count, 0);
-      expect(cue.label, 'No catering delivery today.');
-    });
-
-    test('a proposal paints its armed count', () {
-      final cue = fillCue((
-        message: 'Will log 3',
-        written: const <SlottedDish>[],
-      ), armed: 3);
-      expect((cue.kind, cue.count), (CueKind.info, 3));
-    });
-  });
-
   testWidgets('a counted cue paints only the glyph and the number', (
     tester,
   ) async {

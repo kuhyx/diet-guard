@@ -1,10 +1,10 @@
 /// The day's delivered dishes, offered to the log form one at a time.
 ///
-/// **A delivered meal is not an eaten meal.** This queue only ever *prefills*
-/// the form; the user still taps to log each dish. Nothing here writes a log
-/// entry, and nothing here may start doing so -- the gate would then satisfy
-/// its own checkpoint from a delivery note, and the log would record what the
-/// courier dropped off rather than what was eaten.
+/// **Since 2026-11-17 the log screen no longer prefills from this queue**: a
+/// delivered dish logs itself when its slot is due (`kuchnia_autolog.dart`;
+/// kuhy overrode "delivered is not eaten", "LOG EVEN WITHOUT TAP"). What
+/// remains here is the offer/mark bookkeeping and the fetched-today marker.
+/// The queue itself still writes no log entry.
 ///
 /// Two things are load-bearing:
 ///

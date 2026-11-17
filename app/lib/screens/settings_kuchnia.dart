@@ -40,9 +40,9 @@ class FetchOutcome {
 
 /// Fetches today's delivery and reports what was banked.
 ///
-/// Deliberately "banked", not "logged": a delivered meal is not an eaten
-/// meal, so the dishes land in the food bank and the user still taps to log
-/// each one. Top-level so the settings screen can pass it without growing.
+/// Deliberately "banked", not "logged": the explicit fetch only fills the
+/// food bank; logging is the log screen's auto-log (`kuchnia_autolog.dart`).
+/// Top-level so the settings screen can pass it without growing.
 Future<FetchOutcome> fetchTodaysDelivery() async {
   final result = await refreshDelivery(DateTime.now());
   if (!result.ok) return FetchOutcome(CueKind.error, result.reason!);

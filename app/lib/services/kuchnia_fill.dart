@@ -3,10 +3,12 @@
 /// The Dart mirror of `diet_guard/_kuchnia_log.py`'s `fill_plan` and
 /// `log_dishes`. KEEP IN SYNC, gated by the shared parity fixture.
 ///
-/// **Nothing here runs without an explicit confirm tap.** A delivered meal is
-/// not an eaten meal: logging unattended would let the delivery note satisfy
-/// the very checkpoints the gate exists to enforce. [logDishes] is only ever
-/// reached from the second tap of `FillAllFlow`.
+/// **Delivered counts as eaten (override, 2026-11-17).** The old rule was "a
+/// delivered meal is not an eaten meal, so nothing logs without a confirm
+/// tap". kuhy overrode it ("LOG EVEN WITHOUT TAP"): [logDishes] is now also
+/// reached unattended from `kuchnia_autolog.dart`, which logs the dishes of the
+/// slots that are due when the app opens. Every such entry has a deterministic
+/// id and shows an undo row, so a skipped or binned meal is one tap to remove.
 library;
 
 import 'package:diet_guard_app/models/food_entry.dart';
@@ -15,6 +17,7 @@ import 'package:diet_guard_app/models/local_time.dart';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/kuchnia_spread.dart';
+import 'package:diet_guard_app/services/log_entry_lookup.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 
@@ -98,25 +101,34 @@ Future<Set<int>> loggedSlotsOn(LogStorageService store, DateTime day) async {
 /// (a "Log for later" date, strictly after today) each dish is stamped at its
 /// slot's time on that day; without it, now -- as a manual log is.
 ///
+/// [idFor] gives each dish a deterministic entry id (see
+/// `kuchniaAutologId`); a dish whose id is already in the log is skipped.
+///
 /// Returns the dishes actually written, in order.
 Future<List<SlottedDish>> logDishes(
   List<SlottedDish> chosen, {
   LogStorageService? storage,
   DateTime? day,
+  String Function(SlottedDish item)? idFor,
 }) async {
   final store = storage ?? LogStorageService.instance;
   final seen = {
     for (final entry in await dayEntries(store, day))
       _dedupKey(entry.desc, entry.slotMinute),
   };
+  // Tombstones included: an undone auto-logged dish must stay undone.
+  final knownIds = idFor == null ? const <String>{} : await store.allEntryIds();
   final written = <SlottedDish>[];
   for (final item in chosen) {
+    final id = idFor?.call(item);
+    if (id != null && knownIds.contains(id)) continue;
     final key = _dedupKey(item.dish.name, item.slot);
     if (!seen.add(key)) continue;
     await store.logMeal(
       item.dish.name,
       dishNutrition(item.dish),
       slotMinute: item.slot,
+      id: id,
       when: day == null
           ? null
           : DateTime(

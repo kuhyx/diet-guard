@@ -1,0 +1,86 @@
+{
+  "_comment": "Shared catering auto-log id fixture. Read by app/test/services/kuchnia_autolog_ids_test.dart (and the Python side later). Regenerate with scripts/build_kuchnia_autolog_fixture.py.",
+  "namespace": "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
+  "cases": [
+    {
+      "delivery_date": "2026-11-17",
+      "delivery_meal_id": 1001,
+      "name": "Marchewkowe pancakes",
+      "dish_key": "1001",
+      "name_string": "kuchnia:2026-11-17:1001",
+      "expected_id": "643aabb5-0953-5dba-89a4-87edffc92061"
+    },
+    {
+      "delivery_date": "2026-11-17",
+      "delivery_meal_id": 1002,
+      "name": "Hummus paprykowy",
+      "dish_key": "1002",
+      "name_string": "kuchnia:2026-11-17:1002",
+      "expected_id": "e6c75895-3050-54bf-9f2e-72b476925820"
+    },
+    {
+      "delivery_date": "2026-11-18",
+      "delivery_meal_id": 1001,
+      "name": "Marchewkowe pancakes",
+      "dish_key": "1001",
+      "name_string": "kuchnia:2026-11-18:1001",
+      "expected_id": "11ba0c49-7c5e-5d85-9cf8-b32ab0cf9d41"
+    },
+    {
+      "delivery_date": "2026-11-17",
+      "delivery_meal_id": "A-77",
+      "name": "String id dish",
+      "dish_key": "A-77",
+      "name_string": "kuchnia:2026-11-17:A-77",
+      "expected_id": "66f586bf-0da6-5f05-b14c-ec56e9165f72"
+    },
+    {
+      "delivery_date": "2026-11-17",
+      "delivery_meal_id": " A-77 ",
+      "name": "Padded id dish",
+      "dish_key": "A-77",
+      "name_string": "kuchnia:2026-11-17:A-77",
+      "expected_id": "66f586bf-0da6-5f05-b14c-ec56e9165f72"
+    },
+    {
+      "delivery_date": "2026-11-17",
+      "delivery_meal_id": true,
+      "name": "Bool id dish",
+      "dish_key": "bool id dish",
+      "name_string": "kuchnia:2026-11-17:bool id dish",
+      "expected_id": "a893963c-99ad-5aa5-83fb-3f03a654568f"
+    },
+    {
+      "delivery_date": "2026-11-17",
+      "delivery_meal_id": 1001.0,
+      "name": "Float id dish",
+      "dish_key": "float id dish",
+      "name_string": "kuchnia:2026-11-17:float id dish",
+      "expected_id": "45f4f56d-5a5f-59ba-9afc-fac44442db09"
+    },
+    {
+      "delivery_date": "2026-11-17",
+      "delivery_meal_id": "",
+      "name": "Empty id dish",
+      "dish_key": "empty id dish",
+      "name_string": "kuchnia:2026-11-17:empty id dish",
+      "expected_id": "2434643a-112f-509a-a8b3-eb5bb5cbbcf9"
+    },
+    {
+      "delivery_date": "2026-11-17",
+      "delivery_meal_id": null,
+      "name": "  No Id Dish  ",
+      "dish_key": "no id dish",
+      "name_string": "kuchnia:2026-11-17:no id dish",
+      "expected_id": "1eba71d4-1786-584a-b60c-8d2a4576c04b"
+    },
+    {
+      "delivery_date": "2026-01-02",
+      "delivery_meal_id": 9,
+      "name": "Zupa",
+      "dish_key": "9",
+      "name_string": "kuchnia:2026-01-02:9",
+      "expected_id": "dd51fed4-1260-5129-bda1-91e0ff8e9ac1"
+    }
+  ]
+}

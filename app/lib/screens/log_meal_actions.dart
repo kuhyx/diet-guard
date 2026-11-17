@@ -6,8 +6,7 @@ import 'package:material_ui/material_ui.dart';
 
 /// Writes [suggestion]'s name and macros into the log form's controllers.
 ///
-/// Split out of `log_meal_screen.dart` for the repo's 250-line cap, mirroring
-/// `log_meal_kuchnia_mixin.dart`'s `fillControllersFromDish`.
+/// Split out of `log_meal_screen.dart` for the repo's 250-line cap.
 void fillControllersFromSuggestion(
   FoodSuggestion suggestion,
   TextEditingController desc,

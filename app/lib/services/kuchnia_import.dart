@@ -4,12 +4,10 @@
 /// fail-closed boundary: every [KuchniaError] is turned into a reason string
 /// here, so no caller can be broken by a catering outage.
 ///
-/// **Nothing is ever logged from here.** A delivered meal is not an eaten
-/// meal: dishes land in the *curated* bank and the user still taps to log
-/// each one. If the import logged automatically, the gate would satisfy its
-/// own checkpoint from a delivery note, and the log would record what the
-/// courier dropped off rather than what was eaten -- skipped, shared and
-/// binned meals included.
+/// **Nothing is logged from here: this only banks.** Dishes land in the
+/// *curated* bank. Logging them is `kuchnia_autolog.dart`'s job, which kuhy
+/// allowed without a tap on 2026-11-17 ("LOG EVEN WITHOUT TAP"; it was
+/// "delivered is not eaten" before), under deterministic ids with an undo.
 ///
 /// Imports go **only** to the curated bank. The derived bank is rebuilt from
 /// the log on every meal, so anything written there would vanish at the next

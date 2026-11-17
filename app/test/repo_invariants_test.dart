@@ -44,7 +44,8 @@ void main() {
       expect(
         Directory('${_appDir.path}/linux').existsSync(),
         isFalse,
-        reason: 'A Linux embedder target was re-added. The desktop app is the '
+        reason:
+            'A Linux embedder target was re-added. The desktop app is the '
             'web build served by bin/diet_guard_desktop.dart; see CLAUDE.md.',
       );
     });
@@ -68,7 +69,8 @@ void main() {
       expect(
         offenders,
         isEmpty,
-        reason: 'These files import dart:io outside the conditional-export '
+        reason:
+            'These files import dart:io outside the conditional-export '
             'seam, which compiles for web and throws at runtime (blank white '
             'window). Move the platform edge into a *_io.dart / *_web.dart '
             'pair, and branch on kIsWeb before any Platform.is… check.',
@@ -93,34 +95,9 @@ void main() {
       expect(
         offenders,
         isEmpty,
-        reason: 'A removed feature came back. See the "Do NOT" section of '
+        reason:
+            'A removed feature came back. See the "Do NOT" section of '
             'CLAUDE.md before re-adding any of these.',
-      );
-    });
-
-    // Photos took image_picker, the blob stores, the wrapper's /blobs/ route
-    // and the CAMERA permission with them. Re-adding photos means re-adding
-    // all of that *plus* syncing image blobs, since a device-local attachment
-    // would violate the one-source-of-truth rule.
-    test('no image_picker dependency', () {
-      final pubspec = File('${_appDir.path}/pubspec.yaml').readAsStringSync();
-      expect(
-        pubspec.contains('image_picker'),
-        isFalse,
-        reason: 'Meal photos were removed deliberately. A device-local image '
-            'attachment also breaks the shared-source-of-truth rule.',
-      );
-    });
-
-    test('no CAMERA permission in the Android manifest', () {
-      final manifest = File(
-        '${_appDir.path}/android/app/src/main/AndroidManifest.xml',
-      );
-      expect(
-        manifest.readAsStringSync().contains('android.permission.CAMERA'),
-        isFalse,
-        reason: 'The CAMERA permission came back with no photo feature to '
-            'justify it.',
       );
     });
   });
@@ -138,7 +115,8 @@ void main() {
       expect(
         offenders,
         isEmpty,
-        reason: 'A framework picker came back. Use pickDate, pickDateRange '
+        reason:
+            'A framework picker came back. Use pickDate, pickDateRange '
             'or pickTime from widgets/pickers/pickers.dart.',
       );
     });
@@ -159,7 +137,8 @@ void main() {
         expect(
           source.contains(call),
           isTrue,
-          reason: '$call is missing from main(). The feature will silently do '
+          reason:
+              '$call is missing from main(). The feature will silently do '
               'nothing on a real device while every test still passes.',
         );
       }
@@ -177,7 +156,8 @@ void main() {
       expect(
         source.contains('desktopWrapperPort = 8732'),
         isTrue,
-        reason: 'The wrapper port changed. IndexedDB is keyed by origin, so a '
+        reason:
+            'The wrapper port changed. IndexedDB is keyed by origin, so a '
             'new port looks like a different app with no history at all. '
             '8730 is ~/src/todo and 8731 is ~/src/habit_stack; do not collide.',
       );
@@ -190,7 +170,8 @@ void main() {
       expect(
         source.contains("'diet-guard-desktop', 'profile'"),
         isTrue,
-        reason: 'The Chrome --user-data-dir moved. IndexedDB lives in that '
+        reason:
+            'The Chrome --user-data-dir moved. IndexedDB lives in that '
             'profile, so relocating it hides the entire local food log.',
       );
     });

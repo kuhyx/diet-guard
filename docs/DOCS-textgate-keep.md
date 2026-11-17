@@ -28,7 +28,6 @@ notification shows only the slot clock time and has no body.
 
 | Where | Text | Evidence |
 |---|---|---|
-| `app/lib/screens/log_meal_fill_mixin.dart` | fill failed / cancelled sentences | handed to `StatusCue` as the semantic label; the cue paints a glyph and a count |
 | `app/lib/services/kuchnia_fill_flow.dart` | delivery and logged sentences | `FillOutcome.message`, same route; `no_words_kuchnia_test.dart` proves the snackbar paints a glyph and a number |
 
 ## Read by Claude, not by kuhy

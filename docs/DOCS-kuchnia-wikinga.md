@@ -6,11 +6,11 @@ keypress instead of five retyped numbers.
 
 ## What it does, and deliberately does not
 
-**A delivered meal is not an eaten meal.** Dishes land in the *curated* food
-bank; entries are only ever written after an explicit confirmation. If the
-importer logged automatically, the gate would satisfy its own checkpoint from a
-delivery note, and the log would record what the courier dropped off rather than
-what was eaten — skipped, shared and binned meals included.
+**Override 2026-11-17: delivered counts as eaten.** kuhy ("LOG EVEN WITHOUT
+TAP") dropped the confirm-tap rule: the phone logs the due slots' dishes on
+open ([phone doc](DOCS-kuchnia-wikinga-phone.md)), under deterministic ids with
+an undo row. The bullets below describe the PC gate as it still is until the
+Python side follows; the import itself still only banks dishes.
 
 So:
 

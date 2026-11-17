@@ -20,6 +20,7 @@ class KuchniaDish {
     required this.grams,
     required this.priority,
     required this.slotLabel,
+    this.dishId = '',
   });
 
   /// The dish itself (`menuMealName`), e.g. "Kaszotto grzybowe...".
@@ -51,6 +52,17 @@ class KuchniaDish {
 
   /// The caterer's slot label ("Śniadanie", "Obiad", ...), for display only.
   final String slotLabel;
+
+  /// The panel's own id for this meal (`deliveryMealId`), as a string, or ''
+  /// when the payload carried none.
+  ///
+  /// Never written to the bank record or the log: it only feeds [autologKey].
+  final String dishId;
+
+  /// The dish half of the auto-log entry id: [dishId], else [bankKey].
+  ///
+  /// Mirrors the fixture `tests/fixtures/kuchnia_autolog_ids.json`.
+  String get autologKey => dishId.isNotEmpty ? dishId : bankKey;
 
   /// The curated-bank record for this dish.
   ///

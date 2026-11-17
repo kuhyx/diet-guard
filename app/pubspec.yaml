@@ -2,7 +2,7 @@ name: diet_guard_app
 description: "Companion phone app for diet_guard: log meals on the go."
 publish_to: 'none'
 
-version: 1.0.169+1
+version: 1.0.170+1
 
 environment:
   sdk: ^3.12.2
@@ -51,6 +51,8 @@ dependencies:
   health: 13.3.2
   http: 1.6.0
   idb_shim: 2.11.3
+  # Camera/gallery photo as transient input to Claude (never stored or synced).
+  image_picker: 1.2.4
   material_ui: 1.11.0
   path: 1.9.1
   path_provider: 2.1.6

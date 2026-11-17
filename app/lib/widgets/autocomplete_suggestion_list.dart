@@ -7,8 +7,8 @@ import 'package:material_ui/material_ui.dart';
 
 /// A tappable list of [FoodSuggestion]s, each filling the form on tap.
 ///
-/// When [compact] is true, only the top 3 suggestions render as compact
-/// single-line rows, with a "N more" button opening the full list in a
+/// When [compact] is true, only the top [compactLimit] suggestions render as
+/// compact single-line rows, with a "N more" button opening the full list in a
 /// bottom sheet so nothing becomes unreachable.
 class AutocompleteSuggestionList extends StatelessWidget {
   /// Creates an [AutocompleteSuggestionList] for [suggestions].
@@ -16,6 +16,8 @@ class AutocompleteSuggestionList extends StatelessWidget {
     required this.suggestions,
     required this.onSelected,
     this.compact = false,
+    this.compactLimit = 3,
+    this.reserveHeight = false,
     super.key,
   });
 
@@ -29,7 +31,16 @@ class AutocompleteSuggestionList extends StatelessWidget {
   /// of the full unbounded list.
   final bool compact;
 
-  static const int _compactLimit = 3;
+  /// How many rows a compact list shows before its "more" button.
+  final int compactLimit;
+
+  /// Whether a compact list always occupies [dueBlockHeight], empty or full,
+  /// so nothing below it shifts as suggestions come and go (due mode).
+  final bool reserveHeight;
+
+  /// Height of the block that holds a compact list of two rows plus the
+  /// "more" button; due mode reserves it so nothing below shifts.
+  static const double dueBlockHeight = 120;
 
   Future<void> _showMore(BuildContext context) async {
     await showModalBottomSheet<void>(
@@ -48,6 +59,15 @@ class AutocompleteSuggestionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final list = _list(context);
+    if (!reserveHeight) return list;
+    return SizedBox(
+      height: dueBlockHeight,
+      child: Align(alignment: Alignment.topLeft, child: list),
+    );
+  }
+
+  Widget _list(BuildContext context) {
     if (suggestions.isEmpty) return const SizedBox.shrink();
     if (!compact) {
       return ListView.builder(
@@ -70,7 +90,7 @@ class AutocompleteSuggestionList extends StatelessWidget {
         },
       );
     }
-    final shown = suggestions.take(_compactLimit).toList();
+    final shown = suggestions.take(compactLimit).toList();
     final remaining = suggestions.length - shown.length;
     return Column(
       mainAxisSize: MainAxisSize.min,

@@ -19,6 +19,12 @@
          only, foreground only: no READ_HEALTH_DATA_IN_BACKGROUND, so the
          WorkManager isolate never reads Health Connect. -->
     <uses-permission android:name="android.permission.health.READ_STEPS"/>
+    <!-- Camera for the meal photo sent to Claude (meal_photo_source.dart); the
+         runtime permission is requested before the camera opens. A photo is
+         transient input: it is never stored or synced. Not every device has a
+         camera, and the gallery path works without one. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <!-- Deliberately NOT requesting SCHEDULE_EXACT_ALARM: the background
          check is a 15-minute WorkManager periodic task, not exact alarms
          (more robust against OEM background-kill; +/-15 min is accepted, see

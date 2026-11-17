@@ -15,7 +15,7 @@ show adherence, streaks, a YTD tally and weekly/monthly averages, all derived fr
 - One sync tick: `python -m diet_guard sync`
 - Averages: `python -m diet_guard averages`; Body: `body`, `weight KG`, `profile`, `plan-week`
 - Prune dead sync peers (dry run): `python -m diet_guard prune-peers`
-- Phone's "send to Claude" worker: `python -m diet_guard claude-worker`, [docs/DOCS-claude-relay.md](docs/DOCS-claude-relay.md)
+- "Send to Claude" worker: `python -m diet_guard claude-worker` ([relay](docs/DOCS-claude-relay.md), [screen](docs/DOCS-log-screen.md))
 - Install: `bash install.sh` (production); app: `cd app && bash install_arch.sh`; run app: `bash run.sh`; phone: `flutter build apk --release`
 - run: `python -m diet_guard gate --demo`
 - test: `python -m pytest -n auto -p no:sugar -q` (python, 100% branch bar from pyproject) then `cd app && flutter test --reporter=compact`
@@ -216,18 +216,18 @@ only); the CLI, gate and phone show both.
   (`2.5.round() == 3`), so a float path silently desyncs the two devices —
   and a slot one device offers while the other does not is a checkpoint that
   can never be satisfied, i.e. a permanent lock. Integer `//` and `~/` only.
-- Don't re-add the meal builder, "repeat last meal", the reward prompt, or
-  **meal photos** — all removed deliberately, enforced by
-  `app/test/repo_invariants_test.dart`. Photos also took `image_picker`, the
-  blob stores, the `/blobs/` route and the `CAMERA` permission; re-adding them
-  means syncing image blobs too.
+- Don't re-add the meal builder, "repeat last meal" or the reward prompt
+  (removed deliberately, `app/test/repo_invariants_test.dart`). A meal photo is
+  transient input to Claude only (2026-11-17): never stored, on a `FoodEntry`
+  or synced; the invariants test asserts no image bytes reach a record.
 - Don't strip the `components` field: nothing writes it, but historical
   composite entries and the food bank read it, and it is part of the sync wire
   format.
-- Don't let the catering import log unattended (delivered ≠ eaten), don't let
-  its Python and Dart halves drift (one shared fixture gates them), and don't
-  make the synced password machine-local — the phone could not then fetch.
-  [docs](docs/DOCS-kuchnia-wikinga.md), [phone](docs/DOCS-kuchnia-wikinga-phone.md).
+- Catering logs itself since 2026-11-17 (kuhy overrode "delivered ≠ eaten":
+  "LOG EVEN WITHOUT TAP"): v5 ids `kuchnia:<date>:<dishId>`, undo tombstones.
+  Don't let its Python and Dart halves drift (shared fixtures) or make the
+  synced password machine-local. [docs](docs/DOCS-kuchnia-wikinga.md),
+  [phone](docs/DOCS-kuchnia-wikinga-phone.md).
 - Don't add a dependency without the production install-path check above.
 - Don't reintroduce a seal/`chattr +i` on the budget file.
 - Don't re-add a Linux embedder target, and don't change the wrapper's port or

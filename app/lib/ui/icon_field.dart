@@ -26,6 +26,7 @@ class IconField extends StatelessWidget {
     this.onSubmitted,
     this.autofocus = false,
     this.autocorrect = true,
+    this.fontSize,
     super.key,
   });
 
@@ -40,6 +41,9 @@ class IconField extends StatelessWidget {
 
   /// Whether the keyboard may autocorrect (false for e-mails and secrets).
   final bool autocorrect;
+
+  /// Text size of the typed value; the theme's when null.
+  final double? fontSize;
 
   /// Painted caption.
   final IconData icon;
@@ -89,6 +93,7 @@ class IconField extends StatelessWidget {
           inputFormatters: inputFormatters,
           autofocus: autofocus,
           autocorrect: autocorrect,
+          style: fontSize == null ? null : TextStyle(fontSize: fontSize),
           enableSuggestions: autocorrect,
           decoration: InputDecoration(
             prefixIcon: ExcludeSemantics(child: Icon(icon, color: iconColor)),

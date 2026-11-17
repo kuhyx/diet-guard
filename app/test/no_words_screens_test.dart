@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/screens/calendar_screen.dart';
 import 'package:diet_guard_app/screens/history_screen.dart';
+import 'package:diet_guard_app/screens/log_meal_future_mixin.dart';
 import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/screens/settings_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
@@ -24,6 +25,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'fake_secure_storage.dart';
 import 'label_finders.dart';
 import 'no_words_support.dart';
+import 'screens/log_meal_test_support.dart' show pinLogMealClock;
 
 /// The one meal logged in setUp: user content, allowed.
 const _food = 'porridge';
@@ -88,16 +90,41 @@ void main() {
     });
   }
 
-  testWidgets('a rejected log paints a cue, not a sentence', (tester) async {
+  testWidgets('a future date with no slot paints a cue, not a sentence', (
+    tester,
+  ) async {
     await tester.runAsync(() async {
       await show(tester, const LogMealScreen());
+      final state = tester.state<State<LogMealScreen>>(
+        find.byType(LogMealScreen),
+      );
+      final tomorrow = DateTime.now().add(const Duration(days: 1));
+      await (state as LogMealFutureMixin<LogMealScreen>).selectLogDate(
+        tomorrow,
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, _food);
+      await tester.pump();
       final log = controlByLabel('Log meal');
       await tester.ensureVisible(log);
       await tester.tap(log);
       await Future<void>.delayed(const Duration(milliseconds: 200));
       await tester.pump(const Duration(seconds: 1));
-      expect(cueLabelled('Type what you ate first.'), findsOneWidget);
-      expectNoWords(tester, minStrings: 3, where: 'rejected log');
+      expect(cueLabelled('Pick a slot for that date first.'), findsOneWidget);
+      expectNoWords(tester, content: {_food}, minStrings: 3, where: 'cue');
+    });
+  });
+
+  testWidgets('due mode and a logged row paint no words', (tester) async {
+    pinLogMealClock(13);
+    await tester.runAsync(() async {
+      await show(tester, const LogMealScreen());
+      await tester.enterText(find.byType(TextField).first, _food);
+      await tester.pump();
+      await tester.tap(controlByLabel('Log meal'));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(seconds: 1));
+      expectNoWords(tester, content: {_food}, minStrings: 5, where: 'due');
     });
   });
 }

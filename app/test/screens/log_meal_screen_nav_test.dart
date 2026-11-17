@@ -144,55 +144,14 @@ void main() {
       expect(find.byType(FoodBankScreen), findsOneWidget);
     });
   });
-  testWidgets('logged slot chip renders check-icon avatar', (tester) async {
-    await tester.runAsync(() async {
-      final now = DateTime.now();
-      final dateKey =
-          '${now.year.toString().padLeft(4, '0')}-'
-          '${now.month.toString().padLeft(2, '0')}-'
-          '${now.day.toString().padLeft(2, '0')}';
-      final at8 = DateTime(now.year, now.month, now.day, 8);
-
-      await LogStorageService.instance.writeLog({
-        dateKey: [
-          FoodEntry(
-            id: 'slot-seed',
-            time: at8.toIso8601String(),
-            desc: 'breakfast',
-            grams: 100,
-            kcal: 300,
-            proteinG: 10,
-            carbsG: 40,
-            fatG: 5,
-            source: 'manual',
-            slotMinute: 480,
-          ),
-        ],
-      });
-
-      await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
-      await settle(tester);
-
-      // The 08:00 slot is logged — its ChoiceChip has a check-icon avatar.
-      expect(find.byIcon(Icons.check), findsWidgets);
-    });
-  });
-  testWidgets('tapping a slot chip selects it', (tester) async {
+  testWidgets('normal mode has no slot chips', (tester) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
       await settle(tester);
 
-      // Tap the 08:00 chip to force _selectedSlot = 8.
-      await tester.tap(find.text('08:00'));
-      await settle(tester);
-
-      final chip = tester.widget<ChoiceChip>(
-        find.ancestor(
-          of: find.text('08:00'),
-          matching: find.byType(ChoiceChip),
-        ),
-      );
-      expect(chip.selected, isTrue);
+      // The slot is derived (oldest due, else nearest), never picked.
+      expect(find.byType(ChoiceChip), findsNothing);
+      expect(find.text('08:00'), findsNothing);
     });
   });
 }

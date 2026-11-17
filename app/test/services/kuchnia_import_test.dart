@@ -2,9 +2,8 @@
 ///
 /// Three behaviours here are load-bearing, and each fails silently if broken:
 ///
-/// * **Nothing is ever logged.** A delivered meal is not an eaten meal; if the
-///   import logged, the gate would satisfy its own checkpoint from a delivery
-///   note.
+/// * **The fetch only banks.** Logging is `kuchnia_autolog.dart`'s job (see
+///   `kuchnia_autolog_test.dart`); `refreshDelivery` itself writes no entry.
 /// * **Unchanged dishes are not re-banked.** `addManualEntry` restamps
 ///   `editedAt` unconditionally and the merge derives each record's clock from
 ///   it, so re-banking republishes the whole curated bank to every peer. The
@@ -130,7 +129,7 @@ void main() {
       expect(result.dishes.single.name, 'Kaszotto');
       final bank = await FoodBankService.instance.readManualBank();
       expect(bank.keys, contains('kaszotto'));
-      // The whole point: a delivered meal is not an eaten meal.
+      // The fetch banks; it never logs.
       expect(await LogStorageService.instance.todayEntries(), isEmpty);
     });
 

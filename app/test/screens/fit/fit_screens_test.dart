@@ -76,6 +76,7 @@ void main() {
   ) async {
     await _pump(tester, const LogMealScreen());
     await tester.enterText(find.byType(TextField).first, 'Oats');
+    await tester.pump(); // the log button greys until text is typed
     await tester.runAsync(() async {
       await tester.tap(controlByLabel('Log meal'));
       await Future<void>.delayed(const Duration(milliseconds: 500));

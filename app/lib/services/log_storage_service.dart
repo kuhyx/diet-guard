@@ -10,6 +10,7 @@ import 'package:diet_guard_app/models/nutrition.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/document_store.dart';
 import 'package:diet_guard_app/services/document_store_factory.dart';
+import 'package:diet_guard_app/services/log_entry_lookup.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -39,10 +40,8 @@ class LogStorageService {
 
   final DocumentStore _store;
 
-  /// Initializes the singleton against the platform document store: files in
-  /// the app's documents directory on Android (phone-sandboxed; no
-  /// external-storage permission needed), IndexedDB in the browser-hosted
-  /// desktop app.
+  /// Initializes the singleton against the platform document store (files on
+  /// Android, IndexedDB in the browser-hosted desktop app).
   static Future<LogStorageService> init() async {
     if (_instance != null) return _instance!;
     final svc = LogStorageService._(await openDocumentStore());
@@ -88,8 +87,7 @@ class LogStorageService {
 
   /// Persists the full log to the store, mirroring `_state._write_log`.
   ///
-  /// Atomicity against a concurrent reader is the store's job (see
-  /// `FileDocumentStore.write`'s temp-file-and-rename), not this method's.
+  /// Atomicity against a concurrent reader is the store's job.
   Future<void> writeLog(DayLog log) async {
     final encoded = <String, Object?>{
       for (final mapEntry in log.entries)
@@ -98,27 +96,34 @@ class LogStorageService {
     await _store.write(documentName, jsonEncode(encoded));
   }
 
-  /// Appends a signed-on-PC-eventually entry for [desc] to [when]'s day (or
-  /// today's, when [when] is null).
+  /// Appends an entry for [desc] to [when]'s day (today's when null).
   ///
-  /// Mirrors `_state.log_meal`: always assigns a fresh `id`, never computes
-  /// an `hmac` (the phone never holds the shared key -- the PC re-signs on
-  /// merge, see Milestone 3). [when] lets a caller pre-log a meal against a
-  /// future date/slot; must not be in the past. [slotMinute] is the slot's
-  /// minute of day (`slotForLog`'s result), never an hour.
+  /// Mirrors `_state.log_meal`: never computes an `hmac` (the phone never
+  /// holds the key; the PC re-signs on merge). [when] pre-logs a future
+  /// date/slot and must not be in the past. [slotMinute] is a minute of day
+  /// (`slotForLog`'s result), never an hour.
+  ///
+  /// A caller-chosen [id] makes the write idempotent: an entry already
+  /// carrying it (live or tombstoned) is returned and nothing is written.
   Future<FoodEntry> logMeal(
     String desc,
     Nutrition nutrition, {
     int? slotMinute,
     List<MealComponent>? components,
     DateTime? when,
+    String? id,
   }) async {
     if (when != null && when.isBefore(DateTime.now())) {
       throw ArgumentError.value(when, 'when', 'cannot log a meal in the past');
     }
     final now = when ?? DateTime.now();
+    final log = await readLog();
+    if (id != null) {
+      final existing = findEntryById(log, id);
+      if (existing != null) return existing;
+    }
     final entry = FoodEntry(
-      id: const Uuid().v4(),
+      id: id ?? const Uuid().v4(),
       time: isoLocalSeconds(now),
       desc: desc,
       grams: nutrition.grams,
@@ -130,7 +135,6 @@ class LogStorageService {
       slotMinute: slotMinute,
       components: components,
     );
-    final log = await readLog();
     log.putIfAbsent(localDateKey(now), () => []).add(entry);
     await writeLog(log);
     return entry;
@@ -165,9 +169,6 @@ class LogStorageService {
   }
 
   /// Returns every non-tombstoned entry across all days, newest first.
-  ///
-  /// Backs the history screen -- the only place that needs to see more than
-  /// "today".
   Future<List<FoodEntry>> allEntriesNewestFirst() async {
     final log = await readLog();
     final entries =
@@ -183,7 +184,7 @@ class LogStorageService {
     return entries;
   }
 
-  /// Returns today's total calories, mirrors `_state.today_total_kcal`.
+  /// Today's total calories, mirrors `_state.today_total_kcal`.
   Future<double> todayTotalKcal() async {
     final entries = await todayEntries();
     var total = 0.0;

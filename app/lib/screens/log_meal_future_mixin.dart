@@ -3,10 +3,7 @@
 /// Its own file because `log_meal_screen.dart` is at the repo's 250-line cap.
 ///
 /// Scoped to dates strictly after today: the date picker's `firstDate` is
-/// tomorrow. Today's own not-yet-due slots keep using the screen's existing
-/// [SlotSelectorRow] (driven by the real `DateTime.now()`), so this mixin
-/// never has to reproduce its "due" (red) coloring, which is meaningless for
-/// a day that hasn't started.
+/// tomorrow.
 library;
 
 import 'package:diet_guard_app/models/food_entry.dart';
@@ -126,23 +123,14 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
     );
   }
 
-  /// The slot row to show: [futureDate]'s own (driven by that date's logged
-  /// slots) when a future date is picked, otherwise today's, built from the
-  /// screen's own state and [onTodaySlotSelected].
-  Widget buildSlotRow({
-    required Set<int> loggedSlots,
-    required int? selectedSlot,
-    required ValueChanged<int?> onTodaySlotSelected,
-  }) {
+  /// The slot row for a picked future date, else nothing.
+  ///
+  /// Today has no slot row any more: the screen derives today's slot (the
+  /// oldest due one, else the nearest). A *future* date has no due slots to
+  /// derive from, so the row survives for exactly that case.
+  Widget buildSlotRow() {
     final date = _futureDate;
-    if (date == null) {
-      return SlotSelectorRow(
-        now: DateTime.now(),
-        loggedSlots: loggedSlots,
-        selectedSlot: selectedSlot,
-        onSlotSelected: onTodaySlotSelected,
-      );
-    }
+    if (date == null) return const SizedBox.shrink();
     return SlotSelectorRow(
       now: DateTime(date.year, date.month, date.day),
       schedule: _futureSchedule,
