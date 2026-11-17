@@ -166,11 +166,11 @@ packages:
     dependency: "direct main"
     description:
       path: crdt_sync_flutter
-      ref: "crdt_sync_flutter-v0.8.2"
-      resolved-ref: "1962d303336dfe260850466b8ee841033b9ad1ce"
+      ref: "crdt_sync_flutter-v0.8.3"
+      resolved-ref: "6e3f86ef0d73ba45db975bf03915fecce8a60f98"
       url: "https://github.com/kuhyx/utils"
     source: git
-    version: "0.8.2"
+    version: "0.8.3"
   cross_file:
     dependency: transitive
     description:
@@ -524,11 +524,11 @@ packages:
     dependency: "direct main"
     description:
       path: github_device_auth
-      ref: "github_device_auth-v0.5.0"
-      resolved-ref: "0ef5461805e8f574de5174c940775e5245d675b3"
+      ref: "github_device_auth-v0.5.1"
+      resolved-ref: da1d7c0692e2e402ae4944f2425b36a55ad43e9c
       url: "https://github.com/kuhyx/utils"
     source: git
-    version: "0.5.0"
+    version: "0.5.1"
   google_account_token:
     dependency: "direct main"
     description:
@@ -706,14 +706,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.2"
-  listen:
-    dependency: transitive
-    description:
-      name: listen
-      sha256: "47501a08016a43fcad79252439d723f50f14f88fa7bfd8a177e0a417e5c9e1f2"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.1"
   logging:
     dependency: transitive
     description:
@@ -742,10 +734,10 @@ packages:
     dependency: "direct main"
     description:
       name: material_ui
-      sha256: "474c135fd46b56ff1d35ca982155e8863d28fbc6464d1192acf4ee53a738680e"
+      sha256: a6b19012df437a356cbc01f8ea22a105e07194c47c9a6009da0032a0ce35c4ab
       url: "https://pub.dev"
     source: hosted
-    version: "1.11.0"
+    version: "1.11.1"
   meta:
     dependency: transitive
     description:
@@ -1051,11 +1043,11 @@ packages:
     dependency: "direct main"
     description:
       path: sync_settings_ui
-      ref: "sync_settings_ui-v0.8.2"
-      resolved-ref: "3225af8365481677d61a8cabec0c0ad4d0407567"
+      ref: "sync_settings_ui-v0.8.3"
+      resolved-ref: dde5566b2c6eb38a8e1e58a4252925f3baca8ad1
       url: "https://github.com/kuhyx/utils"
     source: git
-    version: "0.8.2"
+    version: "0.8.3"
   synchronized:
     dependency: transitive
     description:
@@ -1076,10 +1068,10 @@ packages:
     dependency: transitive
     description:
       name: test_api
-      sha256: "0a10344e901e5b2e63819567951cb6a06673ed6b84f40462188ff5a0c41f371f"
+      sha256: "2a122cbe059f8b610d3a5415f42e255b6c17b1f21eee1d960f31080237fb4f11"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.14"
+    version: "0.7.12"
   timezone:
     dependency: transitive
     description:
