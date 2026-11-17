@@ -156,6 +156,13 @@ class TestAutologBeforeLock:
             assert autolog_due_delivery([].append) == 0
         fetch.assert_not_called()
 
+    def test_nothing_new_to_log_stays_silent(self) -> None:
+        """Dishes already logged: zero written, no report line."""
+        self._go((DISHES, None))
+        lines = self._go((DISHES, None))
+        assert self.written == 0
+        assert lines == []
+
     def test_logging_error_is_swallowed(self) -> None:
         """Even a disk error falls back to the lock instead of crashing the gate."""
         lines: list[str] = []
