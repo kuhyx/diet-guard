@@ -27,16 +27,14 @@ prominent, with macros and the protein target beneath.  The unlock condition is
 *logging*, never *estimating correctly*: a manual calorie value always works
 offline, so a dead OFF endpoint can never trap you behind the lock.
 
-Building ``MealGate`` spans several sibling modules to keep each under the
-repo's 250-line limit: :mod:`._gatelock_core` provides the shared leaf
-widget/field helpers and state (``_GateCore``, ``_GateState``);
-:mod:`._gatelock_nutrition` provides the reference->total nutrition maths and
-food lookup (``_GateNutrition``); :mod:`._gatelock_mealflow` provides the
-submit/log flow, dashboard, callback errors and the pull-it-in buttons
-(``_GateMealFlow`` + ``_PullFlows``); :mod:`._gatelock_calendar` the tab --
-the budget-adherence calendar, streaks, YTD tally (:mod:`._daystatus`) and
-budget editing (``_GateCalendar``). ``MealGate`` wires these together, owns the
-``gatelock.LockWindow``, and handles construction, layout and event binding.
+Building ``MealGate`` spans several sibling modules (the 250-line limit):
+:mod:`._gatelock_core` holds the shared leaf widget/field helpers and state
+(``_GateCore``, ``_GateState``, the Claude button's glue);
+:mod:`._gatelock_nutrition` the reference->total maths and food lookup;
+:mod:`._gatelock_mealflow` the submit/log flow, dashboard, callback errors and
+pull-it-in buttons (``_GateMealFlow`` + ``_PullFlows``); :mod:`._gatelock_calendar`
+the tab -- calendar, streaks, YTD tally (:mod:`._daystatus`), budget editing.
+``MealGate`` wires these together and owns the ``gatelock.LockWindow``.
 """
 
 from __future__ import annotations
@@ -161,6 +159,7 @@ class MealGate(_GateCalendar):
             on_fetch_sync=self._on_fetch_sync,
             on_load_delivery=self._on_load_delivery,
             on_fill_all=self._on_fill_all,
+            on_claude=self._on_claude,
         )
         self._build()
 

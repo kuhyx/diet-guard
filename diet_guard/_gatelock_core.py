@@ -15,6 +15,7 @@ import logging
 import tkinter as tk
 from typing import TYPE_CHECKING
 
+from diet_guard._gatelock_claude import ClaudeFlow, ClaudeHooks
 from diet_guard._gatelock_glyphs import CLOCK, OK
 from diet_guard._gatelock_ui import (
     BASIS_PREFIX_GRAMS,
@@ -85,6 +86,28 @@ class _GateCore:
     _vars: GateVars
     _widgets: GateWidgets
     close: Callable[[], None]
+    # Supplied by ``_GateMealFlow``, which sits below this class.
+    _set_status: Callable[..., None]
+    _record: Callable[[str, Nutrition], None]
+
+    #: Built on the first Claude click; it holds that button's state.
+    _claude_flow: ClaudeFlow | None = None
+
+    def _on_claude(self) -> None:
+        """Estimate the typed meal with Claude and log it like a typed one.
+
+        Composed (:mod:`._gatelock_claude`), not a mixin: the gate's MRO is at
+        pylint's ``max-parents`` cap. Built once, on the first click.
+        """
+        if self._claude_flow is None:
+            hooks = ClaudeHooks(
+                self._get_desc,
+                self._set_status,
+                lambda: self._pending[0] if self._pending else None,
+                self._record,
+            )
+            self._claude_flow = ClaudeFlow(self.root, self._vars.claude_label, hooks)
+        self._claude_flow.click()
 
     # -- description field ---------------------------------------------------
 

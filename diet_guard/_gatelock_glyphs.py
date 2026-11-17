@@ -53,6 +53,15 @@ FILL_ALL: Final = "⇊"
 INFINITE: Final = "∞"
 UNLOCKING: Final = "⇥"
 
+# The Claude estimate button: idle, one frame per poll tick while working
+# (the spinner), and the error state it rests in until the next click. Idle is
+# the monochrome four-pointed star, not the sparkles emoji (U+2728): that one
+# is only in FreeSerif and Noto Color Emoji here, and a colour-emoji fallback
+# can crash Tk 8.6 -- the one window that must never fail to draw.
+CLAUDE: Final = "✦"
+CLAUDE_BUSY: Final = "◐◓◑◒"
+CLAUDE_FAILED: Final = "⚠"
+
 # Notebook tabs.
 TAB_LOG: Final = "✚"
 TAB_HISTORY: Final = "▦"
@@ -84,5 +93,6 @@ def source_glyph(source: str) -> str:
         "food bank": "▤",
         "staple": "★",
         "catering": DELIVERY,
+        "claude": CLAUDE,
         "manual": FOOD,
     }.get(head, "≈")

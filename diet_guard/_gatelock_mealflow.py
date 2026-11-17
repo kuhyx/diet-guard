@@ -1,11 +1,8 @@
 """Submit/record flow for the MealGate gate.
 
-Split out of :mod:`._gatelock` to keep that module under the repo's 250-line
-limit.  ``_GateMealFlow`` extends
-:class:`~diet_guard._gatelock_dashboard._GateDashboard` (itself over
-:class:`~diet_guard._gatelock_nutrition._GateNutrition`) with the
-submit/lookup/log flow and the per-slot input reset.  The read-only
-calorie/macro dashboard it calls into lives in :mod:`._gatelock_dashboard`.
+Split out of :mod:`._gatelock` to keep that module under the 250-line limit.
+``_GateMealFlow`` adds the submit/lookup/log flow, the per-slot input reset
+and the read-only calorie/macro dashboard.
 """
 
 from __future__ import annotations

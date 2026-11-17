@@ -57,6 +57,8 @@ class GateVars:
     entries: GateEntryVars
     #: "Fill all"'s label, shared so it relabels on every monitor at once.
     fill_label: tk.StringVar
+    #: The Claude button's icon state, shared so every monitor's copy follows.
+    claude_label: tk.StringVar
 
 
 @dataclass
@@ -88,3 +90,4 @@ class GateCallbacks:
     on_fetch_sync: Callable[[], None]
     on_load_delivery: Callable[[], None]
     on_fill_all: Callable[[], None]
+    on_claude: Callable[[], None]

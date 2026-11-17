@@ -186,6 +186,17 @@ class TestShouldLockAutologs:
             assert _cli_gate._should_lock([].append) is False
         publish.assert_called_once()
 
+    def test_publish_outage_is_reported_not_fatal(self) -> None:
+        """The entry is local and durable; only the publish is late."""
+        lines: list[str] = []
+        with (
+            patch.object(_cli_gate, "gate_is_due", side_effect=[True, False]),
+            patch.object(_cli_gate, "autolog_due_delivery", return_value=1),
+            patch.object(_cli_gate, "publish_after_log", return_value="offline"),
+        ):
+            assert _cli_gate._should_lock(lines.append) is False
+        assert "offline" in lines[0]
+
     def test_failed_autolog_still_locks(self) -> None:
         """Nothing written, still due: the lock opens, no publish."""
         publish = MagicMock(return_value=None)

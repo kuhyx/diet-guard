@@ -102,15 +102,30 @@ def _build_readouts(body: tk.Frame, vars_: GateVars) -> None:
 
 
 def _build_actions(
-    body: tk.Frame, callbacks: GateCallbacks, fill_label: tk.StringVar
+    body: tk.Frame,
+    callbacks: GateCallbacks,
+    fill_label: tk.StringVar,
+    claude_label: tk.StringVar,
 ) -> None:
-    """Pack the submit button and the three "pull it in" buttons."""
+    """Pack the submit and Claude buttons, then the "pull it in" buttons."""
+    log = tk.Frame(body, bg=BG)  # one row: no extra height (1366x768 fit test)
+    log.pack(pady=(XS, XS))
     make_button(
-        body,
+        log,
         _COLORS,
         glyphs.SUBMIT,
         callbacks.on_submit,
-    ).pack(pady=(XS, XS))
+    ).pack(side="left", padx=(0, XS))
+    # Claude estimates the typed meal and logs it; the icon is a shared variable.
+    claude = make_button(
+        log,
+        _COLORS,
+        claude_label.get(),
+        callbacks.on_claude,
+        ButtonStyle(variant="secondary", bold=False),
+    )
+    claude.configure(textvariable=claude_label)
+    claude.pack(side="left")
 
     # Both "pull it in from elsewhere" actions share one row: stacking them
     # cost 42px, which pushed the tab past the viewport on a 1366x768 screen
@@ -192,7 +207,7 @@ def build_layout(
     basis_prefix, per_entry, macros = build_macro_section(root, body, vars_)
 
     _build_readouts(body, vars_)
-    _build_actions(body, callbacks, vars_.fill_label)
+    _build_actions(body, callbacks, vars_.fill_label, vars_.claude_label)
 
     status_label = tk.Label(
         body,

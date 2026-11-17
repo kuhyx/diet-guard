@@ -26,7 +26,7 @@ from gatelock import (
 )
 
 from diet_guard._gatelock_fillall import FILL_LABEL
-from diet_guard._gatelock_glyphs import TIMES
+from diet_guard._gatelock_glyphs import CLAUDE, TIMES
 from diet_guard._gatelock_spacing import SM, XS
 from diet_guard._gatelock_typography import (
     BODY,
@@ -103,6 +103,7 @@ def make_vars(root: tk.Misc) -> GateVars:
             fat=tk.StringVar(master=root, value=""),
         ),
         fill_label=tk.StringVar(master=root, value=FILL_LABEL),
+        claude_label=tk.StringVar(master=root, value=CLAUDE),
     )
 
 

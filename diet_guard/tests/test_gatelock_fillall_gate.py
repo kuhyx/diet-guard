@@ -181,7 +181,9 @@ class TestTheButton:
             root.withdraw()
             on_fill_all = MagicMock()
             callbacks = GateCallbacks(
-                *(MagicMock() for _ in range(5)), on_fill_all=on_fill_all
+                *(MagicMock() for _ in range(5)),
+                on_fill_all=on_fill_all,
+                on_claude=MagicMock(),
             )
             vars_ = make_vars(root)
             notebook = ttk.Notebook(root)

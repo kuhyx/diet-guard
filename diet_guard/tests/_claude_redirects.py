@@ -44,6 +44,12 @@ def claude_redirects(tmp_path: Path) -> list[_patch[object]]:
             blocked("_claude_connect.connect_sealed"),
         ),
         patch("diet_guard._claude_sdk.run_model", blocked("_claude_sdk.run_model")),
+        # The gate's Claude button resolves the estimator lazily through this
+        # name; blocked here so no gate test can reach the model or the quota.
+        patch(
+            "diet_guard._gatelock_claude.estimate_meal",
+            blocked("_gatelock_claude.estimate_meal"),
+        ),
         patch("diet_guard._claude_sync.pull_peers", return_value=None),
         patch("diet_guard._claude_sync.publish", return_value=None),
         patch("diet_guard._claude_sandbox.SANDBOX_DIR", tmp_path / "claude-sandbox"),
