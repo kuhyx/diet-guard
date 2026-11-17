@@ -136,6 +136,7 @@ class _LogMealScreenState extends State<LogMealScreen>
       return;
     }
     LogFeedback.mealLogged(); // on the tap, before the write
+    unawaited(withdrawClaude()); // else Claude would log it a second time
     final entry = await LogStorageService.instance.logMeal(
       desc,
       nutritionFromControllers(_macros, _source),

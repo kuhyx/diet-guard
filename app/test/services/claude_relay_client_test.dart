@@ -9,7 +9,7 @@ import 'package:diet_guard_app/services/claude_relay_fake.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _request = ClaudeRelayRequest(
-  requestId: 'r1',
+  requestId: '01JD5Z8K3M7Q2W9XH4TBN6VR0E',
   slotMinute: 480,
   text: 'x',
 );
@@ -27,8 +27,8 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(done.isCompleted, isFalse);
 
-      const entry = FoodEntry(
-        id: 'r1',
+      final entry = FoodEntry(
+        id: claudeEntryId(_request.requestId),
         time: 't',
         desc: 'x',
         grams: 1,
@@ -38,13 +38,16 @@ void main() {
         fatG: 1,
         source: 'claude',
       );
-      relay.emit(const ClaudeRelayLogged(entry));
+      relay.emit(ClaudeRelayLogged(entry));
       await done.future;
       expect(events.map((e) => e.runtimeType), [
         ClaudeRelayQueued,
         ClaudeRelayLogged,
       ]);
-      expect((events.last as ClaudeRelayLogged).entry.id, _request.requestId);
+      expect(
+        (events.last as ClaudeRelayLogged).entry.id,
+        claudeEntryId(_request.requestId),
+      );
     },
   );
 

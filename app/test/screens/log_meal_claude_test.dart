@@ -118,8 +118,6 @@ void main() {
       await tester.tap(byIconLabel('Remove photo'));
       await settle(tester);
       expect(sparkleEnabled(tester), isFalse);
-
-
     });
   });
 
@@ -158,7 +156,7 @@ void main() {
       await settle(tester);
       expect(byIconLabel('Waiting for the PC'), findsOneWidget);
 
-      final id = relay.sent.single.requestId;
+      final id = claudeEntryId(relay.sent.single.requestId);
       relay.emit(ClaudeRelayLogged(_claudeEntry(id)));
       await settle(tester);
 

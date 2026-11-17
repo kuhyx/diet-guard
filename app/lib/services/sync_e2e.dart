@@ -65,6 +65,22 @@ Future<RemoteStore> openDietGuardStore(RemoteStore backend) async {
   );
 }
 
+/// The cipher of the diet_guard E2E key, for units outside the log sync (the
+/// Claude relay seals its requests with it).
+///
+/// Throws [SyncLockedException] when there is no usable key, same as
+/// [openDietGuardStore]. The relay lives under `diet-guard-sync/claude-e2e`,
+/// whose header path is the existing `diet-guard-sync/e2e`: one passphrase,
+/// one salt, one key.
+Future<E2eCipher> openDietGuardCipher(RemoteStore backend) async {
+  final state = await _open(backend, legacyDevicesDir);
+  syncLocked.value = state is! E2eReady;
+  if (state is E2eReady) return state.store.key.cipher(acceptPlaintext: false);
+  throw SyncLockedException(
+    state is E2eLocked ? state.reason : E2eLockReason.badHeader,
+  );
+}
+
 /// The encrypted wake-alarm store over [backend], or null when locked or
 /// unreachable.
 ///

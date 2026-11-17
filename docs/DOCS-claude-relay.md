@@ -238,5 +238,4 @@ model answer with a grilling round.
    in `~/src/utils/crdt-sync`.
 3. `bash install.sh` (copies and enables `diet-guard-claude.service` once
    the session file exists).
-4. Phone side: the sender, hourglass state and result screen. They follow
-   sections 1 to 3 and the fixture.
+4. Phone side: [DOCS-claude-relay-phone.md](DOCS-claude-relay-phone.md).

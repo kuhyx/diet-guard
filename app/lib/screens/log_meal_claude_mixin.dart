@@ -22,7 +22,6 @@ import 'package:diet_guard_app/widgets/logged_meal_row.dart';
 import 'package:diet_guard_app/widgets/macro_input_row.dart';
 import 'package:diet_guard_app/widgets/meal_action_row.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:uuid/uuid.dart';
 
 /// Photo attach and the Claude send, for the log screen's state.
 mixin LogMealClaudeMixin<T extends StatefulWidget>
@@ -50,6 +49,7 @@ mixin LogMealClaudeMixin<T extends StatefulWidget>
   Uint8List? photo;
 
   StreamSubscription<ClaudeRelayEvent>? _relaySub;
+  String? _pendingRid;
 
   /// Whether there is something to send (a description or a photo).
   bool get canSend =>
@@ -70,12 +70,14 @@ mixin LogMealClaudeMixin<T extends StatefulWidget>
   void sendToClaude() {
     if (!canSend) return;
     final request = ClaudeRelayRequest(
-      requestId: const Uuid().v4(),
+      requestId: newRequestId(),
       slotMinute: targetSlot,
+      mode: dueMode ? ClaudeRelayMode.due : ClaudeRelayMode.normal,
       text: claudeDesc.text.trim(),
       photoJpeg: photo,
     );
     unawaited(_relaySub?.cancel());
+    _pendingRid = request.requestId;
     setState(() => claudeState = ClaudeButtonState.sending);
     _relaySub = relay.send(request).listen((e) => unawaited(_onEvent(e)));
   }
@@ -86,10 +88,13 @@ mixin LogMealClaudeMixin<T extends StatefulWidget>
       case ClaudeRelayQueued():
         setState(() => claudeState = ClaudeButtonState.queued);
       case ClaudeRelayLocked():
+        _pendingRid = null;
         setState(() => claudeState = ClaudeButtonState.locked);
       case ClaudeRelayFailed():
+        _pendingRid = null;
         setState(() => claudeState = ClaudeButtonState.error);
       case ClaudeRelayLogged(:final entry):
+        _pendingRid = null;
         // The worker logged it under the request id; the sync would deliver
         // the same record, so this only shows it now and never doubles it.
         final stored = await LogStorageService.instance.addIfAbsent(entry);
@@ -103,6 +108,26 @@ mixin LogMealClaudeMixin<T extends StatefulWidget>
         showLogged([LoggedMeal(stored, LoggedOrigin.claude)]);
         await publishAfterLog();
         await refreshSlots();
+    }
+  }
+
+  /// Withdraws a request that is still in flight or queued, because the user
+  /// just logged the meal here instead.
+  ///
+  /// Unclaimed: the node is deleted and the stream dropped. Already claimed
+  /// (the PC is mid-estimate): the meal will be logged, so the stream stays
+  /// open and its row shows with an undo rather than the entry turning up
+  /// unseen after the next sync. That race is accepted, see
+  /// `docs/DOCS-claude-relay.md`.
+  Future<void> withdrawClaude() async {
+    final rid = _pendingRid;
+    final waiting =
+        claudeState == ClaudeButtonState.sending ||
+        claudeState == ClaudeButtonState.queued;
+    if (rid == null || !waiting) return;
+    if (await relay.cancel(rid)) {
+      _pendingRid = null;
+      await _relaySub?.cancel();
     }
   }
 

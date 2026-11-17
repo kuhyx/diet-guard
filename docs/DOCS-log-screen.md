@@ -52,8 +52,11 @@ tombstone by id (several rows can be on screen, so not `undoLastToday`).
 ## Claude and photos
 
 The sparkle talks to `ClaudeRelayClient` (`services/claude_relay_client.dart`),
-injectable; `FakeClaudeRelayClient` drives the tests. The request id becomes the
-logged entry's id. A photo is **transient input**: `image_picker` scales it to
+injectable; `FakeClaudeRelayClient` drives the tests and `RtdbClaudeRelay`
+(`claude_relay_firebase.dart`, assigned in `main.dart`) is the real transport,
+described in [DOCS-claude-relay-phone.md](DOCS-claude-relay-phone.md). The request
+id is a ULID and the logged entry's id is `uuid5` of it. A check-mark log while
+a request is waiting withdraws it (`cancel`). A photo is **transient input**: `image_picker` scales it to
 1024 px JPEG, the bytes are read into memory and the plugin's cache file is
 deleted at once (`meal_photo_cleanup_io.dart`). It is never stored, put on a
 `FoodEntry`, or synced; `repo_invariants_test.dart` asserts it structurally. The

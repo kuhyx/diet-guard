@@ -116,7 +116,11 @@ void main() {
 
       await tester.tap(controlByLabel('Claude failed'));
       await tester.pump();
-      relay.emit(ClaudeRelayLogged(claudeEntry(relay.sent.last.requestId)));
+      relay.emit(
+        ClaudeRelayLogged(
+          claudeEntry(claudeEntryId(relay.sent.last.requestId)),
+        ),
+      );
       await settle(tester);
       expect(find.byIcon(Icons.undo), findsOneWidget);
       // Still due (12:00 is open): the screen stays in due mode.

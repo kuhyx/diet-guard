@@ -16,6 +16,12 @@ class FakeClaudeRelayClient implements ClaudeRelayClient {
   /// Events replayed on each send before the stream waits for [emit].
   final List<ClaudeRelayEvent> script = [];
 
+  /// Request ids passed to [cancel], oldest first.
+  final List<String> cancelled = [];
+
+  /// What [cancel] answers: true = withdrawn before any claim.
+  bool cancelResult = true;
+
   StreamController<ClaudeRelayEvent>? _open;
 
   @override
@@ -33,5 +39,11 @@ class FakeClaudeRelayClient implements ClaudeRelayClient {
     if (controller == null || controller.isClosed) return;
     controller.add(event);
     if (event is! ClaudeRelayQueued) unawaited(controller.close());
+  }
+
+  @override
+  Future<bool> cancel(String requestId) async {
+    cancelled.add(requestId);
+    return cancelResult;
   }
 }
