@@ -1,0 +1,20 @@
+[Unit]
+Description=Diet Guard "send to Claude" relay worker (phone meal requests)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Event-driven: one RTDB stream does the waiting, so a PC that was off simply
+# serves the queued requests when this starts. Headless: no DISPLAY, unlike
+# the gate. No PYTHONPATH: diet_guard (and claude_agent_sdk, rtdb_relay,
+# httpx) are pip-installed into system Python's user site-packages by
+# install.sh, which is what /usr/bin/python resolves.
+ExecStart=/usr/bin/python -m diet_guard claude-worker
+# A cancelled stream (the rules refuse the path) exits 1; an unconfigured or
+# locked relay does not exit at all, it waits and retries (docs/DOCS-claude-relay.md).
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

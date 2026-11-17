@@ -15,6 +15,7 @@ show adherence, streaks, a YTD tally and weekly/monthly averages, all derived fr
 - One sync tick: `python -m diet_guard sync`
 - Averages: `python -m diet_guard averages`; Body: `body`, `weight KG`, `profile`, `plan-week`
 - Prune dead sync peers (dry run): `python -m diet_guard prune-peers`
+- Phone's "send to Claude" worker: `python -m diet_guard claude-worker`, [docs/DOCS-claude-relay.md](docs/DOCS-claude-relay.md)
 - Install: `bash install.sh` (production); app: `cd app && bash install_arch.sh`; run app: `bash run.sh`; phone: `flutter build apk --release`
 - run: `python -m diet_guard gate --demo`
 - test: `python -m pytest -n auto -p no:sugar -q` (python, 100% branch bar from pyproject) then `cd app && flutter test --reporter=compact`

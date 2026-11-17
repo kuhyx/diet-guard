@@ -57,6 +57,13 @@ def test_answer_and_isolation_options() -> None:
 
 
 @pytest.mark.usefixtures("login")
+def test_other_stream_messages_are_skipped() -> None:
+    """Assistant/system chatter before the result does not matter."""
+    fake = FakeSdk([object(), FakeResult({"kcal": 2}), object()])
+    assert _ask(fake) == {"kcal": 2}
+
+
+@pytest.mark.usefixtures("login")
 @pytest.mark.parametrize(
     "messages",
     [

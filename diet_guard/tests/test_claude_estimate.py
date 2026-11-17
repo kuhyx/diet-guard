@@ -126,3 +126,17 @@ def test_bank_rows_empty_bank_is_empty() -> None:
     with patch("diet_guard._claude_sdk.run_model", model):
         estimate_meal("coś", None)
     assert "Food bank" not in model.await_args.args[1][0]["text"]
+
+
+def test_bank_rows_reach_the_prompt() -> None:
+    """A banked food is offered to the model as a row it can scale."""
+    banana = Nutrition(
+        kcal=105, protein_g=1.3, carbs_g=27, fat_g=0.4, grams=118, source="m"
+    )
+    remember_food("banan", banana)
+    model = _fake()
+    with patch("diet_guard._claude_sdk.run_model", model):
+        estimate_meal("banan", None)
+    text = model.await_args.args[1][0]["text"]
+    assert "Food bank" in text
+    assert "banan | 118 g | 105 kcal" in text

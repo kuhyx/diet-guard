@@ -34,6 +34,7 @@ from diet_guard._cli_body import (
     cmd_profile,
     cmd_weight,
 )
+from diet_guard._cli_claude import cmd_claude_worker
 from diet_guard._cli_gate import cmd_gate
 from diet_guard._cli_init import cmd_init
 from diet_guard._cli_kuchnia import cmd_kuchnia
@@ -225,6 +226,7 @@ _COMMANDS: dict[str, Callable[[argparse.Namespace], int]] = {
     "sync": lambda _args: cmd_sync(_emit),
     "kuchnia": _dispatch_kuchnia,
     "prune-peers": _dispatch_prune,
+    "claude-worker": lambda _args: cmd_claude_worker(),
     "gate": _dispatch_gate,
     "undo": lambda _args: _cmd_undo(),
     "body": lambda args: cmd_body(_emit, args),

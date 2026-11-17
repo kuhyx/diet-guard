@@ -10,8 +10,9 @@ This file is the contract both halves build against. The fixture
 `tests/fixtures/claude_relay_contract.json` is read by the Python tests and
 by the phone's Dart tests, so the two cannot drift. Regenerate it with
 `scripts/build_claude_relay_fixture.py` (random nonces: bytes change, the
-plaintext does not). The worker lives in `diet_guard/_claude_*.py`; the
-estimator and its skill are described at the end.
+plaintext does not). The worker lives in `diet_guard/_claude_*.py` (`_claude_worker.py` serves,
+`_claude_log.py` picks the slot and writes, `_claude_estimate.py` calls the
+model); the estimator and its skill are described at the end.
 
 ## 1. Where it lives in RTDB
 
@@ -97,7 +98,7 @@ Error:
 | `code` | Meaning | `retry` |
 |---|---|---|
 | `bad_request` | body fails section 2 | false |
-| `expired` | `created` older than 24 h when the PC got to it | false |
+| `expired` | `created` older than 24 h (or missing) when the PC got to it | false |
 | `estimate_timeout` | Claude exceeded 45 s | true |
 | `estimate_failed` | Claude errored or the CLI/login is unusable | true |
 | `estimate_invalid` | output not JSON / fails the schema / nonsense values | true |
@@ -138,8 +139,9 @@ PC:  claim (ETag lease) -> validate -> age check -> already logged? ->    │
 ```
 
 1. **Idempotent by request id, twice over.** The entry id is
-   `uuid5(NAMESPACE, rid)`. Before spending a Claude call the worker looks
-   for that id in the raw log (tombstones included). Found: it rebuilds the
+   `uuid5(NAMESPACE, rid)`, written with `log_meal_as`. Before spending a
+   Claude call the worker looks for that id with `find_entry` in the raw log
+   (tombstones included). Found: it rebuilds the
    result from the entry and logs nothing. So a duplicate SSE event, a lease
    that expired, or a crash between `log_meal` and the result PUT (the
    worker takes over its own dead claim on restart) all end in one entry.
@@ -166,7 +168,8 @@ PC:  claim (ETag lease) -> validate -> age check -> already logged? ->    │
 ## 6. The worker
 
 `python -m diet_guard claude-worker`, run by `diet-guard-claude.service`
-(systemd `--user`, `Restart=on-failure`, `WantedBy=default.target`).
+(systemd `--user`, `Restart=on-failure`, `WantedBy=default.target`; the
+unit lives at the repo root with the other two, `install.sh` installs it).
 
 - Event-driven: one SSE stream on `R/requests`. Reconnects forever with
   1/2/5/10/30 s backoff; `auth_revoked` reconnects at once; `cancel` (the

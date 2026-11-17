@@ -19,12 +19,22 @@ from typing import TYPE_CHECKING
 
 from gatelock.log_integrity import compute_entry_hmac
 
-from diet_guard._state import _read_raw_log, _today, _write_log
+from diet_guard._state import (
+    _entry_fields,
+    _read_raw_log,
+    _store_entry,
+    _today,
+    _write_log,
+    now_local,
+)
 
 if TYPE_CHECKING:
+    from diet_guard._estimator import Nutrition
     from diet_guard._state import DayLog
 
 __all__ = [
+    "find_entry",
+    "log_meal_as",
     "read_raw_log",
     "resign_entry",
     "undo_last_today",
@@ -109,3 +119,34 @@ def undo_last_today() -> dict[str, object] | None:
         _write_log(log)
         return entry
     return None
+
+
+def find_entry(entry_id: str) -> dict[str, object] | None:
+    """The stored entry with ``entry_id``, tombstones and unverified included.
+
+    A deleted entry still counts as logged: a replayed request must not log
+    its meal a second time because the user undid the first.
+    """
+    for entries in _read_raw_log().values():
+        for entry in entries:
+            if entry.get("id") == entry_id:
+                return entry
+    return None
+
+
+def log_meal_as(
+    entry_id: str,
+    description: str,
+    nutrition: Nutrition,
+    slot: int | None,
+    *,
+    components: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
+    """:func:`~diet_guard._state.log_meal` for now, under a caller-chosen id.
+
+    The Claude relay derives the id from the request id, so a replayed
+    request finds its own entry with :func:`find_entry` instead of logging
+    twice.
+    """
+    fields = _entry_fields(description, nutrition, slot, components)
+    return _store_entry(entry_id, now_local(), fields)

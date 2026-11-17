@@ -27,6 +27,10 @@ readonly REPO_DIR="$SCRIPT_DIR"
 readonly SERVICE_SRC="$SCRIPT_DIR/diet-guard-gate.service"
 readonly TIMER_SRC="$SCRIPT_DIR/diet-guard-gate.timer"
 readonly SYNC_SERVICE_SRC="$SCRIPT_DIR/diet-guard-sync.service"
+readonly CLAUDE_SERVICE_SRC="$SCRIPT_DIR/diet-guard-claude.service"
+# The relay worker's own Firebase session (never the gate's: two processes
+# refreshing one token file corrupt it). Seeded once, see the step below.
+readonly CLAUDE_SESSION_FILE="$HOME/.config/diet_guard_claude/firebase_auth.json"
 readonly SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
 readonly DATA_DIR="$HOME/.local/share/diet_guard"
 readonly BUDGET_FILE="$DATA_DIR/.budget"
@@ -47,8 +51,8 @@ fi
 echo "[2/5] Installing diet_guard + dependencies for /usr/bin/python..."
 /usr/bin/python3 -m pip install --user --break-system-packages -e "$REPO_DIR"
 echo "  Installed. Verifying import..."
-/usr/bin/python3 -c "import diet_guard; import gatelock" \
-    && echo "  diet_guard and gatelock import cleanly from the system interpreter."
+/usr/bin/python3 -c "import diet_guard; import gatelock; import claude_agent_sdk, rtdb_relay, httpx" \
+    && echo "  diet_guard, gatelock and the Claude relay deps import cleanly from the system interpreter."
 
 # 3. systemd user timer + service (gate) -------------------------------------
 echo "[3/5] Installing the gate's systemd user timer + service..."
@@ -81,6 +85,23 @@ else
     echo "  failure) after every meal you log, until you create a GitHub PAT"
     echo "  scoped to the diet-guard-sync repo's contents and save it there,"
     echo "  mode 600: chmod 600 \"$SYNC_TOKEN_FILE\""
+fi
+
+# 4b. The "send to Claude" relay worker ------------------------------------
+# Serves the phone's meal requests (docs/DOCS-claude-relay.md). It needs its own
+# signed-in Firebase session, which only one Google consent can create, so the
+# unit is installed always but started only once the session file exists.
+echo "[4b/5] Installing the Claude relay worker unit..."
+cp "$CLAUDE_SERVICE_SRC" "$SYSTEMD_USER_DIR/diet-guard-claude.service"
+systemctl --user daemon-reload
+if [[ -f "$CLAUDE_SESSION_FILE" ]]; then
+    systemctl --user enable --now diet-guard-claude.service
+    echo "  Relay worker enabled and started."
+else
+    echo "  Not started: no session at $CLAUDE_SESSION_FILE. Seed it once (one"
+    echo "  Google consent) in ~/src/utils/crdt-sync:"
+    echo "    python3 -m tool.seed_session --client-id ... --client-secret ... --app diet_guard_claude"
+    echo "  then re-run this installer."
 fi
 
 # 5. Set the initial daily budget ---------------------------------------------

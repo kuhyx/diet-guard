@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+import uuid
 
 from crdt_sync import E2eCipher, E2eLayout
 from rtdb_relay.layout import Layout
@@ -30,6 +31,9 @@ OUT_FILE = OUT / "claude_relay_contract.json"
 
 KEY_HEX = bytes(range(32)).hex()
 RID = "01JD5Z8K3M7Q2W9XH4TBN6VR0E"
+# Namespace of the entry id (uuid5 of the rid), as ``_claude_contract``.
+ENTRY_NAMESPACE = "5d9c1a40-6f0e-5c3e-9b57-d1e7a3c0b2f4"
+ENTRY_ID = str(uuid.uuid5(uuid.UUID(ENTRY_NAMESPACE), RID))
 ROOT = E2eLayout.of("diet-guard-sync/claude").prefix
 HEADER = E2eLayout.of("diet-guard-sync/devices").e2e_path
 CLEAR = ("requests/*/claim",)
@@ -56,7 +60,7 @@ LOGGED: dict[str, Any] = {
     "kind": "meal",
     "status": "logged",
     "id": RID,
-    "entry_id": "7b0c5d52-8a43-5a63-b6f5-7d0f1c0e2a44",
+    "entry_id": ENTRY_ID,
     "desc": "2 jajka sadzone i kromka chleba",
     "grams": 190,
     "kcal": 410,
@@ -145,6 +149,8 @@ def build() -> dict[str, Any]:
         "header_path": HEADER,
         "key_hex": KEY_HEX,
         "rid": RID,
+        "entry_id_namespace": ENTRY_NAMESPACE,
+        "entry_id": ENTRY_ID,
         "layout": {"clear": list(CLEAR), "units": UNITS},
         "limits": {
             "text_max": 2000,

@@ -166,10 +166,18 @@ def log_meal(
     if when is not None and when < now_local():
         msg = "cannot log a meal in the past"
         raise ValueError(msg)
-    effective = when or now_local()
-    entry: dict[str, object] = {
-        "id": str(uuid.uuid4()),
-        "time": effective.isoformat(timespec="seconds"),
+    fields = _entry_fields(description, nutrition, slot, components)
+    return _store_entry(str(uuid.uuid4()), when or now_local(), fields)
+
+
+def _entry_fields(
+    description: str,
+    nutrition: Nutrition,
+    slot: int | None,
+    components: list[dict[str, object]] | None,
+) -> dict[str, object]:
+    """The entry's content fields: everything except its id and time."""
+    fields: dict[str, object] = {
         "desc": description,
         "grams": nutrition.grams,
         "kcal": nutrition.kcal,
@@ -181,9 +189,21 @@ def log_meal(
     if slot is not None:
         # Before signing: the HMAC covers the whole dict, so a ``slot_min``
         # added afterwards would make the entry fail verification and vanish.
-        entry.update(slot_fields(slot))
+        fields.update(slot_fields(slot))
     if components is not None:
-        entry["components"] = list(components)
+        fields["components"] = list(components)
+    return fields
+
+
+def _store_entry(
+    entry_id: str, effective: datetime, fields: dict[str, object]
+) -> dict[str, object]:
+    """Sign and append one entry under ``effective``'s day; return it."""
+    entry: dict[str, object] = {
+        "id": entry_id,
+        "time": effective.isoformat(timespec="seconds"),
+        **fields,
+    }
     signature = compute_entry_hmac(entry)
     if signature is not None:
         entry["hmac"] = signature
