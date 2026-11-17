@@ -9,9 +9,9 @@ link in the controller chain -- pylint caps that chain's depth and the gate is
 at the limit -- and a separate module so both stay under the 250-line cap.
 
 **Neither logs anything by itself.** The catering fetch fills the form and
-stops; the user still clicks "Log & Continue". Auto-submitting would let the
-gate satisfy its own checkpoint from a delivery note, which is the one thing
-this feature is designed not to do.
+stops; the user still clicks "Log & Continue". The tap-free logging happens
+earlier and elsewhere (:mod:`diet_guard._kuchnia_autolog`, before the window
+opens), never from inside it.
 """
 
 from __future__ import annotations

@@ -2,8 +2,10 @@
 
 Two clicks, never one. The first fetches the day's delivery off the Tk thread
 and shows exactly what would be written; the button relabels to "Confirm (N)".
-Only the second click writes. A delivered meal is not an eaten meal, so the
-user sees the dishes and the slots before anything lands -- and no modal
+Only the second click writes. This is the *manual* path; the pre-lock
+auto-log (:mod:`diet_guard._kuchnia_autolog`) logs due slots without a tap, but
+this button reaches every slot, so the user sees the dishes and the slots
+before anything lands -- and no modal
 dialog asks instead, because a pop-up over a fullscreen grab risks stealing the
 very keyboard grab the lock depends on.
 

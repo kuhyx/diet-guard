@@ -129,8 +129,8 @@ def _build_actions(
     ).pack(side="left", padx=(0, XS))
 
     # Today's catering delivery, with its real macros. Loading only *offers*
-    # the dishes -- each still has to be checked and submitted, because a
-    # delivered meal is not an eaten meal.
+    # the dishes -- each still has to be checked and submitted here (the
+    # pre-lock auto-log, when it runs, has already logged the due slots).
     make_button(
         pulls,
         _COLORS,

@@ -1,10 +1,11 @@
 """Turn confirmed catering dishes into log entries.
 
-Nothing here runs without an explicit confirmation from the user -- that is the
-whole design of this feature.  A delivered meal is not an eaten meal: if the
-importer wrote entries unattended, the gate would auto-satisfy the exact
-checkpoint it exists to enforce, and the log would record what the courier
-dropped off rather than what was eaten.
+Nothing in this module runs without an explicit confirmation: the CLI
+``--log``, the lock window's buttons and "Fill all" all ask first.  The one
+unattended path is separate -- :mod:`diet_guard._kuchnia_autolog`, the PC's
+pre-lock auto-log, which kuhy chose on 2026-11-17 ("LOG EVEN WITHOUT TAP")
+knowing a delivered meal is not always an eaten one (skipped, shared or binned
+dishes are logged as eaten).
 
 Duplicate suppression works off **today's log**, not a local "already
 imported" marker.  ``log_meal`` mints a fresh uuid per entry, so a re-import

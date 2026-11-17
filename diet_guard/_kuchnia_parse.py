@@ -34,6 +34,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from diet_guard._coerce import as_float
+from diet_guard._kuchnia_ids import dish_key
 
 #: Atwater factors. Used only as a sanity check on the *units*, never to
 #: recompute a value the panel already states.
@@ -69,6 +70,8 @@ class Dish:
     grams: float
     priority: int
     slot_label: str
+    #: The id half of the auto-log entry id (:mod:`diet_guard._kuchnia_ids`).
+    dish_key: str = ""
 
 
 def _energy_is_consistent(
@@ -138,6 +141,7 @@ def _parse_meal(meal: object, fallback_priority: int) -> Dish | None:
         grams=grams,
         priority=priority,
         slot_label=str(meal.get("mealName") or "").strip(),
+        dish_key=dish_key(meal.get("deliveryMealId"), name),
     )
 
 

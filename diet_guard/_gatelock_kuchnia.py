@@ -22,7 +22,8 @@ exists to forbid, so the pattern is copied rather than bent:
   the window is gone -- the gate is a ``Type=oneshot`` unit and must exit.
 
 Nothing here logs anything.  The fetch only *offers* dishes; writing entries is
-a separate, explicitly confirmed step (:mod:`diet_guard._kuchnia_log`).
+a separate, explicitly confirmed step (:mod:`diet_guard._kuchnia_log`), or the
+tap-free pre-lock auto-log (:mod:`diet_guard._kuchnia_autolog`).
 """
 
 from __future__ import annotations

@@ -35,6 +35,8 @@ _LAZY_ATTRS = {
     # ``_sync_refresh`` reaches ``crdt_sync`` -> ``requests``; the not-due
     # tick never pulls, so it must not pay that import either.
     "pull_peer_logs": ("diet_guard._sync_refresh", "pull_peer_logs"),
+    # The catering auto-log reaches the panel client; same reasoning.
+    "autolog_due_delivery": ("diet_guard._kuchnia_autolog", "autolog_due_delivery"),
 }
 
 
@@ -48,7 +50,7 @@ def __getattr__(name: str) -> object:
     return getattr(import_module(module_name), attr)
 
 
-def _should_lock(emit: Callable[[str], None]) -> bool:
+def _should_lock(emit: Callable[[str], None], *, autolog: bool = True) -> bool:
     """Decide whether to lock, pulling from sync first if a lock looks due.
 
     This wraps the pure, local :func:`~diet_guard._gate.gate_is_due` predicate
@@ -64,15 +66,29 @@ def _should_lock(emit: Callable[[str], None]) -> bool:
     in :func:`cmd_gate` once the window has closed.  Only the peer logs can
     answer "has a peer already logged this slot?", which is the sole question
     this predicate asks.
+
+    After the pull, ``autolog`` (every real mode except ``--check``) logs
+    today's catering for the due slots (:mod:`diet_guard._kuchnia_autolog`,
+    kuhy's 2026-11-17 override of "delivered is not eaten"). It is capped at
+    5 s and fail-closed: any failure leaves the lock decision untouched. When
+    it clears the lock no window opens, so it publishes here -- ``cmd_gate``'s
+    own publish only follows a window -- or the phone would keep nagging.
     """
     if not gate_is_due():
         return False
     # Through the module object so the lazy hook above resolves it, and so a
     # test's ``patch.object`` still wins.
-    reason = sys.modules[__name__].pull_peer_logs()
+    module = sys.modules[__name__]
+    reason = module.pull_peer_logs()
     if reason is not None:
         emit(f"{reason}; using local log.")
-    return gate_is_due()
+    written = module.autolog_due_delivery(emit) if autolog else 0
+    due = gate_is_due()
+    if written and not due:
+        reason = module.publish_after_log()
+        if reason is not None:
+            emit(f"auto-logged locally, not yet published ({reason}).")
+    return due
 
 
 def cmd_gate(emit: Callable[[str], None], *, check: bool, demo: bool) -> int:
@@ -97,7 +113,7 @@ def cmd_gate(emit: Callable[[str], None], *, check: bool, demo: bool) -> int:
         For ``--check``: 0 if not due, 1 if a lock is due.  Otherwise 0.
     """
     if check:
-        due = _should_lock(emit)
+        due = _should_lock(emit, autolog=False)
         emit("due (a lock is warranted)" if due else "ok (no lock needed)")
         return 1 if due else 0
     if not demo and not _should_lock(emit):

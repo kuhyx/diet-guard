@@ -1,6 +1,6 @@
 """Tests for the lock screen's two-click "Fill all" catering flow.
 
-The properties that matter, because the gate exists to stop unattended logging:
+The properties of this *manual* path (auto-log: ``test_kuchnia_autolog.py``):
 
 * the first click **never writes** -- it only proposes, and relabels the button;
 * the second click writes only into slots that are **still empty right now**,

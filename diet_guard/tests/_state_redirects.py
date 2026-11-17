@@ -169,6 +169,13 @@ def state_redirects(tmp_path: Path) -> list[_patch[object]]:
             "diet_guard._gatelock_delivery.refresh_delivery",
             return_value=([], None),
         ),
+        # The pre-lock catering auto-log: a fourth network entry point, and
+        # unlike the others it WRITES log entries. Unpatched, any test that
+        # reaches `_should_lock` would hit the live panel.
+        patch(
+            "diet_guard._kuchnia_autolog.refresh_delivery",
+            return_value=([], None),
+        ),
         # The gate's "Fill all" button fetches through its own lazy helper.
         patch(
             "diet_guard._gatelock_fillall._refresh_delivery",
