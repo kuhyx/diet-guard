@@ -122,7 +122,9 @@ void main() {
         ),
       );
       await settle(tester);
-      expect(find.byIcon(Icons.undo), findsOneWidget);
+      // The logged row collapses while the keyboard is up (no cover by
+      // keyboard); log_meal_keyboard_test.dart covers it coming back.
+      expect(find.byIcon(Icons.undo), findsNothing);
       // Still due (12:00 is open): the screen stays in due mode.
       expect(find.byType(AppBar), findsNothing);
       await fillWorstCase(tester);

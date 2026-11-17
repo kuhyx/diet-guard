@@ -31,7 +31,8 @@ Nutrition nutritionFromControllers(MacroControllers macros, String source) =>
       source: source,
     );
 
-/// The five destination buttons in [LogMealScreen]'s app bar.
+/// The destination buttons in [LogMealScreen]'s app bar, after [leading]
+/// (the date picker).
 ///
 /// Split out of `log_meal_screen.dart` for the repo's 250-line cap. Returned
 /// as a list to be spread into `AppBar.actions`, so the bar's structure and
@@ -42,7 +43,9 @@ List<Widget> logMealAppBarActions({
   required VoidCallback onCalendar,
   required VoidCallback onSettings,
   required VoidCallback onBody,
+  List<Widget> leading = const [],
 }) => [
+  ...leading,
   IconButton(
     icon: const Icon(Icons.monitor_weight, semanticLabel: 'Body'),
     onPressed: onBody,

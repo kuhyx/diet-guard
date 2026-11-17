@@ -168,6 +168,8 @@ class _LogMealScreenState extends State<LogMealScreen>
     final due = dueMode;
     // Dimmed while Claude works, but never moved: nothing is added around it.
     final busy = claudeState == ClaudeButtonState.sending;
+    // Hard rule: nothing sits under the keyboard, so the extras collapse.
+    final typing = MediaQuery.viewInsetsOf(context).bottom > 0;
     final dim = busy || claudeState == ClaudeButtonState.queued;
     return Scaffold(
       appBar: due
@@ -179,6 +181,7 @@ class _LogMealScreenState extends State<LogMealScreen>
                 onCalendar: onOpenCalendar,
                 onSettings: onOpenSettings,
                 onBody: onOpenBody,
+                leading: buildDateActions(context),
               ),
             ),
       body: SafeArea(
@@ -187,11 +190,7 @@ class _LogMealScreenState extends State<LogMealScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!due) ...[
-                SyncHealthBanner(status: syncHealth),
-                buildWhenRow(context),
-                const SizedBox(height: AppSpacing.sm),
-              ],
+              if (!due) SyncHealthBanner(status: syncHealth),
               buildSlotRow(),
               Opacity(
                 opacity: dim ? 0.5 : 1,
@@ -231,13 +230,14 @@ class _LogMealScreenState extends State<LogMealScreen>
                 onSend: sendToClaude,
                 onLog: _onLogMeal,
               ),
-              for (final meal in loggedRows)
-                LoggedMealRow(meal: meal, onUndo: () => undoLogged(meal)),
+              if (!typing)
+                for (final meal in loggedRows)
+                  LoggedMealRow(meal: meal, onUndo: () => undoLogged(meal)),
               if (_cue != null) ...[
                 const SizedBox(height: AppSpacing.sm),
                 _cue!.widget,
               ],
-              if (_progress != null && !due) ...[
+              if (_progress != null && !due && !typing) ...[
                 const SizedBox(height: AppSpacing.sm),
                 TodayProgressCard(progress: _progress!),
               ],

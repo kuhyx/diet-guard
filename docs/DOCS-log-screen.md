@@ -22,7 +22,7 @@ Until the first read of today's log the screen draws neither (no app-bar flash).
 
 No slot picker. Due mode: both the check and the sparkle target the **oldest
 due slot** (`dueSlots.first`). Normal mode: `slotForLog` (nearest). The integer
-slot maths in `models/slot.dart` is untouched. A *future* date (the date row,
+slot maths in `models/slot.dart` is untouched. A *future* date (the app bar's date icon,
 normal mode only) keeps its own slot row, because it has no due slots to derive
 from.
 
@@ -41,6 +41,19 @@ the Pixel insets and a 320 dp keyboard, that the field's top is identical in
 every state and `maxScrollExtent == 0`. Macro values of four digits must paint
 whole at 16 sp or more (`macro_input_row_test.dart` measures the digits; a
 `Row` of `Expanded` fields clips them without any exception).
+
+## Date picker and the keyboard
+
+- The "log for later" picker is the **leftmost app bar icon** (`Icons.edit_calendar`,
+  `buildDateActions` in `log_meal_future_mixin.dart`); there is no date row above
+  the field. A picked future date tints it gold (theme primary) with a small
+  dot (`log-date-badge`) and adds a close icon back to today. No date text.
+- **NO COVER BY KEYBOARD EVER** (kuhy): while `viewInsetsOf(context).bottom > 0`
+  the today-progress card and the logged rows are not built; they return when
+  the keyboard closes. Field, suggestions, macros and action row sit fully
+  above the keyboard with `maxScrollExtent == 0`, in normal and due mode, for
+  a 320 dp and a 400 dp keyboard (`log_meal_keyboard_test.dart`). Do not fix
+  an overflow by scrolling content under the keyboard.
 
 ## Logged rows and undo
 

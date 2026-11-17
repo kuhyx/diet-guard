@@ -54,7 +54,7 @@ void main() {
       await open(tester);
       expect(find.byType(AppBar), findsNothing);
       expect(find.byType(SyncHealthBanner), findsNothing);
-      expect(find.byIcon(Icons.date_range), findsNothing);
+      expect(find.byIcon(Icons.edit_calendar), findsNothing);
       expect(find.byType(ChoiceChip), findsNothing);
       expect(find.byIcon(Icons.playlist_add_check), findsNothing);
       // What stays: field, six macro fields, the three buttons.
@@ -71,7 +71,7 @@ void main() {
     await tester.runAsync(() async {
       await open(tester);
       expect(find.byType(AppBar), findsOneWidget);
-      expect(find.byIcon(Icons.date_range), findsOneWidget);
+      expect(find.byIcon(Icons.edit_calendar), findsOneWidget);
       expect(find.byType(ChoiceChip), findsNothing);
       expect(find.byIcon(Icons.playlist_add_check), findsNothing);
       expect(byIconLabel('Photo'), findsOneWidget);

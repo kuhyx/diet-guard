@@ -68,7 +68,7 @@ void main() {
         await settle(tester);
 
         final tomorrowKey = localDateKey(tomorrow());
-        expect(find.text(tomorrowKey), findsOneWidget);
+        expect(byIconLabel('Change date'), findsOneWidget);
 
         final firstSlot = daySlots(MealScheduleService.current).first;
         await tester.tap(find.text(slotLabel(firstSlot)));
@@ -91,7 +91,7 @@ void main() {
         expect(future.time.startsWith(tomorrowKey), isTrue);
 
         // Back to logging for today.
-        expect(find.text(tomorrowKey), findsNothing);
+        expect(byIconLabel('Change date'), findsNothing);
         expect(controlByLabel('Log for later'), findsOneWidget);
       });
     },
@@ -133,12 +133,12 @@ void main() {
       await settle(tester);
       await tester.tap(controlByLabel('Confirm'));
       await settle(tester);
-      expect(find.text(localDateKey(tomorrow())), findsOneWidget);
+      expect(byIconLabel('Change date'), findsOneWidget);
 
       await tester.tap(controlByLabel('Back to today'));
       await settle(tester);
 
-      expect(find.text(localDateKey(tomorrow())), findsNothing);
+      expect(byIconLabel('Change date'), findsNothing);
       expect(controlByLabel('Log for later'), findsOneWidget);
     });
   });

@@ -12,7 +12,6 @@ import 'package:diet_guard_app/models/meal_schedule.dart';
 import 'package:diet_guard_app/models/slot.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
-import 'package:diet_guard_app/ui/theme.dart';
 import 'package:diet_guard_app/widgets/pickers/pickers.dart';
 import 'package:diet_guard_app/widgets/slot_selector_row.dart';
 import 'package:material_ui/material_ui.dart';
@@ -82,45 +81,48 @@ mixin LogMealFutureMixin<T extends StatefulWidget> on State<T> {
     onLogDateChanged();
   }
 
-  /// The "When" row: a "Log for later" button, or the picked date with a
-  /// button to change it and one to clear back to today.
-  Widget buildWhenRow(BuildContext context) {
+  /// The app bar's date actions: the picker (leftmost icon) and, once a date
+  /// is picked, a way back to today. A picked date tints the picker gold with
+  /// a small dot; no text is painted.
+  List<Widget> buildDateActions(BuildContext context) {
     final date = _futureDate;
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        // Today is the default and shows nothing; only a picked date (data)
-        // is shown, marked by the calendar glyph.
-        if (date != null) ...[
-          Icon(
-            Icons.event,
-            size: 18,
-            color: scheme.onSurfaceVariant,
-            semanticLabel: 'Log date',
-          ),
-          const SizedBox(width: AppSpacing.xs),
-        ],
-        Expanded(
-          child: date == null ? const SizedBox() : Text(localDateKey(date)),
+    final gold = Theme.of(context).colorScheme.primary;
+    return [
+      IconButton(
+        // Not Icons.calendar_month: the bar's own "Calendar" nav button uses
+        // that, and two on screen make `find.byIcon` ambiguous.
+        icon: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(
+              Icons.edit_calendar,
+              color: date == null ? null : gold,
+              semanticLabel: date == null ? 'Log for later' : 'Change date',
+            ),
+            if (date != null)
+              Positioned(
+                top: -1,
+                right: -1,
+                child: Container(
+                  key: const ValueKey('log-date-badge'),
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: gold,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
         ),
+        onPressed: _pickFutureDate,
+      ),
+      if (date != null)
         IconButton(
-          // Not Icons.calendar_month: the app bar's own "Calendar" nav button
-          // already uses that, and a second one on screen makes
-          // `find.byIcon` ambiguous for widget tests (and taps) alike.
-          icon: Icon(
-            Icons.date_range,
-            size: 18,
-            semanticLabel: date == null ? 'Log for later' : 'Change date',
-          ),
-          onPressed: _pickFutureDate,
+          icon: const Icon(Icons.close, semanticLabel: 'Back to today'),
+          onPressed: resetFutureLog,
         ),
-        if (date != null)
-          IconButton(
-            icon: const Icon(Icons.close, semanticLabel: 'Back to today'),
-            onPressed: resetFutureLog,
-          ),
-      ],
-    );
+    ];
   }
 
   /// The slot row for a picked future date, else nothing.
