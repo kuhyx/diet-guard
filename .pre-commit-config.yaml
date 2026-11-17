@@ -111,11 +111,11 @@ repos:
           # direct URLs for one distribution, so any pin that drifts from
           # the manifest becomes an unresolvable hook environment rather
           # than merely an old one.
-          - gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.14.0#subdirectory=gatelock
+          - gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.15.0#subdirectory=gatelock
           - crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.11.1#subdirectory=crdt-sync
           - freedays @ git+https://github.com/kuhyx/utils@freedays-v0.4.3#subdirectory=freedays
           - sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.5.5#subdirectory=sickdays
-          - rtdb-relay @ git+https://github.com/kuhyx/utils@rtdb-relay-v0.1.1#subdirectory=rtdb_relay
+          - rtdb-relay @ git+https://github.com/kuhyx/utils@rtdb-relay-v0.2.0#subdirectory=rtdb_relay
           - claude-agent-sdk==0.2.183
           - httpx==0.28.1
           - mcp>=2,<3

@@ -65,6 +65,21 @@ def _third_party_missing(exc: ImportError) -> bool:
     return isinstance(exc, ModuleNotFoundError) and not missing.startswith(PACKAGE)
 
 
+def _lazy_names(value: ast.expr | None) -> list[str]:
+    """The names a PEP 562 ``_LAZY_ATTRS`` table (dict keys or a tuple) serves."""
+    if isinstance(value, ast.Dict):
+        items: list[ast.expr | None] = list(value.keys)
+    elif isinstance(value, (ast.Tuple, ast.List, ast.Set)):
+        items = list(value.elts)
+    else:
+        return []
+    return [
+        i.value
+        for i in items
+        if isinstance(i, ast.Constant) and isinstance(i.value, str)
+    ]
+
+
 def defined_statically(parts: list[str], split: int) -> bool:
     """Whether ``parts[split]`` is a top-level name of module ``parts[:split]``.
 
@@ -81,6 +96,8 @@ def defined_statically(parts: list[str], split: int) -> bool:
         elif isinstance(node, (ast.Assign, ast.AnnAssign)):
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             names = [t.id for t in targets if isinstance(t, ast.Name)]
+            if "_LAZY_ATTRS" in names:
+                names += _lazy_names(node.value)
         elif isinstance(node, (ast.Import, ast.ImportFrom)):
             names = [(a.asname or a.name).split(".")[0] for a in node.names]
         else:

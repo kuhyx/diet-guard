@@ -52,9 +52,14 @@ _logger = logging.getLogger(__name__)
 FETCH_TIMEOUT_S = 5.0
 
 
+#: Names served lazily by ``__getattr__`` (read statically by
+#: scripts/check_patch_targets.py when the catering client cannot import).
+_LAZY_ATTRS = ("refresh_delivery",)
+
+
 def __getattr__(name: str) -> object:
     """Resolve the deferred catering import on first attribute access."""
-    if name != "refresh_delivery":
+    if name not in _LAZY_ATTRS:
         msg = f"module {__name__!r} has no attribute {name!r}"
         raise AttributeError(msg)
     return import_module("diet_guard._kuchnia_import").refresh_delivery

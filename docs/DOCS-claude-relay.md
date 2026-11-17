@@ -3,7 +3,7 @@
 The phone sends a food description and/or a photo. A worker on the PC runs
 Claude on kuhy's Max subscription, **logs the meal at once (no review)** and
 answers the phone. Transport is Firebase RTDB through the shared
-`rtdb_relay` package (`kuhyx/utils`, tag `rtdb-relay-v0.1.1`), the same wire
+`rtdb_relay` package (`kuhyx/utils`, tag `rtdb-relay-v0.2.0`), the same wire
 format as the tutor app. No VPN, no open port, only kuhy's Google account.
 
 This file is the contract both halves build against. The fixture
