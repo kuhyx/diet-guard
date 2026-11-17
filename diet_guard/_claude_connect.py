@@ -1,12 +1,14 @@
 """Connecting the relay worker to RTDB, signed in and unlocked.
 
 The database URL and API key come from crdt-sync's shared
-``~/.config/crdt-sync/firebase.json``; the signed-in session is the worker's
-own app, ``~/.config/diet_guard_claude/firebase_auth.json`` (seeded once with
-crdt-sync's ``seed_session --app diet_guard_claude``). Never the gate's
-``diet_guard`` session file: two processes refreshing one token file corrupt
-it. Never ``firebase_client_for``: without a session it falls back to the
-dead shared password and fails with a misleading error.
+``~/.config/crdt-sync/firebase.json``; the signed-in session is the sync's own,
+``~/.config/diet_guard/firebase_auth.json``. Sharing it is safe: the worker's
+pull and publish already refresh it through the ordinary sync client,
+Firebase does not invalidate an older refresh token when one is reused, and
+crdt-sync's ``FileCredentialStore`` writes atomically with a unique temp name
+for exactly this several-process case. Never ``firebase_client_for``: without
+a session it falls back to the dead shared password and fails with a
+misleading error.
 
 :func:`connect_sealed` is the worker's only network entry point besides the
 event stream it returns; ``conftest`` blocks it.
@@ -35,7 +37,7 @@ from diet_guard._claude_layout import E2E_LAYOUT, LAYOUT, ROOT
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
-APP: Final = "diet_guard_claude"
+APP: Final = "diet_guard"
 
 
 class RelaySetupError(RuntimeError):
@@ -65,8 +67,8 @@ def connect() -> Rtdb:
     provider = FirebaseTokenProvider(config.api_key, credential_store_for(APP))
     if not provider.has_session():
         msg = (
-            f"no signed-in session in ~/.config/{APP}/firebase_auth.json; seed it "
-            f"with crdt-sync: python3 -m tool.seed_session ... --app {APP}"
+            f"no signed-in session in ~/.config/{APP}/firebase_auth.json; sign "
+            "diet_guard's sync in first (the phone and the gate use the same one)"
         )
         raise RelaySetupError(msg)
     return Rtdb(config.database_url, token_source(provider), root=ROOT)

@@ -38,7 +38,7 @@ def _provider(*, session: bool = True, token: str | Exception = "tok") -> Mock:
 
 # -- connect --------------------------------------------------------------------
 def test_connect_builds_a_client_rooted_at_the_relay() -> None:
-    """Config and the worker's own session give an Rtdb on the relay root."""
+    """Config and the sync's session give an Rtdb on the relay root."""
     provider = _provider()
     with (
         patch.object(connect_mod.FirebaseConfig, "load", return_value=CONFIG),
@@ -46,7 +46,7 @@ def test_connect_builds_a_client_rooted_at_the_relay() -> None:
         patch.object(connect_mod, "credential_store_for") as store,
     ):
         rtdb = connect_mod.connect()
-    store.assert_called_once_with("diet_guard_claude")
+    store.assert_called_once_with("diet_guard")
     assert rtdb.root == ROOT
     assert rtdb.sealer is None
 
@@ -62,8 +62,8 @@ def test_connect_without_firebase_config_is_a_setup_error() -> None:
         connect_mod.connect()
 
 
-def test_connect_without_a_session_names_the_seed_command() -> None:
-    """No signed-in session: the error says how to seed one for this app."""
+def test_connect_without_a_session_names_the_session_file() -> None:
+    """No signed-in session: the error says where the sync's session lives."""
     with (
         patch.object(connect_mod.FirebaseConfig, "load", return_value=CONFIG),
         patch.object(connect_mod, "credential_store_for"),
@@ -72,7 +72,7 @@ def test_connect_without_a_session_names_the_seed_command() -> None:
         ),
         pytest.raises(
             connect_mod.RelaySetupError,
-            match=r"seed_session .* --app diet_guard_claude",
+            match=r"~/.config/diet_guard/firebase_auth.json",
         ),
     ):
         connect_mod.connect()

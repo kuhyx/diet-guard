@@ -182,13 +182,14 @@ unit lives at the repo root with the other two, `install.sh` installs it).
   node, so requests that arrived while the PC was off are served in order.
 - Waits are only for faults: the e2e unlock and a failed pre-pull retry
   every 60 s / 30 s while something is pending. No idle timer.
-- Session: the RTDB stream uses its own Firebase app name `diet_guard_claude`
-  (`~/.config/diet_guard_claude/firebase_auth.json`), so the stream never
-  shares a refresh token file with another process. Seed once, see "Deploy".
-  The pull and publish go through the ordinary sync client, so the worker
-  also refreshes the gate's `~/.config/diet_guard/firebase_auth.json`,
-  exactly as the CLI's own publish does. The database URL and API key come
-  from `~/.config/crdt-sync/firebase.json`; the passphrase from
+- Session: the worker shares the sync's own Firebase session,
+  `~/.config/diet_guard/firebase_auth.json` (app name `diet_guard`); there is
+  no separate seed. Sharing is safe: the worker's pull and publish already go
+  through the ordinary sync client and refresh that file, Firebase keeps an
+  older refresh token valid after a refresh, and crdt-sync's
+  `FileCredentialStore` saves atomically under a unique temp name for exactly
+  this several-process case. The database URL and API key come from
+  `~/.config/crdt-sync/firebase.json`; the passphrase from
   `~/.config/crdt-sync/password`.
 - One worker per PC. Claim leases last 300 s and renew every 60 s.
 - Dependencies (`rtdb_relay`, `httpx`, `claude_agent_sdk`) are imported only
@@ -233,9 +234,6 @@ model answer with a grilling round.
 1. `/usr/bin/python3 -m pip install --user --break-system-packages -e .`
    from `~/src/diet-guard` (new deps: `claude-agent-sdk`, `rtdb-relay`,
    `httpx`); verify `/usr/bin/python3 -c "import claude_agent_sdk, rtdb_relay, httpx"`.
-2. Seed the worker's session once (one Google consent):
-   `python3 -m tool.seed_session --client-id ... --client-secret ... --app diet_guard_claude`
-   in `~/src/utils/crdt-sync`.
-3. `bash install.sh` (copies and enables `diet-guard-claude.service` once
-   the session file exists).
-4. Phone side: [DOCS-claude-relay-phone.md](DOCS-claude-relay-phone.md).
+2. `bash install.sh` (copies and enables `diet-guard-claude.service` once
+   the sync session file exists; no Google consent needed).
+3. Phone side: [DOCS-claude-relay-phone.md](DOCS-claude-relay-phone.md).
