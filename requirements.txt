@@ -23,6 +23,6 @@ pytest-sugar==1.1.1
 pytest-xdist==3.8.0
 pytest-xvfb==3.1.1
 requests==2.34.2
-rtdb-relay @ git+https://github.com/kuhyx/utils@rtdb-relay-v0.2.0#subdirectory=rtdb_relay
+rtdb-relay @ git+https://github.com/kuhyx/utils@rtdb-relay-v0.2.1#subdirectory=rtdb_relay
 ruff==0.17.5
 sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.5.5#subdirectory=sickdays

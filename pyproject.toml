@@ -13,7 +13,7 @@ dependencies = [
     "defusedxml==0.7.1",
     "httpx==0.28.1",
     "requests==2.34.2",
-    "rtdb-relay @ git+https://github.com/kuhyx/utils@rtdb-relay-v0.2.0#subdirectory=rtdb_relay",
+    "rtdb-relay @ git+https://github.com/kuhyx/utils@rtdb-relay-v0.2.1#subdirectory=rtdb_relay",
 ]
 
 # Optional extras. The `mcp` group is ONLY needed by the MCP server
