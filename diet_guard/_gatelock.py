@@ -34,7 +34,6 @@ Building ``MealGate`` spans several sibling modules (the 250-line limit):
 :mod:`._gatelock_mealflow` the submit/log flow, dashboard, callback errors and
 pull-it-in buttons (``_GateMealFlow`` + ``_PullFlows``); :mod:`._gatelock_calendar`
 the tab -- calendar, streaks, YTD tally (:mod:`._daystatus`), budget editing.
-``MealGate`` wires these together and owns the ``gatelock.LockWindow``.
 """
 
 from __future__ import annotations
@@ -52,6 +51,7 @@ from gatelock import (
     wait_for_turn,
 )
 
+from diet_guard import _errors
 from diet_guard._gate import due_slots
 from diet_guard._gatelock_calendar import _GateCalendar, make_calendar_vars
 from diet_guard._gatelock_core import _GateState
@@ -215,6 +215,7 @@ class MealGate(_GateCalendar):
     def run(self) -> None:
         """Run the Tk loop (a hold or a meal logged elsewhere closes it), VT-safe."""
         watch_hold(self.root, self.close)
+        _errors.watch(self.root)  # here, not at build: the turn wait is no stall
         if not self.demo_mode:  # a demo owes a synthetic slot: it would self-close
             arm_credit_watch(
                 self.root, lambda: self._pending, self._reconcile_after_fetch

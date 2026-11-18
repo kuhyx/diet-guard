@@ -27,6 +27,7 @@ from unittest.mock import patch
 
 import pytest
 
+from diet_guard import _errors
 from diet_guard._estimator import Nutrition
 
 # Importing these fixtures IS their registration: pytest discovers fixtures
@@ -113,6 +114,15 @@ def _isolate_state(tmp_path: Path) -> Iterator[None]:
         stack.enter_context(
             patch.dict(os.environ, {"HOLDS_DATA": str(tmp_path / "holds.json")})
         )
+        # gatelock hooks a process once; a reporter already in INSTALLED makes
+        # install() return it untouched, so no hook is set and every report
+        # lands in this test's folder, never the real app-errors spool.
+        spool = tmp_path / "app-errors-spool"
+        rep = _errors.error_report.Reporter(_errors.APP, _errors.REPO, spool=spool)
+        stack.enter_context(
+            patch.object(_errors.error_report.INSTALLED, "reporter", rep)
+        )
+        stack.enter_context(patch.object(_errors.SLOT, "reporter", None))
         yield
 
 

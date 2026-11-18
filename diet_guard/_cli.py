@@ -6,12 +6,10 @@ Examples:
     python -m diet_guard ate "two slices of pizza" --grams 240
     python -m diet_guard ate "protein shake" --kcal 180
     python -m diet_guard status
-    python -m diet_guard averages
     python -m diet_guard undo
 
-The daily budget lives outside the repo (so it is never exposed online) but is
-shown freely on this machine: ``status`` and each log print how many calories
-are left of the day's budget, plus which meal slots still need logging.
+``status`` and each log print the calories left of the day's budget (kept
+outside the repo) and which meal slots still need logging.
 """
 
 from __future__ import annotations
@@ -19,6 +17,7 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
+from diet_guard import _errors
 from diet_guard._budget import (
     BudgetFileCorruptError,
     BudgetNotInitializedError,
@@ -247,4 +246,5 @@ def main(argv: list[str] | None = None) -> int:
         A process exit code (0 on success).
     """
     args = parse_args(sys.argv[1:] if argv is None else argv)
+    _errors.install()
     return _COMMANDS[args.command](args)

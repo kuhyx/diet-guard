@@ -87,6 +87,15 @@ bash scripts/setup_mcp.sh   # create the venv and install diet_guard[mcp]
 Then restart Claude Code in this repo and approve the project MCP server
 (registered in `.mcp.json`).
 
+## Error reports
+
+Every uncaught, thread or Tk callback error, and any freeze of the gate window
+over 1 s, goes to the shared app-errors spool as app `diet-guard-gate`
+through `gatelock.error_report` (`diet_guard/_errors.py`, installed by the
+CLI). The PC's `app-errors` timer turns each one into a ticket on the
+todoImplementer board (kuhyx/utils `DOCS-app-errors.md`). Nothing shows on
+screen. The Flutter app reports on its own, as `diet-guard`.
+
 ## Development
 
 ```bash
