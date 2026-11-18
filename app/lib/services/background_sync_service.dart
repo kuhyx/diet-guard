@@ -15,6 +15,7 @@ import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/kuchnia_credential_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
+import 'package:diet_guard_app/services/sync_attempt.dart';
 import 'package:diet_guard_app/services/sync_device_id.dart';
 import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
@@ -90,21 +91,14 @@ Future<bool> backgroundSyncPush({http.Client? httpClient}) async {
     return true; // nothing to push; don't retry
   }
   final client = createGitHubClient(settings, httpClient: httpClient);
-  try {
-    await runSync(await syncBackend(client));
-    await SyncHealth.recordSuccess();
-    return true;
-  } on Exception catch (error, stackTrace) {
-    // Never silent: this is the only signal that a background push failed.
-    log(
-      'diet_guard background sync failed',
-      level: 1000,
-      error: error,
-      stackTrace: stackTrace,
-    );
-    await SyncHealth.recordFailure();
-    return false; // offline / transient error -> retry with backoff
-  } finally {
-    client.close();
-  }
+  // Never silent: attemptSync records the outcome, the only signal that a
+  // background push failed. False -> WorkManager retries with backoff.
+  final landed = await attemptSync(() async {
+    try {
+      await runSync(await syncBackend(client));
+    } finally {
+      client.close();
+    }
+  });
+  return landed;
 }

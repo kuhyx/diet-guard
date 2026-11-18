@@ -22,6 +22,7 @@ show adherence, streaks, a YTD tally and weekly/monthly averages, all derived fr
 - test-changed: `scripts/test_changed.sh` (maps py and app/ dart changes to their tests, no coverage)
 - lint: `pre-commit run --all-files`
 - coverage: `python -m pytest -n auto -p no:sugar -q` (writes coverage.lcov)
+- deploy: `bash scripts/deploy.sh` (pull ~/src/diet-guard, system-Python install, desktop app; health-checked)
 - coverage-gaps: `coverage-gaps coverage.lcov`
 
 ## Scheduling
@@ -238,10 +239,8 @@ only); the CLI, gate and phone show both.
 
 ## Flutter/Dart AI rules
 
-_Vendored from [flutter/flutter
-docs/rules/rules.md](https://github.com/flutter/flutter/blob/main/docs/rules/rules.md) via
-`~/.claude/CLAUDE.md` Flutter AI tooling setup. Re-fetch periodically. Split across five files to
-stay under the 250-line cap._
+_Vendored from [flutter/flutter docs/rules/rules.md](https://github.com/flutter/flutter/blob/main/docs/rules/rules.md)
+via `~/.claude/CLAUDE.md`. Re-fetch periodically. Split across five files for the 250-line cap._
 
 - [Language, style and architecture](docs/DOCS-flutter-rules-language.md)
 - [Architecture, lint rules, state and data](docs/DOCS-flutter-rules-state-and-data.md)

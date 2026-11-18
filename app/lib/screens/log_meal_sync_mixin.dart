@@ -8,6 +8,7 @@ import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/github_client_factory.dart';
 import 'package:diet_guard_app/services/health_steps.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
+import 'package:diet_guard_app/services/sync_attempt.dart';
 import 'package:diet_guard_app/services/sync_health.dart';
 import 'package:diet_guard_app/services/sync_service.dart';
 import 'package:diet_guard_app/services/sync_settings.dart';
@@ -68,6 +69,7 @@ mixin LogMealSyncMixin<T extends StatefulWidget> on State<T>
   Future<void> autoSync() async {
     if (autoSyncing) return;
     autoSyncing = true;
+    bool? landed; // null until the sync itself ran
     try {
       final settings = await SyncSettings.load();
       // Either backend counts. `isConfigured` means "has a GitHub token", so
@@ -87,17 +89,19 @@ mixin LogMealSyncMixin<T extends StatefulWidget> on State<T>
         return;
       }
       final client = createGitHubClient(settings, httpClient: syncHttpClient);
-      try {
-        // Foreground only (this mixin is UI), and never prompts: fresh
-        // Health Connect steps ride along in this tick's body.json.
-        await refreshSteps();
-        await runSync(await syncBackend(client));
-        await SyncHealth.recordSuccess();
-      } finally {
-        client.close();
-      }
+      landed = await attemptSync(() async {
+        try {
+          // Foreground only (this mixin is UI), and never prompts: fresh
+          // Health Connect steps ride along in this tick's body.json.
+          await refreshSteps();
+          await runSync(await syncBackend(client));
+        } finally {
+          client.close();
+        }
+      });
       if (!mounted) return;
-      await refreshSlots();
+      // Outside attemptSync: a refresh error is no sync failure.
+      if (landed) await refreshSlots();
       await refreshSyncHealth();
     } on Object catch (error, stackTrace) {
       // Best-effort, but never silent: this swallowed the reason a desktop
@@ -110,7 +114,9 @@ mixin LogMealSyncMixin<T extends StatefulWidget> on State<T>
         error: error,
         stackTrace: stackTrace,
       );
-      await SyncHealth.recordFailure();
+      // attemptSync already recorded the sync's own outcome; only a failure
+      // before it (loading settings) is one here.
+      if (landed == null) await SyncHealth.recordFailure();
       if (mounted) await refreshSyncHealth();
     } finally {
       autoSyncing = false;
