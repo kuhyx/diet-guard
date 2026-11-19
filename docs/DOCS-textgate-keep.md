@@ -19,6 +19,9 @@ and `test_gate_no_words_static.py` (Tk gate), `app/test/no_words_*_test.dart`
 |---|---|---|
 | `app/lib/main.dart` | `Diet Guard` | `MaterialApp.title`: task switcher and tab name |
 | `diet_guard/_gatelock.py` | `Diet Gate` | window title, an identifier under override-redirect |
+| `app/android/app/src/main/AndroidManifest.xml` | `DietGuard` | `android:label`: launcher name |
+| `app/desktop/install_desktop_entry.sh` | `DietGuard`, `Diet logging and budget companion` | `.desktop` Name and Comment: app-menu entry |
+| `packaging/aur/PKGBUILD` | `DietGuard`, `Diet logging and budget companion` | `.desktop` Name and Comment in the AUR package |
 
 The launcher label and notification channel (`DietGuard`) live in
 `AndroidManifest.xml` and `notification_backend_io.dart`; a due-slot
