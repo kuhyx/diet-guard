@@ -281,7 +281,7 @@ repos:
       # patch target statically so a stale path fails the commit instead.
       - id: patch-targets
         name: test patch targets resolve
-        entry: python3 scripts/check_patch_targets.py
+        entry: python3 scripts/check_patch_targets.py diet_guard
         language: system
         pass_filenames: false
         files: ^diet_guard/

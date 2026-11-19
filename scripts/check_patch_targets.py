@@ -10,12 +10,20 @@ suite writes to the real ``~/.local/share/diet_guard``, which
 That is why this gate exists rather than a note in CLAUDE.md: the failure it
 guards against is silent and green, so only a static check catches it.
 
-Usage:
-    python3 scripts/check_patch_targets.py
+Usage (from the repo root):
+    python3 scripts/check_patch_targets.py PACKAGE [--tests-root DIR]
+
+``PACKAGE`` is required: only patch targets starting with it are checked, and
+a silent default would be the same fail-open shape this script guards
+against. ``--tests-root`` defaults to ``PACKAGE/tests``. Only flat packages
+at the repo root are supported. Adopting it in another repo:
+docs/DOCS-patch-targets.md. A shared ``~/src/utils/patch_targets/`` package is
+a separate follow-up, once a second repo actually adopts this script.
 """
 
 from __future__ import annotations
 
+import argparse
 import ast
 import importlib
 import pathlib
@@ -24,12 +32,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-
-#: Only paths into this package are checked; a patch of `requests` or `tk` is
-#: not ours to validate.
-PACKAGE = "diet_guard"
-
-TESTS_ROOT = pathlib.Path(PACKAGE) / "tests"
 
 # Running this as `python3 scripts/check_patch_targets.py` puts *scripts/* on
 # sys.path, not the repo root -- so `import diet_guard` fails unless the
@@ -40,8 +42,19 @@ TESTS_ROOT = pathlib.Path(PACKAGE) / "tests"
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 
-def patch_targets(root: pathlib.Path) -> Iterator[tuple[pathlib.Path, int, str]]:
-    """Yield ``(file, lineno, dotted_target)`` for every literal patch target."""
+def _in_package(dotted: str, package: str) -> bool:
+    """Whether ``dotted`` is ``package`` or inside it (``pkg`` is not ``pkg_a``)."""
+    return dotted == package or dotted.startswith(f"{package}.")
+
+
+def patch_targets(
+    root: pathlib.Path, package: str
+) -> Iterator[tuple[pathlib.Path, int, str]]:
+    """Yield ``(file, lineno, dotted_target)`` for each literal target in ``package``.
+
+    Only paths into ``package`` are checked; a patch of ``requests`` or ``tk``
+    is not ours to validate.
+    """
     for path in sorted(root.rglob("*.py")):
         tree = ast.parse(path.read_text(), str(path))
         for node in ast.walk(tree):
@@ -54,15 +67,15 @@ def patch_targets(root: pathlib.Path) -> Iterator[tuple[pathlib.Path, int, str]]
             if (
                 isinstance(first, ast.Constant)
                 and isinstance(first.value, str)
-                and first.value.startswith(PACKAGE)
+                and _in_package(first.value, package)
             ):
                 yield path, node.lineno, first.value
 
 
-def _third_party_missing(exc: ImportError) -> bool:
-    """Whether ``exc`` is a missing dependency, not a missing diet_guard module."""
+def _third_party_missing(exc: ImportError, package: str) -> bool:
+    """Whether ``exc`` is a missing dependency, not a missing ``package`` module."""
     missing = getattr(exc, "name", None) or ""
-    return isinstance(exc, ModuleNotFoundError) and not missing.startswith(PACKAGE)
+    return isinstance(exc, ModuleNotFoundError) and not _in_package(missing, package)
 
 
 def _lazy_names(value: ast.expr | None) -> list[str]:
@@ -107,7 +120,7 @@ def defined_statically(parts: list[str], split: int) -> bool:
     return False
 
 
-def resolves(dotted: str) -> bool:
+def resolves(dotted: str, package: str) -> bool:
     """Whether ``dotted`` names a real attribute reachable from a real module.
 
     Tries the longest importable module prefix first, then walks the remaining
@@ -122,7 +135,7 @@ def resolves(dotted: str) -> bool:
             # worker's `rtdb_relay`, absent from the system python this hook
             # runs under) still has a source file: check the name statically
             # rather than call a present target stale.
-            if _third_party_missing(exc) and defined_statically(parts, split):
+            if _third_party_missing(exc, package) and defined_statically(parts, split):
                 return True
             continue
         obj: object = module
@@ -134,10 +147,25 @@ def resolves(dotted: str) -> bool:
     return False
 
 
-def main() -> int:
+def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+    """``package`` (required, no default) and ``--tests-root``."""
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("package", help="top-level package whose targets to check")
+    parser.add_argument(
+        "--tests-root",
+        type=pathlib.Path,
+        help="directory of tests to scan (default: PACKAGE/tests)",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
     """Report every unresolvable patch target; return 1 if any were found."""
-    if not TESTS_ROOT.is_dir():
-        sys.stderr.write(f"Error: {TESTS_ROOT} not found; run from the repo root.\n")
+    args = _parse_args(argv)
+    package: str = args.package
+    tests_root: pathlib.Path = args.tests_root or pathlib.Path(package) / "tests"
+    if not tests_root.is_dir():
+        sys.stderr.write(f"Error: {tests_root} not found; run from the repo root.\n")
         return 1
 
     # Distinguish "this target moved" from "the package will not import at
@@ -145,10 +173,10 @@ def main() -> int:
     # target reports stale at once, which reads like a catastrophic refactor
     # and hides the real error (a missing dependency, a syntax error).
     try:
-        importlib.import_module(PACKAGE)
+        importlib.import_module(package)
     except ImportError as exc:
         sys.stderr.write(
-            f"Error: cannot import {PACKAGE} ({exc}); every patch target would "
+            f"Error: cannot import {package} ({exc}); every patch target would "
             f"be reported stale. Fix the import first -- this is an environment "
             f"problem, not a stale patch target.\n",
         )
@@ -156,8 +184,8 @@ def main() -> int:
 
     stale = [
         (path, lineno, target)
-        for path, lineno, target in patch_targets(TESTS_ROOT)
-        if not resolves(target)
+        for path, lineno, target in patch_targets(tests_root, package)
+        if not resolves(target, package)
     ]
     for path, lineno, target in stale:
         sys.stderr.write(f"{path}:{lineno}: patch target does not resolve: {target}\n")
