@@ -1,7 +1,7 @@
 # Diet Guard — runtime + development dependencies
 # Runtime: tkinter/json/hmac/fcntl (stdlib) plus gatelock and requests below.
 bandit==1.9.4
-claude-agent-sdk==0.2.184
+claude-agent-sdk==0.2.185
 codespell==2.4.3
 coverage==7.17.3
 crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.11.1#subdirectory=crdt-sync

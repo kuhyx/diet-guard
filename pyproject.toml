@@ -9,7 +9,7 @@ dependencies = [
     "freedays @ git+https://github.com/kuhyx/utils@freedays-v0.4.3#subdirectory=freedays",
     "holds @ git+https://github.com/kuhyx/utils@holds-v0.1.0#subdirectory=holds",
     "sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.5.5#subdirectory=sickdays",
-    "claude-agent-sdk==0.2.184",
+    "claude-agent-sdk==0.2.185",
     "defusedxml==0.7.1",
     "httpx==0.28.1",
     "requests==2.34.2",
