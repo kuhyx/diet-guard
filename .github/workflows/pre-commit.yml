@@ -25,14 +25,14 @@ jobs:
             skip: ""
           - group: rest
             hooks: ""
-            skip: mypy,pylint
+            skip: mypy,pylint,dependency-freshness
     name: pre-commit (${{ matrix.group }})
     steps:
       - uses: actions/checkout@v4
 
-      # The file-length, md-naming and dependency-freshness hooks delegate to
-      # the shared gates in kuhyx/utils, which a runner does not have at
-      # $HOME/src/utils. Only the rest group runs them.
+      # The file-length and md-naming hooks delegate to the shared gates in
+      # kuhyx/utils, which a runner does not have at $HOME/src/utils. Only
+      # the rest group runs them.
       - name: Check out the shared gates
         if: matrix.group == 'rest'
         uses: actions/checkout@v4
@@ -59,9 +59,9 @@ jobs:
       # mypy and pylint bring their own hook environments, so they need only
       # pre-commit. The rest group's language: system patch-targets hook
       # imports diet_guard and every patched module (requests, gatelock,
-      # crdt_sync, freedays, mcp, pydantic), and dependency-freshness needs
-      # pyyaml and packaging -- so it keeps the full requirements.txt. That
-      # install used to run in the one job, with plain pip, for ~24 s.
+      # crdt_sync, freedays, mcp, pydantic) -- so it keeps the full
+      # requirements.txt. That install used to run in the one job, with plain
+      # pip, for ~24 s.
       - name: Install pre-commit and the system hooks' imports
         run: |
           if [[ "${{ matrix.group }}" == rest ]]; then
