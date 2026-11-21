@@ -65,13 +65,20 @@ void main() {
   // GitHubMirrorScreen loads its settings via a fire-and-forget Future in
   // initState that Flutter's frame scheduler does not track -- same pitfall
   // as HistoryScreen/LogMealScreen.
-  Future<void> settle(WidgetTester tester) async {
+  // [until]: keep pumping (max 5 s) until it is found -- a sync tick's real
+  // I/O outlasts the fixed 200 ms on a loaded machine.
+  Future<void> settle(WidgetTester tester, {Finder? until}) async {
     tester.view.physicalSize = const Size(800, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await Future<void>.delayed(const Duration(milliseconds: 200));
-    await tester.pumpAndSettle();
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    do {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+    } while (until != null &&
+        until.evaluate().isEmpty &&
+        DateTime.now().isBefore(deadline));
   }
 
   /// Drains the device flow's real `Future.delayed` poll (GitHubDeviceAuth
@@ -167,7 +174,7 @@ void main() {
       await settle(tester);
 
       await tester.tap(controlByLabel('Sync now'));
-      await settle(tester);
+      await settle(tester, until: cueLabelled('Synced.'));
 
       expect(cueLabelled('Synced.'), findsOneWidget);
     });
@@ -197,7 +204,7 @@ void main() {
       await settle(tester);
 
       await tester.tap(controlByLabel('Sync now'));
-      await settle(tester);
+      await settle(tester, until: cueLabelled('Synced.'));
 
       expect(cueLabelled('Synced.'), findsOneWidget);
       final status = await SyncHealth.read();
@@ -228,7 +235,7 @@ void main() {
       await settle(tester);
 
       await tester.tap(controlByLabel('Sync now'));
-      await settle(tester);
+      await settle(tester, until: cueOfKind(CueKind.error));
 
       expect(cueOfKind(CueKind.error), findsOneWidget);
     });
