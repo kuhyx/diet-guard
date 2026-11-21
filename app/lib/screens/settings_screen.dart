@@ -51,8 +51,7 @@ class SettingsScreen extends StatefulWidget {
     this.firebaseFactory,
   });
 
-  /// Injectable HTTP client for the linked [GitHubMirrorScreen]; tests pass
-  /// a [MockClient].
+  /// HTTP client for the linked [GitHubMirrorScreen]; tests pass [MockClient].
   final http.Client? httpClient;
 
   /// Injectable battery-optimization-exemption request; tests pass a fake.
@@ -72,14 +71,10 @@ class SettingsScreen extends StatefulWidget {
   /// Reads the stored Firebase account. Injected for the same reason as
   /// [googleFirebaseFactory]: the keystore is a platform channel.
   ///
-  /// Deliberately backed by [storedAccount], not [loadAccount]: the shared
-  /// `SyncSettingsScreen` uses this single closure both to display the
-  /// status and to read back the account right after a Google sign-in.
-  /// [loadAccount]'s desktop-wrapper fallback resolves to `file:///` on
-  /// Android and throws -- verified on the phone, where it turned a
-  /// successful sign-in into "Google sign-in failed". `storedAccount` is the
-  /// keystore-only read [firebase_backend.dart] documents for exactly this
-  /// read-back case.
+  /// Backed by [storedAccount], not [loadAccount]: the shared screen reads
+  /// the account back right after a Google sign-in, and [loadAccount]'s
+  /// desktop fallback throws on Android (seen on the phone as "Google sign-in
+  /// failed"). See the keystore-only read in [firebase_backend.dart].
   final Future<FirebaseAccount?> Function()? accountLoader;
 
   /// Persists the account. See [accountLoader].
