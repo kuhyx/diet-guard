@@ -3,6 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Final
+
+RANK_DIET_GUARD: Final = 130
+"""gatelock arbitration rank: after the tutor (150), before focus-guard (128)
+and LeetCode (125) (``DOCS-lock-order.md``, kuhy 2026-11-21). A literal, not
+``gatelock.RANK_DIET_GUARD`` (100), so no gatelock release is needed."""
 
 # --- Daily target -----------------------------------------------------------
 # There is deliberately NO budget number here.  It is computed once from

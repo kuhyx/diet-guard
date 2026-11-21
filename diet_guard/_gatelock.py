@@ -42,7 +42,6 @@ import sys
 import tkinter as tk
 
 from gatelock import (
-    RANK_DIET_GUARD,
     Arbiter,
     GateRoot,
     LockConfig,
@@ -52,6 +51,7 @@ from gatelock import (
 )
 
 from diet_guard import _errors
+from diet_guard._constants import RANK_DIET_GUARD
 from diet_guard._gate import due_slots
 from diet_guard._gatelock_calendar import _GateCalendar, make_calendar_vars
 from diet_guard._gatelock_core import _GateState
