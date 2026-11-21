@@ -164,7 +164,14 @@ run_flutter_test_shard() {
     done < <(find "$APP_DIR/test" -name '*_test.dart' | LC_ALL=C sort)
     ((${#files[@]} > 0)) || fail "flutter test shard $index/$total has no test files"
     log "flutter test shard $index/$total (${#files[@]} files)"
-    (cd "$APP_DIR" && flutter_clean_env test "${files[@]}") || fail "flutter test shard $index/$total"
+    # A private TMPDIR per shard: on the shared /tmp a shard stalled at ~2 s of
+    # CPU for 15+ minutes (2026-11-21, held a build slot past 60 s) while the
+    # same shard with its own TMPDIR finished in well under a minute.
+    local tmp status=0
+    tmp="$(mktemp -d "${XDG_CACHE_HOME:-$HOME/.cache}/diet-guard-flutter-test.XXXXXX")"
+    (cd "$APP_DIR" && TMPDIR="$tmp" flutter_clean_env test "${files[@]}") || status=$?
+    rm -rf -- "$tmp"
+    ((status == 0)) || fail "flutter test shard $index/$total"
 }
 
 # No phase argument (or pytest options) runs everything, exactly as CI does.
