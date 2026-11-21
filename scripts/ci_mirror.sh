@@ -147,7 +147,10 @@ run_flutter_gates() {
 }
 
 # Bucket I of N of the app's test files (every N-th, sorted), so the N buckets
-# partition the suite exactly. Each bucket stays under the 60 s action cap.
+# partition the suite exactly. Each bucket stays under the 60 s action cap:
+# at 6 buckets of 25 files one took 39 s alone and 63-67 s when the machine
+# was busy (2026-11-21), so there are 12 (about 13 files each). Add hooks,
+# not files per hook, when the suite grows; a lone file costs about 3 s.
 run_flutter_test_shard() {
     [[ ${1:-} =~ ^([0-9]+)/([1-9][0-9]*)$ ]] || fail "flutter-test --shard wants I/N, got '${1:-}'"
     local index=${BASH_REMATCH[1]} total=${BASH_REMATCH[2]} hooks i=0 file

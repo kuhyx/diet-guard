@@ -175,48 +175,96 @@ repos:
         require_serial: true
         stages: [manual]
       - id: ci-mirror-flutter-test-1
-        name: CI mirror 5 (flutter test 1/6)
-        entry: bash scripts/ci_mirror.sh flutter-test --shard 0/6
+        name: CI mirror 5 (flutter test 1/12)
+        entry: bash scripts/ci_mirror.sh flutter-test --shard 0/12
         language: system
         pass_filenames: false
         always_run: true
         require_serial: true
         stages: [manual]
       - id: ci-mirror-flutter-test-2
-        name: CI mirror 6 (flutter test 2/6)
-        entry: bash scripts/ci_mirror.sh flutter-test --shard 1/6
+        name: CI mirror 6 (flutter test 2/12)
+        entry: bash scripts/ci_mirror.sh flutter-test --shard 1/12
         language: system
         pass_filenames: false
         always_run: true
         require_serial: true
         stages: [manual]
       - id: ci-mirror-flutter-test-3
-        name: CI mirror 7 (flutter test 3/6)
-        entry: bash scripts/ci_mirror.sh flutter-test --shard 2/6
+        name: CI mirror 7 (flutter test 3/12)
+        entry: bash scripts/ci_mirror.sh flutter-test --shard 2/12
         language: system
         pass_filenames: false
         always_run: true
         require_serial: true
         stages: [manual]
       - id: ci-mirror-flutter-test-4
-        name: CI mirror 8 (flutter test 4/6)
-        entry: bash scripts/ci_mirror.sh flutter-test --shard 3/6
+        name: CI mirror 8 (flutter test 4/12)
+        entry: bash scripts/ci_mirror.sh flutter-test --shard 3/12
         language: system
         pass_filenames: false
         always_run: true
         require_serial: true
         stages: [manual]
       - id: ci-mirror-flutter-test-5
-        name: CI mirror 9 (flutter test 5/6)
-        entry: bash scripts/ci_mirror.sh flutter-test --shard 4/6
+        name: CI mirror 9 (flutter test 5/12)
+        entry: bash scripts/ci_mirror.sh flutter-test --shard 4/12
         language: system
         pass_filenames: false
         always_run: true
         require_serial: true
         stages: [manual]
       - id: ci-mirror-flutter-test-6
-        name: CI mirror 10 (flutter test 6/6)
-        entry: bash scripts/ci_mirror.sh flutter-test --shard 5/6
+        name: CI mirror 10 (flutter test 6/12)
+        entry: bash scripts/ci_mirror.sh flutter-test --shard 5/12
+        language: system
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        stages: [manual]
+      - id: ci-mirror-flutter-test-7
+        name: CI mirror 11 (flutter test 7/12)
+        entry: bash scripts/ci_mirror.sh flutter-test --shard 6/12
+        language: system
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        stages: [manual]
+      - id: ci-mirror-flutter-test-8
+        name: CI mirror 12 (flutter test 8/12)
+        entry: bash scripts/ci_mirror.sh flutter-test --shard 7/12
+        language: system
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        stages: [manual]
+      - id: ci-mirror-flutter-test-9
+        name: CI mirror 13 (flutter test 9/12)
+        entry: bash scripts/ci_mirror.sh flutter-test --shard 8/12
+        language: system
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        stages: [manual]
+      - id: ci-mirror-flutter-test-10
+        name: CI mirror 14 (flutter test 10/12)
+        entry: bash scripts/ci_mirror.sh flutter-test --shard 9/12
+        language: system
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        stages: [manual]
+      - id: ci-mirror-flutter-test-11
+        name: CI mirror 15 (flutter test 11/12)
+        entry: bash scripts/ci_mirror.sh flutter-test --shard 10/12
+        language: system
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        stages: [manual]
+      - id: ci-mirror-flutter-test-12
+        name: CI mirror 16 (flutter test 12/12)
+        entry: bash scripts/ci_mirror.sh flutter-test --shard 11/12
         language: system
         pass_filenames: false
         always_run: true
