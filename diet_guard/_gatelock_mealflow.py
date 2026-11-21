@@ -18,8 +18,8 @@ from diet_guard._budget_derived import protein_target_g
 from diet_guard._foodbank import remember_food
 from diet_guard._gatelock_delivery import _PullFlows
 from diet_guard._gatelock_fillall import RECONCILE_LABELS, FillAllFlow, FillHooks
+from diet_guard._gatelock_lookup import LookupRunner
 from diet_guard._gatelock_ui import ERR, FG, UNIT_GRAMS
-from diet_guard._resolve import lookup_candidates
 from diet_guard._slots import slot_label
 from diet_guard._state import entry_kcal, log_meal
 from diet_guard._state_today import (
@@ -44,6 +44,9 @@ _DASH_DESC_WIDTH = 22
 
 class _GateMealFlow(_PullFlows):
     """Submit/lookup/log flow for a logged food."""
+
+    #: The off-thread food lookup, made on first use (it needs ``root``).
+    _lookup: LookupRunner | None = None
 
     # -- slot walk ------------------------------------------------------------
 
@@ -111,16 +114,19 @@ class _GateMealFlow(_PullFlows):
         self._record(description, nutrition)
 
     def _begin_lookup(self, description: str) -> None:
-        """Step 1: look the food up, fill the label fields, offer alternatives.
+        """Step 1: look the food up off the Tk thread; fill the form on return.
 
         Nothing is logged here -- the user must see and confirm the filled
-        values (a second submit) before they are recorded.  The food is looked
-        up at its natural basis (per 100 g / serving); the amount eaten scales
-        it, so the lookup never bakes in a portion.
+        values (a second submit) before they are recorded.  A second submit
+        while a lookup runs is ignored.
         """
-        self._set_status(g.BUSY)
-        self.root.update_idletasks()
-        candidates = lookup_candidates(description)
+        if self._lookup is None:
+            self._lookup = LookupRunner(self.root, self._finish_lookup, self._get_desc)
+        if self._lookup.start(description):
+            self._set_status(g.BUSY)
+
+    def _finish_lookup(self, candidates: list[tuple[str, Nutrition]]) -> None:
+        """Fill the label fields and offer alternatives, or ask for kcal."""
         if not candidates:
             # Not found: the kcal field takes focus, the cue names it.
             self._set_status(f"{g.ERROR} {g.source_glyph('')} kcal", error=True)

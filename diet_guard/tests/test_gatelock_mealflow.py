@@ -1,8 +1,9 @@
-"""Tests for the nutrition model, lookup, and meal-building flow of MealGate.
+"""Tests for the nutrition model and meal-building flow of MealGate.
 
 Covers :mod:`._gatelock_nutrition` (reference -> total maths, suggestions,
-unit toggling) and :mod:`._gatelock_mealflow` (submit/lookup/record, the
-dashboard, and multi-item meals).  The functional fake ``tk`` widgets and the
+unit toggling) and :mod:`._gatelock_mealflow` (submit/record, the
+dashboard, and multi-item meals).  Lookup tests moved to
+:mod:`test_gatelock_lookup`. The functional fake ``tk`` widgets and the
 ``gate`` fixture live in ``conftest.py`` and are shared with
 :mod:`test_gatelock`.
 """
@@ -154,41 +155,6 @@ class TestSubmit:
         with patch.object(gate, "_on_submit") as submit:
             gate._on_return(None)
         submit.assert_called_once()
-
-
-class TestLookup:
-    """Step one: filling the form from a lookup."""
-
-    def test_no_candidates(self, gate: MealGate) -> None:
-        """No match asks for a manual value."""
-        gate._set_desc("nonsense")
-        with patch.object(_gatelock_mealflow, "lookup_candidates", return_value=[]):
-            gate._begin_lookup("nonsense")
-        assert gate._vars.status.get().startswith(g.ERROR)
-
-    def test_single_candidate(self, gate: MealGate) -> None:
-        """A single match fills the fields and invites review."""
-        with patch.object(
-            _gatelock_mealflow,
-            "lookup_candidates",
-            return_value=[("apple", _nutrition(95, 100))],
-        ):
-            gate._begin_lookup("apple")
-        assert gate._vars.status.get().startswith(g.OK)
-        assert g.TIMES not in gate._vars.status.get()
-
-    def test_multiple_candidates(self, gate: MealGate) -> None:
-        """Several matches invite picking another."""
-        with patch.object(
-            _gatelock_mealflow,
-            "lookup_candidates",
-            return_value=[
-                ("a", _nutrition(95, 100)),
-                ("b", _nutrition(120, 100)),
-            ],
-        ):
-            gate._begin_lookup("apple")
-        assert gate._vars.status.get().endswith(f"{g.TIMES}2")
 
 
 class TestRecord:
