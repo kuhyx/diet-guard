@@ -22,8 +22,16 @@ pytest_run() {
 }
 
 # Dart changes map to app/test/<name>_test.dart; any other app/ change runs the app suite.
+# A private TMPDIR and two isolates, as each ci_mirror.sh shard does: on the
+# shared /tmp a 3-file run stalled to 67 s in the build queue (2026-11-21)
+# against ~4 s alone, and the default isolate count overruns capped.sh's 2 GiB.
 flutter_run() {
-    (cd app && flutter test --reporter=compact "$@")
+    local tmp status=0
+    tmp="$(mktemp -d "${XDG_CACHE_HOME:-$HOME/.cache}/diet-guard-flutter-test.XXXXXX")"
+    (cd app && TMPDIR="$tmp" flutter test --reporter=compact \
+        --concurrency="${FLUTTER_TEST_CONCURRENCY:-2}" "$@") || status=$?
+    rm -rf -- "$tmp"
+    return "$status"
 }
 
 if grep -qs testmon pyproject.toml requirements*.txt; then
