@@ -7,9 +7,10 @@ dependencies = [
     "gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.16.0#subdirectory=gatelock",
     "crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.11.1#subdirectory=crdt-sync",
     "freedays @ git+https://github.com/kuhyx/utils@freedays-v0.4.3#subdirectory=freedays",
+    "kuhy-credit @ git+https://github.com/kuhyx/utils@kuhy-credit-v0.3.0#subdirectory=kuhy_credit",
     "holds @ git+https://github.com/kuhyx/utils@holds-v0.1.0#subdirectory=holds",
-    "sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.5.5#subdirectory=sickdays",
-    "claude-agent-sdk==0.2.185",
+    "sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.5.6#subdirectory=sickdays",
+    "claude-agent-sdk==0.2.187",
     "defusedxml==0.7.1",
     "httpx==0.28.1",
     "requests==2.34.2",
@@ -25,7 +26,7 @@ dependencies = [
 mcp = ["mcp==2.3.0"]
 # Test-only: the property tests (test_claude_log.py) need it; same pin as
 # requirements.txt.
-dev = ["hypothesis==6.170.15"]
+dev = ["hypothesis==6.170.17"]
 
 # Without this, setuptools' flat-layout auto-discovery treats the Flutter
 # app/ directory as a second top-level package and refuses to build.

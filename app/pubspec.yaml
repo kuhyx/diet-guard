@@ -2,7 +2,7 @@ name: diet_guard_app
 description: "Companion phone app for diet_guard: log meals on the go."
 publish_to: 'none'
 
-version: 1.0.186+1
+version: 1.0.187+1
 
 environment:
   sdk: ^3.12.2
@@ -48,11 +48,16 @@ dependencies:
       url: https://github.com/kuhyx/utils
       ref: google_account_token-v0.1.0
       path: google_account_token
-  health: 13.3.2
+  health: 14.0.0
   http: 1.6.0
   idb_shim: 2.11.3
   # Camera/gallery photo as transient input to Claude (never stored or synced).
   image_picker: 1.2.4
+  kuhy_credit:
+    git:
+      url: https://github.com/kuhyx/utils
+      ref: kuhy-credit-v0.3.0
+      path: kuhy_credit/flutter
   material_ui: 1.11.1
   path: 1.9.1
   path_provider: 2.1.6

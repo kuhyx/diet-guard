@@ -27,6 +27,7 @@ import 'package:diet_guard_app/widgets/meal_schedule_editor.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:kuhy_credit/kuhy_credit.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sync_settings_ui/sync_settings_ui.dart';
@@ -241,6 +242,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                 const SizedBox(height: 16),
                 Align(alignment: Alignment.centerLeft, child: _status),
               ],
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 8),
+              const Align(alignment: Alignment.centerLeft, child: KuhyCredit()),
             ],
           ),
         ),

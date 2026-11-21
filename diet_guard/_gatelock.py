@@ -58,6 +58,7 @@ from diet_guard._gatelock_core import _GateState
 from diet_guard._gatelock_credit import arm_credit_watch
 from diet_guard._gatelock_groups import GateWidgetsGroup
 from diet_guard._gatelock_lockfile import acquire_gate_lock, release_gate_lock
+from diet_guard._gatelock_logo import place_logo
 from diet_guard._gatelock_peerpull import arm_peer_pull
 from diet_guard._gatelock_ui import GateCallbacks, make_vars
 from diet_guard._hold import watch_hold
@@ -127,8 +128,7 @@ class MealGate(_GateCalendar):
         self.root = GateRoot()
         self.root.on_callback_error = self.on_callback_error
         self.root.title("Diet Gate")  # OS-level app name: the one kept noun
-        # No colour overrides: LockConfig's defaults are the design-system palette
-        # and _gatelock_ui reads them too (an override drifted once).
+        # No colour overrides: LockConfig defaults are the palette (one drifted).
         config = LockConfig(
             mode="soft" if demo_mode else "hard",
             app_name="diet_guard",
@@ -172,9 +172,9 @@ class MealGate(_GateCalendar):
         monitor the user is actually looking at.
         """
         widgets = self._build_tabs(parent, self._callbacks)
+        place_logo(parent)
         self._widgets.add(widgets, surface.output_name)
-        # An output coming back mid-lock gets its bindings too; tk's bind
-        # replaces rather than stacks, so re-wiring the others is a no-op.
+        # A returning output gets its bindings; re-wiring the rest is a no-op.
         self._wire_events()
 
     def teardown_surface(self, surface: SurfaceInfo) -> None:

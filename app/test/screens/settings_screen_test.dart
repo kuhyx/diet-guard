@@ -10,6 +10,7 @@ import 'package:diet_guard_app/services/firebase_backend.dart';
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
 import 'package:diet_guard_app/services/meal_schedule_service.dart';
+import 'package:kuhy_credit/kuhy_credit.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -224,4 +225,17 @@ void main() {
       });
     },
   );
+
+  testWidgets('shows the KuhyCredit logo at the bottom', (tester) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+      await settle(tester);
+
+      // Scroll to the bottom where KuhyCredit is placed.
+      await tester.ensureVisible(find.byType(KuhyCredit, skipOffstage: false));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(KuhyCredit, skipOffstage: false), findsOneWidget);
+    });
+  });
 }

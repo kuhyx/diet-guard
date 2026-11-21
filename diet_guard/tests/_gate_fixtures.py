@@ -202,6 +202,8 @@ def fake_tk() -> Iterator[None]:
     with ExitStack() as stack:
         for module in _GATE_TK_MODULES:
             stack.enter_context(patch.object(module, "tk", _FAKE_TK))
+        # The logo is a real Canvas subclass; it cannot take a fake parent.
+        stack.enter_context(patch.object(_gatelock, "place_logo"))
         stack.enter_context(patch.object(_gatelock_calendar, "ttk", _FAKE_TTK))
         stack.enter_context(patch.object(_gatelock_calendar_ui, "ttk", _FAKE_TTK))
         # The schedule row's HH:MM spinboxes are ttk widgets; left real, they
