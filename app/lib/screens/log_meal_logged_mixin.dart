@@ -22,6 +22,11 @@ mixin LogMealLoggedMixin<T extends StatefulWidget>
   /// The rows under the action row, oldest first.
   List<LoggedMeal> loggedRows = const [];
 
+  /// The latest open-or-resume chain. Tests await it instead of guessing how
+  /// long real file I/O takes (a fixed sleep flaked under load).
+  @visibleForTesting
+  Future<void> openChain = Future<void>.value();
+
   /// Replaces the rows with [meals]: a new log retires the previous ones.
   void showLogged(List<LoggedMeal> meals) {
     if (mounted) setState(() => loggedRows = meals);
@@ -57,11 +62,14 @@ mixin LogMealLoggedMixin<T extends StatefulWidget>
     // single-flight, so calling super too would let the auto-log run before
     // the pull finished). Pause still pushes through the sync mixin.
     if (state == AppLifecycleState.resumed) {
-      unawaited(onOpenedOrResumed());
+      startOpenChain();
       return;
     }
     super.didChangeAppLifecycleState(state);
   }
+
+  /// Starts [onOpenedOrResumed] and keeps its future in [openChain].
+  void startOpenChain() => openChain = onOpenedOrResumed();
 
   /// What a fresh open or a resume does: show the screen from the local log,
   /// pull what other devices logged, then auto-log what is still due.

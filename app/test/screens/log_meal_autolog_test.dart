@@ -47,7 +47,7 @@ void main() {
 
   Future<void> open(WidgetTester tester) async {
     await tester.pumpWidget(const MaterialApp(home: LogMealScreen()));
-    await settle(tester);
+    await settleOpen(tester);
   }
 
   testWidgets('opening in due mode logs the due dishes with no tap', (
@@ -72,7 +72,11 @@ void main() {
     await tester.runAsync(() async {
       await open(tester);
       await tester.tap(byIconLabel('Undo').first);
-      await settle(tester);
+      await settleUntil(
+        tester,
+        () async =>
+            (await LogStorageService.instance.todayEntries()).length == 1,
+      );
       expect(find.byIcon(Icons.restaurant), findsOneWidget);
       var live = await LogStorageService.instance.todayEntries();
       expect(live.map((e) => e.desc), ['Danie 2']);
@@ -130,7 +134,7 @@ void main() {
       (state as WidgetsBindingObserver).didChangeAppLifecycleState(
         AppLifecycleState.resumed,
       );
-      await settle(tester);
+      await settleOpen(tester);
 
       final entries = await LogStorageService.instance.todayEntries();
       expect(entries.map((e) => e.desc), ['Danie 1', 'Danie 2']);

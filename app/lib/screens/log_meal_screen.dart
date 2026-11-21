@@ -90,7 +90,7 @@ class _LogMealScreenState extends State<LogMealScreen>
     unawaited(_onDescChanged());
     // Health first, so a device that stalled earlier says so before a tick.
     unawaited(refreshSyncHealth());
-    unawaited(onOpenedOrResumed());
+    startOpenChain();
   }
 
   @override

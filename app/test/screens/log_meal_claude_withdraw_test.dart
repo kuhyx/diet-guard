@@ -38,7 +38,7 @@ void main() {
 
   Future<void> open(WidgetTester tester) async {
     await tester.pumpWidget(MaterialApp(home: LogMealScreen(relay: relay)));
-    await settle(tester);
+    await settleOpen(tester);
   }
 
   testWidgets('the request id is a ULID and the mode follows due mode', (
@@ -75,7 +75,12 @@ void main() {
         await settle(tester);
 
         await tester.tap(controlByLabel('Log meal'));
-        await settle(tester);
+        await settleUntil(
+          tester,
+          () async =>
+              relay.cancelled.isNotEmpty &&
+              byIconLabel('Ask Claude').evaluate().isNotEmpty,
+        );
 
         expect(relay.cancelled, [relay.sent.single.requestId]);
         expect(byIconLabel('Ask Claude'), findsOneWidget);
@@ -88,7 +93,12 @@ void main() {
             _claudeEntry(claudeEntryId(relay.sent.single.requestId)),
           ),
         );
-        await settle(tester);
+        await settleUntil(
+          tester,
+          () async =>
+              (await LogStorageService.instance.todayEntries()).length ==
+              (claimed ? 2 : 1),
+        );
         final live = await LogStorageService.instance.todayEntries();
         expect(live, hasLength(claimed ? 2 : 1));
       });

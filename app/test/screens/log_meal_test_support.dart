@@ -4,6 +4,8 @@ library;
 import 'dart:io';
 
 import 'package:diet_guard_app/screens/log_meal_due_mixin.dart';
+import 'package:diet_guard_app/screens/log_meal_logged_mixin.dart';
+import 'package:diet_guard_app/screens/log_meal_screen.dart';
 import 'package:diet_guard_app/services/app_settings_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/document_store_io.dart';
@@ -50,4 +52,29 @@ Future<Future<void> Function()> isolateLogScreenState() async {
 Future<void> settle(WidgetTester tester) async {
   await Future<void>.delayed(const Duration(milliseconds: 200));
   await tester.pumpAndSettle();
+}
+
+/// Waits for the screen's open-or-resume chain (sync, slots, catering
+/// auto-log) to finish, then [settle]s.
+Future<void> settleOpen(WidgetTester tester) async {
+  final state = tester.state(find.byType(LogMealScreen));
+  await (state as LogMealLoggedMixin).openChain;
+  await settle(tester);
+}
+
+/// [settle]s, then keeps pumping until [done] holds or [timeout] passes.
+///
+/// For chains a tap starts and nothing exposes: real file I/O outlasts the
+/// fixed sleep in [settle] when the machine is loaded.
+Future<void> settleUntil(
+  WidgetTester tester,
+  Future<bool> Function() done, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  await settle(tester);
+  while (!await done() && DateTime.now().isBefore(deadline)) {
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await tester.pumpAndSettle();
+  }
 }
