@@ -167,9 +167,13 @@ run_flutter_test_shard() {
     # A private TMPDIR per shard: on the shared /tmp a shard stalled at ~2 s of
     # CPU for 15+ minutes (2026-11-21, held a build slot past 60 s) while the
     # same shard with its own TMPDIR finished in well under a minute.
-    local tmp status=0
+    # Two test isolates, not flutter's default of one per spare core: at the
+    # default a shard peaked at 3.9 GiB and was OOM-killed inside capped.sh's
+    # 2 GiB scope; at 4 it still hit 2 GiB and was killed now and then; at 2
+    # it peaks at 1.8 GiB and runs in ~22 s (2026-11-21).
+    local tmp status=0 concurrency=${FLUTTER_TEST_CONCURRENCY:-2}
     tmp="$(mktemp -d "${XDG_CACHE_HOME:-$HOME/.cache}/diet-guard-flutter-test.XXXXXX")"
-    (cd "$APP_DIR" && TMPDIR="$tmp" flutter_clean_env test "${files[@]}") || status=$?
+    (cd "$APP_DIR" && TMPDIR="$tmp" flutter_clean_env test --concurrency="$concurrency" "${files[@]}") || status=$?
     rm -rf -- "$tmp"
     ((status == 0)) || fail "flutter test shard $index/$total"
 }
