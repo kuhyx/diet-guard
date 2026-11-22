@@ -47,22 +47,27 @@ List<Widget> logMealAppBarActions({
 }) => [
   ...leading,
   IconButton(
+    tooltip: 'Body',
     icon: const Icon(Icons.monitor_weight, semanticLabel: 'Body'),
     onPressed: onBody,
   ),
   IconButton(
+    tooltip: 'Foods',
     icon: const Icon(Icons.restaurant_menu, semanticLabel: 'Food bank'),
     onPressed: onFoodBank,
   ),
   IconButton(
+    tooltip: 'History',
     icon: const Icon(Icons.history, semanticLabel: 'History'),
     onPressed: onHistory,
   ),
   IconButton(
+    tooltip: 'Calendar',
     icon: const Icon(Icons.calendar_month, semanticLabel: 'Calendar'),
     onPressed: onCalendar,
   ),
   IconButton(
+    tooltip: 'Sync',
     icon: const Icon(Icons.settings, semanticLabel: 'Sync settings'),
     onPressed: onSettings,
   ),

@@ -123,6 +123,7 @@ class MealTimeDropdown extends StatelessWidget {
           ),
         ),
         IconButton(
+          tooltip: 'Time',
           icon: const Icon(
             Icons.schedule,
             semanticLabel: 'Type or pick an exact time',

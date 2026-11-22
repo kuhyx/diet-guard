@@ -5,7 +5,8 @@
 /// A word is two or more letters in a row. Allowed without listing: numbers,
 /// punctuation, single letters, unit symbols next to a figure ([unitTokens])
 /// and the method acronyms kept as DOUBT rows (`MET`). Content (food names,
-/// workout labels, typed values) is passed per test as [content].
+/// workout labels, typed values) is passed per test as [content]. One-word
+/// tooltips naming an icon are exempt (textgate one-word-tooltip exception).
 library;
 
 import 'package:material_ui/material_ui.dart';
@@ -16,11 +17,15 @@ const Set<String> unitTokens = {'kcal', 'kg', 'cm', 'lb', 'st', 'MET'};
 
 final RegExp _word = RegExp('[A-Za-z]{2,}');
 
+/// A one-word tooltip naming an icon (textgate exception, 2026-11-22).
+final RegExp _oneWordTooltip = RegExp(r'^[A-Za-z][A-Za-z-]{0,19}$');
+
 /// Every painted string in the current tree (one per [RichText] / tooltip).
 List<String> paintedStrings(WidgetTester tester) => [
   for (final w in tester.widgetList<RichText>(find.byType(RichText)))
     w.text.toPlainText(includePlaceholders: false),
-  for (final w in tester.widgetList<Tooltip>(find.byType(Tooltip))) ?w.message,
+  for (final w in tester.widgetList<Tooltip>(find.byType(Tooltip)))
+    if (w.message case final m? when !_oneWordTooltip.hasMatch(m)) m,
 ];
 
 /// The words in [text] that are neither units nor part of [content].

@@ -162,6 +162,7 @@ class _GitHubMirrorScreenState extends State<GitHubMirrorScreen>
                   // it says nothing about Firebase.
                   IconButton.outlined(
                     onPressed: _busy ? null : _testConnection,
+                    tooltip: 'Test',
                     icon: const Icon(
                       Icons.network_check,
                       semanticLabel: 'Test GitHub connection',
