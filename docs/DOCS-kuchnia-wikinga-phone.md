@@ -40,8 +40,10 @@ from the phone; `FillAllFlow` stays as the tested plan logic.
   undo plus the next resume would log the dish again.
 - **The fetch is cached.** `KuchniaQueueService.refreshOnce` returns nothing
   after the day's first clean fetch, so a slot falling due at 12:00 would never
-  see its dish. `KuchniaAutoLog` keeps the day's dishes in memory and retries a
-  failed or empty fetch at most every 10 minutes (a login per try).
+  see its dish. `KuchniaAutoLog` keeps the day's dishes in memory and in
+  `kuchnia_delivery.json` (offline first: a restart or a panel outage still has
+  them), and retries a failed or empty fetch at most every 10 minutes (a login
+  per try). The PC keeps the same file (`_kuchnia_delivery_cache.py`).
 - Each logged dish shows as a row: restaurant glyph, name, kcal and macro
   dots, a 48 dp undo. One publish per batch (`publishAfterLog`).
 - Unverified: whether `deliveryMealId` is stable across fetches on the live

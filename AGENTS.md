@@ -143,6 +143,7 @@ install -e`, so the clone must persist for `git pull` to reach the running servi
   `test_budget_history.py`; it syncs as `hist:<YYYY-MM-DD>` fields on the
   existing `budget` record, so devices predating the feature relay them
   untouched.
+- **Offline first**: save locally before any network call; store fetched data on disk (`kuchnia_delivery.json`, both devices).
 - **Body data persists and syncs** (profile, weight log, PC workouts) as
   `body.json`; its tables are informational. [docs/DOCS-body.md](docs/DOCS-body.md).
 - **PC and phone share one source of truth for everything**: food log, budget,

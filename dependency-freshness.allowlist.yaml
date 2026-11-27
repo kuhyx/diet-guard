@@ -3,11 +3,11 @@
 # they carry no `expires`; everything else is discretionary and expires.
 
 exceptions:
-  - ecosystem: gittag
-    package: kuhy-credit
-    pinned: 0.3.1
+  - ecosystem: pypi
+    package: httpx
+    pinned: 0.28.1
     reason: >-
-      sickdays 0.5.8 (its newest release) pins kuhy-credit 0.3.1 exactly, so
-      pip refuses 0.3.2 next to it. Taking 0.3.2 means holding sickdays back
-      instead; sickdays is the dependency the gate actually runs.
-    blocked_by: transitive:sickdays@0.5.8
+      rtdb-relay 0.2.2 (its newest release) pins httpx 0.28.1 exactly, so pip
+      refuses 0.29.0 next to it. rtdb-relay is the Claude relay transport, so
+      httpx waits for it.
+    blocked_by: transitive:rtdb-relay@0.2.2

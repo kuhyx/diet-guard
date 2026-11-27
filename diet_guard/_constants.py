@@ -171,6 +171,10 @@ KUCHNIA_SYNCED_CREDENTIAL_FILE: Path = (
 KUCHNIA_LAST_IMPORT_FILE: Path = (
     Path.home() / ".config" / "diet_guard" / "kuchnia_last_import"
 )
+# The last successfully-fetched delivery, so a panel outage can fall back to
+# it instead of a blank import. Under DATA_DIR, not ~/.config: it is a cache,
+# regenerable on the next successful fetch.
+KUCHNIA_DELIVERY_CACHE_FILE: Path = DATA_DIR / "kuchnia_delivery.json"
 KUCHNIA_TIMEOUT_SECONDS: float = 8.0
 # Whole-walk ceiling. The import is 3-4 sequential requests, so a per-request
 # timeout alone would permit ~32s against a slow provider.

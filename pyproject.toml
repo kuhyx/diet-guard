@@ -4,17 +4,17 @@ version = "1.0.0"
 description = "Tkinter/systemd log-to-unlock meal gate with calorie/macro budget tracking"
 requires-python = ">=3.14"
 dependencies = [
-    "gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.16.0#subdirectory=gatelock",
+    "gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.16.1#subdirectory=gatelock",
     "crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.11.1#subdirectory=crdt-sync",
-    "freedays @ git+https://github.com/kuhyx/utils@freedays-v0.4.3#subdirectory=freedays",
-    "kuhy-credit @ git+https://github.com/kuhyx/utils@kuhy-credit-v0.3.1#subdirectory=kuhy_credit",
+    "freedays @ git+https://github.com/kuhyx/utils@freedays-v0.4.4#subdirectory=freedays",
+    "kuhy-credit @ git+https://github.com/kuhyx/utils@kuhy-credit-v0.3.2#subdirectory=kuhy_credit",
     "holds @ git+https://github.com/kuhyx/utils@holds-v0.1.0#subdirectory=holds",
-    "sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.5.8#subdirectory=sickdays",
-    "claude-agent-sdk==0.2.187",
+    "sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.5.9#subdirectory=sickdays",
+    "claude-agent-sdk==0.2.189",
     "defusedxml==0.7.1",
     "httpx==0.28.1",
     "requests==2.34.2",
-    "rtdb-relay @ git+https://github.com/kuhyx/utils@rtdb-relay-v0.2.1#subdirectory=rtdb_relay",
+    "rtdb-relay @ git+https://github.com/kuhyx/utils@rtdb-relay-v0.2.2#subdirectory=rtdb_relay",
 ]
 
 # Optional extras. The `mcp` group is ONLY needed by the MCP server

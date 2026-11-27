@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 from diet_guard._foodbank_manual import add_manual_entry, read_manual_bank
 from diet_guard._kuchnia_client import PanelSession
 from diet_guard._kuchnia_config import last_import_day, record_import_day
+from diet_guard._kuchnia_delivery_cache import load_delivery, save_delivery
 from diet_guard._kuchnia_errors import KuchniaError
 from diet_guard._kuchnia_orders import fetch_dishes
 
@@ -90,16 +91,22 @@ def refresh_delivery(day: date) -> tuple[list[Dish], str | None]:
         day: The delivery date to fetch.
 
     Returns:
-        ``(dishes, None)`` on success, or ``([], reason)`` when the catering
-        panel could not be read. Callers surface the reason and carry on.
+        ``(dishes, None)`` on success. On a panel outage, the cached
+        delivery for ``day`` when one exists ``(cached, None)``, otherwise
+        ``([], reason)`` with the failure reason so callers can surface it
+        and carry on.
     """
     try:
         session = PanelSession()
         session.authenticate()
         dishes = fetch_dishes(session, day)
     except KuchniaError as exc:
+        if cached := load_delivery(day):
+            return cached, None
         return [], str(exc)
     bank_dishes(dishes)
+    if dishes:
+        save_delivery(day, dishes)
     return dishes, None
 
 
@@ -123,12 +130,13 @@ def refresh_delivery_once(day: date) -> tuple[list[Dish], str | None]:
         day: The delivery date to fetch.
 
     Returns:
-        ``([], None)`` when today was already fetched -- "nothing new", not an
+        ``(cached, None)`` when today was already fetched -- ``cached`` is the
+        saved delivery for the day (possibly empty), "nothing new", not an
         error. Otherwise whatever :func:`refresh_delivery` returns.
     """
     stamp = day.isoformat()
     if last_import_day() == stamp:
-        return [], None
+        return load_delivery(day), None
     dishes, reason = refresh_delivery(day)
     if reason is None and dishes:
         # Only a fetch that found dishes counts: an outage, or a walk that

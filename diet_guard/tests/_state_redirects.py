@@ -151,6 +151,12 @@ def state_redirects(tmp_path: Path) -> list[_patch[object]]:
             "diet_guard._kuchnia_config.KUCHNIA_LAST_IMPORT_FILE",
             tmp_path / "kuchnia_last_import",
         ),
+        # The outage fallback cache: without this a refresh_delivery test that
+        # saves one lands in the real DATA_DIR.
+        patch(
+            "diet_guard._constants.KUCHNIA_DELIVERY_CACHE_FILE",
+            tmp_path / "kuchnia_delivery.json",
+        ),
         # The catering fetch is a third network entry point. Patched at each
         # call site, so a test importing `refresh_delivery` directly still
         # exercises the real helper.

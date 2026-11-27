@@ -23,6 +23,32 @@ class KuchniaDish {
     this.dishId = '',
   });
 
+  /// Rebuilds a dish stored by [toJson]; throws on a malformed record.
+  factory KuchniaDish.fromJson(Map<String, Object?> json) => KuchniaDish(
+    name: json['name']! as String,
+    kcal: (json['kcal']! as num).toDouble(),
+    proteinG: (json['protein_g']! as num).toDouble(),
+    carbsG: (json['carbs_g']! as num).toDouble(),
+    fatG: (json['fat_g']! as num).toDouble(),
+    grams: (json['grams']! as num).toDouble(),
+    priority: json['priority']! as int,
+    slotLabel: json['slot_label']! as String,
+    dishId: json['dish_id'] as String? ?? '',
+  );
+
+  /// The stored form; the keys follow the PC's `kuchnia_delivery.json`.
+  Map<String, Object?> toJson() => {
+    'name': name,
+    'kcal': kcal,
+    'protein_g': proteinG,
+    'carbs_g': carbsG,
+    'fat_g': fatG,
+    'grams': grams,
+    'priority': priority,
+    'slot_label': slotLabel,
+    'dish_id': dishId,
+  };
+
   /// The dish itself (`menuMealName`), e.g. "Kaszotto grzybowe...".
   ///
   /// Not `mealName`, which is the slot label ("Kolacja") and would collapse

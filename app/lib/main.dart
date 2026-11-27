@@ -13,9 +13,11 @@ import 'package:diet_guard_app/services/body_service.dart';
 import 'package:diet_guard_app/services/budget_history_service.dart';
 import 'package:diet_guard_app/services/claude_relay_client.dart';
 import 'package:diet_guard_app/services/claude_relay_firebase.dart';
+import 'package:diet_guard_app/services/document_store_factory.dart';
 import 'package:diet_guard_app/services/firebase_client.dart' show openFirebase;
 import 'package:diet_guard_app/services/foodbank_service.dart';
 import 'package:diet_guard_app/services/frame_stats.dart';
+import 'package:diet_guard_app/services/kuchnia_autolog.dart';
 import 'package:diet_guard_app/services/kuchnia_credential_service.dart';
 import 'package:diet_guard_app/services/kuchnia_queue.dart';
 import 'package:diet_guard_app/services/log_storage_service.dart';
@@ -56,6 +58,8 @@ Future<void> main() async {
   await KuchniaCredentialService.init();
   await BodyService.init();
   await KuchniaQueueService.init();
+  // Offline first: the day's catering dishes survive a restart.
+  KuchniaAutoLog.instance = KuchniaAutoLog(store: await openDocumentStore());
   // The sparkle button's transport; until this line it fails closed.
   claudeRelay = RtdbClaudeRelay.firebase();
   final notifications = await NotificationService.init();

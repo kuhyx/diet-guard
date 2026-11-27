@@ -13,16 +13,21 @@
 /// An undone dish keeps its tombstone, so it is never logged a second time.
 ///
 /// The fetch is a third-party login, so the day's dishes are cached in memory
-/// and a failed or empty fetch is retried at most every [retryAfter].
+/// and in `store` (`kuchnia_delivery.json`), so a restart or an outage still
+/// has them (offline first); a failed or empty fetch is retried at most every
+/// [retryAfter].
 /// `KuchniaQueueService.refreshOnce` cannot serve here: after the first clean
 /// fetch of the day it returns nothing, and slots that fall due later would
 /// never see their dish.
 library;
 
+import 'dart:convert';
+
 import 'package:diet_guard_app/models/food_entry.dart';
 import 'package:diet_guard_app/models/kuchnia_dish.dart';
 import 'package:diet_guard_app/models/local_time.dart';
 import 'package:diet_guard_app/models/slot.dart';
+import 'package:diet_guard_app/services/document_store.dart';
 import 'package:diet_guard_app/services/kuchnia_fill.dart';
 import 'package:diet_guard_app/services/kuchnia_fill_flow.dart';
 import 'package:diet_guard_app/services/kuchnia_import.dart';
@@ -44,6 +49,7 @@ class KuchniaAutoLog {
     DeliveryFetch? fetch,
     DateTime Function()? now,
     this.retryAfter = const Duration(minutes: 10),
+    this.store,
   }) : _fetch = fetch ?? refreshDelivery,
        _now = now ?? DateTime.now;
 
@@ -52,6 +58,12 @@ class KuchniaAutoLog {
 
   /// Minimum gap between fetches that found nothing or failed.
   final Duration retryAfter;
+
+  /// Keeps the day's dishes across restarts; null keeps them in memory only.
+  final DocumentStore? store;
+
+  /// The document [store] holds the last fetched delivery in.
+  static const documentName = 'kuchnia_delivery.json';
 
   final DeliveryFetch _fetch;
   final DateTime Function() _now;
@@ -94,14 +106,56 @@ class KuchniaAutoLog {
 
   Future<List<KuchniaDish>> _dishesFor(DateTime today, String dayKey) async {
     if (_cachedDay == dayKey) return _cachedDishes;
+    final stored = await _readStored(dayKey);
+    if (stored.isNotEmpty) {
+      _cachedDay = dayKey;
+      return _cachedDishes = stored;
+    }
     final last = _lastEmptyFetch;
     if (last != null && _now().difference(last) < retryAfter) return const [];
     final result = await _fetch(today);
     if (result.ok && result.dishes.isNotEmpty) {
       _cachedDay = dayKey;
+      await _writeStored(dayKey, result.dishes);
       return _cachedDishes = result.dishes;
     }
     _lastEmptyFetch = _now();
     return const [];
+  }
+
+  Future<List<KuchniaDish>> _readStored(String dayKey) async {
+    final target = store;
+    if (target == null) return const [];
+    try {
+      final raw = await target.read(documentName);
+      if (raw == null) return const [];
+      final data = jsonDecode(raw);
+      if (data is! Map<String, Object?> || data['day'] != dayKey) {
+        return const [];
+      }
+      final dishes = data['dishes'];
+      if (dishes is! List) return const [];
+      return [
+        for (final item in dishes)
+          if (item is Map<String, Object?>) KuchniaDish.fromJson(item),
+      ];
+    } on Object {
+      // A missing, foreign or malformed file is "nothing stored": fetch again.
+      return const [];
+    }
+  }
+
+  Future<void> _writeStored(String dayKey, List<KuchniaDish> dishes) async {
+    final target = store;
+    if (target == null) return;
+    final body = {
+      'day': dayKey,
+      'dishes': [for (final dish in dishes) dish.toJson()],
+    };
+    try {
+      await target.write(documentName, jsonEncode(body));
+    } on Exception {
+      // Best-effort: an unsaved delivery only costs a refetch after a restart.
+    }
   }
 }
