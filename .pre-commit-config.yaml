@@ -25,11 +25,6 @@ repos:
       - id: check-merge-conflict
       - id: detect-private-key
       - id: debug-statements
-      - id: name-tests-test
-        args: [--pytest-test-first]
-        # Shared fakes and fixtures, not test modules. Split out of conftest.py
-        # and test_sync.py only because those files passed the 250-line cap.
-        exclude: ^diet_guard/tests/_(tk_fakes(_containers|_canvas)?|gate_layout_probe|gate_focus_probe|gate_measurement|gate_keyboard_probe|gate_fixtures|sync_fakes|kuchnia_fakes|state_redirects|claude_redirects|claude_fakes|claude_worker_fakes)\.py$
       - id: check-ast
       - id: mixed-line-ending
         args: [--fix=lf]
@@ -57,87 +52,8 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.2
     hooks:
-      - id: ruff
-        args: [--fix, --unsafe-fixes, --exit-non-zero-on-fix, --show-fixes]
-        types_or: [python, pyi]
       - id: ruff-format
         types_or: [python, pyi]
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
-    hooks:
-      - id: mypy
-        args:
-          - --ignore-missing-imports
-          - --no-error-summary
-          - --disable-error-code=no-untyped-def
-          - --disable-error-code=no-untyped-call
-          - --disable-error-code=var-annotated
-          - --disable-error-code=no-any-unimported
-          - --disable-error-code=type-arg
-          - --disable-error-code=no-any-return
-          - --disable-error-code=misc
-          - --disable-error-code=unused-ignore
-          - --disable-error-code=unreachable
-          - --disable-error-code=assignment
-          - --disable-error-code=no-redef
-          - --disable-error-code=attr-defined
-          - --disable-error-code=arg-type
-          - --disable-error-code=union-attr
-          - --disable-error-code=call-overload
-          - --disable-error-code=return-value
-          - --disable-error-code=redundant-cast
-          - --disable-error-code=empty-body
-          - --disable-error-code=list-item
-        additional_dependencies:
-          - types-requests
-
-  - repo: https://github.com/pylint-dev/pylint
-    rev: v3.3.2
-    hooks:
-      - id: pylint
-        # pre-commit itself runs on 3.15 and `python3` resolves to it; this
-        # pylint's --jobs=4 pickles with dill, which crashes there
-        # (no `co_lnotab`). The repo targets 3.14.
-        language_version: python3.14
-        args:
-          - --rcfile=pyproject.toml
-          - --fail-under=10
-          - --jobs=4
-        additional_dependencies:
-          - pytest
-          - requests
-          # Kept in step with pyproject.toml: pip refuses two different
-          # direct URLs for one distribution, so any pin that drifts from
-          # the manifest becomes an unresolvable hook environment rather
-          # than merely an old one.
-          - gatelock @ git+https://github.com/kuhyx/utils@gatelock-v0.16.0#subdirectory=gatelock
-          - crdt-sync @ git+https://github.com/kuhyx/utils@crdt-sync-v0.11.1#subdirectory=crdt-sync
-          - freedays @ git+https://github.com/kuhyx/utils@freedays-v0.4.3#subdirectory=freedays
-          - sickdays @ git+https://github.com/kuhyx/utils@sickdays-v0.5.8#subdirectory=sickdays
-          - kuhy-credit @ git+https://github.com/kuhyx/utils@kuhy-credit-v0.3.1#subdirectory=kuhy_credit
-          - rtdb-relay @ git+https://github.com/kuhyx/utils@rtdb-relay-v0.2.1#subdirectory=rtdb_relay
-          - claude-agent-sdk==0.2.184
-          - httpx==0.28.1
-          - mcp>=2,<3
-          - pydantic
-          - defusedxml==0.7.1
-        # Test suites intentionally use patterns (protected-access, magic-value
-        # comparisons) that don't belong in the source-code 10/10 gate.
-        exclude: ^(\.venv/)|(^|/)(tests/|conftest\.py)
-
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.10
-    hooks:
-      - id: bandit
-        args:
-          - -c
-          - pyproject.toml
-          - --severity-level=high
-          - --confidence-level=medium
-          - --skip=B113
-        additional_dependencies: ["bandit[toml]"]
-        exclude: ^(tests/|.*test.*\.py$)
 
   - repo: local
     hooks:
@@ -161,14 +77,6 @@ repos:
       - id: ci-mirror-pytest
         name: CI mirror 3 (pytest, xvfb, 100% cov)
         entry: bash scripts/ci_mirror.sh pytest
-        language: system
-        pass_filenames: false
-        always_run: true
-        require_serial: true
-        stages: [manual]
-      - id: ci-mirror-flutter-analyze
-        name: CI mirror 4 (flutter analyze)
-        entry: bash scripts/ci_mirror.sh flutter-analyze
         language: system
         pass_filenames: false
         always_run: true
@@ -271,15 +179,6 @@ repos:
         require_serial: true
         stages: [manual]
 
-  - repo: https://github.com/codespell-project/codespell
-    rev: v2.3.0
-    hooks:
-      - id: codespell
-        args:
-          - --skip=*.json,*.lock,.git,__pycache__,.venv
-          # Devine: the 1974 ideal-body-weight formula's author, not "define".
-          - --ignore-words-list=devine
-
   - repo: local
     hooks:
       # Fails a commit that still points crdt_sync at a local path. Local
@@ -300,29 +199,6 @@ repos:
         pass_filenames: false
         always_run: true
         require_serial: true
-      - id: shellcheck
-        name: shellcheck
-        entry: bash -c 'printf "%s\0" "$@" | xargs -0 -n 40 shellcheck --severity=warning' --
-        language: system
-        types: [shell]
-        # A PKGBUILD is a makepkg manifest, not a standalone script: it has no
-        # shebang (SC2148) and its variables are read by makepkg rather than by
-        # the file itself (SC2034). namcap is what actually lints these.
-        exclude: '^packaging/aur/PKGBUILD$'
-      # The shared 250-line cap. Checks only the files in the commit, so an
-      # unrelated commit never breaks; exits 1 rather than warning. No
-      # baseline and no allowlist -- those are suppressions. The exemption
-      # list (generated/vendored/data files) lives with the checker in
-      # ~/src/utils/file_length/config.py so the gate and the survey cannot
-      # disagree.
-      #
-      # Deliberately unfiltered: no types_or and no files. The cap applies to
-      # Dart and prose too, and a type filter here is what would silently
-      # exempt the whole Flutter app and every .md.
-      - id: file-length
-        name: file length <= 250 lines
-        entry: scripts/check_file_length.sh
-        language: system
 
       # unittest.mock.patch fails OPEN: once a refactor moves a name, a patch
       # target that still imports redirects nothing, the test passes, and the

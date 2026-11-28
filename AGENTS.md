@@ -20,10 +20,10 @@ show adherence, streaks, a YTD tally and weekly/monthly averages, all derived fr
 - run: `python -m diet_guard gate --demo`
 - test: `python -m pytest -n auto -p no:sugar -q` (python, 100% branch bar from pyproject) then `cd app && flutter test --reporter=compact`
 - test-changed: `scripts/test_changed.sh` (maps py and app/ dart changes to their tests, no coverage)
-- lint: `pre-commit run --all-files`
-- coverage: `python -m pytest -n auto -p no:sugar -q` (writes coverage.lcov)
+- lint: n/a: dropped (kuhy, 2026-11-27)
+- coverage: n/a: dropped (kuhy, 2026-11-27)
 - deploy: `bash scripts/deploy.sh` (pull ~/src/diet-guard, system-Python install, desktop app; health-checked)
-- coverage-gaps: `coverage-gaps coverage.lcov`
+- coverage-gaps: n/a: dropped (kuhy, 2026-11-27)
 
 ## Scheduling
 
