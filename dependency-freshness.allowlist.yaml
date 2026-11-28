@@ -2,12 +2,4 @@
 # entries are predicates: they clear themselves when the blocker moves, so
 # they carry no `expires`; everything else is discretionary and expires.
 
-exceptions:
-  - ecosystem: pypi
-    package: httpx
-    pinned: 0.28.1
-    reason: >-
-      rtdb-relay 0.2.2 (its newest release) pins httpx 0.28.1 exactly, so pip
-      refuses 0.29.0 next to it. rtdb-relay is the Claude relay transport, so
-      httpx waits for it.
-    blocked_by: transitive:rtdb-relay@0.2.2
+exceptions: []
